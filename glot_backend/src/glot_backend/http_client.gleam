@@ -1,0 +1,66 @@
+import gleam/dynamic/decode
+import gleam/http
+import gleam/http/request
+import gleam/httpc
+import gleam/json
+import gleam/result
+import gleam/string
+import gleam/uri
+
+pub type HttpError {
+  BadUrl(String)
+  Timeout
+  NetworkError
+  BadStatus(Int)
+  BadBody(String)
+}
+
+fn map_http_error(error: httpc.HttpError) -> HttpError {
+  case error {
+    httpc.InvalidUtf8Response -> BadBody("Response body was not valid UTF-8")
+    httpc.FailedToConnect(_ip4, _ip6) -> NetworkError
+    httpc.ResponseTimeout -> Timeout
+  }
+}
+
+fn ensure_good_status(status: Int) -> Result(Nil, HttpError) {
+  case status >= 200 && status <= 299 {
+    True -> Ok(Nil)
+    False -> Error(BadStatus(status))
+  }
+}
+
+pub fn post_json(
+  url url: String,
+  body body: json.Json,
+  decoder decoder: decode.Decoder(a),
+) -> Result(a, HttpError) {
+  use initial_req <- result.try(url_to_request(url))
+
+  let req =
+    initial_req
+    |> request.set_method(http.Post)
+    |> request.set_header("content-type", "application/json")
+    |> request.set_header("accept", "application/json")
+    |> request.set_body(json.to_string(body))
+
+  let config =
+    httpc.configure()
+    |> httpc.timeout(60_000)
+
+  use res <- result.try(
+    httpc.dispatch(config, req) |> result.map_error(map_http_error),
+  )
+  use _ <- result.try(ensure_good_status(res.status))
+
+  json.parse(res.body, decoder)
+  |> result.map_error(fn(err) { BadBody(string.inspect(err)) })
+}
+
+fn url_to_request(url: String) -> Result(request.Request(String), HttpError) {
+  let to_bad_url = fn(_) { BadUrl(url) }
+  use u <- result.try(uri.parse(url) |> result.map_error(to_bad_url))
+
+  request.from_uri(u)
+  |> result.map_error(to_bad_url)
+}

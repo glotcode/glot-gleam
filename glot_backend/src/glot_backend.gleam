@@ -1,7 +1,6 @@
 import gleam/erlang/process
-import gleam/http.{Get}
+import gleam/http
 import gleam/io
-import glot/home_page
 import lustre/attribute
 import lustre/element
 import lustre/element/html
@@ -15,7 +14,7 @@ pub fn main() {
   let _ =
     radiate.new()
     |> radiate.add_dir(
-      "/Users/petter/dev/Projects/glot-gleam/glot_backend/src/glot",
+      "/Users/petter/dev/Projects/glot-gleam/glot_backend/src/glot_backend",
     )
     |> radiate.on_reload(fn(_state, path) {
       io.println("Change in " <> path <> ", reloading!")
@@ -55,12 +54,19 @@ fn app_middleware(
 
 fn handle_request(static_directory: String, req: Request) -> Response {
   use req <- app_middleware(req, static_directory)
+  use json <- wisp.require_json(req)
 
   case req.method, wisp.path_segments(req) {
     //Get, [] -> home_page.home_page()
-    Get, _ -> serve_spa_page()
+    http.Get, _ -> serve_spa_page()
+    http.Post, ["api", "run"] -> handle_api_run(req)
     _, _ -> wisp.not_found()
   }
+}
+
+fn handle_api_run(req: Request) -> Response {
+  // Placeholder implementation
+  wisp.json_response("foo", 200)
 }
 
 fn serve_spa_page() -> Response {

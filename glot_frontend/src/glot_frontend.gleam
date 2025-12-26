@@ -1,6 +1,6 @@
-import glot/editor_page
-import glot/home_page
-import glot/route
+import glot_frontend/editor_page
+import glot_frontend/home_page
+import glot_frontend/route
 import lustre
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}

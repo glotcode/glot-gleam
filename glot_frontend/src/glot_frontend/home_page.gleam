@@ -1,4 +1,4 @@
-import glot/route
+import glot_frontend/route
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
