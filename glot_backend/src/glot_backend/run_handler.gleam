@@ -1,13 +1,16 @@
-import gleam/dynamic
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/string
+import glot_backend/config
 import glot_backend/http_client
 import glot_core/run
 import wisp
 
-pub fn handle_request(json: dynamic.Dynamic) -> wisp.Response {
+pub fn handle_request(cfg: config.Config, req: wisp.Request) -> wisp.Response {
+  use json <- wisp.require_json(req)
+
   case decode.run(json, run.run_request_decoder()) {
     Error(errors) -> {
       decode_errors_to_response(errors)
@@ -18,8 +21,11 @@ pub fn handle_request(json: dynamic.Dynamic) -> wisp.Response {
 
       let res =
         http_client.post_json(
-          url: "http://runner:8080/api/run",
+          url: cfg.docker_run_base_url <> "/run",
           body: json2,
+          headers: dict.from_list([
+            #("X-Access-Token", cfg.docker_run_access_token),
+          ]),
           decoder: run.run_result_decoder(),
         )
 

@@ -1,6 +1,10 @@
+import envoy
+import gleam/dict
 import gleam/erlang/process
 import gleam/http
 import gleam/io
+import glot_backend/config
+import glot_backend/run_handler
 import lustre/attribute
 import lustre/element
 import lustre/element/html
@@ -24,12 +28,20 @@ pub fn main() {
   wisp.configure_logger()
   let secret_key_base = wisp.random_string(64)
 
-  // Set up our database
   let assert Ok(priv_directory) = wisp.priv_directory("glot_backend")
   let static_directory = priv_directory <> "/static"
 
+  let default_env =
+    dict.from_list([
+      #("STATIC_BASE_PATH", static_directory),
+    ])
+
+  let env_values = dict.merge(default_env, envoy.all())
+
+  let assert Ok(cfg) = config.from_dict(env_values)
+
   let assert Ok(_) =
-    handle_request(static_directory, _)
+    handle_request(cfg, _)
     |> wisp_mist.handler(secret_key_base)
     |> mist.new
     |> mist.port(3000)
@@ -40,33 +52,27 @@ pub fn main() {
 
 fn app_middleware(
   req: Request,
-  static_directory: String,
+  cfg: config.Config,
   next: fn(Request) -> Response,
 ) -> Response {
   let req = wisp.method_override(req)
   use <- wisp.log_request(req)
   use <- wisp.rescue_crashes
   use req <- wisp.handle_head(req)
-  use <- wisp.serve_static(req, under: "/static", from: static_directory)
+  use <- wisp.serve_static(req, under: "/static", from: cfg.static_base_path)
 
   next(req)
 }
 
-fn handle_request(static_directory: String, req: Request) -> Response {
-  use req <- app_middleware(req, static_directory)
-  use json <- wisp.require_json(req)
+fn handle_request(cfg: config.Config, req: Request) -> Response {
+  use req <- app_middleware(req, cfg)
 
   case req.method, wisp.path_segments(req) {
     //Get, [] -> home_page.home_page()
     http.Get, _ -> serve_spa_page()
-    http.Post, ["api", "run"] -> handle_api_run(req)
+    http.Post, ["api", "run"] -> run_handler.handle_request(cfg, req)
     _, _ -> wisp.not_found()
   }
-}
-
-fn handle_api_run(req: Request) -> Response {
-  // Placeholder implementation
-  wisp.json_response("foo", 200)
 }
 
 fn serve_spa_page() -> Response {

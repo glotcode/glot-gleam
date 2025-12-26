@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
@@ -32,6 +33,7 @@ fn ensure_good_status(status: Int) -> Result(Nil, HttpError) {
 
 pub fn post_json(
   url url: String,
+  headers headers: dict.Dict(String, String),
   body body: json.Json,
   decoder decoder: decode.Decoder(a),
 ) -> Result(a, HttpError) {
@@ -43,13 +45,16 @@ pub fn post_json(
     |> request.set_header("content-type", "application/json")
     |> request.set_header("accept", "application/json")
     |> request.set_body(json.to_string(body))
+    |> dict.fold(headers, _, fn(acc, key, value) {
+      request.set_header(acc, key, value)
+    })
 
-  let config =
+  let http_config =
     httpc.configure()
     |> httpc.timeout(60_000)
 
   use res <- result.try(
-    httpc.dispatch(config, req) |> result.map_error(map_http_error),
+    httpc.dispatch(http_config, req) |> result.map_error(map_http_error),
   )
   use _ <- result.try(ensure_good_status(res.status))
 
