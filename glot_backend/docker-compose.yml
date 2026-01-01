@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: glot
+      POSTGRES_PASSWORD: glot
+      POSTGRES_DB: glot
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      #- postgres_data:/var/lib/postgresql/data
+      #healthcheck:
+      #  test: ["CMD-SHELL", "pg_isready -U postgres -d glot"]
+      #  interval: 10s
+      #  timeout: 5s
+      #  retries: 5
+
+#volumes:
+#  postgres_data:

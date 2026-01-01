@@ -1,0 +1,1 @@
+INSERT INTO login_tokens (id, user_id, token_hash, created_at, used_at) VALUES ($1, $2, $3, $4, $5)

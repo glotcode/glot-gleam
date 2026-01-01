@@ -1,0 +1,1 @@
+UPDATE snippets SET user_id = $1, language = $2, title = $3, visibility = $4, stdin = $5, run_command = $6, created_at = $7, updated_at = $8 WHERE id = $9

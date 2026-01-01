@@ -1,58 +1,57 @@
 import gleam/dict
+import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/json
-import gleam/list
+import gleam/result
 import gleam/string
-import glot_backend/config
+import glot_backend/context
 import glot_backend/http_client
+import glot_backend/response_helpers
 import glot_core/run
 import wisp
 
-pub fn handle_request(cfg: config.Config, req: wisp.Request) -> wisp.Response {
-  use json <- wisp.require_json(req)
+pub fn handle_request(ctx: context.Context, req: wisp.Request) -> wisp.Response {
+  use json_body <- wisp.require_json(req)
 
-  case decode.run(json, run.run_request_decoder()) {
-    Error(errors) -> {
-      decode_errors_to_response(errors)
+  case run(ctx.config, json_body) {
+    Ok(run_result) -> {
+      let response_json = run.encode_run_result(run_result)
+      wisp.json_response(json.to_string(response_json), 201)
     }
 
-    Ok(run_request) -> {
-      let json2 = run.encode_run_request(run_request)
+    Error(DecodeError(errors)) -> {
+      let body = response_helpers.error_body_from_decode_errors(errors)
+      wisp.json_response(json.to_string(body), 400)
+    }
 
-      let res =
-        http_client.post_json(
-          url: cfg.docker_run_base_url <> "/run",
-          body: json2,
-          headers: dict.from_list([
-            #("X-Access-Token", cfg.docker_run_access_token),
-          ]),
-          decoder: run.run_result_decoder(),
-        )
-
-      case res {
-        Ok(run_result) -> {
-          let response_json = run.encode_run_result(run_result)
-          wisp.json_response(json.to_string(response_json), 201)
-        }
-
-        Error(err) -> {
-          let body = error_body(string.inspect(err))
-          wisp.json_response(json.to_string(body), 500)
-        }
-      }
+    Error(HttpError(err)) -> {
+      let body = response_helpers.error_body(string.inspect(err))
+      wisp.json_response(json.to_string(body), 500)
     }
   }
 }
 
-fn decode_errors_to_response(errors: List(decode.DecodeError)) -> wisp.Response {
-  let messages =
-    errors
-    |> list.map(fn(error) { string.inspect(error) })
-    |> string.join(", ")
+fn run(
+  cfg: context.Config,
+  json_body: dynamic.Dynamic,
+) -> Result(run.RunResult, Error) {
+  use run_request <- result.try(
+    decode.run(json_body, run.run_request_decoder())
+    |> result.map_error(DecodeError),
+  )
 
-  wisp.json_response(json.to_string(error_body(messages)), 400)
+  http_client.post_json(
+    url: cfg.docker_run_base_url <> "/run",
+    body: run.encode_run_request(run_request),
+    headers: dict.from_list([
+      #("X-Access-Token", cfg.docker_run_access_token),
+    ]),
+    decoder: run.run_result_decoder(),
+  )
+  |> result.map_error(HttpError)
 }
 
-fn error_body(message: String) -> json.Json {
-  json.object([#("message", json.string(message))])
+type Error {
+  DecodeError(List(decode.DecodeError))
+  HttpError(http_client.HttpError)
 }
