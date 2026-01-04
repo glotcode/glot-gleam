@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE login_tokens (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL,
-  token_hash TEXT NOT NULL,
+  token TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL,
   used_at TIMESTAMP
 );
@@ -26,7 +26,7 @@ CREATE INDEX idx_login_tokens_used_at ON login_tokens(used_at);
 CREATE TABLE sessions (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL,
-  token_hash TEXT NOT NULL UNIQUE,
+  token TEXT NOT NULL UNIQUE,
   ip TEXT NOT NULL,
   user_agent TEXT NOT NULL,
   country TEXT NOT NULL,
@@ -69,11 +69,11 @@ CREATE TABLE user_activities (
   id UUID PRIMARY KEY,
   action user_action NOT NULL,
   ip TEXT NOT NULL,
-  session_token_hash TEXT NULL,
+  session_token TEXT NULL,
   created_at TIMESTAMP NOT NULL
 );
 
 CREATE INDEX idx_user_activities_ip ON user_activities(ip);
-CREATE INDEX idx_user_activities_session_token_hash ON user_activities(session_token_hash);
+CREATE INDEX idx_user_activities_session_token ON user_activities(session_token);
 CREATE INDEX idx_user_activities_action ON user_activities(action);
 CREATE INDEX idx_user_activities_ts ON user_activities(created_at);

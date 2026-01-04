@@ -1,1 +1,2 @@
-SELECT id, user_id, token_hash, ip, user_agent, country, created_at FROM sessions WHERE token_hash = $1
+-- name: GetSessionByToken :one
+SELECT id, user_id, token, ip, user_agent, country, created_at FROM sessions WHERE token = $1;

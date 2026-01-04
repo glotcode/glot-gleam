@@ -8,6 +8,7 @@ import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
+import glot_backend/db_helpers
 import glot_backend/response_helpers
 import glot_backend/sql
 import glot_core/auth
@@ -54,6 +55,11 @@ pub fn send_login_token_handler(
       let body = response_helpers.error_body("Failed to save user activity")
       wisp.json_response(json.to_string(body), 500)
     }
+    Error(TransactionError(err)) -> {
+      wisp.log_error("Transaction failed: " <> string.inspect(err))
+      let body = response_helpers.error_body("Transaction failed")
+      wisp.json_response(json.to_string(body), 500)
+    }
   }
 }
 
@@ -69,33 +75,48 @@ fn send_login_token(
   use user <- result.try(find_or_create_user(ctx, login_token_request.email))
   let token = wisp.random_string(10)
 
-  use _ <- result.try(
+  let insert_login_token_query =
     sql.insert_login_token(
-      ctx.db,
-      uuid_helpers.v7(ctx.timestamp),
-      user.id,
-      token,
-      ctx.timestamp,
+      id: uuid_helpers.v7_bit_array(ctx.timestamp),
+      user_id: user.id,
+      token:,
+      created_at: ctx.timestamp,
+      used_at: option.None,
+    )
+
+  let insert_user_activity_query =
+    sql.insert_user_activity(
+      uuid_helpers.v7_bit_array(ctx.timestamp),
+      sql.SendLoginTokenAction,
+      "TODO: ip address",
+      option.None,
       ctx.timestamp,
     )
-    |> result.map_error(InsertLoginTokenError),
+
+  use _ <- result.try(
+    pog.transaction(ctx.db, fn(tx) {
+      use _ <- result.try(db_helpers.execute(
+        tx,
+        insert_login_token_query,
+        InsertLoginTokenError,
+      ))
+
+      use _ <- result.try(db_helpers.execute(
+        tx,
+        insert_user_activity_query,
+        InsertUserActivityError,
+      ))
+
+      Ok(Nil)
+    })
+    |> result.map_error(TransactionError),
   )
 
   wisp.log_info(
     "Sending login token to " <> email.to_string(user.email) <> ": " <> token,
   )
 
-  use _ <- result.try(
-    sql.insert_user_activity(
-      ctx.db,
-      uuid_helpers.v7(ctx.timestamp),
-      sql.SendLoginTokenAction,
-      "ip",
-      "session_token_hash",
-      ctx.timestamp,
-    )
-    |> result.map_error(InsertUserActivityError),
-  )
+  //|> result.map_error(InsertUserActivityError),
 
   Ok(Nil)
 }
@@ -104,10 +125,9 @@ fn find_or_create_user(
   ctx: context.Context,
   email: email.Email,
 ) -> Result(user.User, Error) {
-  use res <- result.try(
-    sql.get_user_by_email(ctx.db, email.to_string(email))
-    |> result.map_error(GetUserError),
-  )
+  let get_user_query = sql.get_user_by_email(email.to_string(email))
+
+  use res <- result.try(db_helpers.query(ctx.db, get_user_query, GetUserError))
 
   let user = list.first(res.rows) |> option.from_result()
 
@@ -118,20 +138,26 @@ fn find_or_create_user(
 
     option.None -> {
       let u = new_user(ctx.timestamp, email)
-      sql.insert_user(ctx.db, u.id, email.to_string(u.email), u.created_at)
+      let insert_user_query =
+        sql.insert_user(u.id, email.to_string(u.email), u.created_at)
+
+      db_helpers.execute(ctx.db, insert_user_query, InsertUserError)
       |> result.map(fn(_) { u })
-      |> result.map_error(InsertUserError)
     }
   }
 }
 
 fn new_user(timestamp: Timestamp, email: email.Email) -> user.User {
-  user.User(id: uuid_helpers.v7(timestamp), email: email, created_at: timestamp)
+  user.User(
+    id: uuid_helpers.v7_bit_array(timestamp),
+    email: email,
+    created_at: timestamp,
+  )
 }
 
 fn user_from_row(
   is_email: regexp.Regexp,
-  row: sql.GetUserByEmailRow,
+  row: sql.GetUserByEmail,
 ) -> Result(user.User, Error) {
   use email <- result.try(
     email.from_string(is_email, row.email)
@@ -147,4 +173,5 @@ type Error {
   InsertUserError(pog.QueryError)
   InsertLoginTokenError(pog.QueryError)
   InsertUserActivityError(pog.QueryError)
+  TransactionError(pog.TransactionError(Error))
 }
