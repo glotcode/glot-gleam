@@ -26,40 +26,7 @@ pub fn send_login_token_handler(
 
   case send_login_token(ctx, json_body) {
     Ok(_) -> wisp.no_content()
-    Error(DecodeError(errors)) -> {
-      let body = response_helpers.error_body_from_decode_errors(errors)
-      wisp.json_response(json.to_string(body), 400)
-    }
-    Error(GetUserError(err)) -> {
-      wisp.log_error("Failed to get user: " <> string.inspect(err))
-      let body = response_helpers.error_body("Failed to get user")
-      wisp.json_response(json.to_string(body), 500)
-    }
-    Error(InsertUserError(err)) -> {
-      wisp.log_error("Failed to save user: " <> string.inspect(err))
-      let body = response_helpers.error_body("Failed to save user")
-      wisp.json_response(json.to_string(body), 500)
-    }
-    Error(EmailInvalidError(err)) -> {
-      // This should never happen
-      let body = response_helpers.error_body("Invalid email: " <> err)
-      wisp.json_response(json.to_string(body), 400)
-    }
-    Error(InsertLoginTokenError(err)) -> {
-      wisp.log_error("Failed to save login token: " <> string.inspect(err))
-      let body = response_helpers.error_body("Failed to save login token")
-      wisp.json_response(json.to_string(body), 500)
-    }
-    Error(InsertUserActivityError(err)) -> {
-      wisp.log_error("Failed to save user activity: " <> string.inspect(err))
-      let body = response_helpers.error_body("Failed to save user activity")
-      wisp.json_response(json.to_string(body), 500)
-    }
-    Error(TransactionError(err)) -> {
-      wisp.log_error("Transaction failed: " <> string.inspect(err))
-      let body = response_helpers.error_body("Transaction failed")
-      wisp.json_response(json.to_string(body), 500)
-    }
+    Error(err) -> error_to_response(err)
   }
 }
 
@@ -174,4 +141,43 @@ type Error {
   InsertLoginTokenError(pog.QueryError)
   InsertUserActivityError(pog.QueryError)
   TransactionError(pog.TransactionError(Error))
+}
+
+fn error_to_response(err: Error) -> wisp.Response {
+  case err {
+    DecodeError(errors) -> {
+      let body = response_helpers.error_body_from_decode_errors(errors)
+      wisp.json_response(json.to_string(body), 400)
+    }
+    EmailInvalidError(err) -> {
+      // This should never happen
+      let body = response_helpers.error_body("Invalid email: " <> err)
+      wisp.json_response(json.to_string(body), 400)
+    }
+    GetUserError(err) -> {
+      wisp.log_error("Failed to get user: " <> string.inspect(err))
+      let body = response_helpers.error_body("Failed to get user")
+      wisp.json_response(json.to_string(body), 500)
+    }
+    InsertUserError(err) -> {
+      wisp.log_error("Failed to save user: " <> string.inspect(err))
+      let body = response_helpers.error_body("Failed to save user")
+      wisp.json_response(json.to_string(body), 500)
+    }
+    InsertLoginTokenError(err) -> {
+      wisp.log_error("Failed to save login token: " <> string.inspect(err))
+      let body = response_helpers.error_body("Failed to save login token")
+      wisp.json_response(json.to_string(body), 500)
+    }
+    InsertUserActivityError(err) -> {
+      wisp.log_error("Failed to save user activity: " <> string.inspect(err))
+      let body = response_helpers.error_body("Failed to save user activity")
+      wisp.json_response(json.to_string(body), 500)
+    }
+    TransactionError(err) -> {
+      wisp.log_error("Transaction failed: " <> string.inspect(err))
+      let body = response_helpers.error_body("Transaction failed")
+      wisp.json_response(json.to_string(body), 500)
+    }
+  }
 }
