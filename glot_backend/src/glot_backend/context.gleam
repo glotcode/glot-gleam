@@ -1,5 +1,6 @@
 import gleam/dict.{type Dict}
 import gleam/int
+import gleam/option
 import gleam/regexp
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
@@ -11,6 +12,7 @@ pub type Context {
     config: Config,
     regexp: Regexp,
     timestamp: Timestamp,
+    client_ip: option.Option(String),
   )
 }
 
@@ -18,6 +20,7 @@ pub type Config {
   Config(
     static_base_path: String,
     postgres_host: String,
+    postgres_port: Int,
     postgres_db: String,
     postgres_user: String,
     postgres_pass: String,
@@ -30,6 +33,10 @@ pub type Config {
 pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) {
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres_host <- result.try(lookup(values, "POSTGRES_HOST"))
+  use postgres_port <- result.try(
+    lookup(values, "POSTGRES_PORT")
+    |> result.try(string_to_int),
+  )
   use postgres_db <- result.try(lookup(values, "POSTGRES_DB"))
   use postgres_user <- result.try(lookup(values, "POSTGRES_USER"))
   use postgres_pass <- result.try(lookup(values, "POSTGRES_PASS"))
@@ -46,6 +53,7 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
   Ok(Config(
     static_base_path: static_base_path,
     postgres_host: postgres_host,
+    postgres_port: postgres_port,
     postgres_db: postgres_db,
     postgres_user: postgres_user,
     postgres_pass: postgres_pass,

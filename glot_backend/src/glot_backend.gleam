@@ -1,12 +1,17 @@
 import envoy
 import gleam/dict
 import gleam/erlang/process
+import gleam/float
 import gleam/http
+import gleam/http/request
+import gleam/int
 import gleam/io
+import gleam/list
 import gleam/option
 import gleam/otp/actor
 import gleam/regexp
 import gleam/result
+import gleam/string
 import gleam/time/timestamp
 import glot_backend/auth_handler
 import glot_backend/context
@@ -18,7 +23,7 @@ import lustre/element/html
 import mist
 import pog
 import radiate
-import wisp.{type Request, type Response}
+import wisp
 import wisp/wisp_mist
 
 pub fn main() {
@@ -49,29 +54,72 @@ pub fn main() {
   let assert Ok(cfg) = context.config_from_dict(env_values)
   let assert Ok(db) = start_postgres_pool(cfg)
   let assert Ok(is_email) = regexp.from_string(email.pattern)
-  let ctx =
-    context.Context(
-      db: db,
-      config: cfg,
-      timestamp: timestamp.system_time(),
-      regexp: context.Regexp(is_email),
-    )
+
+  let mist_handler = fn(conn: request.Request(mist.Connection)) {
+    wisp_mist.handler(
+      fn(req: request.Request(wisp.Connection)) {
+        let ctx =
+          context.Context(
+            db: db,
+            config: cfg,
+            timestamp: timestamp.system_time(),
+            regexp: context.Regexp(is_email),
+            client_ip: get_header(req, "x-forwarded-for")
+              |> option.lazy_or(fn() { get_client_ip(conn.body) }),
+          )
+
+        handle_request(ctx, req)
+      },
+      secret_key_base,
+    )(conn)
+  }
 
   let assert Ok(_) =
-    handle_request(ctx, _)
-    |> wisp_mist.handler(secret_key_base)
-    |> mist.new
+    mist.new(mist_handler)
     |> mist.port(3000)
     |> mist.start
 
   process.sleep_forever()
 }
 
+pub fn handle_request(ctx: context.Context, req: wisp.Request) -> wisp.Response {
+  use req <- app_middleware(req, ctx)
+
+  case req.method, wisp.path_segments(req) {
+    //Get, [] -> home_page.home_page()
+    http.Get, _ -> serve_spa_page()
+    http.Post, ["api", "run"] -> run_handler.handle_request(ctx, req)
+    http.Post, ["api", "auth", "send-login-token"] ->
+      auth_handler.send_login_token_handler(ctx, req)
+    _, _ -> wisp.not_found()
+  }
+}
+
+fn get_header(req: wisp.Request, name: String) -> option.Option(String) {
+  list.find_map(req.headers, fn(header) {
+    let #(header_name, header_value) = header
+    case string.lowercase(header_name) == string.lowercase(name) {
+      True -> Ok(header_value)
+      False -> Error(Nil)
+    }
+  })
+  |> option.from_result()
+}
+
+// TODO: the ip should be extracted from request headers (X-Forwarded-For)
+fn get_client_ip(conn: mist.Connection) -> option.Option(String) {
+  case mist.get_client_info(conn) {
+    Ok(client_info) ->
+      option.Some(mist.ip_address_to_string(client_info.ip_address))
+    Error(_) -> option.None
+  }
+}
+
 fn app_middleware(
-  req: Request,
+  req: wisp.Request,
   ctx: context.Context,
-  next: fn(Request) -> Response,
-) -> Response {
+  next: fn(wisp.Request) -> wisp.Response,
+) -> wisp.Response {
   let req = wisp.method_override(req)
   use <- wisp.log_request(req)
   use <- wisp.rescue_crashes
@@ -85,20 +133,7 @@ fn app_middleware(
   next(req)
 }
 
-fn handle_request(ctx: context.Context, req: Request) -> Response {
-  use req <- app_middleware(req, ctx)
-
-  case req.method, wisp.path_segments(req) {
-    //Get, [] -> home_page.home_page()
-    http.Get, _ -> serve_spa_page()
-    http.Post, ["api", "run"] -> run_handler.handle_request(ctx, req)
-    http.Post, ["api", "auth", "send-login-token"] ->
-      auth_handler.send_login_token_handler(ctx, req)
-    _, _ -> wisp.not_found()
-  }
-}
-
-fn serve_spa_page() -> Response {
+fn serve_spa_page() -> wisp.Response {
   let html =
     html.html([], [
       html.head([], [
@@ -126,6 +161,7 @@ fn start_postgres_pool(
 
   pog.default_config(pool_name)
   |> pog.host(cfg.postgres_host)
+  |> pog.port(cfg.postgres_port)
   |> pog.database(cfg.postgres_db)
   |> pog.user(cfg.postgres_user)
   |> pog.password(option.Some(cfg.postgres_pass))
