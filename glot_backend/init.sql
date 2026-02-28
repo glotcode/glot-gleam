@@ -27,7 +27,7 @@ CREATE TABLE sessions (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL,
   token TEXT NOT NULL UNIQUE,
-  ip TEXT NOT NULL,
+  ip TEXT NULL,
   user_agent TEXT NOT NULL,
   country TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL
@@ -68,7 +68,7 @@ create type user_action as enum (
 CREATE TABLE user_activities (
   id UUID PRIMARY KEY,
   action user_action NOT NULL,
-  ip TEXT NOT NULL,
+  ip TEXT NULL,
   session_token TEXT NULL,
   created_at TIMESTAMP NOT NULL
 );

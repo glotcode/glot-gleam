@@ -253,7 +253,7 @@ pub fn insert_user(
 pub fn insert_user_activity(
   id id: BitArray,
   action action: UserAction,
-  ip ip: String,
+  ip ip: Option(String),
   session_token session_token: Option(String),
   created_at created_at: Timestamp,
 ) {
@@ -262,7 +262,7 @@ pub fn insert_user_activity(
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamString(user_action_to_string(action)),
-    dev.ParamString(ip),
+    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(session_token, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
   ])
@@ -310,7 +310,7 @@ pub type GetSessionByToken {
     id: BitArray,
     user_id: BitArray,
     token: String,
-    ip: String,
+    ip: Option(String),
     user_agent: String,
     country: String,
     created_at: Timestamp,
@@ -327,7 +327,7 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
   use id <- decode.field(0, decode.bit_array)
   use user_id <- decode.field(1, decode.bit_array)
   use token <- decode.field(2, decode.string)
-  use ip <- decode.field(3, decode.string)
+  use ip <- decode.field(3, decode.optional(decode.string))
   use user_agent <- decode.field(4, decode.string)
   use country <- decode.field(5, decode.string)
   use created_at <- decode.field(6, dev.datetime_decoder())
@@ -348,7 +348,7 @@ pub type CountUserActivitiesByIpAndAction {
 
 pub fn count_user_activities_by_ip_and_action(
   created_at created_at: Timestamp,
-  ip ip: String,
+  ip ip: Option(String),
   action action: UserAction,
 ) {
   let sql =
@@ -357,7 +357,7 @@ pub fn count_user_activities_by_ip_and_action(
     sql,
     [
       dev.ParamTimestamp(created_at),
-      dev.ParamString(ip),
+      dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
       dev.ParamString(user_action_to_string(action)),
     ],
     count_user_activities_by_ip_and_action_decoder(),
@@ -375,7 +375,7 @@ pub fn insert_session(
   id id: BitArray,
   user_id user_id: BitArray,
   token token: String,
-  ip ip: String,
+  ip ip: Option(String),
   user_agent user_agent: String,
   country country: String,
   created_at created_at: Timestamp,
@@ -386,7 +386,7 @@ pub fn insert_session(
     dev.ParamBitArray(id),
     dev.ParamBitArray(user_id),
     dev.ParamString(token),
-    dev.ParamString(ip),
+    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamString(user_agent),
     dev.ParamString(country),
     dev.ParamTimestamp(created_at),

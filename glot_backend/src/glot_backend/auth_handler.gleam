@@ -55,7 +55,7 @@ fn send_login_token(
     sql.insert_user_activity(
       uuid_helpers.v7_bit_array(ctx.timestamp),
       sql.SendLoginTokenAction,
-      "TODO: ip address",
+      ctx.client_ip,
       option.None,
       ctx.timestamp,
     )

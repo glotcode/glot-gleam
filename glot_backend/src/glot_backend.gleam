@@ -1,10 +1,8 @@
 import envoy
 import gleam/dict
 import gleam/erlang/process
-import gleam/float
 import gleam/http
 import gleam/http/request
-import gleam/int
 import gleam/io
 import gleam/list
 import gleam/option
@@ -106,7 +104,6 @@ fn get_header(req: wisp.Request, name: String) -> option.Option(String) {
   |> option.from_result()
 }
 
-// TODO: the ip should be extracted from request headers (X-Forwarded-For)
 fn get_client_ip(conn: mist.Connection) -> option.Option(String) {
   case mist.get_client_info(conn) {
     Ok(client_info) ->
