@@ -11,12 +11,14 @@ import glot_backend/http_client
 import glot_backend/program
 import glot_backend/sql
 import glot_core/run
+import glot_core/uuid_helpers
 import pog
 import wisp
 
 pub fn from_context(ctx: context.Context) -> program.Handlers {
   program.Handlers(
     random_string: wisp.random_string,
+    uuid_v7: fn() { uuid_helpers.v7_bit_array(ctx.timestamp) },
     log_info: wisp.log_info,
     post_run_request: post_run_request,
     get_user_by_email: fn(email) { get_user_by_email(ctx, email) },

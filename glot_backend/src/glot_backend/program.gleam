@@ -2,8 +2,8 @@ import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option
-import gleam/result
 import gleam/regexp
+import gleam/result
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/sql
@@ -37,10 +37,7 @@ pub type Error {
 }
 
 pub type DbQuery(next) {
-  DbGetUserByEmail(
-    email: String,
-    next: fn(List(sql.GetUserByEmail)) -> next,
-  )
+  DbGetUserByEmail(email: String, next: fn(List(sql.GetUserByEmail)) -> next)
   DbCountUserActivitiesByIpAndAction(
     created_at: Timestamp,
     ip: option.Option(String),
@@ -70,17 +67,18 @@ pub type DbCommand {
 pub type Handlers {
   Handlers(
     random_string: fn(Int) -> String,
+    uuid_v7: fn() -> BitArray,
     log_info: fn(String) -> Nil,
-    post_run_request: fn(
-      context.Config,
-      run.RunRequest,
-    ) -> Result(run.RunResult, RunRequestError),
-    get_user_by_email: fn(String) -> Result(List(sql.GetUserByEmail), DbQueryError),
+    post_run_request: fn(context.Config, run.RunRequest) ->
+      Result(run.RunResult, RunRequestError),
+    get_user_by_email: fn(String) ->
+      Result(List(sql.GetUserByEmail), DbQueryError),
     count_user_activities_by_ip_and_action: fn(
       Timestamp,
       option.Option(String),
       sql.UserAction,
-    ) -> Result(List(sql.CountUserActivitiesByIpAndAction), DbQueryError),
+    ) ->
+      Result(List(sql.CountUserActivitiesByIpAndAction), DbQueryError),
     run_command: fn(DbCommand) -> Result(Nil, DbCommandError),
     run_in_transaction: fn(List(DbCommand)) -> Result(Nil, DbTransactionError),
   )
@@ -90,6 +88,7 @@ pub opaque type Program(a) {
   Done(a)
   Fail(Error)
   RandomString(Int, fn(String) -> Program(a))
+  UuidV7(fn(BitArray) -> Program(a))
   LogInfo(String, Program(a))
   AttemptPostRunRequest(
     context.Config,
@@ -108,7 +107,9 @@ pub fn run(program: Program(a), handlers: Handlers) -> Result(a, Error) {
   case program {
     Done(value) -> Ok(value)
     Fail(error) -> Error(error)
-    RandomString(length, next) -> run(next(handlers.random_string(length)), handlers)
+    RandomString(length, next) ->
+      run(next(handlers.random_string(length)), handlers)
+    UuidV7(next) -> run(next(handlers.uuid_v7()), handlers)
     LogInfo(message, next) -> {
       let _ = handlers.log_info(message)
       run(next, handlers)
@@ -148,6 +149,7 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
     Fail(error) -> Fail(error)
     RandomString(length, next) ->
       RandomString(length, fn(value) { and_then(next(value), f) })
+    UuidV7(next) -> UuidV7(fn(value) { and_then(next(value), f) })
     LogInfo(message, next) -> LogInfo(message, and_then(next, f))
     AttemptPostRunRequest(cfg, request, next) ->
       AttemptPostRunRequest(cfg, request, fn(value) { and_then(next(value), f) })
@@ -175,9 +177,7 @@ pub fn decode_login_token_request(
   |> from_result(identity)
 }
 
-pub fn decode_run_request(
-  json_body: dynamic.Dynamic,
-) -> Program(run.RunRequest) {
+pub fn decode_run_request(json_body: dynamic.Dynamic) -> Program(run.RunRequest) {
   decode.run(json_body, run.run_request_decoder())
   |> result.map_error(DecodeError)
   |> from_result(identity)
@@ -185,6 +185,10 @@ pub fn decode_run_request(
 
 pub fn random_string(length: Int) -> Program(String) {
   RandomString(length, Done)
+}
+
+pub fn uuid_v7() -> Program(BitArray) {
+  UuidV7(Done)
 }
 
 pub fn log_info(message: String) -> Program(Nil) {
@@ -302,10 +306,7 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
   }
 }
 
-fn from_result(
-  value: Result(a, e),
-  map_error: fn(e) -> Error,
-) -> Program(a) {
+fn from_result(value: Result(a, e), map_error: fn(e) -> Error) -> Program(a) {
   case value {
     Ok(v) -> Done(v)
     Error(err) -> Fail(map_error(err))
