@@ -23,7 +23,8 @@ pub type DbTransactionError {
 }
 
 pub type RunRequestError {
-  RunRequestError(message: String)
+  PublicRunRequestError(message: String)
+  InternalRunRequestError(message: String)
 }
 
 pub type Error {

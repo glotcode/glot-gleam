@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/dynamic/decode
 import gleam/http
 import gleam/http/request
+import gleam/http/response
 import gleam/httpc
 import gleam/json
 import gleam/result
@@ -12,7 +13,7 @@ pub type HttpError {
   BadUrl(String)
   Timeout
   NetworkError
-  BadStatus(Int)
+  BadStatus(status: Int, body: String)
   BadBody(String)
 }
 
@@ -24,10 +25,10 @@ fn map_http_error(error: httpc.HttpError) -> HttpError {
   }
 }
 
-fn ensure_good_status(status: Int) -> Result(Nil, HttpError) {
-  case status >= 200 && status <= 299 {
+fn ensure_good_status(res: response.Response(String)) -> Result(Nil, HttpError) {
+  case res.status >= 200 && res.status <= 299 {
     True -> Ok(Nil)
-    False -> Error(BadStatus(status))
+    False -> Error(BadStatus(status: res.status, body: res.body))
   }
 }
 
@@ -56,7 +57,7 @@ pub fn post_json(
   use res <- result.try(
     httpc.dispatch(http_config, req) |> result.map_error(map_http_error),
   )
-  use _ <- result.try(ensure_good_status(res.status))
+  use _ <- result.try(ensure_good_status(res))
 
   json.parse(res.body, decoder)
   |> result.map_error(fn(err) { BadBody(string.inspect(err)) })

@@ -45,10 +45,17 @@ fn error_to_response(error: program.Error) -> wisp.Response {
       wisp.log_error("Transaction error: " <> message)
       error_response("transaction_error", "Transaction failed")
     }
-    program.RunError(program.RunRequestError(message: message)) -> {
-      wisp.log_error("Run request error: " <> message)
-      error_response("run_error", "Failed to run code")
-    }
+    program.RunError(run_request_error) ->
+      case run_request_error {
+        program.PublicRunRequestError(message: message) -> {
+          wisp.log_error("Run request error (public): " <> message)
+          error_response("run_error", message)
+        }
+        program.InternalRunRequestError(message: message) -> {
+          wisp.log_error("Run request error (private): " <> message)
+          error_response("run_error", "Failed to run code")
+        }
+      }
   }
 }
 
@@ -134,16 +141,18 @@ fn success_response(data: json.Json) -> wisp.Response {
 
 fn error_response(code: String, message: String) -> wisp.Response {
   wisp.json_response(
-    json.to_string(json.object([
-      #("ok", json.bool(False)),
-      #(
-        "error",
-        json.object([
-          #("code", json.string(code)),
-          #("message", json.string(message)),
-        ]),
-      ),
-    ])),
+    json.to_string(
+      json.object([
+        #("ok", json.bool(False)),
+        #(
+          "error",
+          json.object([
+            #("code", json.string(code)),
+            #("message", json.string(message)),
+          ]),
+        ),
+      ]),
+    ),
     200,
   )
 }

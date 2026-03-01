@@ -1,12 +1,14 @@
 import gleam/dict
+import gleam/dynamic/decode
+import gleam/json
 import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/program as program
 import glot_backend/context
 import glot_backend/db_helpers
 import glot_backend/http_client
+import glot_backend/program
 import glot_backend/sql
 import glot_core/run
 import pog
@@ -36,18 +38,16 @@ fn post_run_request(
     headers: dict.from_list([#("X-Access-Token", cfg.docker_run_access_token)]),
     decoder: run.run_result_decoder(),
   )
-  |> result.map_error(fn(err) { program.RunRequestError(string.inspect(err)) })
+  |> result.map_error(map_run_http_error)
 }
 
 fn get_user_by_email(
   ctx: context.Context,
   email: String,
 ) -> Result(List(sql.GetUserByEmail), program.DbQueryError) {
-  db_helpers.query(
-    ctx.db,
-    sql.get_user_by_email(email),
-    fn(err) { program.DbQueryError(string.inspect(err)) },
-  )
+  db_helpers.query(ctx.db, sql.get_user_by_email(email), fn(err) {
+    program.DbQueryError(string.inspect(err))
+  })
   |> result.map(fn(returned) { returned.rows })
 }
 
@@ -126,7 +126,9 @@ fn run_in_transaction(
 ) -> Result(Nil, program.DbTransactionError) {
   pog.transaction(db, fn(tx) { execute_commands(tx, commands) })
   |> result.map(fn(_) { Nil })
-  |> result.map_error(fn(err) { program.DbTransactionError(string.inspect(err)) })
+  |> result.map_error(fn(err) {
+    program.DbTransactionError(string.inspect(err))
+  })
 }
 
 fn execute_commands(
@@ -140,4 +142,20 @@ fn execute_commands(
       execute_commands(db, rest)
     }
   }
+}
+
+fn map_run_http_error(err: http_client.HttpError) -> program.RunRequestError {
+  case err {
+    http_client.BadStatus(status: _, body: body) ->
+      case json.parse(body, run_error_message_decoder()) {
+        Ok(message) -> program.PublicRunRequestError(message)
+        Error(_) -> program.InternalRunRequestError(string.inspect(err))
+      }
+    _ -> program.InternalRunRequestError(string.inspect(err))
+  }
+}
+
+fn run_error_message_decoder() -> decode.Decoder(String) {
+  use message <- decode.field("message", decode.string)
+  decode.success(message)
 }
