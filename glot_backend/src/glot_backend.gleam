@@ -11,9 +11,8 @@ import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/time/timestamp
-import glot_backend/auth_handler
+import glot_backend/api
 import glot_backend/context
-import glot_backend/run_handler
 import glot_core/email
 import lustre/attribute
 import lustre/element
@@ -86,9 +85,7 @@ pub fn handle_request(ctx: context.Context, req: wisp.Request) -> wisp.Response 
   case req.method, wisp.path_segments(req) {
     //Get, [] -> home_page.home_page()
     http.Get, _ -> serve_spa_page()
-    http.Post, ["api", "run"] -> run_handler.handle_request(ctx, req)
-    http.Post, ["api", "auth", "send-login-token"] ->
-      auth_handler.send_login_token_handler(ctx, req)
+    http.Post, ["api", "mux"] -> api.handle_request(ctx, req)
     _, _ -> wisp.not_found()
   }
 }
