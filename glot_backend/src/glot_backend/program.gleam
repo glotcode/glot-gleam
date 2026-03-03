@@ -2,12 +2,10 @@ import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option
-import gleam/regexp
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/sql
-import glot_core/auth
 import glot_core/run
 
 pub type DbQueryError {
@@ -168,19 +166,12 @@ pub fn map(program: Program(a), f: fn(a) -> b) -> Program(b) {
   and_then(program, fn(value) { succeed(f(value)) })
 }
 
-pub fn decode_login_token_request(
+pub fn decode_json(
   json_body: dynamic.Dynamic,
-  is_email: regexp.Regexp,
-) -> Program(auth.LoginTokenRequest) {
-  decode.run(json_body, auth.login_token_request_decoder(is_email))
-  |> result.map_error(DecodeError)
-  |> from_result(identity)
-}
-
-pub fn decode_run_request(json_body: dynamic.Dynamic) -> Program(run.RunRequest) {
-  decode.run(json_body, run.run_request_decoder())
-  |> result.map_error(DecodeError)
-  |> from_result(identity)
+  decoder: decode.Decoder(a),
+) -> Program(a) {
+  decode.run(json_body, decoder)
+  |> from_result(DecodeError)
 }
 
 pub fn random_string(length: Int) -> Program(String) {

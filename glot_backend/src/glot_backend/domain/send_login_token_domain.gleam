@@ -5,6 +5,7 @@ import gleam/regexp
 import glot_backend/context
 import glot_backend/program
 import glot_backend/sql
+import glot_core/auth
 import glot_core/email
 import glot_core/user
 
@@ -12,9 +13,9 @@ pub fn send_login_token(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
 ) -> program.Program(Nil) {
-  use request <- program.and_then(program.decode_login_token_request(
+  use request <- program.and_then(program.decode_json(
     json_body,
-    ctx.regexp.is_email,
+    auth.login_token_request_decoder(ctx.regexp.is_email),
   ))
   use user <- program.and_then(find_or_create_user(ctx, request.email))
   use token <- program.and_then(program.random_string(10))
