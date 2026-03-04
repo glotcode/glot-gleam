@@ -6,6 +6,7 @@ import gleam/result
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/sql
+import glot_core/rate_limit
 import glot_core/run
 
 pub type DbQueryError {
@@ -28,6 +29,7 @@ pub type RunRequestError {
 pub type Error {
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
+  TooManyRequestsError(count: Int, config: rate_limit.Config)
   QueryError(DbQueryError)
   CommandError(DbCommandError)
   TransactionError(DbTransactionError)
@@ -239,6 +241,35 @@ pub fn db_count_user_activities_by_ip_and_action(
   case list.first(rows) |> option.from_result() {
     option.Some(row) -> Done(row.count)
     option.None -> Done(0)
+  }
+}
+
+pub fn enforce_ip_rate_limit(
+  config config: rate_limit.Config,
+  now now: Timestamp,
+  ip ip: option.Option(String),
+  action action: sql.UserAction,
+) -> Program(Nil) {
+  use count <- and_then(db_count_user_activities_by_ip_and_action(
+    created_at: rate_limit.start_time(config, now),
+    ip: ip,
+    action: action,
+  ))
+
+  use id <- and_then(uuid_v7())
+  use _ <- and_then(
+    run_command(DbInsertUserActivity(
+      id: id,
+      action: action,
+      ip: ip,
+      session_token: option.None,
+      created_at: now,
+    )),
+  )
+
+  case count > config.max_requests {
+    True -> Fail(TooManyRequestsError(count, config))
+    False -> Done(Nil)
   }
 }
 

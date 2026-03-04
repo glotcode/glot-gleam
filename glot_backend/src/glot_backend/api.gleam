@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/dynamic/decode
+import gleam/int
 import gleam/json
 import gleam/result
 import gleam/string
@@ -33,6 +34,15 @@ fn error_to_response(error: program.Error) -> wisp.Response {
     program.EmailInvalidError(message) -> {
       error_response("email_invalid", "Invalid email: " <> message)
     }
+    program.TooManyRequestsError(count, config) -> {
+      error_response(
+        "too_many_requests",
+        "Too many requests: "
+          <> int.to_string(count)
+          <> " / "
+          <> int.to_string(config.max_requests),
+      )
+    }
     program.QueryError(program.DbQueryError(message: message)) -> {
       wisp.log_error("Query error: " <> message)
       error_response("query_error", "Failed to query data")
@@ -65,7 +75,7 @@ fn handle_api_request(
 ) -> program.Program(ApiResult) {
   case api_request.action {
     RunAction ->
-      run_domain.handle_run(ctx.config, api_request.data)
+      run_domain.handle_run(ctx, api_request.data)
       |> program.map(RunResultResponse)
     SendLoginTokenAction ->
       send_login_token_domain.send_login_token(ctx, api_request.data)

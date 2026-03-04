@@ -16,3 +16,8 @@ pub fn decoder() -> decode.Decoder(Timestamp) {
 
   decode.success(timestamp.from_unix_seconds_and_nanoseconds(secs, nanos))
 }
+
+pub fn one_day_ago(now: Timestamp) -> Timestamp {
+  let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(now)
+  timestamp.from_unix_seconds_and_nanoseconds(seconds - 86_400, nanos)
+}

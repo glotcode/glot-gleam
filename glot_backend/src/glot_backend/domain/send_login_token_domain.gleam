@@ -7,6 +7,7 @@ import glot_backend/program
 import glot_backend/sql
 import glot_core/auth
 import glot_core/email
+import glot_core/rate_limit
 import glot_core/user
 
 pub fn send_login_token(
@@ -17,10 +18,17 @@ pub fn send_login_token(
     json_body,
     auth.login_token_request_decoder(ctx.regexp.is_email),
   ))
+
+  use _ <- program.and_then(program.enforce_ip_rate_limit(
+    config: rate_limit.Config(time_unit: rate_limit.Daily, max_requests: 10),
+    now: ctx.timestamp,
+    ip: ctx.client_ip,
+    action: sql.SendLoginTokenAction,
+  ))
+
   use user <- program.and_then(find_or_create_user(ctx, request.email))
   use token <- program.and_then(program.random_string(10))
   use login_token_id <- program.and_then(program.uuid_v7())
-  use activity_id <- program.and_then(program.uuid_v7())
 
   let commands = [
     program.DbInsertLoginToken(
@@ -29,13 +37,6 @@ pub fn send_login_token(
       token: token,
       created_at: ctx.timestamp,
       used_at: option.None,
-    ),
-    program.DbInsertUserActivity(
-      id: activity_id,
-      action: sql.SendLoginTokenAction,
-      ip: ctx.client_ip,
-      session_token: option.None,
-      created_at: ctx.timestamp,
     ),
   ]
 
