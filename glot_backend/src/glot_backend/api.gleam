@@ -126,11 +126,13 @@ fn handle_decoded_request(
     }),
   )
   let handlers = program_handlers.from_context(ctx)
-  let response =
+
+  let #(api_result, program.State(effect_timings: effect_timings)) =
     handle_api_request(ctx, api_request)
     |> program.run(handlers)
-    |> result_to_response
-  Ok(response)
+  let _ = wisp.log_info("Effect timings: " <> string.inspect(effect_timings))
+
+  Ok(result_to_response(api_result))
 }
 
 fn api_result_to_response(result: ApiResult) -> wisp.Response {

@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/dynamic/decode
+import gleam/int
 import gleam/list
 import gleam/option
 import gleam/result
@@ -84,9 +85,28 @@ pub type Handlers {
   )
 }
 
+pub type EffectName {
+  RandomStringEffect
+  UuidV7Effect
+  LogInfoEffect
+  PostRunRequestEffect
+  RunQueryEffect
+  RunCommandEffect
+  RunInTransactionEffect
+  CustomEffect(String)
+}
+
+pub type EffectTiming =
+  #(EffectName, Int)
+
+pub type State {
+  State(effect_timings: List(EffectTiming))
+}
+
 pub opaque type Program(a) {
   Done(a)
   Fail(Error)
+  MeasureEffectDuration(EffectName, Int, Program(a))
   RandomString(Int, fn(String) -> Program(a))
   UuidV7(fn(BitArray) -> Program(a))
   LogInfo(String, Program(a))
@@ -103,34 +123,89 @@ pub opaque type Program(a) {
   )
 }
 
-pub fn run(program: Program(a), handlers: Handlers) -> Result(a, Error) {
+pub fn run(
+  program: Program(a),
+  handlers: Handlers,
+) -> #(Result(a, Error), State) {
+  run_with_state(program, handlers, State(effect_timings: []))
+}
+
+fn run_with_state(
+  program: Program(a),
+  handlers: Handlers,
+  state: State,
+) -> #(Result(a, Error), State) {
   case program {
-    Done(value) -> Ok(value)
-    Fail(error) -> Error(error)
-    RandomString(length, next) ->
-      run(next(handlers.random_string(length)), handlers)
-    UuidV7(next) -> run(next(handlers.uuid_v7()), handlers)
+    Done(value) -> #(Ok(value), state)
+    Fail(error) -> #(Error(error), state)
+    MeasureEffectDuration(name, duration_ns, next) ->
+      run_with_state(
+        next,
+        handlers,
+        add_effect_timings(state, name, duration_ns),
+      )
+    RandomString(length, next) -> {
+      let started_at = now_ns()
+      let value = handlers.random_string(length)
+      run_with_state(
+        next(value),
+        handlers,
+        measure_effect(state, RandomStringEffect, started_at),
+      )
+    }
+    UuidV7(next) -> {
+      let started_at = now_ns()
+      let value = handlers.uuid_v7()
+      run_with_state(
+        next(value),
+        handlers,
+        measure_effect(state, UuidV7Effect, started_at),
+      )
+    }
     LogInfo(message, next) -> {
+      let started_at = now_ns()
       let _ = handlers.log_info(message)
-      run(next, handlers)
+      run_with_state(
+        next,
+        handlers,
+        measure_effect(state, LogInfoEffect, started_at),
+      )
     }
     AttemptPostRunRequest(cfg, request, next) -> {
+      let started_at = now_ns()
       let send_result = handlers.post_run_request(cfg, request)
-      run(next(send_result), handlers)
+      run_with_state(
+        next(send_result),
+        handlers,
+        measure_effect(state, PostRunRequestEffect, started_at),
+      )
     }
     AttemptRunQuery(query, on_error) -> {
+      let started_at = now_ns()
+      let next_state = measure_effect(state, RunQueryEffect, started_at)
       case run_db_query(query, handlers) {
-        Ok(next_program) -> run(next_program, handlers)
-        Error(query_error) -> run(on_error(query_error), handlers)
+        Ok(next_program) -> run_with_state(next_program, handlers, next_state)
+        Error(query_error) ->
+          run_with_state(on_error(query_error), handlers, next_state)
       }
     }
     AttemptRunCommand(command, next) -> {
+      let started_at = now_ns()
       let command_result = handlers.run_command(command)
-      run(next(command_result), handlers)
+      run_with_state(
+        next(command_result),
+        handlers,
+        measure_effect(state, RunCommandEffect, started_at),
+      )
     }
     AttemptRunInTransaction(commands, next) -> {
+      let started_at = now_ns()
       let transaction_result = handlers.run_in_transaction(commands)
-      run(next(transaction_result), handlers)
+      run_with_state(
+        next(transaction_result),
+        handlers,
+        measure_effect(state, RunInTransactionEffect, started_at),
+      )
     }
   }
 }
@@ -147,6 +222,8 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
   case program {
     Done(value) -> f(value)
     Fail(error) -> Fail(error)
+    MeasureEffectDuration(name, duration_ms, next) ->
+      MeasureEffectDuration(name, duration_ms, and_then(next, f))
     RandomString(length, next) ->
       RandomString(length, fn(value) { and_then(next(value), f) })
     UuidV7(next) -> UuidV7(fn(value) { and_then(next(value), f) })
@@ -178,6 +255,13 @@ pub fn decode_json(
 
 pub fn random_string(length: Int) -> Program(String) {
   RandomString(length, Done)
+}
+
+pub fn measure_effect_duration(
+  effect_name: EffectName,
+  duration_ms: Int,
+) -> Program(Nil) {
+  MeasureEffectDuration(effect_name, duration_ms, Done(Nil))
 }
 
 pub fn uuid_v7() -> Program(BitArray) {
@@ -337,4 +421,30 @@ fn from_result(value: Result(a, e), map_error: fn(e) -> Error) -> Program(a) {
 
 fn identity(value: a) -> a {
   value
+}
+
+fn measure_effect(
+  state: State,
+  effect_name: EffectName,
+  started_at_ns: Int,
+) -> State {
+  let elapsed_ns = now_ns() - started_at_ns
+  let safe_elapsed_ns = int.max(elapsed_ns, 0)
+  add_effect_timings(state, effect_name, safe_elapsed_ns)
+}
+
+fn add_effect_timings(
+  state: State,
+  effect_name: EffectName,
+  duration_ns: Int,
+) -> State {
+  let State(effect_timings:) = state
+  State(effect_timings: [#(effect_name, duration_ns), ..effect_timings])
+}
+
+fn now_ns() -> Int {
+  let #(seconds, nanoseconds) =
+    timestamp.system_time()
+    |> timestamp.to_unix_seconds_and_nanoseconds
+  seconds * 1_000_000_000 + nanoseconds
 }
