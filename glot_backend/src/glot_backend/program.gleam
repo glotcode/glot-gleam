@@ -90,10 +90,21 @@ pub type EffectName {
   UuidV7Effect
   LogInfoEffect
   PostRunRequestEffect
-  RunQueryEffect
-  RunCommandEffect
-  RunInTransactionEffect
+  RunQueryEffect(DbQueryName)
+  RunCommandEffect(DbCommandName)
+  RunInTransactionEffect(List(DbCommandName))
   CustomEffect(String)
+}
+
+pub type DbQueryName {
+  DbGetUserByEmailQuery
+  DbCountUserActivitiesByIpAndActionQuery
+}
+
+pub type DbCommandName {
+  DbInsertUserCommand
+  DbInsertLoginTokenCommand
+  DbInsertUserActivityCommand
 }
 
 pub type EffectTiming =
@@ -182,7 +193,8 @@ fn run_with_state(
     }
     AttemptRunQuery(query, on_error) -> {
       let started_at = now_ns()
-      let next_state = measure_effect(state, RunQueryEffect, started_at)
+      let next_state =
+        measure_effect(state, RunQueryEffect(db_query_name(query)), started_at)
       case run_db_query(query, handlers) {
         Ok(next_program) -> run_with_state(next_program, handlers, next_state)
         Error(query_error) ->
@@ -195,7 +207,7 @@ fn run_with_state(
       run_with_state(
         next(command_result),
         handlers,
-        measure_effect(state, RunCommandEffect, started_at),
+        measure_effect(state, RunCommandEffect(db_command_name(command)), started_at),
       )
     }
     AttemptRunInTransaction(commands, next) -> {
@@ -204,7 +216,11 @@ fn run_with_state(
       run_with_state(
         next(transaction_result),
         handlers,
-        measure_effect(state, RunInTransactionEffect, started_at),
+        measure_effect(
+          state,
+          RunInTransactionEffect(list.map(commands, db_command_name)),
+          started_at,
+        ),
       )
     }
   }
@@ -409,6 +425,22 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
         action: action,
         next: fn(value) { f(next(value)) },
       )
+  }
+}
+
+fn db_query_name(query: DbQuery(a)) -> DbQueryName {
+  case query {
+    DbGetUserByEmail(_, _) -> DbGetUserByEmailQuery
+    DbCountUserActivitiesByIpAndAction(_, _, _, _) ->
+      DbCountUserActivitiesByIpAndActionQuery
+  }
+}
+
+fn db_command_name(command: DbCommand) -> DbCommandName {
+  case command {
+    DbInsertUser(_, _, _) -> DbInsertUserCommand
+    DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
+    DbInsertUserActivity(_, _, _, _, _) -> DbInsertUserActivityCommand
   }
 }
 
