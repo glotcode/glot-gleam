@@ -100,6 +100,31 @@ pub fn list_snippets_by_user_decoder() -> decode.Decoder(ListSnippetsByUser) {
   ))
 }
 
+pub fn insert_log_entry(
+  id id: BitArray,
+  created_at created_at: Timestamp,
+  action action: String,
+  duration_ns duration_ns: Int,
+  user_agent user_agent: Option(String),
+  error error: Option(String),
+  fields fields: String,
+  effects effects: String,
+) {
+  let sql =
+    "INSERT INTO log_entries (id, created_at, action, duration_ns, user_agent, error, fields, effects)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamTimestamp(created_at),
+    dev.ParamString(action),
+    dev.ParamInt(duration_ns),
+    dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
+    dev.ParamString(fields),
+    dev.ParamString(effects),
+  ])
+}
+
 pub fn delete_snippet(id id: BitArray) {
   let sql = "DELETE FROM snippets WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)])

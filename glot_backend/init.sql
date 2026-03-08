@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
-  created_at TIMESTAMP NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 
@@ -13,8 +13,8 @@ CREATE TABLE login_tokens (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL,
   token TEXT NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  used_at TIMESTAMP
+  created_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ
 );
 
 CREATE INDEX idx_login_tokens_user_id ON login_tokens(user_id);
@@ -30,7 +30,7 @@ CREATE TABLE sessions (
   ip TEXT NULL,
   user_agent TEXT NOT NULL,
   country TEXT NOT NULL,
-  created_at TIMESTAMP NOT NULL
+  created_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS snippets (
   stdin TEXT NOT NULL,
   run_command TEXT NOT NULL,
   files JSONB NOT NULL,
-  created_at TIMESTAMP NOT NULL,
-  updated_at TIMESTAMP NOT NULL
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_snippets_user_id ON snippets(user_id);
@@ -70,10 +70,25 @@ CREATE TABLE user_activities (
   action user_action NOT NULL,
   ip TEXT NULL,
   session_token TEXT NULL,
-  created_at TIMESTAMP NOT NULL
+  created_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_user_activities_ip ON user_activities(ip);
 CREATE INDEX idx_user_activities_session_token ON user_activities(session_token);
 CREATE INDEX idx_user_activities_action ON user_activities(action);
 CREATE INDEX idx_user_activities_ts ON user_activities(created_at);
+
+-- LOG ENTRIES
+
+CREATE TABLE IF NOT EXISTS log_entries (
+  id UUID PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL,
+  action TEXT NOT NULL,
+  duration_ns BIGINT NOT NULL,
+  user_agent TEXT NULL,
+  error TEXT NULL,
+  fields JSONB NOT NULL DEFAULT '{}'::jsonb,
+  effects JSONB NOT NULL DEFAULT '[]'::jsonb
+);
+
+CREATE INDEX idx_log_entries_created_at ON log_entries(created_at);
