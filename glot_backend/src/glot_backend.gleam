@@ -63,6 +63,7 @@ pub fn main() {
             regexp: context.Regexp(is_email),
             client_ip: get_header(req, "x-forwarded-for")
               |> option.lazy_or(fn() { get_client_ip(conn.body) }),
+            client_user_agent: get_header(req, "user-agent"),
           )
 
         handle_request(ctx, req)

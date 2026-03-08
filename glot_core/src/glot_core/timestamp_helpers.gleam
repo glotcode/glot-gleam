@@ -1,4 +1,5 @@
 import gleam/dynamic/decode
+import gleam/int
 import gleam/json
 import gleam/time/timestamp.{type Timestamp}
 
@@ -20,4 +21,14 @@ pub fn decoder() -> decode.Decoder(Timestamp) {
 pub fn one_day_ago(now: Timestamp) -> Timestamp {
   let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(now)
   timestamp.from_unix_seconds_and_nanoseconds(seconds - 86_400, nanos)
+}
+
+pub fn duration_in_ns(a: Timestamp, b: Timestamp) -> Int {
+  let #(a_seconds, a_nanos) = timestamp.to_unix_seconds_and_nanoseconds(a)
+  let #(b_seconds, b_nanos) = timestamp.to_unix_seconds_and_nanoseconds(b)
+
+  let a_total = a_seconds * 1_000_000_000 + a_nanos
+  let b_total = b_seconds * 1_000_000_000 + b_nanos
+
+  int.absolute_value(a_total - b_total)
 }

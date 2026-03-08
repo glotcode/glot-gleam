@@ -72,6 +72,7 @@ pub fn measures_effects_in_error_test() {
 fn test_handlers() -> program.Handlers {
   program.Handlers(
     random_string: fn(_) { "random" },
+    system_time: timestamp.system_time,
     uuid_v7: fn() { <<0>> },
     log_info: fn(_) { Nil },
     post_run_request: fn(_, _) {

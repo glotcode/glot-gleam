@@ -68,6 +68,7 @@ pub type DbCommand {
 pub type Handlers {
   Handlers(
     random_string: fn(Int) -> String,
+    system_time: fn() -> Timestamp,
     uuid_v7: fn() -> BitArray,
     log_info: fn(String) -> Nil,
     post_run_request: fn(context.Config, run.RunRequest) ->
@@ -87,6 +88,7 @@ pub type Handlers {
 
 pub type EffectName {
   RandomStringEffect
+  SystemTimeEffect
   UuidV7Effect
   LogInfoEffect
   PostRunRequestEffect
@@ -119,6 +121,7 @@ pub opaque type Program(a) {
   Fail(Error)
   MeasureEffectDuration(EffectName, Int, Program(a))
   RandomString(Int, fn(String) -> Program(a))
+  SystemTime(fn(Timestamp) -> Program(a))
   UuidV7(fn(BitArray) -> Program(a))
   LogInfo(String, Program(a))
   AttemptPostRunRequest(
@@ -164,6 +167,15 @@ fn run_with_state(
         measure_effect(state, RandomStringEffect, started_at),
       )
     }
+    SystemTime(next) -> {
+      let started_at = now_ns()
+      let value = handlers.system_time()
+      run_with_state(
+        next(value),
+        handlers,
+        measure_effect(state, SystemTimeEffect, started_at),
+      )
+    }
     UuidV7(next) -> {
       let started_at = now_ns()
       let value = handlers.uuid_v7()
@@ -207,7 +219,11 @@ fn run_with_state(
       run_with_state(
         next(command_result),
         handlers,
-        measure_effect(state, RunCommandEffect(db_command_name(command)), started_at),
+        measure_effect(
+          state,
+          RunCommandEffect(db_command_name(command)),
+          started_at,
+        ),
       )
     }
     AttemptRunInTransaction(commands, next) -> {
@@ -242,6 +258,7 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
       MeasureEffectDuration(name, duration_ms, and_then(next, f))
     RandomString(length, next) ->
       RandomString(length, fn(value) { and_then(next(value), f) })
+    SystemTime(next) -> SystemTime(fn(value) { and_then(next(value), f) })
     UuidV7(next) -> UuidV7(fn(value) { and_then(next(value), f) })
     LogInfo(message, next) -> LogInfo(message, and_then(next, f))
     AttemptPostRunRequest(cfg, request, next) ->
@@ -271,6 +288,10 @@ pub fn decode_json(
 
 pub fn random_string(length: Int) -> Program(String) {
   RandomString(length, Done)
+}
+
+pub fn system_time() -> Program(Timestamp) {
+  SystemTime(Done)
 }
 
 pub fn measure_effect_duration(

@@ -13,6 +13,7 @@ pub type Context {
     regexp: Regexp,
     timestamp: Timestamp,
     client_ip: option.Option(String),
+    client_user_agent: option.Option(String),
   )
 }
 

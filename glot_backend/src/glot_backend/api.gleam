@@ -2,15 +2,20 @@ import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
+import gleam/option
 import gleam/result
 import gleam/string
+import gleam/time/calendar
+import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/domain/run_domain
 import glot_backend/domain/send_login_token_domain
 import glot_backend/program
 import glot_backend/program/handlers as program_handlers
 import glot_core/run
+import glot_core/timestamp_helpers
 import wisp
+import youid/uuid
 
 pub fn handle_request(ctx: context.Context, req: wisp.Request) -> wisp.Response {
   use json_body <- wisp.require_json(req)
@@ -112,6 +117,13 @@ fn api_action_decoder() -> decode.Decoder(ApiAction) {
   }
 }
 
+pub fn api_action_to_string(action: ApiAction) {
+  case action {
+    RunAction -> "Run"
+    SendLoginTokenAction -> "SendLoginToken"
+  }
+}
+
 fn handle_decoded_request(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
@@ -167,4 +179,43 @@ fn error_response(code: String, message: String) -> wisp.Response {
     ),
     200,
   )
+}
+
+pub fn new_log_entry(
+  ctx: context.Context,
+  state: program.State,
+  action: ApiAction,
+) -> program.Program(LogEntry) {
+  use req_id <- program.and_then(program.uuid_v7())
+  use now <- program.and_then(program.system_time())
+  let assert Ok(request_id) = uuid.from_bit_array(req_id)
+
+  let utc_time = timestamp.to_rfc3339(ctx.timestamp, calendar.utc_offset)
+
+  let entry =
+    LogEntry(
+      request_id: uuid.to_string(request_id),
+      timestamp: utc_time,
+      action: api_action_to_string(action),
+      duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
+      user_agent: ctx.client_user_agent,
+      effects: [],
+    )
+
+  program.succeed(entry)
+}
+
+pub type LogEntry {
+  LogEntry(
+    request_id: String,
+    timestamp: String,
+    action: String,
+    duration_ns: Int,
+    user_agent: option.Option(String),
+    effects: List(EffectEntry),
+  )
+}
+
+pub type EffectEntry {
+  EffectEntry(name: String, duration_ns: Int)
 }
