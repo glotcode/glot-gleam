@@ -1,3 +1,4 @@
+import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/int
@@ -10,6 +11,7 @@ import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/domain/run_domain
 import glot_backend/domain/send_login_token_domain
+import glot_backend/log
 import glot_backend/program
 import glot_backend/program/handlers as program_handlers
 import glot_core/run
@@ -139,7 +141,10 @@ fn handle_decoded_request(
   )
   let handlers = program_handlers.from_context(ctx)
 
-  let #(api_result, program.State(effect_timings: effect_timings)) =
+  let #(
+    api_result,
+    program.State(effect_timings: effect_timings, log_fields: _),
+  ) =
     handle_api_request(ctx, api_request)
     |> program.run(handlers)
   let _ = wisp.log_info("Effect timings: " <> string.inspect(effect_timings))
@@ -199,6 +204,7 @@ pub fn new_log_entry(
       action: api_action_to_string(action),
       duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
       user_agent: ctx.client_user_agent,
+      fields: state.log_fields,
       effects: [],
     )
 
@@ -212,6 +218,7 @@ pub type LogEntry {
     action: String,
     duration_ns: Int,
     user_agent: option.Option(String),
+    fields: Dict(String, log.Value),
     effects: List(EffectEntry),
   )
 }

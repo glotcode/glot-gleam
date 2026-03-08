@@ -30,7 +30,7 @@ pub fn measurement_aggregation_test() {
     program.succeed("ok")
   }
 
-  let #(run_result, program.State(effect_timings: effect_timings)) =
+  let #(run_result, program.State(effect_timings: effect_timings, log_fields: _)) =
     program.run(measured_program, handlers)
 
   assert run_result == Ok("ok")
@@ -47,7 +47,7 @@ pub fn measures_effects_in_success_test() {
     use _ <- program.and_then(program.random_string(5))
     program.succeed("ok")
   }
-  let #(run_result, program.State(effect_timings: effect_timings)) =
+  let #(run_result, program.State(effect_timings: effect_timings, log_fields: _)) =
     program.run(measured_program, handlers)
 
   assert run_result == Ok("ok")
@@ -61,7 +61,7 @@ pub fn measures_effects_in_error_test() {
     use _ <- program.and_then(program.random_string(5))
     program.fail(program.EmailInvalidError("bad"))
   }
-  let #(run_result, program.State(effect_timings: effect_timings)) =
+  let #(run_result, program.State(effect_timings: effect_timings, log_fields: _)) =
     program.run(failing_program, handlers)
 
   assert run_result == Error(program.EmailInvalidError("bad"))
@@ -74,7 +74,6 @@ fn test_handlers() -> program.Handlers {
     random_string: fn(_) { "random" },
     system_time: timestamp.system_time,
     uuid_v7: fn() { <<0>> },
-    log_info: fn(_) { Nil },
     post_run_request: fn(_, _) {
       Error(program.InternalRunRequestError("unused in test"))
     },

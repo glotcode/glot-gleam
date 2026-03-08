@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option
 import gleam/regexp
 import glot_backend/context
+import glot_backend/log
 import glot_backend/program
 import glot_backend/sql
 import glot_core/auth
@@ -41,8 +42,9 @@ pub fn send_login_token(
   ]
 
   use _ <- program.and_then(program.run_in_transaction(commands))
-  use _ <- program.and_then(program.log_info(
-    "Sending login token to " <> email.to_string(user.email) <> ": " <> token,
+  use _ <- program.and_then(program.log(
+    "send_login_token",
+    log.String("Sending login token to " <> email.to_string(user.email) <> ": " <> token),
   ))
   program.succeed(Nil)
 }

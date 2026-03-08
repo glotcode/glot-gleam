@@ -20,7 +20,6 @@ pub fn from_context(ctx: context.Context) -> program.Handlers {
     random_string: wisp.random_string,
     system_time: timestamp.system_time,
     uuid_v7: fn() { uuid_helpers.v7_bit_array(ctx.timestamp) },
-    log_info: wisp.log_info,
     post_run_request: post_run_request,
     get_user_by_email: fn(email) { get_user_by_email(ctx, email) },
     count_user_activities_by_ip_and_action: fn(created_at, ip, action) {

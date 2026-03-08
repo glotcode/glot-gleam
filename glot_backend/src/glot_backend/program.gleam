@@ -1,3 +1,4 @@
+import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/int
@@ -6,6 +7,7 @@ import gleam/option
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
+import glot_backend/log
 import glot_backend/sql
 import glot_core/rate_limit
 import glot_core/run
@@ -70,7 +72,6 @@ pub type Handlers {
     random_string: fn(Int) -> String,
     system_time: fn() -> Timestamp,
     uuid_v7: fn() -> BitArray,
-    log_info: fn(String) -> Nil,
     post_run_request: fn(context.Config, run.RunRequest) ->
       Result(run.RunResult, RunRequestError),
     get_user_by_email: fn(String) ->
@@ -90,7 +91,7 @@ pub type EffectName {
   RandomStringEffect
   SystemTimeEffect
   UuidV7Effect
-  LogInfoEffect
+  LogEffect
   PostRunRequestEffect
   RunQueryEffect(DbQueryName)
   RunCommandEffect(DbCommandName)
@@ -113,7 +114,7 @@ pub type EffectTiming =
   #(EffectName, Int)
 
 pub type State {
-  State(effect_timings: List(EffectTiming))
+  State(effect_timings: List(EffectTiming), log_fields: Dict(String, log.Value))
 }
 
 pub opaque type Program(a) {
@@ -123,7 +124,7 @@ pub opaque type Program(a) {
   RandomString(Int, fn(String) -> Program(a))
   SystemTime(fn(Timestamp) -> Program(a))
   UuidV7(fn(BitArray) -> Program(a))
-  LogInfo(String, Program(a))
+  Log(String, log.Value, Program(a))
   AttemptPostRunRequest(
     context.Config,
     run.RunRequest,
@@ -141,7 +142,11 @@ pub fn run(
   program: Program(a),
   handlers: Handlers,
 ) -> #(Result(a, Error), State) {
-  run_with_state(program, handlers, State(effect_timings: []))
+  run_with_state(
+    program,
+    handlers,
+    State(effect_timings: [], log_fields: dict.new()),
+  )
 }
 
 fn run_with_state(
@@ -185,13 +190,13 @@ fn run_with_state(
         measure_effect(state, UuidV7Effect, started_at),
       )
     }
-    LogInfo(message, next) -> {
+    Log(key, value, next) -> {
       let started_at = now_ns()
-      let _ = handlers.log_info(message)
+      let state = add_log_field(state, key, value)
       run_with_state(
         next,
         handlers,
-        measure_effect(state, LogInfoEffect, started_at),
+        measure_effect(state, LogEffect, started_at),
       )
     }
     AttemptPostRunRequest(cfg, request, next) -> {
@@ -260,7 +265,7 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
       RandomString(length, fn(value) { and_then(next(value), f) })
     SystemTime(next) -> SystemTime(fn(value) { and_then(next(value), f) })
     UuidV7(next) -> UuidV7(fn(value) { and_then(next(value), f) })
-    LogInfo(message, next) -> LogInfo(message, and_then(next, f))
+    Log(key, value, next) -> Log(key, value, and_then(next, f))
     AttemptPostRunRequest(cfg, request, next) ->
       AttemptPostRunRequest(cfg, request, fn(value) { and_then(next(value), f) })
     AttemptRunQuery(query, on_error) ->
@@ -305,8 +310,8 @@ pub fn uuid_v7() -> Program(BitArray) {
   UuidV7(Done)
 }
 
-pub fn log_info(message: String) -> Program(Nil) {
-  LogInfo(message, Done(Nil))
+pub fn log(key: String, value: log.Value) -> Program(Nil) {
+  Log(key, value, Done(Nil))
 }
 
 pub fn attempt_post_run_request(
@@ -491,8 +496,19 @@ fn add_effect_timings(
   effect_name: EffectName,
   duration_ns: Int,
 ) -> State {
-  let State(effect_timings:) = state
-  State(effect_timings: [#(effect_name, duration_ns), ..effect_timings])
+  let State(effect_timings:, log_fields:) = state
+  State(
+    effect_timings: [#(effect_name, duration_ns), ..effect_timings],
+    log_fields: log_fields,
+  )
+}
+
+fn add_log_field(state: State, key: String, value: log.Value) -> State {
+  let State(effect_timings:, log_fields:) = state
+  State(
+    effect_timings: effect_timings,
+    log_fields: dict.insert(log_fields, key, value),
+  )
 }
 
 fn now_ns() -> Int {
