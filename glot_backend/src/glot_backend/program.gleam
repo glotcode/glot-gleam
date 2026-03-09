@@ -1,4 +1,4 @@
-import gleam/dict.{type Dict}
+import gleam/dict
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/int
@@ -114,7 +114,7 @@ pub type EffectTiming =
   #(EffectName, Int)
 
 pub type State {
-  State(effect_timings: List(EffectTiming), log_fields: Dict(String, log.Value))
+  State(effect_timings: List(EffectTiming), log_fields: log.Fields)
 }
 
 pub opaque type Program(a) {
@@ -145,7 +145,7 @@ pub fn run(
   run_with_state(
     program,
     handlers,
-    State(effect_timings: [], log_fields: dict.new()),
+    State(effect_timings: [], log_fields: log.new()),
   )
 }
 
