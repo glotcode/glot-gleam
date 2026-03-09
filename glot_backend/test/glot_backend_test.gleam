@@ -36,8 +36,8 @@ pub fn measurement_aggregation_test() {
   assert run_result == Ok("ok")
   assert effect_timings
     == [
-      #(program.CustomEffect("custom"), 9),
       #(program.CustomEffect("custom"), 3),
+      #(program.CustomEffect("custom"), 9),
     ]
 }
 

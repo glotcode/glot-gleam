@@ -65,6 +65,16 @@ pub type DbCommand {
     session_token: option.Option(String),
     created_at: Timestamp,
   )
+  DbInsertLogEntry(
+    id: BitArray,
+    created_at: Timestamp,
+    action: String,
+    duration_ns: Int,
+    user_agent: option.Option(String),
+    error: option.Option(String),
+    fields: String,
+    effects: String,
+  )
 }
 
 pub type Handlers {
@@ -108,6 +118,7 @@ pub type DbCommandName {
   DbInsertUserCommand
   DbInsertLoginTokenCommand
   DbInsertUserActivityCommand
+  DbInsertLogEntryCommand
 }
 
 pub type EffectTiming =
@@ -142,11 +153,14 @@ pub fn run(
   program: Program(a),
   handlers: Handlers,
 ) -> #(Result(a, Error), State) {
-  run_with_state(
-    program,
-    handlers,
-    State(effect_timings: [], log_fields: log.new()),
-  )
+  let #(result, state) =
+    run_with_state(
+      program,
+      handlers,
+      State(effect_timings: [], log_fields: log.new()),
+    )
+
+  #(result, State(..state, effect_timings: list.reverse(state.effect_timings)))
 }
 
 fn run_with_state(
@@ -467,6 +481,7 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
     DbInsertUser(_, _, _) -> DbInsertUserCommand
     DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
     DbInsertUserActivity(_, _, _, _, _) -> DbInsertUserActivityCommand
+    DbInsertLogEntry(_, _, _, _, _, _, _, _) -> DbInsertLogEntryCommand
   }
 }
 

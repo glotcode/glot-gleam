@@ -119,6 +119,31 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
+    program.DbInsertLogEntry(
+      id: id,
+      created_at: created_at,
+      action: action,
+      duration_ns: duration_ns,
+      user_agent: user_agent,
+      error: error,
+      fields: fields,
+      effects: effects,
+    ) ->
+      db_helpers.execute(
+        db,
+        sql.insert_log_entry(
+          id: id,
+          created_at: created_at,
+          action: action,
+          duration_ns: duration_ns,
+          user_agent: user_agent,
+          error: error,
+          fields: fields,
+          effects: effects,
+        ),
+        to_error,
+      )
+      |> result.map(fn(_) { Nil })
   }
 }
 

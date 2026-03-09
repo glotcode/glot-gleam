@@ -1,13 +1,11 @@
-import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
-import gleam/time/calendar
-import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/domain/run_domain
 import glot_backend/domain/send_login_token_domain
@@ -17,7 +15,6 @@ import glot_backend/program/handlers as program_handlers
 import glot_core/run
 import glot_core/timestamp_helpers
 import wisp
-import youid/uuid
 
 pub fn handle_request(ctx: context.Context, req: wisp.Request) -> wisp.Response {
   use json_body <- wisp.require_json(req)
@@ -141,13 +138,11 @@ fn handle_decoded_request(
   )
   let handlers = program_handlers.from_context(ctx)
 
-  let #(
-    api_result,
-    program.State(effect_timings: effect_timings, log_fields: _),
-  ) =
+  let #(api_result, state) =
     handle_api_request(ctx, api_request)
     |> program.run(handlers)
-  let _ = wisp.log_info("Effect timings: " <> string.inspect(effect_timings))
+
+  let _ = insert_log_entry(ctx, handlers, state, api_request.action, api_result)
 
   Ok(result_to_response(api_result))
 }
@@ -186,43 +181,111 @@ fn error_response(code: String, message: String) -> wisp.Response {
   )
 }
 
-pub fn new_log_entry(
+fn insert_log_entry(
+  ctx: context.Context,
+  handlers: program.Handlers,
+  state: program.State,
+  action: ApiAction,
+  result: Result(ApiResult, program.Error),
+) -> Nil {
+  let error = case result {
+    Ok(_) -> option.None
+    Error(err) -> option.Some(program_error_to_message(err))
+  }
+  let #(insert_result, _) =
+    save_log_entry(ctx, state, action, error)
+    |> program.run(handlers)
+
+  case insert_result {
+    Ok(_) -> Nil
+    Error(err) ->
+      wisp.log_error("Failed to insert log entry: " <> string.inspect(err))
+  }
+}
+
+fn save_log_entry(
   ctx: context.Context,
   state: program.State,
   action: ApiAction,
-) -> program.Program(LogEntry) {
-  use req_id <- program.and_then(program.uuid_v7())
+  error: option.Option(String),
+) -> program.Program(Nil) {
+  use id <- program.and_then(program.uuid_v7())
   use now <- program.and_then(program.system_time())
-  let assert Ok(request_id) = uuid.from_bit_array(req_id)
 
-  let utc_time = timestamp.to_rfc3339(ctx.timestamp, calendar.utc_offset)
-
-  let entry =
-    LogEntry(
-      request_id: uuid.to_string(request_id),
-      timestamp: utc_time,
-      action: api_action_to_string(action),
-      duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
-      user_agent: ctx.client_user_agent,
-      fields: state.log_fields,
-      effects: [],
-    )
-
-  program.succeed(entry)
+  program.run_command(program.DbInsertLogEntry(
+    id: id,
+    created_at: ctx.timestamp,
+    action: api_action_to_string(action),
+    duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
+    user_agent: ctx.client_user_agent,
+    error: error,
+    fields: state.log_fields |> log.encode_fields |> json.to_string,
+    effects: state.effect_timings |> effects_to_json |> json.to_string,
+  ))
 }
 
-pub type LogEntry {
-  LogEntry(
-    request_id: String,
-    timestamp: String,
-    action: String,
-    duration_ns: Int,
-    user_agent: option.Option(String),
-    fields: Dict(String, log.Value),
-    effects: List(EffectEntry),
-  )
+fn effect_name_to_string(effect_name: program.EffectName) -> String {
+  case effect_name {
+    program.RandomStringEffect -> "random_string"
+    program.SystemTimeEffect -> "system_time"
+    program.UuidV7Effect -> "uuid_v7"
+    program.LogEffect -> "log"
+    program.PostRunRequestEffect -> "post_run_request"
+    program.RunQueryEffect(query_name) ->
+      "run_query:" <> db_query_name_to_string(query_name)
+    program.RunCommandEffect(command_name) ->
+      "run_command:" <> db_command_name_to_string(command_name)
+    program.RunInTransactionEffect(command_names) ->
+      "run_in_transaction:"
+      <> string.join(list.map(command_names, db_command_name_to_string), ",")
+    program.CustomEffect(name) -> "custom:" <> name
+  }
 }
 
-pub type EffectEntry {
-  EffectEntry(name: String, duration_ns: Int)
+fn db_query_name_to_string(query_name: program.DbQueryName) -> String {
+  case query_name {
+    program.DbGetUserByEmailQuery -> "db_get_user_by_email"
+    program.DbCountUserActivitiesByIpAndActionQuery ->
+      "db_count_user_activities_by_ip_and_action"
+  }
+}
+
+fn db_command_name_to_string(command_name: program.DbCommandName) -> String {
+  case command_name {
+    program.DbInsertUserCommand -> "db_insert_user"
+    program.DbInsertLoginTokenCommand -> "db_insert_login_token"
+    program.DbInsertUserActivityCommand -> "db_insert_user_activity"
+    program.DbInsertLogEntryCommand -> "db_insert_log_entry"
+  }
+}
+
+fn effects_to_json(effects: List(program.EffectTiming)) -> json.Json {
+  json.array(effects, effect_timing_to_json)
+}
+
+fn effect_timing_to_json(effect_timing: program.EffectTiming) -> json.Json {
+  let #(effect_name, duration_ns) = effect_timing
+  json.object([
+    #("name", json.string(effect_name_to_string(effect_name))),
+    #("duration_ns", json.int(duration_ns)),
+  ])
+}
+
+fn program_error_to_message(err: program.Error) -> String {
+  case err {
+    program.DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
+    program.EmailInvalidError(message) -> "email_invalid:" <> message
+    program.TooManyRequestsError(count, _) ->
+      "too_many_requests:" <> int.to_string(count)
+    program.QueryError(program.DbQueryError(message: message)) ->
+      "query_error:" <> message
+    program.CommandError(program.DbCommandError(message: message)) ->
+      "command_error:" <> message
+    program.TransactionError(program.DbTransactionError(message: message)) ->
+      "transaction_error:" <> message
+    program.RunError(program.PublicRunRequestError(message: message)) ->
+      "run_error_public:" <> message
+    program.RunError(program.InternalRunRequestError(message: message)) ->
+      "run_error_internal:" <> message
+  }
 }
