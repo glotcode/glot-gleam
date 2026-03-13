@@ -59,6 +59,17 @@ fn error_to_response(error: program.Error) -> wisp.Response {
       wisp.log_error("Transaction error: " <> message)
       error_response("transaction_error", "Transaction failed")
     }
+    program.SendEmailError(send_email_error) ->
+      case send_email_error {
+        program.PublicSendEmailError(message: message) -> {
+          wisp.log_error("Send email error (public): " <> message)
+          error_response("send_email_error", message)
+        }
+        program.InternalSendEmailError(message: message) -> {
+          wisp.log_error("Send email error (private): " <> message)
+          error_response("send_email_error", "Failed to send email")
+        }
+      }
     program.RunError(run_request_error) ->
       case run_request_error {
         program.PublicRunRequestError(message: message) -> {
@@ -231,6 +242,7 @@ fn effect_name_to_string(effect_name: program.EffectName) -> String {
     program.UuidV7Effect -> "uuid_v7"
     program.LogEffect -> "log"
     program.PostRunRequestEffect -> "post_run_request"
+    program.SendEmailEffect -> "send_email"
     program.RunQueryEffect(query_name) ->
       "run_query:" <> db_query_name_to_string(query_name)
     program.RunCommandEffect(command_name) ->
@@ -245,6 +257,7 @@ fn effect_name_to_string(effect_name: program.EffectName) -> String {
 fn db_query_name_to_string(query_name: program.DbQueryName) -> String {
   case query_name {
     program.DbGetUserByEmailQuery -> "db_get_user_by_email"
+    program.DbGetNextJobQuery -> "db_get_next_job"
     program.DbCountUserActivitiesByIpAndActionQuery ->
       "db_count_user_activities_by_ip_and_action"
   }
@@ -253,9 +266,12 @@ fn db_query_name_to_string(query_name: program.DbQueryName) -> String {
 fn db_command_name_to_string(command_name: program.DbCommandName) -> String {
   case command_name {
     program.DbInsertUserCommand -> "db_insert_user"
+    program.DbInsertJobCommand -> "db_insert_job"
     program.DbInsertLoginTokenCommand -> "db_insert_login_token"
     program.DbInsertUserActivityCommand -> "db_insert_user_activity"
     program.DbInsertLogEntryCommand -> "db_insert_log_entry"
+    program.DbMarkJobDoneCommand -> "db_mark_job_done"
+    program.DbRescheduleJobCommand -> "db_reschedule_job"
   }
 }
 
@@ -283,6 +299,10 @@ fn program_error_to_message(err: program.Error) -> String {
       "command_error:" <> message
     program.TransactionError(program.DbTransactionError(message: message)) ->
       "transaction_error:" <> message
+    program.SendEmailError(program.PublicSendEmailError(message: message)) ->
+      "send_email_public:" <> message
+    program.SendEmailError(program.InternalSendEmailError(message: message)) ->
+      "send_email_internal:" <> message
     program.RunError(program.PublicRunRequestError(message: message)) ->
       "run_error_public:" <> message
     program.RunError(program.InternalRunRequestError(message: message)) ->

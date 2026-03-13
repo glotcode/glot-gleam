@@ -77,7 +77,9 @@ fn test_handlers() -> program.Handlers {
     post_run_request: fn(_, _) {
       Error(program.InternalRunRequestError("unused in test"))
     },
+    send_email: fn(_) { Error(program.InternalSendEmailError("unused in test")) },
     get_user_by_email: fn(_) { Ok([]) },
+    get_next_job: fn(_) { Ok(option.None) },
     count_user_activities_by_ip_and_action: fn(
       _: timestamp.Timestamp,
       _: option.Option(String),

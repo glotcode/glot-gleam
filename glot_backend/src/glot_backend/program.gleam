@@ -7,6 +7,8 @@ import gleam/option
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
+import glot_backend/email_message
+import glot_backend/job
 import glot_backend/log
 import glot_backend/sql
 import glot_core/rate_limit
@@ -29,6 +31,11 @@ pub type RunRequestError {
   InternalRunRequestError(message: String)
 }
 
+pub type SendEmailError {
+  PublicSendEmailError(message: String)
+  InternalSendEmailError(message: String)
+}
+
 pub type Error {
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
@@ -37,10 +44,12 @@ pub type Error {
   CommandError(DbCommandError)
   TransactionError(DbTransactionError)
   RunError(RunRequestError)
+  SendEmailError(SendEmailError)
 }
 
 pub type DbQuery(next) {
   DbGetUserByEmail(email: String, next: fn(List(sql.GetUserByEmail)) -> next)
+  DbGetNextJob(now: Timestamp, next: fn(option.Option(job.Job)) -> next)
   DbCountUserActivitiesByIpAndAction(
     created_at: Timestamp,
     ip: option.Option(String),
@@ -51,6 +60,7 @@ pub type DbQuery(next) {
 
 pub type DbCommand {
   DbInsertUser(id: BitArray, email: String, created_at: Timestamp)
+  DbInsertJob(job.Job)
   DbInsertLoginToken(
     id: BitArray,
     user_id: BitArray,
@@ -75,6 +85,13 @@ pub type DbCommand {
     fields: String,
     effects: String,
   )
+  DbMarkJobDone(id: BitArray, completed_at: Timestamp)
+  DbRescheduleJob(
+    id: BitArray,
+    run_at: Timestamp,
+    last_error: option.Option(String),
+    updated_at: Timestamp,
+  )
 }
 
 pub type Handlers {
@@ -84,8 +101,10 @@ pub type Handlers {
     uuid_v7: fn() -> BitArray,
     post_run_request: fn(context.Config, run.RunRequest) ->
       Result(run.RunResult, RunRequestError),
+    send_email: fn(email_message.EmailMessage) -> Result(Nil, SendEmailError),
     get_user_by_email: fn(String) ->
       Result(List(sql.GetUserByEmail), DbQueryError),
+    get_next_job: fn(Timestamp) -> Result(option.Option(job.Job), DbQueryError),
     count_user_activities_by_ip_and_action: fn(
       Timestamp,
       option.Option(String),
@@ -103,6 +122,7 @@ pub type EffectName {
   UuidV7Effect
   LogEffect
   PostRunRequestEffect
+  SendEmailEffect
   RunQueryEffect(DbQueryName)
   RunCommandEffect(DbCommandName)
   RunInTransactionEffect(List(DbCommandName))
@@ -111,14 +131,18 @@ pub type EffectName {
 
 pub type DbQueryName {
   DbGetUserByEmailQuery
+  DbGetNextJobQuery
   DbCountUserActivitiesByIpAndActionQuery
 }
 
 pub type DbCommandName {
   DbInsertUserCommand
+  DbInsertJobCommand
   DbInsertLoginTokenCommand
   DbInsertUserActivityCommand
   DbInsertLogEntryCommand
+  DbMarkJobDoneCommand
+  DbRescheduleJobCommand
 }
 
 pub type EffectTiming =
@@ -140,6 +164,10 @@ pub opaque type Program(a) {
     context.Config,
     run.RunRequest,
     fn(Result(run.RunResult, RunRequestError)) -> Program(a),
+  )
+  AttemptSendEmail(
+    email_message.EmailMessage,
+    fn(Result(Nil, SendEmailError)) -> Program(a),
   )
   AttemptRunQuery(DbQuery(Program(a)), fn(DbQueryError) -> Program(a))
   AttemptRunCommand(DbCommand, fn(Result(Nil, DbCommandError)) -> Program(a))
@@ -222,6 +250,15 @@ fn run_with_state(
         measure_effect(state, PostRunRequestEffect, started_at),
       )
     }
+    AttemptSendEmail(message, next) -> {
+      let started_at = now_ns()
+      let send_result = handlers.send_email(message)
+      run_with_state(
+        next(send_result),
+        handlers,
+        measure_effect(state, SendEmailEffect, started_at),
+      )
+    }
     AttemptRunQuery(query, on_error) -> {
       let started_at = now_ns()
       let next_state =
@@ -282,6 +319,8 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
     Log(key, value, next) -> Log(key, value, and_then(next, f))
     AttemptPostRunRequest(cfg, request, next) ->
       AttemptPostRunRequest(cfg, request, fn(value) { and_then(next(value), f) })
+    AttemptSendEmail(message, next) ->
+      AttemptSendEmail(message, fn(value) { and_then(next(value), f) })
     AttemptRunQuery(query, on_error) ->
       AttemptRunQuery(map_db_query(query, fn(p) { and_then(p, f) }), fn(error) {
         and_then(on_error(error), f)
@@ -346,6 +385,20 @@ pub fn post_run_request(
   }
 }
 
+pub fn attempt_send_email(
+  message: email_message.EmailMessage,
+) -> Program(Result(Nil, SendEmailError)) {
+  AttemptSendEmail(message, Done)
+}
+
+pub fn send_email(message: email_message.EmailMessage) -> Program(Nil) {
+  use send_result <- and_then(attempt_send_email(message))
+  case send_result {
+    Ok(_) -> Done(Nil)
+    Error(error) -> Fail(SendEmailError(error))
+  }
+}
+
 pub fn attempt_run_query(query: DbQuery(a)) -> Program(Result(a, DbQueryError)) {
   AttemptRunQuery(map_db_query(query, fn(value) { Done(Ok(value)) }), fn(error) {
     Done(Error(error))
@@ -362,6 +415,10 @@ pub fn run_query(query: DbQuery(a)) -> Program(a) {
 
 pub fn db_get_user_by_email(email: String) -> Program(List(sql.GetUserByEmail)) {
   run_query(DbGetUserByEmail(email:, next: identity))
+}
+
+pub fn db_get_next_job(now: Timestamp) -> Program(option.Option(job.Job)) {
+  run_query(DbGetNextJob(now:, next: identity))
 }
 
 pub fn db_count_user_activities_by_ip_and_action(
@@ -448,6 +505,7 @@ fn run_db_query(
   case query {
     DbGetUserByEmail(email:, next:) ->
       handlers.get_user_by_email(email) |> result.map(next)
+    DbGetNextJob(now:, next:) -> handlers.get_next_job(now) |> result.map(next)
     DbCountUserActivitiesByIpAndAction(created_at:, ip:, action:, next:) ->
       handlers.count_user_activities_by_ip_and_action(created_at, ip, action)
       |> result.map(next)
@@ -458,6 +516,8 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
   case query {
     DbGetUserByEmail(email:, next:) ->
       DbGetUserByEmail(email: email, next: fn(value) { f(next(value)) })
+    DbGetNextJob(now:, next:) ->
+      DbGetNextJob(now: now, next: fn(value) { f(next(value)) })
     DbCountUserActivitiesByIpAndAction(created_at:, ip:, action:, next:) ->
       DbCountUserActivitiesByIpAndAction(
         created_at: created_at,
@@ -471,6 +531,7 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
 fn db_query_name(query: DbQuery(a)) -> DbQueryName {
   case query {
     DbGetUserByEmail(_, _) -> DbGetUserByEmailQuery
+    DbGetNextJob(_, _) -> DbGetNextJobQuery
     DbCountUserActivitiesByIpAndAction(_, _, _, _) ->
       DbCountUserActivitiesByIpAndActionQuery
   }
@@ -479,9 +540,12 @@ fn db_query_name(query: DbQuery(a)) -> DbQueryName {
 fn db_command_name(command: DbCommand) -> DbCommandName {
   case command {
     DbInsertUser(_, _, _) -> DbInsertUserCommand
+    DbInsertJob(_) -> DbInsertJobCommand
     DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
     DbInsertUserActivity(_, _, _, _, _) -> DbInsertUserActivityCommand
     DbInsertLogEntry(_, _, _, _, _, _, _, _) -> DbInsertLogEntryCommand
+    DbMarkJobDone(_, _) -> DbMarkJobDoneCommand
+    DbRescheduleJob(_, _, _, _) -> DbRescheduleJobCommand
   }
 }
 

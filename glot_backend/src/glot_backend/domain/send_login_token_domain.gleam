@@ -3,7 +3,8 @@ import gleam/list
 import gleam/option
 import gleam/regexp
 import glot_backend/context
-import glot_backend/log
+import glot_backend/email_message
+import glot_backend/job
 import glot_backend/program
 import glot_backend/sql
 import glot_core/auth
@@ -30,6 +31,10 @@ pub fn send_login_token(
   use user <- program.and_then(find_or_create_user(ctx, request.email))
   use token <- program.and_then(program.random_string(10))
   use login_token_id <- program.and_then(program.uuid_v7())
+  use job_id <- program.and_then(program.uuid_v7())
+
+  let email_msg = email_message.login_token_message(request.email, token)
+  let send_email_job = job.send_email_job(job_id, ctx.timestamp, email_msg)
 
   let commands = [
     program.DbInsertLoginToken(
@@ -39,14 +44,10 @@ pub fn send_login_token(
       created_at: ctx.timestamp,
       used_at: option.None,
     ),
+    program.DbInsertJob(send_email_job),
   ]
 
-  use _ <- program.and_then(program.run_in_transaction(commands))
-  use _ <- program.and_then(program.log(
-    "send_login_token",
-    log.String("Sending login token to " <> email.to_string(user.email) <> ": " <> token),
-  ))
-  program.succeed(Nil)
+  program.run_in_transaction(commands)
 }
 
 fn find_or_create_user(

@@ -57,6 +57,94 @@ pub fn insert_login_token(
   ])
 }
 
+pub type GetNextJob {
+  GetNextJob(
+    id: BitArray,
+    job_type: String,
+    payload: String,
+    status: String,
+    attempts: Int,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    run_at: Timestamp,
+    started_at: Option(Timestamp),
+    completed_at: Option(Timestamp),
+    last_error: Option(String),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn get_next_job(started_at started_at: Option(Timestamp)) {
+  let sql =
+    "WITH candidate AS (
+  SELECT id
+  FROM jobs
+  WHERE status = 'pending'
+    AND run_at <= $1
+    AND started_at IS NULL
+  ORDER BY run_at ASC, created_at ASC
+  LIMIT 1
+  FOR UPDATE SKIP LOCKED
+)
+UPDATE jobs
+SET status = 'running',
+    attempts = attempts + 1,
+    started_at = $1,
+    updated_at = $1
+WHERE id IN (SELECT id FROM candidate)
+RETURNING
+  id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  run_at,
+  started_at,
+  completed_at,
+  last_error,
+  created_at,
+  updated_at"
+  #(
+    sql,
+    [dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) }))],
+    get_next_job_decoder(),
+  )
+}
+
+pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
+  use id <- decode.field(0, decode.bit_array)
+  use job_type <- decode.field(1, decode.string)
+  use payload <- decode.field(2, decode.string)
+  use status <- decode.field(3, decode.string)
+  use attempts <- decode.field(4, decode.int)
+  use max_attempts <- decode.field(5, decode.int)
+  use timeout_seconds <- decode.field(6, decode.int)
+  use run_at <- decode.field(7, dev.datetime_decoder())
+  use started_at <- decode.field(8, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(9, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(10, decode.optional(decode.string))
+  use created_at <- decode.field(11, dev.datetime_decoder())
+  use updated_at <- decode.field(12, dev.datetime_decoder())
+  decode.success(GetNextJob(
+    id:,
+    job_type:,
+    payload:,
+    status:,
+    attempts:,
+    max_attempts:,
+    timeout_seconds:,
+    run_at:,
+    started_at:,
+    completed_at:,
+    last_error:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
 pub type ListSnippetsByUser {
   ListSnippetsByUser(
     id: BitArray,
@@ -234,6 +322,54 @@ pub fn update_snippet(
   ])
 }
 
+pub fn insert_job(
+  id id: BitArray,
+  job_type job_type: String,
+  payload payload: String,
+  status status: String,
+  attempts attempts: Int,
+  max_attempts max_attempts: Int,
+  timeout_seconds timeout_seconds: Int,
+  run_at run_at: Timestamp,
+  started_at started_at: Option(Timestamp),
+  completed_at completed_at: Option(Timestamp),
+  last_error last_error: Option(String),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO jobs (
+  id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  run_at,
+  started_at,
+  completed_at,
+  last_error,
+  created_at,
+  updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(job_type),
+    dev.ParamString(payload),
+    dev.ParamString(status),
+    dev.ParamInt(attempts),
+    dev.ParamInt(max_attempts),
+    dev.ParamInt(timeout_seconds),
+    dev.ParamTimestamp(run_at),
+    dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
 pub fn insert_snippet(
   id id: BitArray,
   user_id user_id: BitArray,
@@ -259,6 +395,22 @@ pub fn insert_snippet(
     dev.ParamString(files),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn mark_job_done(
+  id id: BitArray,
+  completed_at completed_at: Option(Timestamp),
+) {
+  let sql =
+    "UPDATE jobs
+SET status = 'done',
+    completed_at = $2,
+    updated_at = $2
+WHERE id = $1"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
   ])
 }
 
@@ -415,6 +567,29 @@ pub fn insert_session(
     dev.ParamString(user_agent),
     dev.ParamString(country),
     dev.ParamTimestamp(created_at),
+  ])
+}
+
+pub fn reschedule_job(
+  id id: BitArray,
+  run_at run_at: Timestamp,
+  last_error last_error: Option(String),
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "UPDATE jobs
+SET status = CASE WHEN attempts >= max_attempts THEN 'failed' ELSE 'pending' END,
+    run_at = $2,
+    started_at = NULL,
+    completed_at = NULL,
+    last_error = $3,
+    updated_at = $4
+WHERE id = $1"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamTimestamp(run_at),
+    dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
+    dev.ParamTimestamp(updated_at),
   ])
 }
 
