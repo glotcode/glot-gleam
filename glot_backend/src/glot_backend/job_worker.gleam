@@ -3,7 +3,7 @@ import gleam/int
 import gleam/json
 import gleam/option
 import gleam/otp/actor
-import gleam/result
+import gleam/otp/supervision
 import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
@@ -33,11 +33,7 @@ type State {
   )
 }
 
-pub fn start(
-  db: pog.Connection,
-  config: context.Config,
-  regexp: context.Regexp,
-) -> Result(Nil, actor.StartError) {
+pub fn start(db: pog.Connection, config: context.Config, regexp: context.Regexp) {
   actor.new_with_initialiser(1000, fn(subject) {
     let initial_state = State(subject:, db:, config:, regexp:)
     let _ = process.send(subject, Tick)
@@ -46,7 +42,14 @@ pub fn start(
   })
   |> actor.on_message(handle_message)
   |> actor.start
-  |> result.map(fn(_) { Nil })
+}
+
+pub fn supervised(
+  db: pog.Connection,
+  config: context.Config,
+  regexp: context.Regexp,
+) {
+  supervision.worker(fn() { start(db, config, regexp) })
 }
 
 fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
