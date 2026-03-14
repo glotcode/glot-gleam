@@ -13,6 +13,7 @@ import gleam/string
 import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
+import glot_backend/job_worker
 import glot_core/email
 import lustre/attribute
 import lustre/element
@@ -51,6 +52,8 @@ pub fn main() {
   let assert Ok(cfg) = context.config_from_dict(env_values)
   let assert Ok(db) = start_postgres_pool(cfg)
   let assert Ok(is_email) = regexp.from_string(email.pattern)
+  let regexp = context.Regexp(is_email)
+  let assert Ok(_) = job_worker.start(db, cfg, regexp)
 
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
     wisp_mist.handler(
@@ -60,7 +63,7 @@ pub fn main() {
             db: db,
             config: cfg,
             timestamp: timestamp.system_time(),
-            regexp: context.Regexp(is_email),
+            regexp: regexp,
             client_ip: get_header(req, "x-forwarded-for")
               |> option.lazy_or(fn() { get_client_ip(conn.body) }),
             client_user_agent: get_header(req, "user-agent"),

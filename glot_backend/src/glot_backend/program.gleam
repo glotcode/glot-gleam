@@ -49,7 +49,12 @@ pub type Error {
 
 pub type DbQuery(next) {
   DbGetUserByEmail(email: String, next: fn(List(sql.GetUserByEmail)) -> next)
-  DbGetNextJob(now: Timestamp, next: fn(option.Option(job.Job)) -> next)
+  DbGetNextJob(
+    now: Timestamp,
+    pending_status: job.Status,
+    running_status: job.Status,
+    next: fn(option.Option(job.Job)) -> next,
+  )
   DbCountUserActivitiesByIpAndAction(
     created_at: Timestamp,
     ip: option.Option(String),
@@ -104,7 +109,8 @@ pub type Handlers {
     send_email: fn(email_message.EmailMessage) -> Result(Nil, SendEmailError),
     get_user_by_email: fn(String) ->
       Result(List(sql.GetUserByEmail), DbQueryError),
-    get_next_job: fn(Timestamp) -> Result(option.Option(job.Job), DbQueryError),
+    get_next_job: fn(Timestamp, job.Status, job.Status) ->
+      Result(option.Option(job.Job), DbQueryError),
     count_user_activities_by_ip_and_action: fn(
       Timestamp,
       option.Option(String),
@@ -417,8 +423,12 @@ pub fn db_get_user_by_email(email: String) -> Program(List(sql.GetUserByEmail)) 
   run_query(DbGetUserByEmail(email:, next: identity))
 }
 
-pub fn db_get_next_job(now: Timestamp) -> Program(option.Option(job.Job)) {
-  run_query(DbGetNextJob(now:, next: identity))
+pub fn db_get_next_job(
+  now: Timestamp,
+  pending_status: job.Status,
+  running_status: job.Status,
+) -> Program(option.Option(job.Job)) {
+  run_query(DbGetNextJob(now:, pending_status:, running_status:, next: identity))
 }
 
 pub fn db_count_user_activities_by_ip_and_action(
@@ -505,7 +515,9 @@ fn run_db_query(
   case query {
     DbGetUserByEmail(email:, next:) ->
       handlers.get_user_by_email(email) |> result.map(next)
-    DbGetNextJob(now:, next:) -> handlers.get_next_job(now) |> result.map(next)
+    DbGetNextJob(now:, pending_status:, running_status:, next:) ->
+      handlers.get_next_job(now, pending_status, running_status)
+      |> result.map(next)
     DbCountUserActivitiesByIpAndAction(created_at:, ip:, action:, next:) ->
       handlers.count_user_activities_by_ip_and_action(created_at, ip, action)
       |> result.map(next)
@@ -516,8 +528,13 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
   case query {
     DbGetUserByEmail(email:, next:) ->
       DbGetUserByEmail(email: email, next: fn(value) { f(next(value)) })
-    DbGetNextJob(now:, next:) ->
-      DbGetNextJob(now: now, next: fn(value) { f(next(value)) })
+    DbGetNextJob(now:, pending_status:, running_status:, next:) ->
+      DbGetNextJob(
+        now: now,
+        pending_status: pending_status,
+        running_status: running_status,
+        next: fn(value) { f(next(value)) },
+      )
     DbCountUserActivitiesByIpAndAction(created_at:, ip:, action:, next:) ->
       DbCountUserActivitiesByIpAndAction(
         created_at: created_at,
@@ -531,7 +548,7 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
 fn db_query_name(query: DbQuery(a)) -> DbQueryName {
   case query {
     DbGetUserByEmail(_, _) -> DbGetUserByEmailQuery
-    DbGetNextJob(_, _) -> DbGetNextJobQuery
+    DbGetNextJob(_, _, _, _) -> DbGetNextJobQuery
     DbCountUserActivitiesByIpAndAction(_, _, _, _) ->
       DbCountUserActivitiesByIpAndActionQuery
   }

@@ -2,18 +2,18 @@
 WITH candidate AS (
   SELECT id
   FROM jobs
-  WHERE status = 'pending'
-    AND run_at <= $1
+  WHERE jobs.status = @pending_status
+    AND run_at <= @now
     AND started_at IS NULL
   ORDER BY run_at ASC, created_at ASC
   LIMIT 1
   FOR UPDATE SKIP LOCKED
 )
 UPDATE jobs
-SET status = 'running',
+SET status = @running_status,
     attempts = attempts + 1,
-    started_at = $1,
-    updated_at = $1
+    started_at = @now,
+    updated_at = @now
 WHERE id IN (SELECT id FROM candidate)
 RETURNING
   id,

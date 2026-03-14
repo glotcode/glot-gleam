@@ -25,7 +25,9 @@ pub fn from_context(ctx: context.Context) -> program.Handlers {
     post_run_request: post_run_request,
     send_email: send_email,
     get_user_by_email: fn(email) { get_user_by_email(ctx, email) },
-    get_next_job: fn(now) { get_next_job(ctx, now) },
+    get_next_job: fn(now, pending_status, running_status) {
+      get_next_job(ctx, now, pending_status, running_status)
+    },
     count_user_activities_by_ip_and_action: fn(created_at, ip, action) {
       count_user_activities_by_ip_and_action(ctx, created_at, ip, action)
     },
@@ -84,11 +86,19 @@ fn count_user_activities_by_ip_and_action(
 fn get_next_job(
   ctx: context.Context,
   now: Timestamp,
+  pending_status: job.Status,
+  running_status: job.Status,
 ) -> Result(option.Option(job.Job), program.DbQueryError) {
   use returned <- result.try(
-    db_helpers.query(ctx.db, sql.get_next_job(option.Some(now)), fn(err) {
-      program.DbQueryError(string.inspect(err))
-    }),
+    db_helpers.query(
+      ctx.db,
+      sql.get_next_job(
+        job.status_to_string(running_status),
+        option.Some(now),
+        job.status_to_string(pending_status),
+      ),
+      fn(err) { program.DbQueryError(string.inspect(err)) },
+    ),
   )
 
   case returned.rows {

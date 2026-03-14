@@ -1,5 +1,7 @@
+import gleam/dynamic/decode
 import gleam/option.{type Option}
 import gleam/json
+import gleam/regexp
 import glot_core/email as core_email
 
 pub type EmailMessage {
@@ -33,6 +35,14 @@ pub fn encode_message(message: EmailMessage) -> json.Json {
         ),
       ])
   }
+}
+
+pub fn decoder(is_email: regexp.Regexp) -> decode.Decoder(EmailMessage) {
+  use to <- decode.field("to", core_email.decoder(is_email))
+  use subject <- decode.field("subject", decode.string)
+  use text_body <- decode.field("text_body", decode.string)
+  use html_body <- decode.field("html_body", decode.optional(decode.string))
+  decode.success(EmailMessage(to:, subject:, text_body:, html_body:))
 }
 
 pub fn login_token_message(to: core_email.Email, token: String) -> EmailMessage {

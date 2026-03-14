@@ -1,6 +1,7 @@
 import gleam/option
 import gleam/time/timestamp
 import gleeunit
+import glot_backend/job
 import glot_backend/program
 import glot_backend/sql
 
@@ -79,7 +80,9 @@ fn test_handlers() -> program.Handlers {
     },
     send_email: fn(_) { Error(program.InternalSendEmailError("unused in test")) },
     get_user_by_email: fn(_) { Ok([]) },
-    get_next_job: fn(_) { Ok(option.None) },
+    get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
+      Ok(option.None)
+    },
     count_user_activities_by_ip_and_action: fn(
       _: timestamp.Timestamp,
       _: option.Option(String),
