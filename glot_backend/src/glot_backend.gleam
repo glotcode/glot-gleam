@@ -57,9 +57,6 @@ pub fn main() {
   let regexp = context.Regexp(is_email)
   let log_worker_name = process.new_name("log_worker")
   let log_worker_subject = process.named_subject(log_worker_name)
-  let assert Ok(_) =
-    start_supervisor_tree(postgres_cfg, db, cfg, regexp, log_worker_name)
-
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
     wisp_mist.handler(
       fn(req: request.Request(wisp.Connection)) {
@@ -80,10 +77,19 @@ pub fn main() {
     )(conn)
   }
 
-  let assert Ok(_) =
+  let mist_builder =
     mist.new(mist_handler)
     |> mist.port(3000)
-    |> mist.start
+
+  let assert Ok(_) =
+    start_supervisor_tree(
+      postgres_cfg,
+      db,
+      cfg,
+      regexp,
+      log_worker_name,
+      mist_builder,
+    )
 
   process.sleep_forever()
 }
@@ -168,11 +174,13 @@ fn start_supervisor_tree(
   config: context.Config,
   regexp: context.Regexp,
   log_worker_name: process.Name(log_worker.Message),
+  mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
 ) {
   supervisor.new(supervisor.RestForOne)
   |> supervisor.add(pog.supervised(pog_config))
   |> supervisor.add(log_worker.supervised(log_worker_name, db))
   |> supervisor.add(job_worker.supervised(db, config, regexp))
+  |> supervisor.add(mist.supervised(mist_builder))
   |> supervisor.start
 }
 
