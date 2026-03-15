@@ -6,10 +6,8 @@ import gleam/http/request
 import gleam/io
 import gleam/list
 import gleam/option
-import gleam/otp/actor
 import gleam/otp/static_supervisor as supervisor
 import gleam/regexp
-import gleam/result
 import gleam/string
 import gleam/time/timestamp
 import glot_backend/api
@@ -52,12 +50,15 @@ pub fn main() {
   let env_values = dict.merge(default_env, envoy.all())
 
   let assert Ok(cfg) = context.config_from_dict(env_values)
-  let assert Ok(db) = start_postgres_pool(cfg)
+  let postgres_pool_name = process.new_name("postgres_pool")
+  let postgres_cfg = postgres_config(cfg, postgres_pool_name)
+  let db = pog.named_connection(postgres_pool_name)
   let assert Ok(is_email) = regexp.from_string(email.pattern)
   let regexp = context.Regexp(is_email)
   let log_worker_name = process.new_name("log_worker")
   let log_worker_subject = process.named_subject(log_worker_name)
-  let assert Ok(_) = start_workers(db, cfg, regexp, log_worker_name)
+  let assert Ok(_) =
+    start_supervisor_tree(postgres_cfg, db, cfg, regexp, log_worker_name)
 
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
     wisp_mist.handler(
@@ -97,7 +98,8 @@ pub fn handle_request(
   case req.method, wisp.path_segments(req) {
     //Get, [] -> home_page.home_page()
     http.Get, _ -> serve_spa_page()
-    http.Post, ["api", "mux"] -> api.handle_request(ctx, log_worker_subject, req)
+    http.Post, ["api", "mux"] ->
+      api.handle_request(ctx, log_worker_subject, req)
     _, _ -> wisp.not_found()
   }
 }
@@ -160,23 +162,24 @@ fn serve_spa_page() -> wisp.Response {
   |> wisp.html_response(200)
 }
 
-fn start_workers(
+fn start_supervisor_tree(
+  pog_config: pog.Config,
   db: pog.Connection,
   config: context.Config,
   regexp: context.Regexp,
   log_worker_name: process.Name(log_worker.Message),
 ) {
-  supervisor.new(supervisor.OneForOne)
+  supervisor.new(supervisor.RestForOne)
+  |> supervisor.add(pog.supervised(pog_config))
   |> supervisor.add(log_worker.supervised(log_worker_name, db))
   |> supervisor.add(job_worker.supervised(db, config, regexp))
   |> supervisor.start
 }
 
-fn start_postgres_pool(
+fn postgres_config(
   cfg: context.Config,
-) -> Result(pog.Connection, actor.StartError) {
-  let pool_name = process.new_name("postgres_pool")
-
+  pool_name: process.Name(pog.Message),
+) -> pog.Config {
   pog.default_config(pool_name)
   |> pog.host(cfg.postgres_host)
   |> pog.port(cfg.postgres_port)
@@ -184,6 +187,4 @@ fn start_postgres_pool(
   |> pog.user(cfg.postgres_user)
   |> pog.password(option.Some(cfg.postgres_pass))
   |> pog.pool_size(cfg.postgres_pool_size)
-  |> pog.start
-  |> result.map(fn(_) { pog.named_connection(pool_name) })
 }
