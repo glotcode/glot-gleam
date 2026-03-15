@@ -7,13 +7,15 @@ import gleam/io
 import gleam/list
 import gleam/option
 import gleam/otp/actor
+import gleam/otp/static_supervisor as supervisor
 import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
-import glot_backend/job_supervisor
+import glot_backend/job_worker
+import glot_backend/log_worker
 import glot_core/email
 import lustre/attribute
 import lustre/element
@@ -53,7 +55,9 @@ pub fn main() {
   let assert Ok(db) = start_postgres_pool(cfg)
   let assert Ok(is_email) = regexp.from_string(email.pattern)
   let regexp = context.Regexp(is_email)
-  let assert Ok(_) = job_supervisor.start(db, cfg, regexp)
+  let log_worker_name = process.new_name("log_worker")
+  let log_worker_subject = process.named_subject(log_worker_name)
+  let assert Ok(_) = start_workers(db, cfg, regexp, log_worker_name)
 
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
     wisp_mist.handler(
@@ -69,7 +73,7 @@ pub fn main() {
             client_user_agent: get_header(req, "user-agent"),
           )
 
-        handle_request(ctx, req)
+        handle_request(ctx, log_worker_subject, req)
       },
       secret_key_base,
     )(conn)
@@ -83,13 +87,17 @@ pub fn main() {
   process.sleep_forever()
 }
 
-pub fn handle_request(ctx: context.Context, req: wisp.Request) -> wisp.Response {
+pub fn handle_request(
+  ctx: context.Context,
+  log_worker_subject: process.Subject(log_worker.Message),
+  req: wisp.Request,
+) -> wisp.Response {
   use req <- app_middleware(req, ctx)
 
   case req.method, wisp.path_segments(req) {
     //Get, [] -> home_page.home_page()
     http.Get, _ -> serve_spa_page()
-    http.Post, ["api", "mux"] -> api.handle_request(ctx, req)
+    http.Post, ["api", "mux"] -> api.handle_request(ctx, log_worker_subject, req)
     _, _ -> wisp.not_found()
   }
 }
@@ -150,6 +158,18 @@ fn serve_spa_page() -> wisp.Response {
   html
   |> element.to_document_string
   |> wisp.html_response(200)
+}
+
+fn start_workers(
+  db: pog.Connection,
+  config: context.Config,
+  regexp: context.Regexp,
+  log_worker_name: process.Name(log_worker.Message),
+) {
+  supervisor.new(supervisor.OneForOne)
+  |> supervisor.add(log_worker.supervised(log_worker_name, db))
+  |> supervisor.add(job_worker.supervised(db, config, regexp))
+  |> supervisor.start
 }
 
 fn start_postgres_pool(

@@ -6,8 +6,10 @@ import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
+import gleam/erlang/process
 import glot_backend/context
 import glot_backend/domain/run_domain
+import glot_backend/log_worker
 import glot_backend/domain/send_login_token_domain
 import glot_backend/log
 import glot_backend/program
@@ -16,9 +18,13 @@ import glot_core/run
 import glot_core/timestamp_helpers
 import wisp
 
-pub fn handle_request(ctx: context.Context, req: wisp.Request) -> wisp.Response {
+pub fn handle_request(
+  ctx: context.Context,
+  log_worker_subject: process.Subject(log_worker.Message),
+  req: wisp.Request,
+) -> wisp.Response {
   use json_body <- wisp.require_json(req)
-  case handle_decoded_request(ctx, json_body) {
+  case handle_decoded_request(ctx, log_worker_subject, json_body) {
     Ok(response) -> response
     Error(response) -> response
   }
@@ -136,6 +142,7 @@ pub fn api_action_to_string(action: ApiAction) {
 
 fn handle_decoded_request(
   ctx: context.Context,
+  log_worker_subject: process.Subject(log_worker.Message),
   json_body: dynamic.Dynamic,
 ) -> Result(wisp.Response, wisp.Response) {
   use api_request <- result.try(
@@ -153,7 +160,7 @@ fn handle_decoded_request(
     handle_api_request(ctx, api_request)
     |> program.run(handlers)
 
-  let _ = insert_log_entry(ctx, handlers, state, api_request.action, api_result)
+  let _ = insert_log_entry(ctx, log_worker_subject, state, api_request.action, api_result)
 
   Ok(result_to_response(api_result))
 }
@@ -194,7 +201,7 @@ fn error_response(code: String, message: String) -> wisp.Response {
 
 fn insert_log_entry(
   ctx: context.Context,
-  handlers: program.Handlers,
+  log_worker_subject: process.Subject(log_worker.Message),
   state: program.State,
   action: ApiAction,
   result: Result(ApiResult, program.Error),
@@ -203,14 +210,16 @@ fn insert_log_entry(
     Ok(_) -> option.None
     Error(err) -> option.Some(program_error_to_message(err))
   }
-  let #(insert_result, _) =
-    save_log_entry(ctx, state, action, error)
-    |> program.run(handlers)
 
-  case insert_result {
-    Ok(_) -> Nil
-    Error(err) ->
-      wisp.log_error("Failed to insert log entry: " <> string.inspect(err))
+  case process.subject_owner(log_worker_subject) {
+    Ok(_) -> {
+      process.send(
+        log_worker_subject,
+        log_worker.Insert(save_log_entry(ctx, state, action, error)),
+      )
+      Nil
+    }
+    Error(_) -> wisp.log_error("Log worker unavailable")
   }
 }
 
@@ -219,11 +228,12 @@ fn save_log_entry(
   state: program.State,
   action: ApiAction,
   error: option.Option(String),
-) -> program.Program(Nil) {
-  use id <- program.and_then(program.uuid_v7())
-  use now <- program.and_then(program.system_time())
+) -> log_worker.LogEntry {
+  let handlers = program_handlers.from_context(ctx)
+  let id = handlers.uuid_v7()
+  let now = handlers.system_time()
 
-  program.run_command(program.DbInsertLogEntry(
+  log_worker.LogEntry(
     id: id,
     created_at: ctx.timestamp,
     action: api_action_to_string(action),
@@ -232,7 +242,7 @@ fn save_log_entry(
     error: error,
     fields: state.log_fields |> log.encode_fields |> json.to_string,
     effects: state.effect_timings |> effects_to_json |> json.to_string,
-  ))
+  )
 }
 
 fn effect_name_to_string(effect_name: program.EffectName) -> String {
