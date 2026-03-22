@@ -12,7 +12,9 @@ import glot_backend/http_client
 import glot_backend/job
 import glot_backend/program
 import glot_backend/sql
+import glot_core/email
 import glot_core/run
+import glot_core/user
 import glot_core/uuid_helpers
 import pog
 import wisp
@@ -58,11 +60,41 @@ fn post_run_request(
 fn get_user_by_email(
   ctx: context.Context,
   email: String,
-) -> Result(List(sql.GetUserByEmail), program.DbQueryError) {
+) -> Result(List(user.User), program.DbQueryError) {
   db_helpers.query(ctx.db, sql.get_user_by_email(email), fn(err) {
     program.DbQueryError(string.inspect(err))
   })
-  |> result.map(fn(returned) { returned.rows })
+  |> result.try(fn(returned) { users_from_rows(ctx, returned.rows) })
+}
+
+fn users_from_rows(
+  ctx: context.Context,
+  rows: List(sql.GetUserByEmail),
+) -> Result(List(user.User), program.DbQueryError) {
+  case rows {
+    [] -> Ok([])
+    [first, ..rest] -> {
+      use user <- result.try(user_from_row(ctx, first))
+      use users <- result.try(users_from_rows(ctx, rest))
+      Ok([user, ..users])
+    }
+  }
+}
+
+fn user_from_row(
+  ctx: context.Context,
+  row: sql.GetUserByEmail,
+) -> Result(user.User, program.DbQueryError) {
+  case email.from_string(ctx.regexp.is_email, row.email) {
+    option.Some(valid_email) ->
+      Ok(user.User(
+        id: row.id,
+        email: valid_email,
+        created_at: row.created_at,
+      ))
+    option.None ->
+      Error(program.DbQueryError("Invalid email format in user row: " <> row.email))
+  }
 }
 
 fn count_user_activities_by_ip_and_action(

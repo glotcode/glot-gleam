@@ -1,7 +1,6 @@
 import gleam/dynamic
 import gleam/list
 import gleam/option
-import gleam/regexp
 import glot_backend/context
 import glot_backend/email_message
 import glot_backend/job
@@ -59,7 +58,7 @@ fn find_or_create_user(
   )
 
   case list.first(rows) |> option.from_result() {
-    option.Some(row) -> user_from_row(ctx.regexp.is_email, row)
+    option.Some(existing_user) -> program.succeed(existing_user)
     option.None -> {
       use user_id <- program.and_then(program.uuid_v7())
 
@@ -75,20 +74,5 @@ fn find_or_create_user(
       )
       program.succeed(new_user)
     }
-  }
-}
-
-fn user_from_row(
-  is_email: regexp.Regexp,
-  row: sql.GetUserByEmail,
-) -> program.Program(user.User) {
-  case email.from_string(is_email, row.email) {
-    option.Some(valid_email) ->
-      program.succeed(user.User(
-        id: row.id,
-        email: valid_email,
-        created_at: row.created_at,
-      ))
-    option.None -> program.fail(program.EmailInvalidError(row.email))
   }
 }

@@ -13,6 +13,7 @@ import glot_backend/log
 import glot_backend/sql
 import glot_core/rate_limit
 import glot_core/run
+import glot_core/user
 
 pub type DbQueryError {
   DbQueryError(message: String)
@@ -48,7 +49,7 @@ pub type Error {
 }
 
 pub type DbQuery(next) {
-  DbGetUserByEmail(email: String, next: fn(List(sql.GetUserByEmail)) -> next)
+  DbGetUserByEmail(email: String, next: fn(List(user.User)) -> next)
   DbGetNextJob(
     now: Timestamp,
     pending_status: job.Status,
@@ -108,7 +109,7 @@ pub type Handlers {
       Result(run.RunResult, RunRequestError),
     send_email: fn(email_message.EmailMessage) -> Result(Nil, SendEmailError),
     get_user_by_email: fn(String) ->
-      Result(List(sql.GetUserByEmail), DbQueryError),
+      Result(List(user.User), DbQueryError),
     get_next_job: fn(Timestamp, job.Status, job.Status) ->
       Result(option.Option(job.Job), DbQueryError),
     count_user_activities_by_ip_and_action: fn(
@@ -419,7 +420,7 @@ pub fn run_query(query: DbQuery(a)) -> Program(a) {
   }
 }
 
-pub fn db_get_user_by_email(email: String) -> Program(List(sql.GetUserByEmail)) {
+pub fn db_get_user_by_email(email: String) -> Program(List(user.User)) {
   run_query(DbGetUserByEmail(email:, next: identity))
 }
 
