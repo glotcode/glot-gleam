@@ -18,13 +18,14 @@ import glot_core/run
 import glot_core/user
 import glot_core/uuid_helpers
 import pog
+import youid/uuid
 import wisp
 
 pub fn from_context(ctx: context.Context) -> program.Handlers {
   program.Handlers(
     random_string: wisp.random_string,
     system_time: timestamp.system_time,
-    uuid_v7: fn() { uuid_helpers.v7_bit_array(ctx.timestamp) },
+    uuid_v7: fn() { uuid_helpers.v7(ctx.timestamp) },
     post_run_request: post_run_request,
     send_email: send_email,
     get_user_by_email: fn(email) { get_user_by_email(ctx, email) },
@@ -89,7 +90,7 @@ fn user_from_row(
   case email.from_string(ctx.regexp.is_email, row.email) {
     option.Some(valid_email) ->
       Ok(user.User(
-        id: row.id,
+        id: uuid_helpers.from_bit_array(row.id),
         email: valid_email,
         created_at: row.created_at,
       ))
@@ -152,7 +153,7 @@ fn get_job_from_row(row: sql.GetNextJob) -> Result(job.Job, program.DbQueryError
   )
 
   Ok(job.Job(
-    id: row.id,
+    id: uuid_helpers.from_bit_array(row.id),
     job_type: job_type,
     payload: row.payload,
     status: status,
@@ -176,7 +177,11 @@ fn run_command(
 
   case command {
     program.DbInsertUser(id:, email:, created_at:) ->
-      db_helpers.execute(db, sql.insert_user(id, email, created_at), to_error)
+      db_helpers.execute(
+        db,
+        sql.insert_user(uuid.to_bit_array(id), email, created_at),
+        to_error,
+      )
       |> result.map(fn(_) { Nil })
     program.DbInsertJob(job.Job(
       id: id,
@@ -196,7 +201,7 @@ fn run_command(
       db_helpers.execute(
         db,
         sql.insert_job(
-          id: id,
+          id: uuid.to_bit_array(id),
           job_type: job.job_type_to_string(job_type),
           payload: payload,
           status: job.status_to_string(status),
@@ -223,8 +228,8 @@ fn run_command(
       db_helpers.execute(
         db,
         sql.insert_login_token(
-          id: id,
-          user_id: user_id,
+          id: uuid.to_bit_array(id),
+          user_id: uuid.to_bit_array(user_id),
           token: token,
           created_at: created_at,
           used_at: used_at,
@@ -242,7 +247,7 @@ fn run_command(
       db_helpers.execute(
         db,
         sql.insert_user_activity(
-          id: id,
+          id: uuid.to_bit_array(id),
           action: action,
           ip: ip,
           session_token: session_token,
@@ -264,7 +269,7 @@ fn run_command(
       db_helpers.execute(
         db,
         sql.insert_log_entry(
-          id: id,
+          id: uuid.to_bit_array(id),
           created_at: created_at,
           action: action,
           duration_ns: duration_ns,
@@ -279,7 +284,7 @@ fn run_command(
     program.DbMarkJobDone(id: id, completed_at: completed_at) ->
       db_helpers.execute(
         db,
-        sql.mark_job_done(id, option.Some(completed_at)),
+        sql.mark_job_done(uuid.to_bit_array(id), option.Some(completed_at)),
         to_error,
       )
       |> result.map(fn(_) { Nil })
@@ -291,7 +296,12 @@ fn run_command(
     ) ->
       db_helpers.execute(
         db,
-        sql.reschedule_job(id, run_at, last_error, updated_at),
+        sql.reschedule_job(
+          uuid.to_bit_array(id),
+          run_at,
+          last_error,
+          updated_at,
+        ),
         to_error,
       )
       |> result.map(fn(_) { Nil })

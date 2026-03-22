@@ -2,6 +2,7 @@ import gleam/json
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/email_message
+import youid/uuid.{type Uuid}
 
 pub type JobType {
   SendEmailJob
@@ -48,7 +49,7 @@ pub fn status_from_string(value: String) -> Result(Status, String) {
 
 pub type Job {
   Job(
-    id: BitArray,
+    id: Uuid,
     job_type: JobType,
     payload: String,
     status: Status,
@@ -64,7 +65,7 @@ pub type Job {
   )
 }
 
-fn new(id: BitArray, job_type: JobType, now: Timestamp, payload: String) -> Job {
+fn new(id: Uuid, job_type: JobType, now: Timestamp, payload: String) -> Job {
   // TODO: we could make JobType a union type and deserialize the payload here
   Job(
     id: id,
@@ -84,7 +85,7 @@ fn new(id: BitArray, job_type: JobType, now: Timestamp, payload: String) -> Job 
 }
 
 pub fn send_email_job(
-  id: BitArray,
+  id: Uuid,
   now: Timestamp,
   email: email_message.EmailMessage,
 ) -> Job {

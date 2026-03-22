@@ -7,11 +7,12 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_backend/db_helpers
 import glot_backend/sql
 import pog
+import youid/uuid.{type Uuid}
 import wisp
 
 pub type LogEntry {
   LogEntry(
-    id: BitArray,
+    id: Uuid,
     created_at: Timestamp,
     action: String,
     duration_ns: Int,
@@ -65,7 +66,7 @@ fn insert_log_entry(db: pog.Connection, entry: LogEntry) -> Nil {
   case db_helpers.execute(
     db,
     sql.insert_log_entry(
-      id: id,
+      id: uuid.to_bit_array(id),
       created_at: created_at,
       action: action,
       duration_ns: duration_ns,

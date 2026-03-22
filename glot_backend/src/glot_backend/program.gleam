@@ -15,6 +15,7 @@ import glot_backend/sql
 import glot_core/rate_limit
 import glot_core/run
 import glot_core/user
+import youid/uuid.{type Uuid}
 
 pub type DbQueryError {
   DbQueryError(message: String)
@@ -66,24 +67,24 @@ pub type DbQuery(next) {
 }
 
 pub type DbCommand {
-  DbInsertUser(id: BitArray, email: String, created_at: Timestamp)
+  DbInsertUser(id: Uuid, email: String, created_at: Timestamp)
   DbInsertJob(job.Job)
   DbInsertLoginToken(
-    id: BitArray,
-    user_id: BitArray,
+    id: Uuid,
+    user_id: Uuid,
     token: String,
     created_at: Timestamp,
     used_at: option.Option(Timestamp),
   )
   DbInsertUserActivity(
-    id: BitArray,
+    id: Uuid,
     action: ApiAction,
     ip: option.Option(String),
     session_token: option.Option(String),
     created_at: Timestamp,
   )
   DbInsertLogEntry(
-    id: BitArray,
+    id: Uuid,
     created_at: Timestamp,
     action: String,
     duration_ns: Int,
@@ -92,9 +93,9 @@ pub type DbCommand {
     fields: String,
     effects: String,
   )
-  DbMarkJobDone(id: BitArray, completed_at: Timestamp)
+  DbMarkJobDone(id: Uuid, completed_at: Timestamp)
   DbRescheduleJob(
-    id: BitArray,
+    id: Uuid,
     run_at: Timestamp,
     last_error: option.Option(String),
     updated_at: Timestamp,
@@ -105,7 +106,7 @@ pub type Handlers {
   Handlers(
     random_string: fn(Int) -> String,
     system_time: fn() -> Timestamp,
-    uuid_v7: fn() -> BitArray,
+    uuid_v7: fn() -> Uuid,
     post_run_request: fn(context.Config, run.RunRequest) ->
       Result(run.RunResult, RunRequestError),
     send_email: fn(email_message.EmailMessage) -> Result(Nil, SendEmailError),
@@ -166,7 +167,7 @@ pub opaque type Program(a) {
   MeasureEffectDuration(EffectName, Int, Program(a))
   RandomString(Int, fn(String) -> Program(a))
   SystemTime(fn(Timestamp) -> Program(a))
-  UuidV7(fn(BitArray) -> Program(a))
+  UuidV7(fn(Uuid) -> Program(a))
   Log(String, log.Value, Program(a))
   AttemptPostRunRequest(
     context.Config,
@@ -367,7 +368,7 @@ pub fn measure_effect_duration(
   MeasureEffectDuration(effect_name, duration_ms, Done(Nil))
 }
 
-pub fn uuid_v7() -> Program(BitArray) {
+pub fn uuid_v7() -> Program(Uuid) {
   UuidV7(Done)
 }
 

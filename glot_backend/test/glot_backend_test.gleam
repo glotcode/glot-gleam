@@ -4,6 +4,7 @@ import gleeunit
 import glot_backend/api_action
 import glot_backend/job
 import glot_backend/program
+import youid/uuid
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -74,7 +75,7 @@ fn test_handlers() -> program.Handlers {
   program.Handlers(
     random_string: fn(_) { "random" },
     system_time: timestamp.system_time,
-    uuid_v7: fn() { <<0>> },
+    uuid_v7: fn() { uuid.nil },
     post_run_request: fn(_, _) {
       Error(program.InternalRunRequestError("unused in test"))
     },

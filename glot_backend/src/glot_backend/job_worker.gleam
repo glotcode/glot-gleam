@@ -12,6 +12,7 @@ import glot_backend/job
 import glot_backend/program
 import glot_backend/program/handlers as program_handlers
 import pog
+import youid/uuid.{type Uuid}
 import wisp
 
 const idle_poll_ms = 1000
@@ -122,7 +123,7 @@ fn process_job(ctx: context.Context, next_job: job.Job) -> program.Program(Nil) 
 
 fn process_send_email_job(
   ctx: context.Context,
-  id: BitArray,
+  id: Uuid,
   payload: String,
   attempts: Int,
 ) -> program.Program(Nil) {
