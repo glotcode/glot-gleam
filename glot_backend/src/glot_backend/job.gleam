@@ -1,9 +1,7 @@
 import gleam/json
 import gleam/option.{type Option}
-import gleam/result
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/email_message
-import glot_backend/sql
 
 pub type JobType {
   SendEmailJob
@@ -98,25 +96,4 @@ pub fn send_email_job(
       |> email_message.encode_message
       |> json.to_string,
   )
-}
-
-pub fn from_get_next_job(row: sql.GetNextJob) -> Result(Job, String) {
-  use status <- result.try(status_from_string(row.status))
-  use job_type <- result.try(job_type_from_string(row.job_type))
-
-  Ok(Job(
-    id: row.id,
-    job_type: job_type,
-    payload: row.payload,
-    status: status,
-    attempts: row.attempts,
-    max_attempts: row.max_attempts,
-    timeout_seconds: row.timeout_seconds,
-    run_at: row.run_at,
-    started_at: row.started_at,
-    completed_at: row.completed_at,
-    last_error: row.last_error,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  ))
 }

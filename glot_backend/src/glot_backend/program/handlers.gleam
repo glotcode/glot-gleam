@@ -135,12 +135,36 @@ fn get_next_job(
 
   case returned.rows {
     [] -> Ok(option.None)
-    [row] ->
-      job.from_get_next_job(row)
-      |> result.map(option.Some)
-      |> result.map_error(program.DbQueryError)
+    [row] -> get_job_from_row(row) |> result.map(option.Some)
     _ -> Error(program.DbQueryError("Expected at most one job row"))
   }
+}
+
+fn get_job_from_row(row: sql.GetNextJob) -> Result(job.Job, program.DbQueryError) {
+  use status <- result.try(
+    job.status_from_string(row.status)
+    |> result.map_error(program.DbQueryError),
+  )
+  use job_type <- result.try(
+    job.job_type_from_string(row.job_type)
+    |> result.map_error(program.DbQueryError),
+  )
+
+  Ok(job.Job(
+    id: row.id,
+    job_type: job_type,
+    payload: row.payload,
+    status: status,
+    attempts: row.attempts,
+    max_attempts: row.max_attempts,
+    timeout_seconds: row.timeout_seconds,
+    run_at: row.run_at,
+    started_at: row.started_at,
+    completed_at: row.completed_at,
+    last_error: row.last_error,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  ))
 }
 
 fn run_command(
