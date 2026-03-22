@@ -1,9 +1,9 @@
 import gleam/option
 import gleam/time/timestamp
 import gleeunit
+import glot_backend/api_action
 import glot_backend/job
 import glot_backend/program
-import glot_backend/sql
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -86,7 +86,7 @@ fn test_handlers() -> program.Handlers {
     count_user_activities_by_ip_and_action: fn(
       _: timestamp.Timestamp,
       _: option.Option(String),
-      _: sql.UserAction,
+      _: api_action.ApiAction,
     ) {
       Ok([])
     },

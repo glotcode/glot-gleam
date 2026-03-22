@@ -4,40 +4,8 @@
 import gleam/dynamic/decode
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
+import glot_backend/api_action.{type ApiAction}
 import parrot/dev
-
-pub type UserAction {
-  SendLoginTokenAction
-  LoginAction
-  RunSnippetAction
-  CreateSnippetAction
-  UpdateSnippetAction
-  DeleteSnippetAction
-}
-
-pub fn user_action_decoder() {
-  use variant <- decode.then(decode.string)
-  case variant {
-    "send_login_token_action" -> decode.success(SendLoginTokenAction)
-    "login_action" -> decode.success(LoginAction)
-    "run_snippet_action" -> decode.success(RunSnippetAction)
-    "create_snippet_action" -> decode.success(CreateSnippetAction)
-    "update_snippet_action" -> decode.success(UpdateSnippetAction)
-    "delete_snippet_action" -> decode.success(DeleteSnippetAction)
-    _ -> decode.failure(SendLoginTokenAction, "UserAction")
-  }
-}
-
-pub fn user_action_to_string(val: UserAction) {
-  case val {
-    SendLoginTokenAction -> "send_login_token_action"
-    LoginAction -> "login_action"
-    RunSnippetAction -> "run_snippet_action"
-    CreateSnippetAction -> "create_snippet_action"
-    UpdateSnippetAction -> "update_snippet_action"
-    DeleteSnippetAction -> "delete_snippet_action"
-  }
-}
 
 pub fn insert_login_token(
   id id: BitArray,
@@ -437,7 +405,7 @@ pub fn insert_user(
 
 pub fn insert_user_activity(
   id id: BitArray,
-  action action: UserAction,
+  action action: ApiAction,
   ip ip: Option(String),
   session_token session_token: Option(String),
   created_at created_at: Timestamp,
@@ -446,7 +414,7 @@ pub fn insert_user_activity(
     "INSERT INTO user_activities (id, action, ip, session_token, created_at) VALUES ($1, $2, $3, $4, $5)"
   #(sql, [
     dev.ParamBitArray(id),
-    dev.ParamString(user_action_to_string(action)),
+    dev.ParamString(api_action.to_db_string(action)),
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(session_token, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
@@ -534,7 +502,7 @@ pub type CountUserActivitiesByIpAndAction {
 pub fn count_user_activities_by_ip_and_action(
   created_at created_at: Timestamp,
   ip ip: Option(String),
-  action action: UserAction,
+  action action: ApiAction,
 ) {
   let sql =
     "SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and ip = $2 AND action = $3"
@@ -543,7 +511,7 @@ pub fn count_user_activities_by_ip_and_action(
     [
       dev.ParamTimestamp(created_at),
       dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-      dev.ParamString(user_action_to_string(action)),
+      dev.ParamString(api_action.to_db_string(action)),
     ],
     count_user_activities_by_ip_and_action_decoder(),
   )

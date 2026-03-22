@@ -56,18 +56,9 @@ CREATE INDEX idx_snippets_language ON snippets(language);
 
 -- USER ACTIVITIES
 
-create type user_action as enum (
-  'send_login_token_action',
-  'login_action',
-  'run_snippet_action',
-  'create_snippet_action',
-  'update_snippet_action',
-  'delete_snippet_action'
-);
-
 CREATE TABLE user_activities (
   id UUID PRIMARY KEY,
-  action user_action NOT NULL,
+  action TEXT NOT NULL,
   ip TEXT NULL,
   session_token TEXT NULL,
   created_at TIMESTAMPTZ NOT NULL

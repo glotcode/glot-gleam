@@ -6,6 +6,7 @@ import gleam/list
 import gleam/option
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
+import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
 import glot_backend/email_message
 import glot_backend/job
@@ -59,7 +60,7 @@ pub type DbQuery(next) {
   DbCountUserActivitiesByIpAndAction(
     created_at: Timestamp,
     ip: option.Option(String),
-    action: sql.UserAction,
+    action: ApiAction,
     next: fn(List(sql.CountUserActivitiesByIpAndAction)) -> next,
   )
 }
@@ -76,7 +77,7 @@ pub type DbCommand {
   )
   DbInsertUserActivity(
     id: BitArray,
-    action: sql.UserAction,
+    action: ApiAction,
     ip: option.Option(String),
     session_token: option.Option(String),
     created_at: Timestamp,
@@ -115,7 +116,7 @@ pub type Handlers {
     count_user_activities_by_ip_and_action: fn(
       Timestamp,
       option.Option(String),
-      sql.UserAction,
+      ApiAction,
     ) ->
       Result(List(sql.CountUserActivitiesByIpAndAction), DbQueryError),
     run_command: fn(DbCommand) -> Result(Nil, DbCommandError),
@@ -435,7 +436,7 @@ pub fn db_get_next_job(
 pub fn db_count_user_activities_by_ip_and_action(
   created_at created_at: Timestamp,
   ip ip: option.Option(String),
-  action action: sql.UserAction,
+  action action: ApiAction,
 ) -> Program(Int) {
   use rows <- and_then(
     run_query(DbCountUserActivitiesByIpAndAction(
@@ -456,7 +457,7 @@ pub fn enforce_ip_rate_limit(
   config config: rate_limit.Config,
   now now: Timestamp,
   ip ip: option.Option(String),
-  action action: sql.UserAction,
+  action action: ApiAction,
 ) -> Program(Nil) {
   use count <- and_then(db_count_user_activities_by_ip_and_action(
     created_at: rate_limit.start_time(config, now),

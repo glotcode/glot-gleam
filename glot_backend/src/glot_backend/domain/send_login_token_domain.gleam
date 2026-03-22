@@ -1,11 +1,11 @@
 import gleam/dynamic
 import gleam/list
 import gleam/option
+import glot_backend/api_action
 import glot_backend/context
 import glot_backend/email_message
 import glot_backend/job
 import glot_backend/program
-import glot_backend/sql
 import glot_core/auth
 import glot_core/email
 import glot_core/rate_limit
@@ -24,7 +24,7 @@ pub fn send_login_token(
     config: rate_limit.Config(time_unit: rate_limit.Daily, max_requests: 10),
     now: ctx.timestamp,
     ip: ctx.client_ip,
-    action: sql.SendLoginTokenAction,
+    action: api_action.SendLoginTokenAction,
   ))
 
   use user <- program.and_then(find_or_create_user(ctx, request.email))

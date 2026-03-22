@@ -7,6 +7,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/erlang/process
+import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
 import glot_backend/domain/run_domain
 import glot_backend/log_worker
@@ -95,18 +96,13 @@ fn handle_api_request(
   api_request: ApiRequest,
 ) -> program.Program(ApiResult) {
   case api_request.action {
-    RunAction ->
+    api_action.RunAction ->
       run_domain.handle_run(ctx, api_request.data)
       |> program.map(RunResultResponse)
-    SendLoginTokenAction ->
+    api_action.SendLoginTokenAction ->
       send_login_token_domain.send_login_token(ctx, api_request.data)
       |> program.map(fn(_) { NoContentResponse })
   }
-}
-
-pub type ApiAction {
-  RunAction
-  SendLoginTokenAction
 }
 
 pub type ApiRequest {
@@ -119,25 +115,9 @@ type ApiResult {
 }
 
 pub fn api_request_decoder() -> decode.Decoder(ApiRequest) {
-  use action <- decode.field("action", api_action_decoder())
+  use action <- decode.field("action", api_action.decoder())
   use data <- decode.field("data", decode.dynamic)
   decode.success(ApiRequest(action:, data:))
-}
-
-fn api_action_decoder() -> decode.Decoder(ApiAction) {
-  use action <- decode.then(decode.string)
-  case action {
-    "Run" -> decode.success(RunAction)
-    "SendLoginToken" -> decode.success(SendLoginTokenAction)
-    _ -> decode.failure(RunAction, "ApiAction")
-  }
-}
-
-pub fn api_action_to_string(action: ApiAction) {
-  case action {
-    RunAction -> "Run"
-    SendLoginTokenAction -> "SendLoginToken"
-  }
 }
 
 fn handle_decoded_request(
@@ -236,7 +216,7 @@ fn save_log_entry(
   log_worker.LogEntry(
     id: id,
     created_at: ctx.timestamp,
-    action: api_action_to_string(action),
+    action: api_action.to_string(action),
     duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
     user_agent: ctx.client_user_agent,
     error: error,
