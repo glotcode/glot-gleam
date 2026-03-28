@@ -4,7 +4,6 @@
 import gleam/dynamic/decode
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/api_action.{type ApiAction}
 import parrot/dev
 
 pub fn insert_login_token(
@@ -405,18 +404,18 @@ pub fn insert_user(
 
 pub fn insert_user_activity(
   id id: BitArray,
-  action action: ApiAction,
+  action action: String,
   ip ip: Option(String),
-  session_token session_token: Option(String),
+  user_id user_id: Option(BitArray),
   created_at created_at: Timestamp,
 ) {
   let sql =
-    "INSERT INTO user_activities (id, action, ip, session_token, created_at) VALUES ($1, $2, $3, $4, $5)"
+    "INSERT INTO user_activities (id, action, ip, user_id, created_at) VALUES ($1, $2, $3, $4, $5)"
   #(sql, [
     dev.ParamBitArray(id),
-    dev.ParamString(api_action.to_db_string(action)),
+    dev.ParamString(action),
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(session_token, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
     dev.ParamTimestamp(created_at),
   ])
 }
@@ -502,7 +501,7 @@ pub type CountUserActivitiesByIpAndAction {
 pub fn count_user_activities_by_ip_and_action(
   created_at created_at: Timestamp,
   ip ip: Option(String),
-  action action: ApiAction,
+  action action: String,
 ) {
   let sql =
     "SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and ip = $2 AND action = $3"
@@ -511,7 +510,7 @@ pub fn count_user_activities_by_ip_and_action(
     [
       dev.ParamTimestamp(created_at),
       dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-      dev.ParamString(api_action.to_db_string(action)),
+      dev.ParamString(action),
     ],
     count_user_activities_by_ip_and_action_decoder(),
   )

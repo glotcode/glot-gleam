@@ -60,12 +60,12 @@ CREATE TABLE user_activities (
   id UUID PRIMARY KEY,
   action TEXT NOT NULL,
   ip TEXT NULL,
-  session_token TEXT NULL,
+  user_id UUID NULL,
   created_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_user_activities_ip ON user_activities(ip);
-CREATE INDEX idx_user_activities_session_token ON user_activities(session_token);
+CREATE INDEX idx_user_activities_user_id ON user_activities(user_id);
 CREATE INDEX idx_user_activities_action ON user_activities(action);
 CREATE INDEX idx_user_activities_ts ON user_activities(created_at);
 

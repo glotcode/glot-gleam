@@ -5,7 +5,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/api_action.{type ApiAction}
+import glot_backend/api_action
 import glot_backend/context
 import glot_backend/crypto_helpers
 import glot_backend/db_helpers
@@ -105,14 +105,14 @@ fn count_user_activities_by_ip_and_action(
   ctx: context.Context,
   created_at: Timestamp,
   ip: option.Option(String),
-  action: ApiAction,
+  action: api_action.ApiAction,
 ) -> Result(List(sql.CountUserActivitiesByIpAndAction), program.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.count_user_activities_by_ip_and_action(
       created_at: created_at,
       ip: ip,
-      action: action,
+      action: api_action.to_db_string(action),
     ),
     fn(err) { program.DbQueryError(string.inspect(err)) },
   )
@@ -245,16 +245,16 @@ fn run_command(
       id: id,
       action: action,
       ip: ip,
-      session_token: session_token,
+      user_id: user_id,
       created_at: created_at,
     ) ->
       db_helpers.execute(
         db,
         sql.insert_user_activity(
           id: uuid.to_bit_array(id),
-          action: action,
+          action: api_action.to_db_string(action),
           ip: ip,
-          session_token: session_token,
+          user_id: option.map(user_id, uuid.to_bit_array),
           created_at: created_at,
         ),
         to_error,

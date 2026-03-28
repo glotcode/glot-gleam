@@ -80,7 +80,7 @@ pub type DbCommand {
     id: Uuid,
     action: ApiAction,
     ip: option.Option(String),
-    session_token: option.Option(String),
+    user_id: option.Option(Uuid),
     created_at: Timestamp,
   )
   DbInsertLogEntry(
@@ -472,7 +472,7 @@ pub fn enforce_ip_rate_limit(
       id: id,
       action: action,
       ip: ip,
-      session_token: option.None,
+      user_id: option.None,
       created_at: now,
     )),
   )
