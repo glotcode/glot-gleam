@@ -7,6 +7,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
+import glot_backend/crypto_helpers
 import glot_backend/db_helpers
 import glot_backend/email_message
 import glot_backend/http_client
@@ -19,11 +20,10 @@ import glot_core/user
 import glot_core/uuid_helpers
 import pog
 import youid/uuid
-import wisp
 
 pub fn from_context(ctx: context.Context) -> program.Handlers {
   program.Handlers(
-    random_string: wisp.random_string,
+    random_string: crypto_helpers.random_token,
     system_time: timestamp.system_time,
     uuid_v7: fn() { uuid_helpers.v7(ctx.timestamp) },
     post_run_request: post_run_request,
@@ -95,7 +95,9 @@ fn user_from_row(
         created_at: row.created_at,
       ))
     option.None ->
-      Error(program.DbQueryError("Invalid email format in user row: " <> row.email))
+      Error(program.DbQueryError(
+        "Invalid email format in user row: " <> row.email,
+      ))
   }
 }
 
@@ -142,7 +144,9 @@ fn get_next_job(
   }
 }
 
-fn get_job_from_row(row: sql.GetNextJob) -> Result(job.Job, program.DbQueryError) {
+fn get_job_from_row(
+  row: sql.GetNextJob,
+) -> Result(job.Job, program.DbQueryError) {
   use status <- result.try(
     job.status_from_string(row.status)
     |> result.map_error(program.DbQueryError),
