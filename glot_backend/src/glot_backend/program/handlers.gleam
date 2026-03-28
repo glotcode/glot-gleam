@@ -23,7 +23,7 @@ import youid/uuid
 
 pub fn from_context(ctx: context.Context) -> program.Handlers {
   program.Handlers(
-    random_string: crypto_helpers.random_token,
+    new_token: crypto_helpers.new_token,
     system_time: timestamp.system_time,
     uuid_v7: fn() { uuid_helpers.v7(ctx.timestamp) },
     post_run_request: post_run_request,

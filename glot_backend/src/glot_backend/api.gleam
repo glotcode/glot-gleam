@@ -234,7 +234,7 @@ fn save_log_entry(
 
 fn effect_name_to_string(effect_name: program.EffectName) -> String {
   case effect_name {
-    program.RandomStringEffect -> "random_string"
+    program.NewTokenEffect -> "new_token"
     program.SystemTimeEffect -> "system_time"
     program.UuidV7Effect -> "uuid_v7"
     program.LogEffect -> "log"

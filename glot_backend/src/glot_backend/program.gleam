@@ -110,7 +110,7 @@ pub type DbCommand {
 
 pub type Handlers {
   Handlers(
-    random_string: fn(Int) -> String,
+    new_token: fn(Int) -> String,
     system_time: fn() -> Timestamp,
     uuid_v7: fn() -> Uuid,
     post_run_request: fn(context.Config, run.RunRequest) ->
@@ -129,7 +129,7 @@ pub type Handlers {
 }
 
 pub type EffectName {
-  RandomStringEffect
+  NewTokenEffect
   SystemTimeEffect
   UuidV7Effect
   LogEffect
@@ -169,7 +169,7 @@ pub opaque type Program(a) {
   Done(a)
   Fail(Error)
   MeasureEffectDuration(EffectName, Int, Program(a))
-  RandomString(Int, fn(String) -> Program(a))
+  NewToken(Int, fn(String) -> Program(a))
   SystemTime(fn(Timestamp) -> Program(a))
   UuidV7(fn(Uuid) -> Program(a))
   Log(String, log.Value, Program(a))
@@ -218,13 +218,13 @@ fn run_with_state(
         handlers,
         add_effect_timings(state, name, duration_ns),
       )
-    RandomString(length, next) -> {
+    NewToken(length, next) -> {
       let started_at = now_ns()
-      let value = handlers.random_string(length)
+      let value = handlers.new_token(length)
       run_with_state(
         next(value),
         handlers,
-        measure_effect(state, RandomStringEffect, started_at),
+        measure_effect(state, NewTokenEffect, started_at),
       )
     }
     SystemTime(next) -> {
@@ -325,8 +325,8 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
     Fail(error) -> Fail(error)
     MeasureEffectDuration(name, duration_ms, next) ->
       MeasureEffectDuration(name, duration_ms, and_then(next, f))
-    RandomString(length, next) ->
-      RandomString(length, fn(value) { and_then(next(value), f) })
+    NewToken(length, next) ->
+      NewToken(length, fn(value) { and_then(next(value), f) })
     SystemTime(next) -> SystemTime(fn(value) { and_then(next(value), f) })
     UuidV7(next) -> UuidV7(fn(value) { and_then(next(value), f) })
     Log(key, value, next) -> Log(key, value, and_then(next, f))
@@ -357,8 +357,8 @@ pub fn decode_json(
   |> from_result(DecodeError)
 }
 
-pub fn random_string(length: Int) -> Program(String) {
-  RandomString(length, Done)
+pub fn new_token(length: Int) -> Program(String) {
+  NewToken(length, Done)
 }
 
 pub fn system_time() -> Program(Timestamp) {

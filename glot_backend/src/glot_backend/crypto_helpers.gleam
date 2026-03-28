@@ -5,7 +5,7 @@ import gleam/string
 
 const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
 
-pub fn random_token(length: Int) -> String {
+pub fn new_token(length: Int) -> String {
   case length <= 0 {
     True -> ""
     False ->

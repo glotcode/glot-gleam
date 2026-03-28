@@ -28,7 +28,7 @@ pub fn send_login_token(
   ))
 
   use user <- program.and_then(find_or_create_user(ctx, request.email))
-  use token <- program.and_then(program.random_string(10))
+  use token <- program.and_then(program.new_token(10))
   use login_token_id <- program.and_then(program.uuid_v7())
   use job_id <- program.and_then(program.uuid_v7())
 

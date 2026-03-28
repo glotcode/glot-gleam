@@ -48,7 +48,7 @@ pub fn measurement_aggregation_test() {
 pub fn measures_effects_in_success_test() {
   let handlers = test_handlers()
   let measured_program = {
-    use _ <- program.and_then(program.random_string(5))
+    use _ <- program.and_then(program.new_token(5))
     program.succeed("ok")
   }
   let #(
@@ -57,14 +57,14 @@ pub fn measures_effects_in_success_test() {
   ) = program.run(measured_program, handlers)
 
   assert run_result == Ok("ok")
-  let assert [#(program.RandomStringEffect, duration_ms)] = effect_timings
+  let assert [#(program.NewTokenEffect, duration_ms)] = effect_timings
   assert duration_ms >= 0
 }
 
 pub fn measures_effects_in_error_test() {
   let handlers = test_handlers()
   let failing_program = {
-    use _ <- program.and_then(program.random_string(5))
+    use _ <- program.and_then(program.new_token(5))
     program.fail(program.EmailInvalidError("bad"))
   }
   let #(
@@ -73,13 +73,13 @@ pub fn measures_effects_in_error_test() {
   ) = program.run(failing_program, handlers)
 
   assert run_result == Error(program.EmailInvalidError("bad"))
-  let assert [#(program.RandomStringEffect, duration_ms)] = effect_timings
+  let assert [#(program.NewTokenEffect, duration_ms)] = effect_timings
   assert duration_ms >= 0
 }
 
 fn test_handlers() -> program.Handlers {
   program.Handlers(
-    random_string: fn(_) { "random" },
+    new_token: fn(_) { "random" },
     system_time: timestamp.system_time,
     uuid_v7: fn() { uuid.nil },
     post_run_request: fn(_, _) {
