@@ -1,2 +1,2 @@
--- name: CountUserActivitiesByIpAndAction :one
+-- name: CountUserActivitiesByIp :one
 SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and ip = $2 AND action = $3;

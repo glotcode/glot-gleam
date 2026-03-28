@@ -32,8 +32,10 @@ pub fn measurement_aggregation_test() {
     program.succeed("ok")
   }
 
-  let #(run_result, program.State(effect_timings: effect_timings, log_fields: _)) =
-    program.run(measured_program, handlers)
+  let #(
+    run_result,
+    program.State(effect_timings: effect_timings, log_fields: _),
+  ) = program.run(measured_program, handlers)
 
   assert run_result == Ok("ok")
   assert effect_timings
@@ -49,8 +51,10 @@ pub fn measures_effects_in_success_test() {
     use _ <- program.and_then(program.random_string(5))
     program.succeed("ok")
   }
-  let #(run_result, program.State(effect_timings: effect_timings, log_fields: _)) =
-    program.run(measured_program, handlers)
+  let #(
+    run_result,
+    program.State(effect_timings: effect_timings, log_fields: _),
+  ) = program.run(measured_program, handlers)
 
   assert run_result == Ok("ok")
   let assert [#(program.RandomStringEffect, duration_ms)] = effect_timings
@@ -63,8 +67,10 @@ pub fn measures_effects_in_error_test() {
     use _ <- program.and_then(program.random_string(5))
     program.fail(program.EmailInvalidError("bad"))
   }
-  let #(run_result, program.State(effect_timings: effect_timings, log_fields: _)) =
-    program.run(failing_program, handlers)
+  let #(
+    run_result,
+    program.State(effect_timings: effect_timings, log_fields: _),
+  ) = program.run(failing_program, handlers)
 
   assert run_result == Error(program.EmailInvalidError("bad"))
   let assert [#(program.RandomStringEffect, duration_ms)] = effect_timings
@@ -79,14 +85,23 @@ fn test_handlers() -> program.Handlers {
     post_run_request: fn(_, _) {
       Error(program.InternalRunRequestError("unused in test"))
     },
-    send_email: fn(_) { Error(program.InternalSendEmailError("unused in test")) },
+    send_email: fn(_) {
+      Error(program.InternalSendEmailError("unused in test"))
+    },
     get_user_by_email: fn(_) { Ok([]) },
     get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
       Ok(option.None)
     },
-    count_user_activities_by_ip_and_action: fn(
+    count_user_activities_by_ip: fn(
       _: timestamp.Timestamp,
       _: option.Option(String),
+      _: api_action.ApiAction,
+    ) {
+      Ok([])
+    },
+    count_user_activities_by_user: fn(
+      _: timestamp.Timestamp,
+      _: option.Option(uuid.Uuid),
       _: api_action.ApiAction,
     ) {
       Ok([])

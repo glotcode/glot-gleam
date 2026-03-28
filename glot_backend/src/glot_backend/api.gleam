@@ -1,18 +1,18 @@
 import gleam/dynamic
 import gleam/dynamic/decode
+import gleam/erlang/process
 import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
-import gleam/erlang/process
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
 import glot_backend/domain/run_domain
-import glot_backend/log_worker
 import glot_backend/domain/send_login_token_domain
 import glot_backend/log
+import glot_backend/log_worker
 import glot_backend/program
 import glot_backend/program/handlers as program_handlers
 import glot_core/run
@@ -140,7 +140,14 @@ fn handle_decoded_request(
     handle_api_request(ctx, api_request)
     |> program.run(handlers)
 
-  let _ = insert_log_entry(ctx, log_worker_subject, state, api_request.action, api_result)
+  let _ =
+    insert_log_entry(
+      ctx,
+      log_worker_subject,
+      state,
+      api_request.action,
+      api_result,
+    )
 
   Ok(result_to_response(api_result))
 }
@@ -248,8 +255,8 @@ fn db_query_name_to_string(query_name: program.DbQueryName) -> String {
   case query_name {
     program.DbGetUserByEmailQuery -> "db_get_user_by_email"
     program.DbGetNextJobQuery -> "db_get_next_job"
-    program.DbCountUserActivitiesByIpAndActionQuery ->
-      "db_count_user_activities_by_ip_and_action"
+    program.DbCountUserActivitiesByIpQuery -> "db_count_user_activities_by_ip"
+    program.DbCountUserActivitiesByUserQuery -> "db_count_user_activities_by_user"
   }
 }
 

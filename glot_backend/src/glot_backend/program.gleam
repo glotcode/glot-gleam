@@ -58,11 +58,17 @@ pub type DbQuery(next) {
     running_status: job.Status,
     next: fn(option.Option(job.Job)) -> next,
   )
-  DbCountUserActivitiesByIpAndAction(
+  DbCountUserActivitiesByIp(
     created_at: Timestamp,
     ip: option.Option(String),
     action: ApiAction,
-    next: fn(List(sql.CountUserActivitiesByIpAndAction)) -> next,
+    next: fn(List(sql.CountUserActivitiesByIp)) -> next,
+  )
+  DbCountUserActivitiesByUser(
+    created_at: Timestamp,
+    user_id: option.Option(Uuid),
+    action: ApiAction,
+    next: fn(List(sql.CountUserActivitiesByUser)) -> next,
   )
 }
 
@@ -110,16 +116,13 @@ pub type Handlers {
     post_run_request: fn(context.Config, run.RunRequest) ->
       Result(run.RunResult, RunRequestError),
     send_email: fn(email_message.EmailMessage) -> Result(Nil, SendEmailError),
-    get_user_by_email: fn(String) ->
-      Result(List(user.User), DbQueryError),
+    get_user_by_email: fn(String) -> Result(List(user.User), DbQueryError),
     get_next_job: fn(Timestamp, job.Status, job.Status) ->
       Result(option.Option(job.Job), DbQueryError),
-    count_user_activities_by_ip_and_action: fn(
-      Timestamp,
-      option.Option(String),
-      ApiAction,
-    ) ->
-      Result(List(sql.CountUserActivitiesByIpAndAction), DbQueryError),
+    count_user_activities_by_ip: fn(Timestamp, option.Option(String), ApiAction) ->
+      Result(List(sql.CountUserActivitiesByIp), DbQueryError),
+    count_user_activities_by_user: fn(Timestamp, option.Option(Uuid), ApiAction) ->
+      Result(List(sql.CountUserActivitiesByUser), DbQueryError),
     run_command: fn(DbCommand) -> Result(Nil, DbCommandError),
     run_in_transaction: fn(List(DbCommand)) -> Result(Nil, DbTransactionError),
   )
@@ -141,7 +144,8 @@ pub type EffectName {
 pub type DbQueryName {
   DbGetUserByEmailQuery
   DbGetNextJobQuery
-  DbCountUserActivitiesByIpAndActionQuery
+  DbCountUserActivitiesByIpQuery
+  DbCountUserActivitiesByUserQuery
 }
 
 pub type DbCommandName {
@@ -434,15 +438,35 @@ pub fn db_get_next_job(
   run_query(DbGetNextJob(now:, pending_status:, running_status:, next: identity))
 }
 
-pub fn db_count_user_activities_by_ip_and_action(
+pub fn db_count_user_activities_by_ip(
   created_at created_at: Timestamp,
   ip ip: option.Option(String),
   action action: ApiAction,
 ) -> Program(Int) {
   use rows <- and_then(
-    run_query(DbCountUserActivitiesByIpAndAction(
+    run_query(DbCountUserActivitiesByIp(
       created_at: created_at,
       ip: ip,
+      action: action,
+      next: identity,
+    )),
+  )
+
+  case list.first(rows) |> option.from_result() {
+    option.Some(row) -> Done(row.count)
+    option.None -> Done(0)
+  }
+}
+
+pub fn db_count_user_activities_by_user(
+  created_at created_at: Timestamp,
+  user_id user_id: option.Option(Uuid),
+  action action: ApiAction,
+) -> Program(Int) {
+  use rows <- and_then(
+    run_query(DbCountUserActivitiesByUser(
+      created_at: created_at,
+      user_id: user_id,
       action: action,
       next: identity,
     )),
@@ -460,7 +484,7 @@ pub fn enforce_ip_rate_limit(
   ip ip: option.Option(String),
   action action: ApiAction,
 ) -> Program(Nil) {
-  use count <- and_then(db_count_user_activities_by_ip_and_action(
+  use count <- and_then(db_count_user_activities_by_ip(
     created_at: rate_limit.start_time(config, now),
     ip: ip,
     action: action,
@@ -521,8 +545,11 @@ fn run_db_query(
     DbGetNextJob(now:, pending_status:, running_status:, next:) ->
       handlers.get_next_job(now, pending_status, running_status)
       |> result.map(next)
-    DbCountUserActivitiesByIpAndAction(created_at:, ip:, action:, next:) ->
-      handlers.count_user_activities_by_ip_and_action(created_at, ip, action)
+    DbCountUserActivitiesByIp(created_at:, ip:, action:, next:) ->
+      handlers.count_user_activities_by_ip(created_at, ip, action)
+      |> result.map(next)
+    DbCountUserActivitiesByUser(created_at:, user_id:, action:, next:) ->
+      handlers.count_user_activities_by_user(created_at, user_id, action)
       |> result.map(next)
   }
 }
@@ -538,10 +565,17 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
         running_status: running_status,
         next: fn(value) { f(next(value)) },
       )
-    DbCountUserActivitiesByIpAndAction(created_at:, ip:, action:, next:) ->
-      DbCountUserActivitiesByIpAndAction(
+    DbCountUserActivitiesByIp(created_at:, ip:, action:, next:) ->
+      DbCountUserActivitiesByIp(
         created_at: created_at,
         ip: ip,
+        action: action,
+        next: fn(value) { f(next(value)) },
+      )
+    DbCountUserActivitiesByUser(created_at:, user_id:, action:, next:) ->
+      DbCountUserActivitiesByUser(
+        created_at: created_at,
+        user_id: user_id,
         action: action,
         next: fn(value) { f(next(value)) },
       )
@@ -552,8 +586,8 @@ fn db_query_name(query: DbQuery(a)) -> DbQueryName {
   case query {
     DbGetUserByEmail(_, _) -> DbGetUserByEmailQuery
     DbGetNextJob(_, _, _, _) -> DbGetNextJobQuery
-    DbCountUserActivitiesByIpAndAction(_, _, _, _) ->
-      DbCountUserActivitiesByIpAndActionQuery
+    DbCountUserActivitiesByIp(_, _, _, _) -> DbCountUserActivitiesByIpQuery
+    DbCountUserActivitiesByUser(_, _, _, _) -> DbCountUserActivitiesByUserQuery
   }
 }
 

@@ -271,6 +271,35 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   ))
 }
 
+pub type CountUserActivitiesByUser {
+  CountUserActivitiesByUser(count: Int)
+}
+
+pub fn count_user_activities_by_user(
+  created_at created_at: Timestamp,
+  user_id user_id: Option(BitArray),
+  action action: String,
+) {
+  let sql =
+    "SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and user_id = $2 AND action = $3"
+  #(
+    sql,
+    [
+      dev.ParamTimestamp(created_at),
+      dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamString(action),
+    ],
+    count_user_activities_by_user_decoder(),
+  )
+}
+
+pub fn count_user_activities_by_user_decoder() -> decode.Decoder(
+  CountUserActivitiesByUser,
+) {
+  use count <- decode.field(0, decode.int)
+  decode.success(CountUserActivitiesByUser(count:))
+}
+
 pub fn update_snippet(
   user_id user_id: BitArray,
   language language: String,
@@ -494,35 +523,6 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
   ))
 }
 
-pub type CountUserActivitiesByIpAndAction {
-  CountUserActivitiesByIpAndAction(count: Int)
-}
-
-pub fn count_user_activities_by_ip_and_action(
-  created_at created_at: Timestamp,
-  ip ip: Option(String),
-  action action: String,
-) {
-  let sql =
-    "SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and ip = $2 AND action = $3"
-  #(
-    sql,
-    [
-      dev.ParamTimestamp(created_at),
-      dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-      dev.ParamString(action),
-    ],
-    count_user_activities_by_ip_and_action_decoder(),
-  )
-}
-
-pub fn count_user_activities_by_ip_and_action_decoder() -> decode.Decoder(
-  CountUserActivitiesByIpAndAction,
-) {
-  use count <- decode.field(0, decode.int)
-  decode.success(CountUserActivitiesByIpAndAction(count:))
-}
-
 pub fn insert_session(
   id id: BitArray,
   user_id user_id: BitArray,
@@ -566,6 +566,35 @@ WHERE id = $1"
     dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(updated_at),
   ])
+}
+
+pub type CountUserActivitiesByIp {
+  CountUserActivitiesByIp(count: Int)
+}
+
+pub fn count_user_activities_by_ip(
+  created_at created_at: Timestamp,
+  ip ip: Option(String),
+  action action: String,
+) {
+  let sql =
+    "SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and ip = $2 AND action = $3"
+  #(
+    sql,
+    [
+      dev.ParamTimestamp(created_at),
+      dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
+      dev.ParamString(action),
+    ],
+    count_user_activities_by_ip_decoder(),
+  )
+}
+
+pub fn count_user_activities_by_ip_decoder() -> decode.Decoder(
+  CountUserActivitiesByIp,
+) {
+  use count <- decode.field(0, decode.int)
+  decode.success(CountUserActivitiesByIp(count:))
 }
 
 pub fn update_login_token(

@@ -32,8 +32,11 @@ pub fn from_context(ctx: context.Context) -> program.Handlers {
     get_next_job: fn(now, pending_status, running_status) {
       get_next_job(ctx, now, pending_status, running_status)
     },
-    count_user_activities_by_ip_and_action: fn(created_at, ip, action) {
-      count_user_activities_by_ip_and_action(ctx, created_at, ip, action)
+    count_user_activities_by_ip: fn(created_at, ip, action) {
+      count_user_activities_by_ip(ctx, created_at, ip, action)
+    },
+    count_user_activities_by_user: fn(created_at, user_id, action) {
+      count_user_activities_by_user(ctx, created_at, user_id, action)
     },
     run_command: fn(command) { run_command(ctx.db, command) },
     run_in_transaction: fn(commands) { run_in_transaction(ctx.db, commands) },
@@ -101,17 +104,35 @@ fn user_from_row(
   }
 }
 
-fn count_user_activities_by_ip_and_action(
+fn count_user_activities_by_ip(
   ctx: context.Context,
   created_at: Timestamp,
   ip: option.Option(String),
   action: api_action.ApiAction,
-) -> Result(List(sql.CountUserActivitiesByIpAndAction), program.DbQueryError) {
+) -> Result(List(sql.CountUserActivitiesByIp), program.DbQueryError) {
   db_helpers.query(
     ctx.db,
-    sql.count_user_activities_by_ip_and_action(
+    sql.count_user_activities_by_ip(
       created_at: created_at,
       ip: ip,
+      action: api_action.to_db_string(action),
+    ),
+    fn(err) { program.DbQueryError(string.inspect(err)) },
+  )
+  |> result.map(fn(returned) { returned.rows })
+}
+
+fn count_user_activities_by_user(
+  ctx: context.Context,
+  created_at: Timestamp,
+  user_id: option.Option(uuid.Uuid),
+  action: api_action.ApiAction,
+) -> Result(List(sql.CountUserActivitiesByUser), program.DbQueryError) {
+  db_helpers.query(
+    ctx.db,
+    sql.count_user_activities_by_user(
+      created_at: created_at,
+      user_id: option.map(user_id, uuid.to_bit_array),
       action: api_action.to_db_string(action),
     ),
     fn(err) { program.DbQueryError(string.inspect(err)) },
