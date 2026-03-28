@@ -1,5 +1,4 @@
 import gleam/dynamic
-import gleam/list
 import gleam/option
 import glot_backend/api_action
 import glot_backend/context
@@ -53,11 +52,9 @@ fn find_or_create_user(
   ctx: context.Context,
   user_email: email.Email,
 ) -> program.Program(user.User) {
-  use rows <- program.and_then(
-    program.db_get_user_by_email(email.to_string(user_email)),
-  )
+  use maybe_user <- program.and_then(program.db_get_user_by_email(user_email))
 
-  case list.first(rows) |> option.from_result() {
+  case maybe_user {
     option.Some(existing_user) -> program.succeed(existing_user)
     option.None -> {
       use user_id <- program.and_then(program.uuid_v7())

@@ -13,6 +13,7 @@ Repository instructions for future agent sessions.
 - Prefer domain types from `glot_core` over duplicating equivalent backend-local types.
 - `glot_backend/program/handlers.gleam` is the boundary where SQL rows should be converted into domain types.
 - Keep generated SQL row types confined to the DB layer when possible.
+- Never import `glot_backend/sql` from domain modules. Domain modules should not depend on generated SQL row types or query-layer types; convert at the DB/program handler boundary first.
 - Imports should only import the type that matches the module name. Example: from `glot_backend/api_action`, only import `ApiAction`; do not import constructors like `RunAction` or `SendLoginTokenAction` directly.
 
 ## Generated Files

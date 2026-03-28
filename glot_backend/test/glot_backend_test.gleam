@@ -88,7 +88,8 @@ fn test_handlers() -> program.Handlers {
     send_email: fn(_) {
       Error(program.InternalSendEmailError("unused in test"))
     },
-    get_user_by_email: fn(_) { Ok([]) },
+    get_user_by_email: fn(_) { Ok(option.None) },
+    list_login_tokens_by_user: fn(_, _) { Ok([]) },
     get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
       Ok(option.None)
     },

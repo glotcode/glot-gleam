@@ -28,8 +28,7 @@ CREATE TABLE sessions (
   user_id UUID NOT NULL,
   token TEXT NOT NULL UNIQUE,
   ip TEXT NULL,
-  user_agent TEXT NOT NULL,
-  country TEXT NOT NULL,
+  user_agent TEXT NULL,
   created_at TIMESTAMPTZ NOT NULL
 );
 

@@ -418,6 +418,43 @@ WHERE id = $1"
   ])
 }
 
+pub type ListLoginTokensByUser {
+  ListLoginTokensByUser(
+    id: BitArray,
+    user_id: BitArray,
+    token: String,
+    created_at: Timestamp,
+    used_at: Option(Timestamp),
+  )
+}
+
+pub fn list_login_tokens_by_user(user_id user_id: BitArray, limit limit: Int) {
+  let sql =
+    "SELECT id, user_id, token, created_at, used_at FROM login_tokens WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2"
+  #(
+    sql,
+    [dev.ParamBitArray(user_id), dev.ParamInt(limit)],
+    list_login_tokens_by_user_decoder(),
+  )
+}
+
+pub fn list_login_tokens_by_user_decoder() -> decode.Decoder(
+  ListLoginTokensByUser,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use user_id <- decode.field(1, decode.bit_array)
+  use token <- decode.field(2, decode.string)
+  use created_at <- decode.field(3, dev.datetime_decoder())
+  use used_at <- decode.field(4, decode.optional(dev.datetime_decoder()))
+  decode.success(ListLoginTokensByUser(
+    id:,
+    user_id:,
+    token:,
+    created_at:,
+    used_at:,
+  ))
+}
+
 pub fn insert_user(
   id id: BitArray,
   email email: String,
@@ -449,58 +486,20 @@ pub fn insert_user_activity(
   ])
 }
 
-pub type ListUnusedLoginTokensByUser {
-  ListUnusedLoginTokensByUser(
-    id: BitArray,
-    user_id: BitArray,
-    token: String,
-    created_at: Timestamp,
-    used_at: Option(Timestamp),
-  )
-}
-
-pub fn list_unused_login_tokens_by_user(user_id user_id: BitArray) {
-  let sql =
-    "SELECT id, user_id, token, created_at, used_at FROM login_tokens WHERE user_id = $1 AND used_at IS NULL ORDER BY created_at DESC"
-  #(
-    sql,
-    [dev.ParamBitArray(user_id)],
-    list_unused_login_tokens_by_user_decoder(),
-  )
-}
-
-pub fn list_unused_login_tokens_by_user_decoder() -> decode.Decoder(
-  ListUnusedLoginTokensByUser,
-) {
-  use id <- decode.field(0, decode.bit_array)
-  use user_id <- decode.field(1, decode.bit_array)
-  use token <- decode.field(2, decode.string)
-  use created_at <- decode.field(3, dev.datetime_decoder())
-  use used_at <- decode.field(4, decode.optional(dev.datetime_decoder()))
-  decode.success(ListUnusedLoginTokensByUser(
-    id:,
-    user_id:,
-    token:,
-    created_at:,
-    used_at:,
-  ))
-}
-
 pub type GetSessionByToken {
   GetSessionByToken(
     id: BitArray,
     user_id: BitArray,
     token: String,
     ip: Option(String),
-    user_agent: String,
-    country: String,
+    user_agent: Option(String),
     created_at: Timestamp,
   )
 }
 
 pub fn get_session_by_token(token token: String) {
   let sql =
-    "SELECT id, user_id, token, ip, user_agent, country, created_at FROM sessions WHERE token = $1"
+    "SELECT id, user_id, token, ip, user_agent, created_at FROM sessions WHERE token = $1"
   #(sql, [dev.ParamString(token)], get_session_by_token_decoder())
 }
 
@@ -509,16 +508,14 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
   use user_id <- decode.field(1, decode.bit_array)
   use token <- decode.field(2, decode.string)
   use ip <- decode.field(3, decode.optional(decode.string))
-  use user_agent <- decode.field(4, decode.string)
-  use country <- decode.field(5, decode.string)
-  use created_at <- decode.field(6, dev.datetime_decoder())
+  use user_agent <- decode.field(4, decode.optional(decode.string))
+  use created_at <- decode.field(5, dev.datetime_decoder())
   decode.success(GetSessionByToken(
     id:,
     user_id:,
     token:,
     ip:,
     user_agent:,
-    country:,
     created_at:,
   ))
 }
@@ -528,19 +525,17 @@ pub fn insert_session(
   user_id user_id: BitArray,
   token token: String,
   ip ip: Option(String),
-  user_agent user_agent: String,
-  country country: String,
+  user_agent user_agent: Option(String),
   created_at created_at: Timestamp,
 ) {
   let sql =
-    "INSERT INTO sessions (id, user_id, token, ip, user_agent, country, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+    "INSERT INTO sessions (id, user_id, token, ip, user_agent, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamBitArray(user_id),
     dev.ParamString(token),
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-    dev.ParamString(user_agent),
-    dev.ParamString(country),
+    dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
   ])
 }

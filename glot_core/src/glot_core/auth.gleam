@@ -1,7 +1,20 @@
 import gleam/dynamic/decode
 import gleam/json
+import gleam/option.{type Option}
 import gleam/regexp
+import gleam/time/timestamp.{type Timestamp}
 import glot_core/email
+import youid/uuid.{type Uuid}
+
+pub type LoginToken {
+  LoginToken(
+    id: Uuid,
+    user_id: Uuid,
+    token: String,
+    created_at: Timestamp,
+    used_at: Option(Timestamp),
+  )
+}
 
 pub type LoginTokenRequest {
   LoginTokenRequest(email: email.Email)

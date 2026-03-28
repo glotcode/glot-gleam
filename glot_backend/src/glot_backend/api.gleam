@@ -9,6 +9,7 @@ import gleam/result
 import gleam/string
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
+import glot_backend/domain/login_domain
 import glot_backend/domain/run_domain
 import glot_backend/domain/send_login_token_domain
 import glot_backend/log
@@ -25,15 +26,18 @@ pub fn handle_request(
   req: wisp.Request,
 ) -> wisp.Response {
   use json_body <- wisp.require_json(req)
-  case handle_decoded_request(ctx, log_worker_subject, json_body) {
+  case handle_decoded_request(ctx, log_worker_subject, req, json_body) {
     Ok(response) -> response
     Error(response) -> response
   }
 }
 
-fn result_to_response(result: Result(ApiResult, program.Error)) -> wisp.Response {
+fn result_to_response(
+  request: wisp.Request,
+  result: Result(ApiResult, program.Error),
+) -> wisp.Response {
   case result {
-    Ok(response) -> api_result_to_response(response)
+    Ok(response) -> api_result_to_response(request, response)
     Error(err) -> error_to_response(err)
   }
 }
@@ -66,6 +70,21 @@ fn error_to_response(error: program.Error) -> wisp.Response {
       wisp.log_error("Transaction error: " <> message)
       error_response("transaction_error", "Transaction failed")
     }
+    program.LoginError(login_error) ->
+      case login_error {
+        program.InvalidTokenError -> {
+          wisp.log_error("Login error: invalid token")
+          error_response("login_error", "Invalid login token")
+        }
+        program.TokenUsedError -> {
+          wisp.log_error("Login error: token used")
+          error_response("login_error", "Login token already used")
+        }
+        program.TokenExpiredError -> {
+          wisp.log_error("Login error: token expired")
+          error_response("login_error", "Login token expired")
+        }
+      }
     program.SendEmailError(send_email_error) ->
       case send_email_error {
         program.PublicSendEmailError(message: message) -> {
@@ -102,6 +121,9 @@ fn handle_api_request(
     api_action.SendLoginTokenAction ->
       send_login_token_domain.send_login_token(ctx, api_request.data)
       |> program.map(fn(_) { NoContentResponse })
+    api_action.LoginAction ->
+      login_domain.login(ctx, api_request.data)
+      |> program.map(LoginResponse)
   }
 }
 
@@ -111,6 +133,7 @@ pub type ApiRequest {
 
 type ApiResult {
   RunResultResponse(run.RunResult)
+  LoginResponse(session_token: String)
   NoContentResponse
 }
 
@@ -123,6 +146,7 @@ pub fn api_request_decoder() -> decode.Decoder(ApiRequest) {
 fn handle_decoded_request(
   ctx: context.Context,
   log_worker_subject: process.Subject(log_worker.Message),
+  req: wisp.Request,
   json_body: dynamic.Dynamic,
 ) -> Result(wisp.Response, wisp.Response) {
   use api_request <- result.try(
@@ -149,13 +173,23 @@ fn handle_decoded_request(
       api_result,
     )
 
-  Ok(result_to_response(api_result))
+  Ok(result_to_response(req, api_result))
 }
 
-fn api_result_to_response(result: ApiResult) -> wisp.Response {
+fn api_result_to_response(req: wisp.Request, result: ApiResult) -> wisp.Response {
   case result {
     RunResultResponse(run_result) -> {
       success_response(run.encode_run_result(run_result))
+    }
+    LoginResponse(session_token) -> {
+      success_response(json.null())
+      |> wisp.set_cookie(
+        request: req,
+        name: "session",
+        value: session_token,
+        security: wisp.Signed,
+        max_age: 60 * 60,
+      )
     }
     NoContentResponse -> success_response(json.null())
   }
@@ -254,9 +288,11 @@ fn effect_name_to_string(effect_name: program.EffectName) -> String {
 fn db_query_name_to_string(query_name: program.DbQueryName) -> String {
   case query_name {
     program.DbGetUserByEmailQuery -> "db_get_user_by_email"
+    program.DbListLoginTokensByUserQuery -> "db_list_login_tokens_by_user"
     program.DbGetNextJobQuery -> "db_get_next_job"
     program.DbCountUserActivitiesByIpQuery -> "db_count_user_activities_by_ip"
-    program.DbCountUserActivitiesByUserQuery -> "db_count_user_activities_by_user"
+    program.DbCountUserActivitiesByUserQuery ->
+      "db_count_user_activities_by_user"
   }
 }
 
@@ -264,7 +300,9 @@ fn db_command_name_to_string(command_name: program.DbCommandName) -> String {
   case command_name {
     program.DbInsertUserCommand -> "db_insert_user"
     program.DbInsertJobCommand -> "db_insert_job"
+    program.DbInsertSessionCommand -> "db_insert_session"
     program.DbInsertLoginTokenCommand -> "db_insert_login_token"
+    program.DbUpdateLoginTokenCommand -> "db_update_login_token"
     program.DbInsertUserActivityCommand -> "db_insert_user_activity"
     program.DbInsertLogEntryCommand -> "db_insert_log_entry"
     program.DbMarkJobDoneCommand -> "db_mark_job_done"
@@ -296,6 +334,9 @@ fn program_error_to_message(err: program.Error) -> String {
       "command_error:" <> message
     program.TransactionError(program.DbTransactionError(message: message)) ->
       "transaction_error:" <> message
+    program.LoginError(program.InvalidTokenError) -> "login_error:invalid_token"
+    program.LoginError(program.TokenUsedError) -> "login_error:token_used"
+    program.LoginError(program.TokenExpiredError) -> "login_error:token_expired"
     program.SendEmailError(program.PublicSendEmailError(message: message)) ->
       "send_email_public:" <> message
     program.SendEmailError(program.InternalSendEmailError(message: message)) ->

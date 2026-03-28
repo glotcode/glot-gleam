@@ -1,0 +1,115 @@
+import gleam/dynamic
+import gleam/function
+import gleam/list
+import gleam/option
+import gleam/time/timestamp
+import glot_backend/api_action
+import glot_backend/context
+import glot_backend/program
+import glot_core/auth
+import glot_core/rate_limit
+import glot_core/user
+
+pub fn login(
+  ctx: context.Context,
+  json_body: dynamic.Dynamic,
+) -> program.Program(String) {
+  use request <- program.and_then(program.decode_json(
+    json_body,
+    auth.login_request_decoder(ctx.regexp.is_email),
+  ))
+
+  use _ <- program.and_then(program.enforce_ip_rate_limit(
+    config: rate_limit.Config(time_unit: rate_limit.Daily, max_requests: 100),
+    now: ctx.timestamp,
+    ip: ctx.client_ip,
+    action: api_action.LoginAction,
+  ))
+
+  use maybe_user <- program.and_then(program.db_get_user_by_email(request.email))
+  use user <- program.and_then(program.from_result(
+    user_from_option(maybe_user),
+    function.identity,
+  ))
+
+  use tokens <- program.and_then(program.db_list_login_tokens_by_user(
+    user.id,
+    10,
+  ))
+  use matching_token <- program.and_then(program.from_result(
+    find_valid_token(tokens, request.token, ctx.timestamp),
+    function.identity,
+  ))
+
+  use session_id <- program.and_then(program.uuid_v7())
+  use session_token <- program.and_then(program.new_token(32))
+  use activity_id <- program.and_then(program.uuid_v7())
+
+  use _ <- program.and_then(
+    program.run_in_transaction([
+      program.DbUpdateLoginToken(
+        user_id: user.id,
+        token: matching_token.token,
+        created_at: matching_token.created_at,
+        used_at: option.Some(ctx.timestamp),
+        id: matching_token.id,
+      ),
+      program.DbInsertSession(
+        id: session_id,
+        user_id: user.id,
+        token: session_token,
+        ip: ctx.client_ip,
+        user_agent: ctx.client_user_agent,
+        created_at: ctx.timestamp,
+      ),
+      program.DbInsertUserActivity(
+        id: activity_id,
+        action: api_action.LoginAction,
+        ip: ctx.client_ip,
+        user_id: option.Some(user.id),
+        created_at: ctx.timestamp,
+      ),
+    ]),
+  )
+
+  program.succeed(session_token)
+}
+
+fn user_from_option(
+  maybe_user: option.Option(user.User),
+) -> Result(user.User, program.Error) {
+  case maybe_user {
+    option.Some(user) -> Ok(user)
+    option.None -> Error(program.LoginError(program.InvalidTokenError))
+  }
+}
+
+fn find_valid_token(
+  tokens: List(auth.LoginToken),
+  submitted_token: String,
+  now: timestamp.Timestamp,
+) -> Result(auth.LoginToken, program.Error) {
+  case list.find(tokens, fn(token) { token.token == submitted_token }) {
+    Error(_) -> Error(program.LoginError(program.InvalidTokenError))
+    Ok(token) ->
+      case token.used_at {
+        option.Some(_) -> Error(program.LoginError(program.TokenUsedError))
+        option.None ->
+          case token_is_still_valid(token.created_at, now) {
+            True -> Ok(token)
+            False -> Error(program.LoginError(program.TokenExpiredError))
+          }
+      }
+  }
+}
+
+fn token_is_still_valid(
+  created_at: timestamp.Timestamp,
+  now: timestamp.Timestamp,
+) -> Bool {
+  let #(created_seconds, _) =
+    timestamp.to_unix_seconds_and_nanoseconds(created_at)
+  let #(now_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(now)
+
+  now_seconds >= created_seconds && now_seconds - created_seconds <= 600
+}

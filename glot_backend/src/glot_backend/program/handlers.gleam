@@ -14,6 +14,7 @@ import glot_backend/http_client
 import glot_backend/job
 import glot_backend/program
 import glot_backend/sql
+import glot_core/auth
 import glot_core/email
 import glot_core/run
 import glot_core/user
@@ -29,6 +30,9 @@ pub fn from_context(ctx: context.Context) -> program.Handlers {
     post_run_request: post_run_request,
     send_email: send_email,
     get_user_by_email: fn(email) { get_user_by_email(ctx, email) },
+    list_login_tokens_by_user: fn(user_id, limit) {
+      list_login_tokens_by_user(ctx, user_id, limit)
+    },
     get_next_job: fn(now, pending_status, running_status) {
       get_next_job(ctx, now, pending_status, running_status)
     },
@@ -64,25 +68,35 @@ fn post_run_request(
 
 fn get_user_by_email(
   ctx: context.Context,
-  email: String,
-) -> Result(List(user.User), program.DbQueryError) {
-  db_helpers.query(ctx.db, sql.get_user_by_email(email), fn(err) {
+  user_email: email.Email,
+) -> Result(option.Option(user.User), program.DbQueryError) {
+  db_helpers.query(ctx.db, sql.get_user_by_email(email.to_string(user_email)), fn(err) {
     program.DbQueryError(string.inspect(err))
   })
-  |> result.try(fn(returned) { users_from_rows(ctx, returned.rows) })
+  |> result.try(fn(returned) { user_from_rows(ctx, returned.rows) })
 }
 
-fn users_from_rows(
+fn list_login_tokens_by_user(
+  ctx: context.Context,
+  user_id: uuid.Uuid,
+  limit: Int,
+) -> Result(List(auth.LoginToken), program.DbQueryError) {
+  db_helpers.query(
+    ctx.db,
+    sql.list_login_tokens_by_user(uuid.to_bit_array(user_id), limit),
+    fn(err) { program.DbQueryError(string.inspect(err)) },
+  )
+  |> result.try(fn(returned) { login_tokens_from_rows(returned.rows) })
+}
+
+fn user_from_rows(
   ctx: context.Context,
   rows: List(sql.GetUserByEmail),
-) -> Result(List(user.User), program.DbQueryError) {
+) -> Result(option.Option(user.User), program.DbQueryError) {
   case rows {
-    [] -> Ok([])
-    [first, ..rest] -> {
-      use user <- result.try(user_from_row(ctx, first))
-      use users <- result.try(users_from_rows(ctx, rest))
-      Ok([user, ..users])
-    }
+    [] -> Ok(option.None)
+    [first] -> user_from_row(ctx, first) |> result.map(option.Some)
+    _ -> Error(program.DbQueryError("Expected at most one user row"))
   }
 }
 
@@ -102,6 +116,31 @@ fn user_from_row(
         "Invalid email format in user row: " <> row.email,
       ))
   }
+}
+
+fn login_tokens_from_rows(
+  rows: List(sql.ListLoginTokensByUser),
+) -> Result(List(auth.LoginToken), program.DbQueryError) {
+  case rows {
+    [] -> Ok([])
+    [first, ..rest] -> {
+      use token <- result.try(login_token_from_row(first))
+      use tokens <- result.try(login_tokens_from_rows(rest))
+      Ok([token, ..tokens])
+    }
+  }
+}
+
+fn login_token_from_row(
+  row: sql.ListLoginTokensByUser,
+) -> Result(auth.LoginToken, program.DbQueryError) {
+  Ok(auth.LoginToken(
+    id: uuid_helpers.from_bit_array(row.id),
+    user_id: uuid_helpers.from_bit_array(row.user_id),
+    token: row.token,
+    created_at: row.created_at,
+    used_at: row.used_at,
+  ))
 }
 
 fn count_user_activities_by_ip(
@@ -258,6 +297,46 @@ fn run_command(
           token: token,
           created_at: created_at,
           used_at: used_at,
+        ),
+        to_error,
+      )
+      |> result.map(fn(_) { Nil })
+    program.DbInsertSession(
+      id: id,
+      user_id: user_id,
+      token: token,
+      ip: ip,
+      user_agent: user_agent,
+      created_at: created_at,
+    ) ->
+      db_helpers.execute(
+        db,
+        sql.insert_session(
+          id: uuid.to_bit_array(id),
+          user_id: uuid.to_bit_array(user_id),
+          token: token,
+          ip: ip,
+          user_agent: user_agent,
+          created_at: created_at,
+        ),
+        to_error,
+      )
+      |> result.map(fn(_) { Nil })
+    program.DbUpdateLoginToken(
+      user_id: user_id,
+      token: token,
+      created_at: created_at,
+      used_at: used_at,
+      id: id,
+    ) ->
+      db_helpers.execute(
+        db,
+        sql.update_login_token(
+          user_id: uuid.to_bit_array(user_id),
+          token: token,
+          created_at: created_at,
+          used_at: used_at,
+          id: uuid.to_bit_array(id),
         ),
         to_error,
       )
