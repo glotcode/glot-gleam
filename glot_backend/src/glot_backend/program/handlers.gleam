@@ -367,7 +367,7 @@ fn run_command(
       duration_ns: duration_ns,
       user_agent: user_agent,
       error: error,
-      fields: fields,
+      data: data,
       effects: effects,
     ) ->
       db_helpers.execute(
@@ -379,7 +379,7 @@ fn run_command(
           duration_ns: duration_ns,
           user_agent: user_agent,
           error: error,
-          fields: fields,
+          data: data,
           effects: effects,
         ),
         to_error,

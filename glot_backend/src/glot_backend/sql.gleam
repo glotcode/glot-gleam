@@ -170,11 +170,11 @@ pub fn insert_log_entry(
   duration_ns duration_ns: Int,
   user_agent user_agent: Option(String),
   error error: Option(String),
-  fields fields: String,
+  data data: String,
   effects effects: String,
 ) {
   let sql =
-    "INSERT INTO log_entries (id, created_at, action, duration_ns, user_agent, error, fields, effects)
+    "INSERT INTO log_entries (id, created_at, action, duration_ns, user_agent, error, data, effects)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
   #(sql, [
     dev.ParamBitArray(id),
@@ -183,7 +183,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
     dev.ParamInt(duration_ns),
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
-    dev.ParamString(fields),
+    dev.ParamString(data),
     dev.ParamString(effects),
   ])
 }

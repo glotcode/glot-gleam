@@ -261,7 +261,7 @@ fn save_log_entry(
     duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
     user_agent: ctx.client_user_agent,
     error: error,
-    fields: state.log_fields |> log.encode_fields |> json.to_string,
+    data: state.log_fields |> log.encode_fields |> json.to_string,
     effects: state.effect_timings |> effects_to_json |> json.to_string,
   )
 }

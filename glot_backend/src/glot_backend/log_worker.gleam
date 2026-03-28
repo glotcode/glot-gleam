@@ -18,7 +18,7 @@ pub type LogEntry {
     duration_ns: Int,
     user_agent: Option(String),
     error: Option(String),
-    fields: String,
+    data: String,
     effects: String,
   )
 }
@@ -59,7 +59,7 @@ fn insert_log_entry(db: pog.Connection, entry: LogEntry) -> Nil {
     duration_ns: duration_ns,
     user_agent: user_agent,
     error: error,
-    fields: fields,
+    data: data,
     effects: effects,
   ) = entry
 
@@ -72,7 +72,7 @@ fn insert_log_entry(db: pog.Connection, entry: LogEntry) -> Nil {
       duration_ns: duration_ns,
       user_agent: user_agent,
       error: error,
-      fields: fields,
+      data: data,
       effects: effects,
     ),
     fn(err) { string.inspect(err) },

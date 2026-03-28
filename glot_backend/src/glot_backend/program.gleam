@@ -129,7 +129,7 @@ pub type DbCommand {
     duration_ns: Int,
     user_agent: option.Option(String),
     error: option.Option(String),
-    fields: String,
+    data: String,
     effects: String,
   )
   DbMarkJobDone(id: Uuid, completed_at: Timestamp)

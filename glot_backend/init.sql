@@ -76,8 +76,8 @@ CREATE TABLE IF NOT EXISTS log_entries (
   action TEXT NOT NULL,
   duration_ns BIGINT NOT NULL,
   user_agent TEXT NULL,
+  data JSONB NOT NULL DEFAULT '{}'::jsonb,
   error TEXT NULL,
-  fields JSONB NOT NULL DEFAULT '{}'::jsonb,
   effects JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 
