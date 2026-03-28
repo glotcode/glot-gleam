@@ -1,12 +1,34 @@
 import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
+import glot_core/email
+import youid/uuid
 
 pub type Fields =
   Dict(String, Value)
 
 pub fn new() -> Fields {
   dict.new()
+}
+
+pub fn from_list(fields: List(#(String, Value))) -> Fields {
+  dict.from_list(fields)
+}
+
+pub fn singleton(pair: #(String, Value)) -> Fields {
+  dict.from_list([pair])
+}
+
+pub fn string(key: String, value: String) -> #(String, Value) {
+  #(key, String(value))
+}
+
+pub fn uuid(key: String, value: uuid.Uuid) -> #(String, Value) {
+  #(key, String(uuid.to_string(value)))
+}
+
+pub fn email(key: String, value: email.Email) -> #(String, Value) {
+  #(key, String(email.to_string(value)))
 }
 
 pub fn encode_fields(fields: Fields) -> json.Json {
@@ -19,7 +41,7 @@ pub fn encode_fields(fields: Fields) -> json.Json {
   |> json.object
 }
 
-pub type Value {
+pub opaque type Value {
   String(String)
   Int(Int)
   Bool(Bool)

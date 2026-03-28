@@ -4,6 +4,7 @@ import glot_backend/api_action
 import glot_backend/context
 import glot_backend/email_message
 import glot_backend/job
+import glot_backend/log
 import glot_backend/program
 import glot_core/auth
 import glot_core/email
@@ -19,6 +20,10 @@ pub fn send_login_token(
     auth.login_token_request_decoder(ctx.regexp.is_email),
   ))
 
+  use _ <- program.and_then(
+    program.log(log.singleton(log.email("email", request.email))),
+  )
+
   use _ <- program.and_then(program.enforce_ip_rate_limit(
     config: rate_limit.Config(time_unit: rate_limit.Daily, max_requests: 10),
     now: ctx.timestamp,
@@ -30,6 +35,16 @@ pub fn send_login_token(
   use token <- program.and_then(program.new_token(10))
   use login_token_id <- program.and_then(program.uuid_v7())
   use job_id <- program.and_then(program.uuid_v7())
+
+  use _ <- program.and_then(
+    program.log(
+      log.from_list([
+        log.string("token", token),
+        log.uuid("user_id", user.id),
+        log.uuid("job_id", job_id),
+      ]),
+    ),
+  )
 
   let email_msg = email_message.login_token_message(request.email, token)
   let send_email_job = job.send_email_job(job_id, ctx.timestamp, email_msg)

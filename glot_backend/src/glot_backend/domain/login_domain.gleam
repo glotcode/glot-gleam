@@ -5,6 +5,7 @@ import gleam/option
 import gleam/time/timestamp
 import glot_backend/api_action
 import glot_backend/context
+import glot_backend/log
 import glot_backend/program
 import glot_core/auth
 import glot_core/rate_limit
@@ -19,6 +20,15 @@ pub fn login(
     auth.login_request_decoder(ctx.regexp.is_email),
   ))
 
+  use _ <- program.and_then(
+    program.log(
+      log.from_list([
+        log.email("email", request.email),
+        log.string("token", request.token),
+      ]),
+    ),
+  )
+
   use _ <- program.and_then(program.enforce_ip_rate_limit(
     config: rate_limit.Config(time_unit: rate_limit.Daily, max_requests: 100),
     now: ctx.timestamp,
@@ -31,6 +41,10 @@ pub fn login(
     user_from_option(maybe_user),
     function.identity,
   ))
+
+  use _ <- program.and_then(
+    program.log(log.singleton(log.uuid("user_id", user.id))),
+  )
 
   use tokens <- program.and_then(program.db_list_login_tokens_by_user(
     user.id,

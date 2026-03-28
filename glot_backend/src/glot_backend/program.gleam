@@ -211,7 +211,7 @@ pub opaque type Program(a) {
   NewToken(Int, fn(String) -> Program(a))
   SystemTime(fn(Timestamp) -> Program(a))
   UuidV7(fn(Uuid) -> Program(a))
-  Log(String, log.Value, Program(a))
+  Log(log.Fields, Program(a))
   AttemptPostRunRequest(
     context.Config,
     run.RunRequest,
@@ -284,9 +284,9 @@ fn run_with_state(
         measure_effect(state, UuidV7Effect, started_at),
       )
     }
-    Log(key, value, next) -> {
+    Log(fields, next) -> {
       let started_at = now_ns()
-      let state = add_log_field(state, key, value)
+      let state = add_log_fields(state, fields)
       run_with_state(
         next,
         handlers,
@@ -368,7 +368,7 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
       NewToken(length, fn(value) { and_then(next(value), f) })
     SystemTime(next) -> SystemTime(fn(value) { and_then(next(value), f) })
     UuidV7(next) -> UuidV7(fn(value) { and_then(next(value), f) })
-    Log(key, value, next) -> Log(key, value, and_then(next, f))
+    Log(fields, next) -> Log(fields, and_then(next, f))
     AttemptPostRunRequest(cfg, request, next) ->
       AttemptPostRunRequest(cfg, request, fn(value) { and_then(next(value), f) })
     AttemptSendEmail(message, next) ->
@@ -415,8 +415,8 @@ pub fn uuid_v7() -> Program(Uuid) {
   UuidV7(Done)
 }
 
-pub fn log(key: String, value: log.Value) -> Program(Nil) {
-  Log(key, value, Done(Nil))
+pub fn log(fields: log.Fields) -> Program(Nil) {
+  Log(fields, Done(Nil))
 }
 
 pub fn attempt_post_run_request(
@@ -700,11 +700,11 @@ fn add_effect_timings(
   )
 }
 
-fn add_log_field(state: State, key: String, value: log.Value) -> State {
+fn add_log_fields(state: State, fields: log.Fields) -> State {
   let State(effect_timings:, log_fields:) = state
   State(
     effect_timings: effect_timings,
-    log_fields: dict.insert(log_fields, key, value),
+    log_fields: dict.merge(log_fields, fields),
   )
 }
 
