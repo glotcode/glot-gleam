@@ -99,11 +99,9 @@ fn get_session_by_token(
   ctx: context.Context,
   token: String,
 ) -> Result(option.Option(auth.Session), program.DbQueryError) {
-  db_helpers.query(
-    ctx.db,
-    sql.get_session_by_token(token),
-    fn(err) { program.DbQueryError(string.inspect(err)) },
-  )
+  db_helpers.query(ctx.db, sql.get_session_by_token(token), fn(err) {
+    program.DbQueryError(string.inspect(err))
+  })
   |> result.try(fn(returned) { session_from_rows(ctx, returned.rows) })
 }
 
@@ -381,12 +379,7 @@ fn run_command(
     program.DbInsertSnippet(
       id: id,
       user_id: user_id,
-      language: language,
-      title: title,
-      visibility: visibility,
-      stdin: stdin,
-      run_command: run_command,
-      files: files,
+      snippet: snippet,
       created_at: created_at,
       updated_at: updated_at,
     ) ->
@@ -395,12 +388,12 @@ fn run_command(
         sql.insert_snippet(
           id: uuid.to_bit_array(id),
           user_id: uuid.to_bit_array(user_id),
-          language: language.to_string(language),
-          title: title,
-          visibility: snippet.visibility_to_string(visibility),
-          stdin: stdin,
-          run_command: run_command,
-          files: json.to_string(json.array(files, snippet.encode_file)),
+          language: language.to_string(snippet.language),
+          title: snippet.title,
+          visibility: snippet.visibility_to_string(snippet.visibility),
+          stdin: snippet.stdin,
+          run_command: snippet.run_command,
+          files: json.to_string(json.array(snippet.files, snippet.encode_file)),
           created_at: created_at,
           updated_at: updated_at,
         ),

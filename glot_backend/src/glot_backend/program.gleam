@@ -14,7 +14,6 @@ import glot_backend/job
 import glot_backend/log
 import glot_core/auth
 import glot_core/email
-import glot_core/language
 import glot_core/rate_limit.{type RateLimit}
 import glot_core/run
 import glot_core/snippet
@@ -108,12 +107,7 @@ pub type DbCommand {
   DbInsertSnippet(
     id: Uuid,
     user_id: Uuid,
-    language: language.Language,
-    title: String,
-    visibility: snippet.Visibility,
-    stdin: String,
-    run_command: String,
-    files: List(snippet.File),
+    snippet: snippet.Snippet,
     created_at: Timestamp,
     updated_at: Timestamp,
   )
@@ -656,7 +650,7 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
   case command {
     DbInsertUser(_, _, _) -> DbInsertUserCommand
     DbInsertJob(_) -> DbInsertJobCommand
-    DbInsertSnippet(_, _, _, _, _, _, _, _, _, _) -> DbInsertSnippetCommand
+    DbInsertSnippet(_, _, _, _, _) -> DbInsertSnippetCommand
     DbInsertSession(_, _, _, _, _, _) -> DbInsertSessionCommand
     DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
     DbUpdateLoginToken(_, _, _, _, _) -> DbUpdateLoginTokenCommand

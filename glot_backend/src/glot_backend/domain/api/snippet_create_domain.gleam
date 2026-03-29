@@ -39,12 +39,7 @@ pub fn snippet_create(
     program.run_command(program.DbInsertSnippet(
       id: snippet_id,
       user_id: session.user.id,
-      language: request.language,
-      title: request.title,
-      visibility: request.visibility,
-      stdin: request.stdin,
-      run_command: request.run_command,
-      files: request.files,
+      snippet: request,
       created_at: ctx.timestamp,
       updated_at: ctx.timestamp,
     )),
