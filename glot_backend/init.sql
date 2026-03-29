@@ -65,8 +65,13 @@ CREATE TABLE user_activities (
 
 CREATE INDEX idx_user_activities_ip ON user_activities(ip);
 CREATE INDEX idx_user_activities_user_id ON user_activities(user_id);
-CREATE INDEX idx_user_activities_action ON user_activities(action);
-CREATE INDEX idx_user_activities_ts ON user_activities(created_at);
+CREATE INDEX idx_user_activities_ip_action_created_at
+  ON user_activities (ip, action, created_at)
+  WHERE ip IS NOT NULL;
+
+CREATE INDEX idx_user_activities_user_action_created_at
+  ON user_activities (user_id, action, created_at)
+  WHERE user_id IS NOT NULL;
 
 -- LOG ENTRIES
 
