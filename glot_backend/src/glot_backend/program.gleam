@@ -14,8 +14,10 @@ import glot_backend/job
 import glot_backend/log
 import glot_core/auth
 import glot_core/email
+import glot_core/language
 import glot_core/rate_limit.{type RateLimit}
 import glot_core/run
+import glot_core/snippet
 import glot_core/user
 import youid/uuid.{type Uuid}
 
@@ -103,6 +105,18 @@ pub type DbQuery(next) {
 pub type DbCommand {
   DbInsertUser(id: Uuid, email: String, created_at: Timestamp)
   DbInsertJob(job.Job)
+  DbInsertSnippet(
+    id: Uuid,
+    user_id: Uuid,
+    language: language.Language,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_command: String,
+    files: List(snippet.File),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
   DbInsertSession(
     id: Uuid,
     user_id: Uuid,
@@ -202,6 +216,7 @@ pub type DbQueryName {
 pub type DbCommandName {
   DbInsertUserCommand
   DbInsertJobCommand
+  DbInsertSnippetCommand
   DbInsertSessionCommand
   DbInsertLoginTokenCommand
   DbUpdateLoginTokenCommand
@@ -641,6 +656,7 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
   case command {
     DbInsertUser(_, _, _) -> DbInsertUserCommand
     DbInsertJob(_) -> DbInsertJobCommand
+    DbInsertSnippet(_, _, _, _, _, _, _, _, _, _) -> DbInsertSnippetCommand
     DbInsertSession(_, _, _, _, _, _) -> DbInsertSessionCommand
     DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
     DbUpdateLoginToken(_, _, _, _, _) -> DbUpdateLoginTokenCommand

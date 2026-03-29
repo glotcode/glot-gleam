@@ -16,8 +16,10 @@ import glot_backend/program
 import glot_backend/sql
 import glot_core/auth
 import glot_core/email
+import glot_core/language
 import glot_core/rate_limit
 import glot_core/run
+import glot_core/snippet
 import glot_core/user
 import glot_core/uuid_helpers
 import pog
@@ -370,6 +372,35 @@ fn run_command(
           started_at: started_at,
           completed_at: completed_at,
           last_error: last_error,
+          created_at: created_at,
+          updated_at: updated_at,
+        ),
+        to_error,
+      )
+      |> result.map(fn(_) { Nil })
+    program.DbInsertSnippet(
+      id: id,
+      user_id: user_id,
+      language: language,
+      title: title,
+      visibility: visibility,
+      stdin: stdin,
+      run_command: run_command,
+      files: files,
+      created_at: created_at,
+      updated_at: updated_at,
+    ) ->
+      db_helpers.execute(
+        db,
+        sql.insert_snippet(
+          id: uuid.to_bit_array(id),
+          user_id: uuid.to_bit_array(user_id),
+          language: language.to_string(language),
+          title: title,
+          visibility: visibility,
+          stdin: stdin,
+          run_command: run_command,
+          files: json.to_string(json.array(files, snippet.encode_file)),
           created_at: created_at,
           updated_at: updated_at,
         ),

@@ -326,6 +326,7 @@ fn db_command_name_to_string(command_name: program.DbCommandName) -> String {
   case command_name {
     program.DbInsertUserCommand -> "db_insert_user"
     program.DbInsertJobCommand -> "db_insert_job"
+    program.DbInsertSnippetCommand -> "db_insert_snippet"
     program.DbInsertSessionCommand -> "db_insert_session"
     program.DbInsertLoginTokenCommand -> "db_insert_login_token"
     program.DbUpdateLoginTokenCommand -> "db_update_login_token"
