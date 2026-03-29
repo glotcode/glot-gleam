@@ -12,8 +12,8 @@ import glot_backend/job
 import glot_backend/program
 import glot_backend/program/handlers as program_handlers
 import pog
-import youid/uuid.{type Uuid}
 import wisp
+import youid/uuid.{type Uuid}
 
 const idle_poll_ms = 1000
 
@@ -30,13 +30,17 @@ type State {
     subject: process.Subject(Message),
     db: pog.Connection,
     config: context.Config,
-    regexp: context.Regexp,
+    regexes: context.Regexes,
   )
 }
 
-pub fn start(db: pog.Connection, config: context.Config, regexp: context.Regexp) {
+pub fn start(
+  db: pog.Connection,
+  config: context.Config,
+  regexes: context.Regexes,
+) {
   actor.new_with_initialiser(1000, fn(subject) {
-    let initial_state = State(subject:, db:, config:, regexp:)
+    let initial_state = State(subject:, db:, config:, regexes:)
     let _ = process.send(subject, Tick)
     let initialised = actor.initialised(initial_state)
     Ok(actor.returning(initialised, Nil))
@@ -48,9 +52,9 @@ pub fn start(db: pog.Connection, config: context.Config, regexp: context.Regexp)
 pub fn supervised(
   db: pog.Connection,
   config: context.Config,
-  regexp: context.Regexp,
+  regexes: context.Regexes,
 ) {
-  supervision.worker(fn() { start(db, config, regexp) })
+  supervision.worker(fn() { start(db, config, regexes) })
 }
 
 fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
@@ -83,14 +87,16 @@ fn run_once(state: State) -> Bool {
 }
 
 fn context_from_state(state: State) -> context.Context {
-  let State(db:, config:, regexp:, ..) = state
+  let State(db:, config:, regexes:, ..) = state
   context.Context(
     db: db,
     config: config,
-    regexp: regexp,
+    regexes: regexes,
     timestamp: timestamp.system_time(),
-    client_ip: option.None,
-    client_user_agent: option.None,
+    client_info: context.ClientInfo(
+      ip: option.None,
+      user_agent: option.None,
+    ),
   )
 }
 
@@ -127,7 +133,7 @@ fn process_send_email_job(
   payload: String,
   attempts: Int,
 ) -> program.Program(Nil) {
-  case json.parse(payload, email_message.decoder(ctx.regexp.is_email)) {
+  case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
       use send_result <- program.and_then(program.attempt_send_email(message))
       use now <- program.and_then(program.system_time())

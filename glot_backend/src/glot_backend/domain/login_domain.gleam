@@ -17,7 +17,7 @@ pub fn login(
 ) -> program.Program(String) {
   use request <- program.and_then(program.decode_json(
     json_body,
-    auth.login_request_decoder(ctx.regexp.is_email),
+    auth.login_request_decoder(ctx.regexes.is_email),
   ))
 
   use _ <- program.and_then(
@@ -32,7 +32,7 @@ pub fn login(
   use _ <- program.and_then(rate_limit_domain.enforce_by_ip(
     rate_limits: ctx.config.rate_limits.login,
     now: ctx.timestamp,
-    ip: ctx.client_ip,
+    ip: ctx.client_info.ip,
     action: api_action.LoginAction,
   ))
 
@@ -72,14 +72,14 @@ pub fn login(
         id: session_id,
         user_id: user.id,
         token: session_token,
-        ip: ctx.client_ip,
-        user_agent: ctx.client_user_agent,
+        ip: ctx.client_info.ip,
+        user_agent: ctx.client_info.user_agent,
         created_at: ctx.timestamp,
       ),
       program.DbInsertUserActivity(
         id: activity_id,
         action: api_action.LoginAction,
-        ip: ctx.client_ip,
+        ip: ctx.client_info.ip,
         user_id: option.Some(user.id),
         created_at: ctx.timestamp,
       ),

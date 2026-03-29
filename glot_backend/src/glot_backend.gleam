@@ -54,7 +54,7 @@ pub fn main() {
   let postgres_cfg = postgres_config(cfg, postgres_pool_name)
   let db = pog.named_connection(postgres_pool_name)
   let assert Ok(is_email) = regexp.from_string(email.pattern)
-  let regexp = context.Regexp(is_email)
+  let regexes = context.Regexes(is_email)
   let log_worker_name = process.new_name("log_worker")
   let log_worker_subject = process.named_subject(log_worker_name)
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
@@ -65,10 +65,12 @@ pub fn main() {
             db: db,
             config: cfg,
             timestamp: timestamp.system_time(),
-            regexp: regexp,
-            client_ip: get_header(req, "x-forwarded-for")
-              |> option.lazy_or(fn() { get_client_ip(conn.body) }),
-            client_user_agent: get_header(req, "user-agent"),
+            regexes: regexes,
+            client_info: context.ClientInfo(
+              ip: get_header(req, "x-forwarded-for")
+                |> option.lazy_or(fn() { get_client_ip(conn.body) }),
+              user_agent: get_header(req, "user-agent"),
+            ),
           )
 
         handle_request(ctx, log_worker_subject, req)
@@ -86,7 +88,7 @@ pub fn main() {
       postgres_cfg,
       db,
       cfg,
-      regexp,
+      regexes,
       log_worker_name,
       mist_builder,
     )
@@ -172,14 +174,14 @@ fn start_supervisor_tree(
   pog_config: pog.Config,
   db: pog.Connection,
   config: context.Config,
-  regexp: context.Regexp,
+  regexes: context.Regexes,
   log_worker_name: process.Name(log_worker.Message),
   mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
 ) {
   supervisor.new(supervisor.RestForOne)
   |> supervisor.add(pog.supervised(pog_config))
   |> supervisor.add(log_worker.supervised(log_worker_name, db))
-  |> supervisor.add(job_worker.supervised(db, config, regexp))
+  |> supervisor.add(job_worker.supervised(db, config, regexes))
   |> supervisor.add(mist.supervised(mist_builder))
   |> supervisor.start
 }
@@ -189,10 +191,10 @@ fn postgres_config(
   pool_name: process.Name(pog.Message),
 ) -> pog.Config {
   pog.default_config(pool_name)
-  |> pog.host(cfg.postgres_host)
-  |> pog.port(cfg.postgres_port)
-  |> pog.database(cfg.postgres_db)
-  |> pog.user(cfg.postgres_user)
-  |> pog.password(option.Some(cfg.postgres_pass))
-  |> pog.pool_size(cfg.postgres_pool_size)
+  |> pog.host(cfg.postgres.host)
+  |> pog.port(cfg.postgres.port)
+  |> pog.database(cfg.postgres.db)
+  |> pog.user(cfg.postgres.user)
+  |> pog.password(option.Some(cfg.postgres.pass))
+  |> pog.pool_size(cfg.postgres.pool_size)
 }

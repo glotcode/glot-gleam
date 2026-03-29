@@ -17,7 +17,7 @@ pub fn handle_run(
   use _ <- program.and_then(rate_limit_domain.enforce_by_ip(
     rate_limits: ctx.config.rate_limits.run,
     now: ctx.timestamp,
-    ip: ctx.client_ip,
+    ip: ctx.client_info.ip,
     action: api_action.RunAction,
   ))
 

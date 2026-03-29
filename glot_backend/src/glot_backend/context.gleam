@@ -12,26 +12,82 @@ pub type Context {
   Context(
     db: pog.Connection,
     config: Config,
-    regexp: Regexp,
+    regexes: Regexes,
     timestamp: Timestamp,
-    client_ip: option.Option(String),
-    client_user_agent: option.Option(String),
+    client_info: ClientInfo,
   )
 }
 
 pub type Config {
   Config(
     static_base_path: String,
-    postgres_host: String,
-    postgres_port: Int,
-    postgres_db: String,
-    postgres_user: String,
-    postgres_pass: String,
-    postgres_pool_size: Int,
-    docker_run_base_url: String,
-    docker_run_access_token: String,
+    postgres: PostgresConfig,
+    docker_run: DockerRunConfig,
     rate_limits: RateLimitsConfig,
   )
+}
+
+pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) {
+  use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
+  use postgres <- result.try(postgres_config_from_dict(values))
+  use docker_run <- result.try(docker_run_config_from_dict(values))
+
+  Ok(Config(
+    static_base_path: static_base_path,
+    postgres: postgres,
+    docker_run: docker_run,
+    rate_limits: rate_limits_config_from_dict(values),
+  ))
+}
+
+pub type PostgresConfig {
+  PostgresConfig(
+    host: String,
+    port: Int,
+    db: String,
+    user: String,
+    pass: String,
+    pool_size: Int,
+  )
+}
+
+fn postgres_config_from_dict(
+  values: Dict(String, String),
+) -> Result(PostgresConfig, String) {
+  use host <- result.try(lookup(values, "POSTGRES_HOST"))
+  use port <- result.try(
+    lookup(values, "POSTGRES_PORT")
+    |> result.try(string_to_int),
+  )
+  use db <- result.try(lookup(values, "POSTGRES_DB"))
+  use user <- result.try(lookup(values, "POSTGRES_USER"))
+  use pass <- result.try(lookup(values, "POSTGRES_PASS"))
+  use pool_size <- result.try(
+    lookup(values, "POSTGRES_POOL_SIZE")
+    |> result.try(string_to_int),
+  )
+
+  Ok(PostgresConfig(
+    host: host,
+    port: port,
+    db: db,
+    user: user,
+    pass: pass,
+    pool_size: pool_size,
+  ))
+}
+
+pub type DockerRunConfig {
+  DockerRunConfig(base_url: String, access_token: String)
+}
+
+fn docker_run_config_from_dict(
+  values: Dict(String, String),
+) -> Result(DockerRunConfig, String) {
+  use base_url <- result.try(lookup(values, "DOCKER_RUN_BASE_URL"))
+  use access_token <- result.try(lookup(values, "DOCKER_RUN_ACCESS_TOKEN"))
+
+  Ok(DockerRunConfig(base_url: base_url, access_token: access_token))
 }
 
 pub type RateLimitsConfig {
@@ -91,40 +147,6 @@ fn lookup_rate_limits(
   |> option.values
 }
 
-pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) {
-  use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
-  use postgres_host <- result.try(lookup(values, "POSTGRES_HOST"))
-  use postgres_port <- result.try(
-    lookup(values, "POSTGRES_PORT")
-    |> result.try(string_to_int),
-  )
-  use postgres_db <- result.try(lookup(values, "POSTGRES_DB"))
-  use postgres_user <- result.try(lookup(values, "POSTGRES_USER"))
-  use postgres_pass <- result.try(lookup(values, "POSTGRES_PASS"))
-  use postgres_pool_size <- result.try(
-    lookup(values, "POSTGRES_POOL_SIZE")
-    |> result.try(string_to_int),
-  )
-  use docker_run_base_url <- result.try(lookup(values, "DOCKER_RUN_BASE_URL"))
-  use docker_run_access_token <- result.try(lookup(
-    values,
-    "DOCKER_RUN_ACCESS_TOKEN",
-  ))
-
-  Ok(Config(
-    static_base_path: static_base_path,
-    postgres_host: postgres_host,
-    postgres_port: postgres_port,
-    postgres_db: postgres_db,
-    postgres_user: postgres_user,
-    postgres_pass: postgres_pass,
-    postgres_pool_size: postgres_pool_size,
-    docker_run_base_url: docker_run_base_url,
-    docker_run_access_token: docker_run_access_token,
-    rate_limits: rate_limits_config_from_dict(values),
-  ))
-}
-
 fn lookup(dict: Dict(String, String), key: String) -> Result(String, String) {
   dict.get(dict, key)
   |> result.map_error(fn(_) { "Missing key: " <> key })
@@ -135,6 +157,10 @@ fn string_to_int(s: String) -> Result(Int, String) {
   |> result.map_error(fn(_) { "Invalid integer: " <> s })
 }
 
-pub type Regexp {
-  Regexp(is_email: regexp.Regexp)
+pub type Regexes {
+  Regexes(is_email: regexp.Regexp)
+}
+
+pub type ClientInfo {
+  ClientInfo(ip: option.Option(String), user_agent: option.Option(String))
 }

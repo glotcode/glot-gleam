@@ -17,7 +17,7 @@ pub fn send_login_token(
 ) -> program.Program(Nil) {
   use request <- program.and_then(program.decode_json(
     json_body,
-    auth.login_token_request_decoder(ctx.regexp.is_email),
+    auth.login_token_request_decoder(ctx.regexes.is_email),
   ))
 
   use _ <- program.and_then(
@@ -27,7 +27,7 @@ pub fn send_login_token(
   use _ <- program.and_then(rate_limit_domain.enforce_by_ip(
     rate_limits: ctx.config.rate_limits.send_login_token,
     now: ctx.timestamp,
-    ip: ctx.client_ip,
+    ip: ctx.client_info.ip,
     action: api_action.SendLoginTokenAction,
   ))
 

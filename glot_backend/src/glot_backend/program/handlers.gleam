@@ -59,9 +59,9 @@ fn post_run_request(
   request: run.RunRequest,
 ) -> Result(run.RunResult, program.RunRequestError) {
   http_client.post_json(
-    url: cfg.docker_run_base_url <> "/run",
+    url: cfg.docker_run.base_url <> "/run",
     body: run.encode_run_request(request),
-    headers: dict.from_list([#("X-Access-Token", cfg.docker_run_access_token)]),
+    headers: dict.from_list([#("X-Access-Token", cfg.docker_run.access_token)]),
     decoder: run.run_result_decoder(),
   )
   |> result.map_error(map_run_http_error)
@@ -107,7 +107,7 @@ fn user_from_row(
   ctx: context.Context,
   row: sql.GetUserByEmail,
 ) -> Result(user.User, program.DbQueryError) {
-  case email.from_string(ctx.regexp.is_email, row.email) {
+  case email.from_string(ctx.regexes.is_email, row.email) {
     option.Some(valid_email) ->
       Ok(user.User(
         id: uuid_helpers.from_bit_array(row.id),
@@ -218,7 +218,9 @@ fn window_count_from_row(
     option.Some(parsed_unit) ->
       Ok(rate_limit.WindowCount(unit: parsed_unit, count: count))
     option.None ->
-      Error(program.DbQueryError("Invalid time unit in rate limit row: " <> unit))
+      Error(program.DbQueryError(
+        "Invalid time unit in rate limit row: " <> unit,
+      ))
   }
 }
 
