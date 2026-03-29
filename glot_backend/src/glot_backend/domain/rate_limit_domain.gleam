@@ -30,7 +30,7 @@ pub fn enforce_by_ip(
 
   case first_exceeded_rate_limit(rate_limits, counts) {
     option.Some(#(count, rate_limit)) ->
-      program.fail(program.TooManyRequestsError(count, rate_limit))
+      program.fail(program.TooManyRequestsError(count + 1, rate_limit))
     option.None -> program.succeed(Nil)
   }
 }
@@ -43,7 +43,7 @@ fn first_exceeded_rate_limit(
     [] -> option.None
     [first, ..rest] ->
       case lookup_count(first, counts) {
-        option.Some(count) if count > first.max_requests ->
+        option.Some(count) if count >= first.max_requests ->
           option.Some(#(count, first))
         _ -> first_exceeded_rate_limit(rest, counts)
       }
