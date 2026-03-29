@@ -1,7 +1,7 @@
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
-import gleam/option
+import gleam/option.{type Option}
 import gleam/regexp
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
@@ -162,5 +162,9 @@ pub type Regexes {
 }
 
 pub type ClientInfo {
-  ClientInfo(ip: option.Option(String), user_agent: option.Option(String))
+  ClientInfo(
+    session_token: Option(String),
+    ip: Option(String),
+    user_agent: Option(String),
+  )
 }

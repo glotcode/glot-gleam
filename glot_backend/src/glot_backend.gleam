@@ -66,11 +66,7 @@ pub fn main() {
             config: cfg,
             timestamp: timestamp.system_time(),
             regexes: regexes,
-            client_info: context.ClientInfo(
-              ip: get_header(req, "x-forwarded-for")
-                |> option.lazy_or(fn() { get_client_ip(conn.body) }),
-              user_agent: get_header(req, "user-agent"),
-            ),
+            client_info: get_client_info(req, conn.body),
           )
 
         handle_request(ctx, log_worker_subject, req)
@@ -110,6 +106,19 @@ pub fn handle_request(
       api.handle_request(ctx, log_worker_subject, req)
     _, _ -> wisp.not_found()
   }
+}
+
+fn get_client_info(
+  req: wisp.Request,
+  conn: mist.Connection,
+) -> context.ClientInfo {
+  context.ClientInfo(
+    session_token: wisp.get_cookie(req, "session", wisp.Signed)
+      |> option.from_result(),
+    ip: get_header(req, "x-forwarded-for")
+      |> option.lazy_or(fn() { get_client_ip(conn) }),
+    user_agent: get_header(req, "user-agent"),
+  )
 }
 
 fn get_header(req: wisp.Request, name: String) -> option.Option(String) {

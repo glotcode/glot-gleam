@@ -94,6 +94,7 @@ fn context_from_state(state: State) -> context.Context {
     regexes: regexes,
     timestamp: timestamp.system_time(),
     client_info: context.ClientInfo(
+      session_token: option.None,
       ip: option.None,
       user_agent: option.None,
     ),
