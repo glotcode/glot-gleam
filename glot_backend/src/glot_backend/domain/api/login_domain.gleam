@@ -5,7 +5,7 @@ import gleam/option
 import gleam/time/timestamp
 import glot_backend/api_action
 import glot_backend/context
-import glot_backend/domain/rate_limit_domain
+import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/log
 import glot_backend/program
 import glot_core/auth

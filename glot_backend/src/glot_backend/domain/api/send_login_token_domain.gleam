@@ -2,7 +2,7 @@ import gleam/dynamic
 import gleam/option
 import glot_backend/api_action
 import glot_backend/context
-import glot_backend/domain/rate_limit_domain
+import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/email_message
 import glot_backend/job
 import glot_backend/log

@@ -1,7 +1,7 @@
 import gleam/dynamic
 import glot_backend/api_action
 import glot_backend/context
-import glot_backend/domain/rate_limit_domain
+import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/program
 import glot_core/run
 
