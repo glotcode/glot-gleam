@@ -9,9 +9,9 @@ import gleam/result
 import gleam/string
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
-import glot_backend/domain/login_domain
-import glot_backend/domain/run_domain
-import glot_backend/domain/send_login_token_domain
+import glot_backend/domain/api/login_domain
+import glot_backend/domain/api/run_domain
+import glot_backend/domain/api/send_login_token_domain
 import glot_backend/log
 import glot_backend/log_worker
 import glot_backend/program
@@ -116,7 +116,7 @@ fn handle_api_request(
 ) -> program.Program(ApiResult) {
   case api_request.action {
     api_action.RunAction ->
-      run_domain.handle_run(ctx, api_request.data)
+      run_domain.run(ctx, api_request.data)
       |> program.map(RunResultResponse)
     api_action.SendLoginTokenAction ->
       send_login_token_domain.send_login_token(ctx, api_request.data)

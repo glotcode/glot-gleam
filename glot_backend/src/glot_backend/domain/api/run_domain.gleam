@@ -5,7 +5,7 @@ import glot_backend/domain/rate_limit_domain
 import glot_backend/program
 import glot_core/run
 
-pub fn handle_run(
+pub fn run(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
 ) -> program.Program(run.RunResult) {
