@@ -151,7 +151,7 @@ fn count_user_activities_by_ip(
   ip: option.Option(String),
   action: api_action.ApiAction,
   windows: List(rate_limit.Window),
-) -> Result(List(sql.CountUserActivitiesByIp), program.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.count_user_activities_by_ip(
@@ -162,7 +162,7 @@ fn count_user_activities_by_ip(
     ),
     fn(err) { program.DbQueryError(string.inspect(err)) },
   )
-  |> result.map(fn(returned) { returned.rows })
+  |> result.try(fn(returned) { window_counts_from_ip_rows(returned.rows) })
 }
 
 fn count_user_activities_by_user(
@@ -170,7 +170,7 @@ fn count_user_activities_by_user(
   user_id: option.Option(uuid.Uuid),
   action: api_action.ApiAction,
   windows: List(rate_limit.Window),
-) -> Result(List(sql.CountUserActivitiesByUser), program.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.count_user_activities_by_user(
@@ -181,7 +181,45 @@ fn count_user_activities_by_user(
     ),
     fn(err) { program.DbQueryError(string.inspect(err)) },
   )
-  |> result.map(fn(returned) { returned.rows })
+  |> result.try(fn(returned) { window_counts_from_user_rows(returned.rows) })
+}
+
+fn window_counts_from_ip_rows(
+  rows: List(sql.CountUserActivitiesByIp),
+) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
+  case rows {
+    [] -> Ok([])
+    [first, ..rest] -> {
+      use count <- result.try(window_count_from_row(first.unit, first.count))
+      use counts <- result.try(window_counts_from_ip_rows(rest))
+      Ok([count, ..counts])
+    }
+  }
+}
+
+fn window_counts_from_user_rows(
+  rows: List(sql.CountUserActivitiesByUser),
+) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
+  case rows {
+    [] -> Ok([])
+    [first, ..rest] -> {
+      use count <- result.try(window_count_from_row(first.unit, first.count))
+      use counts <- result.try(window_counts_from_user_rows(rest))
+      Ok([count, ..counts])
+    }
+  }
+}
+
+fn window_count_from_row(
+  unit: String,
+  count: Int,
+) -> Result(rate_limit.WindowCount, program.DbQueryError) {
+  case rate_limit.unit_from_string(unit) {
+    option.Some(parsed_unit) ->
+      Ok(rate_limit.WindowCount(unit: parsed_unit, count: count))
+    option.None ->
+      Error(program.DbQueryError("Invalid time unit in rate limit row: " <> unit))
+  }
 }
 
 fn get_next_job(

@@ -16,11 +16,15 @@ pub type Window {
   Window(unit: TimeUnit, cutoff: Timestamp)
 }
 
+pub type WindowCount {
+  WindowCount(unit: TimeUnit, count: Int)
+}
+
 pub fn encode_window(window: Window) -> json.Json {
   case window {
     Window(unit, cutoff) ->
       json.object([
-        #("unit", json.string(time_unit_to_string(unit))),
+        #("unit", json.string(unit_to_string(unit))),
         #(
           "cutoff",
           json.string(timestamp.to_rfc3339(cutoff, calendar.utc_offset)),
@@ -33,8 +37,8 @@ pub fn encode_windows(windows: List(Window)) -> json.Json {
   json.array(windows, of: encode_window)
 }
 
-pub fn time_unit_to_string(tu: TimeUnit) -> String {
-  case tu {
+pub fn unit_to_string(unit: TimeUnit) -> String {
+  case unit {
     Day -> "day"
     Hour -> "hour"
     Minute -> "minute"
@@ -42,7 +46,7 @@ pub fn time_unit_to_string(tu: TimeUnit) -> String {
   }
 }
 
-pub fn time_unit_from_string(s: String) -> Option(TimeUnit) {
+pub fn unit_from_string(s: String) -> Option(TimeUnit) {
   case s {
     "day" -> option.Some(Day)
     "hour" -> option.Some(Hour)
@@ -53,11 +57,11 @@ pub fn time_unit_from_string(s: String) -> Option(TimeUnit) {
 }
 
 pub type RateLimit {
-  RateLimit(time_unit: TimeUnit, max_requests: Int)
+  RateLimit(unit: TimeUnit, max_requests: Int)
 }
 
 fn to_window(rate_limit: RateLimit, now: Timestamp) -> Window {
-  Window(unit: rate_limit.time_unit, cutoff: start_time(rate_limit, now))
+  Window(unit: rate_limit.unit, cutoff: start_time(rate_limit, now))
 }
 
 pub fn to_windows(rate_limits: List(RateLimit), now: Timestamp) -> List(Window) {
@@ -66,7 +70,7 @@ pub fn to_windows(rate_limits: List(RateLimit), now: Timestamp) -> List(Window) 
 }
 
 pub fn start_time(config: RateLimit, now: Timestamp) -> Timestamp {
-  case config.time_unit {
+  case config.unit {
     Day -> timestamp_helpers.one_day_ago(now)
     Hour -> timestamp_helpers.one_hour_ago(now)
     Minute -> timestamp_helpers.one_minute_ago(now)

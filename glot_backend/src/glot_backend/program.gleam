@@ -12,7 +12,6 @@ import glot_backend/context
 import glot_backend/email_message
 import glot_backend/job
 import glot_backend/log
-import glot_backend/sql
 import glot_core/auth
 import glot_core/email
 import glot_core/rate_limit.{type RateLimit}
@@ -80,13 +79,13 @@ pub type DbQuery(next) {
     windows: List(rate_limit.Window),
     ip: option.Option(String),
     action: ApiAction,
-    next: fn(List(sql.CountUserActivitiesByIp)) -> next,
+    next: fn(List(rate_limit.WindowCount)) -> next,
   )
   DbCountUserActivitiesByUser(
     windows: List(rate_limit.Window),
     user_id: option.Option(Uuid),
     action: ApiAction,
-    next: fn(List(sql.CountUserActivitiesByUser)) -> next,
+    next: fn(List(rate_limit.WindowCount)) -> next,
   )
 }
 
@@ -157,9 +156,9 @@ pub type Handlers {
     get_next_job: fn(Timestamp, job.Status, job.Status) ->
       Result(option.Option(job.Job), DbQueryError),
     count_user_activities_by_ip: fn(List(rate_limit.Window), option.Option(String), ApiAction) ->
-      Result(List(sql.CountUserActivitiesByIp), DbQueryError),
+      Result(List(rate_limit.WindowCount), DbQueryError),
     count_user_activities_by_user: fn(List(rate_limit.Window), option.Option(Uuid), ApiAction) ->
-      Result(List(sql.CountUserActivitiesByUser), DbQueryError),
+      Result(List(rate_limit.WindowCount), DbQueryError),
     run_command: fn(DbCommand) -> Result(Nil, DbCommandError),
     run_in_transaction: fn(List(DbCommand)) -> Result(Nil, DbTransactionError),
   )
@@ -500,40 +499,26 @@ pub fn db_count_user_activities_by_ip(
   windows windows: List(rate_limit.Window),
   ip ip: option.Option(String),
   action action: ApiAction,
-) -> Program(Int) {
-  use rows <- and_then(
-    run_query(DbCountUserActivitiesByIp(
-      windows: windows,
-      ip: ip,
-      action: action,
-      next: function.identity,
-    )),
-  )
-
-  case list.first(rows) |> option.from_result() {
-    option.Some(row) -> Done(row.count)
-    option.None -> Done(0)
-  }
+) -> Program(List(rate_limit.WindowCount)) {
+  run_query(DbCountUserActivitiesByIp(
+    windows: windows,
+    ip: ip,
+    action: action,
+    next: function.identity,
+  ))
 }
 
 pub fn db_count_user_activities_by_user(
   windows windows: List(rate_limit.Window),
   user_id user_id: option.Option(Uuid),
   action action: ApiAction,
-) -> Program(Int) {
-  use rows <- and_then(
-    run_query(DbCountUserActivitiesByUser(
-      windows: windows,
-      user_id: user_id,
-      action: action,
-      next: function.identity,
-    )),
-  )
-
-  case list.first(rows) |> option.from_result() {
-    option.Some(row) -> Done(row.count)
-    option.None -> Done(0)
-  }
+) -> Program(List(rate_limit.WindowCount)) {
+  run_query(DbCountUserActivitiesByUser(
+    windows: windows,
+    user_id: user_id,
+    action: action,
+    next: function.identity,
+  ))
 }
 
 pub fn attempt_run_command(

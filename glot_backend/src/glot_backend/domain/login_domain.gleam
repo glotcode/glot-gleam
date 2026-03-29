@@ -9,7 +9,6 @@ import glot_backend/domain/rate_limit_domain
 import glot_backend/log
 import glot_backend/program
 import glot_core/auth
-import glot_core/rate_limit
 import glot_core/user
 
 pub fn login(
@@ -31,10 +30,7 @@ pub fn login(
   )
 
   use _ <- program.and_then(rate_limit_domain.enforce_by_ip(
-    rate_limit: rate_limit.RateLimit(
-      time_unit: rate_limit.Day,
-      max_requests: 100,
-    ),
+    rate_limits: ctx.config.rate_limits.login,
     now: ctx.timestamp,
     ip: ctx.client_ip,
     action: api_action.LoginAction,

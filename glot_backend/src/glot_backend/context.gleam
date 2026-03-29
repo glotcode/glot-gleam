@@ -1,9 +1,11 @@
 import gleam/dict.{type Dict}
 import gleam/int
+import gleam/list
 import gleam/option
 import gleam/regexp
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/rate_limit.{type RateLimit}
 import pog
 
 pub type Context {
@@ -28,7 +30,65 @@ pub type Config {
     postgres_pool_size: Int,
     docker_run_base_url: String,
     docker_run_access_token: String,
+    rate_limits: RateLimitsConfig,
   )
+}
+
+pub type RateLimitsConfig {
+  RateLimitsConfig(
+    send_login_token: List(RateLimit),
+    login: List(RateLimit),
+    run: List(RateLimit),
+  )
+}
+
+fn rate_limits_config_from_dict(
+  values: Dict(String, String),
+) -> RateLimitsConfig {
+  RateLimitsConfig(
+    send_login_token: lookup_rate_limits(values, "SEND_LOGIN_TOKEN"),
+    login: lookup_rate_limits(values, "LOGIN"),
+    run: lookup_rate_limits(values, "RUN"),
+  )
+}
+
+fn lookup_rate_limits(
+  dict: Dict(String, String),
+  action: String,
+) -> List(RateLimit) {
+  let second =
+    lookup(dict, "RATE_LIMIT_SECOND__" <> action)
+    |> result.try(string_to_int)
+    |> option.from_result
+
+  let minute =
+    lookup(dict, "RATE_LIMIT_MINUTE__" <> action)
+    |> result.try(string_to_int)
+    |> option.from_result
+
+  let hour =
+    lookup(dict, "RATE_LIMIT_HOUR__" <> action)
+    |> result.try(string_to_int)
+    |> option.from_result
+
+  let day =
+    lookup(dict, "RATE_LIMIT_DAY__" <> action)
+    |> result.try(string_to_int)
+    |> option.from_result
+
+  [
+    #(rate_limit.Second, second),
+    #(rate_limit.Minute, minute),
+    #(rate_limit.Hour, hour),
+    #(rate_limit.Day, day),
+  ]
+  |> list.map(fn(pair) {
+    let #(unit, maybe_max) = pair
+    option.map(maybe_max, fn(max_requests) {
+      rate_limit.RateLimit(unit: unit, max_requests: max_requests)
+    })
+  })
+  |> option.values
 }
 
 pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) {
@@ -61,6 +121,7 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
     postgres_pool_size: postgres_pool_size,
     docker_run_base_url: docker_run_base_url,
     docker_run_access_token: docker_run_access_token,
+    rate_limits: rate_limits_config_from_dict(values),
   ))
 }
 
