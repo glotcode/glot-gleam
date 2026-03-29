@@ -1,2 +1,16 @@
--- name: CountUserActivitiesByIp :one
-SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and ip = $2 AND action = $3;
+-- name: CountUserActivitiesByIp :many
+WITH windows AS (
+  SELECT
+    (w->>'unit')::text AS unit,
+    (w->>'cutoff')::timestamptz AS cutoff
+  FROM jsonb_array_elements(@windows::jsonb) AS w
+)
+SELECT
+  w.unit,
+  COUNT(a.*) AS count
+FROM windows w
+LEFT JOIN user_activities a
+  ON a.ip = @ip
+ AND a.action = @action
+ AND a.created_at >= w.cutoff
+GROUP BY w.unit;

@@ -2,6 +2,7 @@ import gleam/dynamic
 import gleam/option
 import glot_backend/api_action
 import glot_backend/context
+import glot_backend/domain/rate_limit_domain
 import glot_backend/email_message
 import glot_backend/job
 import glot_backend/log
@@ -24,8 +25,11 @@ pub fn send_login_token(
     program.log(log.singleton(log.email("email", request.email))),
   )
 
-  use _ <- program.and_then(program.enforce_ip_rate_limit(
-    config: rate_limit.Config(time_unit: rate_limit.Daily, max_requests: 10),
+  use _ <- program.and_then(rate_limit_domain.enforce_by_ip(
+    rate_limit: rate_limit.RateLimit(
+      time_unit: rate_limit.Day,
+      max_requests: 10,
+    ),
     now: ctx.timestamp,
     ip: ctx.client_ip,
     action: api_action.SendLoginTokenAction,

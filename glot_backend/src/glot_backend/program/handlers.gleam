@@ -16,6 +16,7 @@ import glot_backend/program
 import glot_backend/sql
 import glot_core/auth
 import glot_core/email
+import glot_core/rate_limit
 import glot_core/run
 import glot_core/user
 import glot_core/uuid_helpers
@@ -36,11 +37,11 @@ pub fn from_context(ctx: context.Context) -> program.Handlers {
     get_next_job: fn(now, pending_status, running_status) {
       get_next_job(ctx, now, pending_status, running_status)
     },
-    count_user_activities_by_ip: fn(created_at, ip, action) {
-      count_user_activities_by_ip(ctx, created_at, ip, action)
+    count_user_activities_by_ip: fn(windows, ip, action) {
+      count_user_activities_by_ip(ctx, ip, action, windows)
     },
-    count_user_activities_by_user: fn(created_at, user_id, action) {
-      count_user_activities_by_user(ctx, created_at, user_id, action)
+    count_user_activities_by_user: fn(windows, user_id, action) {
+      count_user_activities_by_user(ctx, user_id, action, windows)
     },
     run_command: fn(command) { run_command(ctx.db, command) },
     run_in_transaction: fn(commands) { run_in_transaction(ctx.db, commands) },
@@ -70,9 +71,11 @@ fn get_user_by_email(
   ctx: context.Context,
   user_email: email.Email,
 ) -> Result(option.Option(user.User), program.DbQueryError) {
-  db_helpers.query(ctx.db, sql.get_user_by_email(email.to_string(user_email)), fn(err) {
-    program.DbQueryError(string.inspect(err))
-  })
+  db_helpers.query(
+    ctx.db,
+    sql.get_user_by_email(email.to_string(user_email)),
+    fn(err) { program.DbQueryError(string.inspect(err)) },
+  )
   |> result.try(fn(returned) { user_from_rows(ctx, returned.rows) })
 }
 
@@ -145,16 +148,17 @@ fn login_token_from_row(
 
 fn count_user_activities_by_ip(
   ctx: context.Context,
-  created_at: Timestamp,
   ip: option.Option(String),
   action: api_action.ApiAction,
+  windows: List(rate_limit.Window),
 ) -> Result(List(sql.CountUserActivitiesByIp), program.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.count_user_activities_by_ip(
-      created_at: created_at,
       ip: ip,
       action: api_action.to_db_string(action),
+      windows: json.array(windows, of: rate_limit.encode_window)
+        |> json.to_string(),
     ),
     fn(err) { program.DbQueryError(string.inspect(err)) },
   )
@@ -163,16 +167,17 @@ fn count_user_activities_by_ip(
 
 fn count_user_activities_by_user(
   ctx: context.Context,
-  created_at: Timestamp,
   user_id: option.Option(uuid.Uuid),
   action: api_action.ApiAction,
+  windows: List(rate_limit.Window),
 ) -> Result(List(sql.CountUserActivitiesByUser), program.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.count_user_activities_by_user(
-      created_at: created_at,
       user_id: option.map(user_id, uuid.to_bit_array),
       action: api_action.to_db_string(action),
+      windows: json.array(windows, of: rate_limit.encode_window)
+        |> json.to_string(),
     ),
     fn(err) { program.DbQueryError(string.inspect(err)) },
   )

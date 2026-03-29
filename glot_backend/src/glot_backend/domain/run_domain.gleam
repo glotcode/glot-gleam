@@ -1,6 +1,7 @@
 import gleam/dynamic
 import glot_backend/api_action
 import glot_backend/context
+import glot_backend/domain/rate_limit_domain
 import glot_backend/program
 import glot_core/rate_limit
 import glot_core/run
@@ -14,8 +15,11 @@ pub fn handle_run(
     run.run_request_decoder(),
   ))
 
-  use _ <- program.and_then(program.enforce_ip_rate_limit(
-    config: rate_limit.Config(time_unit: rate_limit.Daily, max_requests: 100),
+  use _ <- program.and_then(rate_limit_domain.enforce_by_ip(
+    rate_limit: rate_limit.RateLimit(
+      time_unit: rate_limit.Day,
+      max_requests: 100,
+    ),
     now: ctx.timestamp,
     ip: ctx.client_ip,
     action: api_action.RunAction,

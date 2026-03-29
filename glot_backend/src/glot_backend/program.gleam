@@ -15,7 +15,7 @@ import glot_backend/log
 import glot_backend/sql
 import glot_core/auth
 import glot_core/email
-import glot_core/rate_limit
+import glot_core/rate_limit.{type RateLimit}
 import glot_core/run
 import glot_core/user
 import youid/uuid.{type Uuid}
@@ -51,7 +51,7 @@ pub type SendEmailError {
 pub type Error {
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
-  TooManyRequestsError(count: Int, config: rate_limit.Config)
+  TooManyRequestsError(count: Int, rate_limit: RateLimit)
   QueryError(DbQueryError)
   CommandError(DbCommandError)
   TransactionError(DbTransactionError)
@@ -77,13 +77,13 @@ pub type DbQuery(next) {
     next: fn(option.Option(job.Job)) -> next,
   )
   DbCountUserActivitiesByIp(
-    created_at: Timestamp,
+    windows: List(rate_limit.Window),
     ip: option.Option(String),
     action: ApiAction,
     next: fn(List(sql.CountUserActivitiesByIp)) -> next,
   )
   DbCountUserActivitiesByUser(
-    created_at: Timestamp,
+    windows: List(rate_limit.Window),
     user_id: option.Option(Uuid),
     action: ApiAction,
     next: fn(List(sql.CountUserActivitiesByUser)) -> next,
@@ -156,9 +156,9 @@ pub type Handlers {
       Result(List(auth.LoginToken), DbQueryError),
     get_next_job: fn(Timestamp, job.Status, job.Status) ->
       Result(option.Option(job.Job), DbQueryError),
-    count_user_activities_by_ip: fn(Timestamp, option.Option(String), ApiAction) ->
+    count_user_activities_by_ip: fn(List(rate_limit.Window), option.Option(String), ApiAction) ->
       Result(List(sql.CountUserActivitiesByIp), DbQueryError),
-    count_user_activities_by_user: fn(Timestamp, option.Option(Uuid), ApiAction) ->
+    count_user_activities_by_user: fn(List(rate_limit.Window), option.Option(Uuid), ApiAction) ->
       Result(List(sql.CountUserActivitiesByUser), DbQueryError),
     run_command: fn(DbCommand) -> Result(Nil, DbCommandError),
     run_in_transaction: fn(List(DbCommand)) -> Result(Nil, DbTransactionError),
@@ -497,13 +497,13 @@ pub fn db_get_next_job(
 }
 
 pub fn db_count_user_activities_by_ip(
-  created_at created_at: Timestamp,
+  windows windows: List(rate_limit.Window),
   ip ip: option.Option(String),
   action action: ApiAction,
 ) -> Program(Int) {
   use rows <- and_then(
     run_query(DbCountUserActivitiesByIp(
-      created_at: created_at,
+      windows: windows,
       ip: ip,
       action: action,
       next: function.identity,
@@ -517,13 +517,13 @@ pub fn db_count_user_activities_by_ip(
 }
 
 pub fn db_count_user_activities_by_user(
-  created_at created_at: Timestamp,
+  windows windows: List(rate_limit.Window),
   user_id user_id: option.Option(Uuid),
   action action: ApiAction,
 ) -> Program(Int) {
   use rows <- and_then(
     run_query(DbCountUserActivitiesByUser(
-      created_at: created_at,
+      windows: windows,
       user_id: user_id,
       action: action,
       next: function.identity,
@@ -533,35 +533,6 @@ pub fn db_count_user_activities_by_user(
   case list.first(rows) |> option.from_result() {
     option.Some(row) -> Done(row.count)
     option.None -> Done(0)
-  }
-}
-
-pub fn enforce_ip_rate_limit(
-  config config: rate_limit.Config,
-  now now: Timestamp,
-  ip ip: option.Option(String),
-  action action: ApiAction,
-) -> Program(Nil) {
-  use count <- and_then(db_count_user_activities_by_ip(
-    created_at: rate_limit.start_time(config, now),
-    ip: ip,
-    action: action,
-  ))
-
-  use id <- and_then(uuid_v7())
-  use _ <- and_then(
-    run_command(DbInsertUserActivity(
-      id: id,
-      action: action,
-      ip: ip,
-      user_id: option.None,
-      created_at: now,
-    )),
-  )
-
-  case count > config.max_requests {
-    True -> Fail(TooManyRequestsError(count, config))
-    False -> Done(Nil)
   }
 }
 
@@ -605,11 +576,11 @@ fn run_db_query(
     DbGetNextJob(now:, pending_status:, running_status:, next:) ->
       handlers.get_next_job(now, pending_status, running_status)
       |> result.map(next)
-    DbCountUserActivitiesByIp(created_at:, ip:, action:, next:) ->
-      handlers.count_user_activities_by_ip(created_at, ip, action)
+    DbCountUserActivitiesByIp(windows:, ip:, action:, next:) ->
+      handlers.count_user_activities_by_ip(windows, ip, action)
       |> result.map(next)
-    DbCountUserActivitiesByUser(created_at:, user_id:, action:, next:) ->
-      handlers.count_user_activities_by_user(created_at, user_id, action)
+    DbCountUserActivitiesByUser(windows:, user_id:, action:, next:) ->
+      handlers.count_user_activities_by_user(windows, user_id, action)
       |> result.map(next)
   }
 }
@@ -619,11 +590,9 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
     DbGetUserByEmail(email:, next:) ->
       DbGetUserByEmail(email: email, next: fn(value) { f(next(value)) })
     DbListLoginTokensByUser(user_id:, limit:, next:) ->
-      DbListLoginTokensByUser(
-        user_id: user_id,
-        limit: limit,
-        next: fn(value) { f(next(value)) },
-      )
+      DbListLoginTokensByUser(user_id: user_id, limit: limit, next: fn(value) {
+        f(next(value))
+      })
     DbGetNextJob(now:, pending_status:, running_status:, next:) ->
       DbGetNextJob(
         now: now,
@@ -631,16 +600,16 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
         running_status: running_status,
         next: fn(value) { f(next(value)) },
       )
-    DbCountUserActivitiesByIp(created_at:, ip:, action:, next:) ->
+    DbCountUserActivitiesByIp(windows:, ip:, action:, next:) ->
       DbCountUserActivitiesByIp(
-        created_at: created_at,
+        windows: windows,
         ip: ip,
         action: action,
         next: fn(value) { f(next(value)) },
       )
-    DbCountUserActivitiesByUser(created_at:, user_id:, action:, next:) ->
+    DbCountUserActivitiesByUser(windows:, user_id:, action:, next:) ->
       DbCountUserActivitiesByUser(
-        created_at: created_at,
+        windows: windows,
         user_id: user_id,
         action: action,
         next: fn(value) { f(next(value)) },

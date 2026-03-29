@@ -4,6 +4,7 @@ import gleeunit
 import glot_backend/api_action
 import glot_backend/job
 import glot_backend/program
+import glot_core/rate_limit
 import youid/uuid
 
 pub fn main() -> Nil {
@@ -94,14 +95,14 @@ fn test_handlers() -> program.Handlers {
       Ok(option.None)
     },
     count_user_activities_by_ip: fn(
-      _: timestamp.Timestamp,
+      _: List(rate_limit.Window),
       _: option.Option(String),
       _: api_action.ApiAction,
     ) {
       Ok([])
     },
     count_user_activities_by_user: fn(
-      _: timestamp.Timestamp,
+      _: List(rate_limit.Window),
       _: option.Option(uuid.Uuid),
       _: api_action.ApiAction,
     ) {

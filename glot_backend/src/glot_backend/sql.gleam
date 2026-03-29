@@ -274,22 +274,36 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
 }
 
 pub type CountUserActivitiesByUser {
-  CountUserActivitiesByUser(count: Int)
+  CountUserActivitiesByUser(unit: String, count: Int)
 }
 
 pub fn count_user_activities_by_user(
-  created_at created_at: Timestamp,
   user_id user_id: Option(BitArray),
   action action: String,
+  windows windows: String,
 ) {
   let sql =
-    "SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and user_id = $2 AND action = $3"
+    "WITH windows AS (
+  SELECT
+    (w->>'unit')::text AS unit,
+    (w->>'cutoff')::timestamptz AS cutoff
+  FROM jsonb_array_elements($3::jsonb) AS w
+)
+SELECT
+  w.unit,
+  COUNT(a.*) AS count
+FROM windows w
+LEFT JOIN user_activities a
+  ON a.user_id = $1
+ AND a.action = $2
+ AND a.created_at >= w.cutoff
+GROUP BY w.unit"
   #(
     sql,
     [
-      dev.ParamTimestamp(created_at),
       dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
       dev.ParamString(action),
+      dev.ParamString(windows),
     ],
     count_user_activities_by_user_decoder(),
   )
@@ -298,8 +312,9 @@ pub fn count_user_activities_by_user(
 pub fn count_user_activities_by_user_decoder() -> decode.Decoder(
   CountUserActivitiesByUser,
 ) {
-  use count <- decode.field(0, decode.int)
-  decode.success(CountUserActivitiesByUser(count:))
+  use unit <- decode.field(0, decode.string)
+  use count <- decode.field(1, decode.int)
+  decode.success(CountUserActivitiesByUser(unit:, count:))
 }
 
 pub fn update_snippet(
@@ -566,22 +581,36 @@ WHERE id = $1"
 }
 
 pub type CountUserActivitiesByIp {
-  CountUserActivitiesByIp(count: Int)
+  CountUserActivitiesByIp(unit: String, count: Int)
 }
 
 pub fn count_user_activities_by_ip(
-  created_at created_at: Timestamp,
   ip ip: Option(String),
   action action: String,
+  windows windows: String,
 ) {
   let sql =
-    "SELECT COUNT(*) as count FROM user_activities WHERE created_at >= $1 and ip = $2 AND action = $3"
+    "WITH windows AS (
+  SELECT
+    (w->>'unit')::text AS unit,
+    (w->>'cutoff')::timestamptz AS cutoff
+  FROM jsonb_array_elements($3::jsonb) AS w
+)
+SELECT
+  w.unit,
+  COUNT(a.*) AS count
+FROM windows w
+LEFT JOIN user_activities a
+  ON a.ip = $1
+ AND a.action = $2
+ AND a.created_at >= w.cutoff
+GROUP BY w.unit"
   #(
     sql,
     [
-      dev.ParamTimestamp(created_at),
       dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
       dev.ParamString(action),
+      dev.ParamString(windows),
     ],
     count_user_activities_by_ip_decoder(),
   )
@@ -590,8 +619,9 @@ pub fn count_user_activities_by_ip(
 pub fn count_user_activities_by_ip_decoder() -> decode.Decoder(
   CountUserActivitiesByIp,
 ) {
-  use count <- decode.field(0, decode.int)
-  decode.success(CountUserActivitiesByIp(count:))
+  use unit <- decode.field(0, decode.string)
+  use count <- decode.field(1, decode.int)
+  decode.success(CountUserActivitiesByIp(unit:, count:))
 }
 
 pub fn update_login_token(
