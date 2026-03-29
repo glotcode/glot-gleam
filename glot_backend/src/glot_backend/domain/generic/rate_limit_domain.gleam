@@ -4,6 +4,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/program.{type Program}
 import glot_core/rate_limit
+import youid/uuid.{type Uuid}
 
 pub fn enforce_by_ip(
   rate_limits rate_limits: List(rate_limit.RateLimit),
@@ -11,11 +12,49 @@ pub fn enforce_by_ip(
   ip ip: Option(String),
   action action: ApiAction,
 ) -> Program(Nil) {
-  use counts <- program.and_then(program.db_count_user_activities_by_ip(
-    windows: rate_limit.to_windows(rate_limits, now),
-    ip: ip,
+  enforce(
+    rate_limits: rate_limits,
+    now: now,
     action: action,
-  ))
+    ip: ip,
+    user_id: option.None,
+    counts_program: program.db_count_user_activities_by_ip(
+      windows: rate_limit.to_windows(rate_limits, now),
+      ip: ip,
+      action: action,
+    ),
+  )
+}
+
+pub fn enforce_by_user(
+  rate_limits rate_limits: List(rate_limit.RateLimit),
+  now now: Timestamp,
+  user_id user_id: Uuid,
+  action action: ApiAction,
+) -> Program(Nil) {
+  enforce(
+    rate_limits: rate_limits,
+    now: now,
+    action: action,
+    ip: option.None,
+    user_id: option.Some(user_id),
+    counts_program: program.db_count_user_activities_by_user(
+      windows: rate_limit.to_windows(rate_limits, now),
+      user_id: option.Some(user_id),
+      action: action,
+    ),
+  )
+}
+
+fn enforce(
+  rate_limits rate_limits: List(rate_limit.RateLimit),
+  now now: Timestamp,
+  action action: ApiAction,
+  ip ip: Option(String),
+  user_id user_id: Option(Uuid),
+  counts_program counts_program: Program(List(rate_limit.WindowCount)),
+) -> Program(Nil) {
+  use counts <- program.and_then(counts_program)
 
   use id <- program.and_then(program.uuid_v7())
   use _ <- program.and_then(
@@ -23,7 +62,7 @@ pub fn enforce_by_ip(
       id: id,
       action: action,
       ip: ip,
-      user_id: option.None,
+      user_id: user_id,
       created_at: now,
     )),
   )

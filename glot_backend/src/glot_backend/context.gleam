@@ -126,6 +126,7 @@ pub type RateLimitsConfig {
   RateLimitsConfig(
     send_login_token: List(RateLimit),
     login: List(RateLimit),
+    snippet_create: List(RateLimit),
     run: List(RateLimit),
   )
 }
@@ -136,6 +137,7 @@ fn rate_limits_config_from_dict(
   RateLimitsConfig(
     send_login_token: lookup_rate_limits(values, "SEND_LOGIN_TOKEN"),
     login: lookup_rate_limits(values, "LOGIN"),
+    snippet_create: lookup_rate_limits(values, "SNIPPET_CREATE"),
     run: lookup_rate_limits(values, "RUN"),
   )
 }
