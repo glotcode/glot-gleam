@@ -91,6 +91,7 @@ fn test_handlers() -> program.Handlers {
     },
     get_user_by_email: fn(_) { Ok(option.None) },
     list_login_tokens_by_user: fn(_, _) { Ok([]) },
+    get_session_by_token: fn(_) { Ok(option.None) },
     get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
       Ok(option.None)
     },

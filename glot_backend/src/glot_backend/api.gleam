@@ -12,6 +12,7 @@ import glot_backend/context
 import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
+import glot_backend/domain/api/snippet_create_domain
 import glot_backend/log
 import glot_backend/log_worker
 import glot_backend/program
@@ -96,6 +97,21 @@ fn error_to_response(error: program.Error) -> wisp.Response {
           error_response("send_email_error", "Failed to send email")
         }
       }
+    program.SessionError(session_error) ->
+      case session_error {
+        program.MissingSessionTokenError -> {
+          wisp.log_error("Session error: missing session token")
+          error_response("session_error", "Missing session token")
+        }
+        program.SessionNotFoundError -> {
+          wisp.log_error("Session error: session not found")
+          error_response("session_error", "Session not found")
+        }
+        program.SessionExpiredError -> {
+          wisp.log_error("Session error: session expired")
+          error_response("session_error", "Session expired")
+        }
+      }
     program.RunError(run_request_error) ->
       case run_request_error {
         program.PublicRunRequestError(message: message) -> {
@@ -118,6 +134,9 @@ fn handle_api_request(
     api_action.RunAction ->
       run_domain.run(ctx, api_request.data)
       |> program.map(RunResultResponse)
+    api_action.SnippetCreateAction ->
+      snippet_create_domain.snippet_create(ctx, api_request.data)
+      |> program.map(fn(_) { NoContentResponse })
     api_action.SendLoginTokenAction ->
       send_login_token_domain.send_login_token(ctx, api_request.data)
       |> program.map(fn(_) { NoContentResponse })
@@ -290,6 +309,7 @@ fn db_query_name_to_string(query_name: program.DbQueryName) -> String {
   case query_name {
     program.DbGetUserByEmailQuery -> "db_get_user_by_email"
     program.DbListLoginTokensByUserQuery -> "db_list_login_tokens_by_user"
+    program.DbGetSessionByTokenQuery -> "db_get_session_by_token"
     program.DbGetNextJobQuery -> "db_get_next_job"
     program.DbCountUserActivitiesByIpQuery -> "db_count_user_activities_by_ip"
     program.DbCountUserActivitiesByUserQuery ->
@@ -342,6 +362,12 @@ fn program_error_to_message(err: program.Error) -> String {
       "send_email_public:" <> message
     program.SendEmailError(program.InternalSendEmailError(message: message)) ->
       "send_email_internal:" <> message
+    program.SessionError(program.MissingSessionTokenError) ->
+      "session_error:missing_session_token"
+    program.SessionError(program.SessionNotFoundError) ->
+      "session_error:session_not_found"
+    program.SessionError(program.SessionExpiredError) ->
+      "session_error:session_expired"
     program.RunError(program.PublicRunRequestError(message: message)) ->
       "run_error_public:" <> message
     program.RunError(program.InternalRunRequestError(message: message)) ->

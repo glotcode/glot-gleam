@@ -4,6 +4,7 @@ import gleam/option.{type Option}
 import gleam/regexp
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/email
+import glot_core/user.{type User}
 import youid/uuid.{type Uuid}
 
 pub type LoginToken {
@@ -13,6 +14,17 @@ pub type LoginToken {
     token: String,
     created_at: Timestamp,
     used_at: Option(Timestamp),
+  )
+}
+
+pub type Session {
+  Session(
+    id: Uuid,
+    user: User,
+    token: String,
+    ip: Option(String),
+    user_agent: Option(String),
+    created_at: Timestamp,
   )
 }
 

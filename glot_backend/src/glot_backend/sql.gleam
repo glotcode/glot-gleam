@@ -506,34 +506,51 @@ pub fn insert_user_activity(
 pub type GetSessionByToken {
   GetSessionByToken(
     id: BitArray,
-    user_id: BitArray,
     token: String,
     ip: Option(String),
     user_agent: Option(String),
     created_at: Timestamp,
+    user_id: BitArray,
+    user_email: String,
+    user_created_at: Timestamp,
   )
 }
 
 pub fn get_session_by_token(token token: String) {
   let sql =
-    "SELECT id, user_id, token, ip, user_agent, created_at FROM sessions WHERE token = $1"
+    "SELECT
+  sessions.id,
+  sessions.token,
+  sessions.ip,
+  sessions.user_agent,
+  sessions.created_at,
+  users.id AS user_id,
+  users.email AS user_email,
+  users.created_at AS user_created_at
+FROM sessions
+INNER JOIN users ON users.id = sessions.user_id
+WHERE sessions.token = $1"
   #(sql, [dev.ParamString(token)], get_session_by_token_decoder())
 }
 
 pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
   use id <- decode.field(0, decode.bit_array)
-  use user_id <- decode.field(1, decode.bit_array)
-  use token <- decode.field(2, decode.string)
-  use ip <- decode.field(3, decode.optional(decode.string))
-  use user_agent <- decode.field(4, decode.optional(decode.string))
-  use created_at <- decode.field(5, dev.datetime_decoder())
+  use token <- decode.field(1, decode.string)
+  use ip <- decode.field(2, decode.optional(decode.string))
+  use user_agent <- decode.field(3, decode.optional(decode.string))
+  use created_at <- decode.field(4, dev.datetime_decoder())
+  use user_id <- decode.field(5, decode.bit_array)
+  use user_email <- decode.field(6, decode.string)
+  use user_created_at <- decode.field(7, dev.datetime_decoder())
   decode.success(GetSessionByToken(
     id:,
-    user_id:,
     token:,
     ip:,
     user_agent:,
     created_at:,
+    user_id:,
+    user_email:,
+    user_created_at:,
   ))
 }
 

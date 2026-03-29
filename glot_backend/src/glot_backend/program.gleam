@@ -47,6 +47,12 @@ pub type SendEmailError {
   InternalSendEmailError(message: String)
 }
 
+pub type SessionError {
+  MissingSessionTokenError
+  SessionNotFoundError
+  SessionExpiredError
+}
+
 pub type Error {
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
@@ -57,6 +63,7 @@ pub type Error {
   RunError(RunRequestError)
   LoginError(LoginError)
   SendEmailError(SendEmailError)
+  SessionError(SessionError)
 }
 
 pub type DbQuery(next) {
@@ -68,6 +75,10 @@ pub type DbQuery(next) {
     user_id: Uuid,
     limit: Int,
     next: fn(List(auth.LoginToken)) -> next,
+  )
+  DbGetSessionByToken(
+    token: String,
+    next: fn(option.Option(auth.Session)) -> next,
   )
   DbGetNextJob(
     now: Timestamp,
@@ -153,6 +164,8 @@ pub type Handlers {
       Result(option.Option(user.User), DbQueryError),
     list_login_tokens_by_user: fn(Uuid, Int) ->
       Result(List(auth.LoginToken), DbQueryError),
+    get_session_by_token: fn(String) ->
+      Result(option.Option(auth.Session), DbQueryError),
     get_next_job: fn(Timestamp, job.Status, job.Status) ->
       Result(option.Option(job.Job), DbQueryError),
     count_user_activities_by_ip: fn(List(rate_limit.Window), option.Option(String), ApiAction) ->
@@ -180,6 +193,7 @@ pub type EffectName {
 pub type DbQueryName {
   DbGetUserByEmailQuery
   DbListLoginTokensByUserQuery
+  DbGetSessionByTokenQuery
   DbGetNextJobQuery
   DbCountUserActivitiesByIpQuery
   DbCountUserActivitiesByUserQuery
@@ -482,6 +496,12 @@ pub fn db_list_login_tokens_by_user(
   ))
 }
 
+pub fn db_get_session_by_token(
+  token token: String,
+) -> Program(option.Option(auth.Session)) {
+  run_query(DbGetSessionByToken(token: token, next: function.identity))
+}
+
 pub fn db_get_next_job(
   now: Timestamp,
   pending_status: job.Status,
@@ -558,6 +578,8 @@ fn run_db_query(
       handlers.get_user_by_email(email) |> result.map(next)
     DbListLoginTokensByUser(user_id:, limit:, next:) ->
       handlers.list_login_tokens_by_user(user_id, limit) |> result.map(next)
+    DbGetSessionByToken(token:, next:) ->
+      handlers.get_session_by_token(token) |> result.map(next)
     DbGetNextJob(now:, pending_status:, running_status:, next:) ->
       handlers.get_next_job(now, pending_status, running_status)
       |> result.map(next)
@@ -578,6 +600,8 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
       DbListLoginTokensByUser(user_id: user_id, limit: limit, next: fn(value) {
         f(next(value))
       })
+    DbGetSessionByToken(token:, next:) ->
+      DbGetSessionByToken(token: token, next: fn(value) { f(next(value)) })
     DbGetNextJob(now:, pending_status:, running_status:, next:) ->
       DbGetNextJob(
         now: now,
@@ -606,6 +630,7 @@ fn db_query_name(query: DbQuery(a)) -> DbQueryName {
   case query {
     DbGetUserByEmail(_, _) -> DbGetUserByEmailQuery
     DbListLoginTokensByUser(_, _, _) -> DbListLoginTokensByUserQuery
+    DbGetSessionByToken(_, _) -> DbGetSessionByTokenQuery
     DbGetNextJob(_, _, _, _) -> DbGetNextJobQuery
     DbCountUserActivitiesByIp(_, _, _, _) -> DbCountUserActivitiesByIpQuery
     DbCountUserActivitiesByUser(_, _, _, _) -> DbCountUserActivitiesByUserQuery

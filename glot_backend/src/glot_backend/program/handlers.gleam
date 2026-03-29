@@ -34,6 +34,7 @@ pub fn from_context(ctx: context.Context) -> program.Handlers {
     list_login_tokens_by_user: fn(user_id, limit) {
       list_login_tokens_by_user(ctx, user_id, limit)
     },
+    get_session_by_token: fn(token) { get_session_by_token(ctx, token) },
     get_next_job: fn(now, pending_status, running_status) {
       get_next_job(ctx, now, pending_status, running_status)
     },
@@ -92,6 +93,18 @@ fn list_login_tokens_by_user(
   |> result.try(fn(returned) { login_tokens_from_rows(returned.rows) })
 }
 
+fn get_session_by_token(
+  ctx: context.Context,
+  token: String,
+) -> Result(option.Option(auth.Session), program.DbQueryError) {
+  db_helpers.query(
+    ctx.db,
+    sql.get_session_by_token(token),
+    fn(err) { program.DbQueryError(string.inspect(err)) },
+  )
+  |> result.try(fn(returned) { session_from_rows(ctx, returned.rows) })
+}
+
 fn user_from_rows(
   ctx: context.Context,
   rows: List(sql.GetUserByEmail),
@@ -144,6 +157,42 @@ fn login_token_from_row(
     created_at: row.created_at,
     used_at: row.used_at,
   ))
+}
+
+fn session_from_rows(
+  ctx: context.Context,
+  rows: List(sql.GetSessionByToken),
+) -> Result(option.Option(auth.Session), program.DbQueryError) {
+  case rows {
+    [] -> Ok(option.None)
+    [first] -> session_from_row(ctx, first) |> result.map(option.Some)
+    _ -> Error(program.DbQueryError("Expected at most one session row"))
+  }
+}
+
+fn session_from_row(
+  ctx: context.Context,
+  row: sql.GetSessionByToken,
+) -> Result(auth.Session, program.DbQueryError) {
+  case email.from_string(ctx.regexes.is_email, row.user_email) {
+    option.Some(valid_email) ->
+      Ok(auth.Session(
+        id: uuid_helpers.from_bit_array(row.id),
+        user: user.User(
+          id: uuid_helpers.from_bit_array(row.user_id),
+          email: valid_email,
+          created_at: row.user_created_at,
+        ),
+        token: row.token,
+        ip: row.ip,
+        user_agent: row.user_agent,
+        created_at: row.created_at,
+      ))
+    option.None ->
+      Error(program.DbQueryError(
+        "Invalid email format in session row: " <> row.user_email,
+      ))
+  }
 }
 
 fn count_user_activities_by_ip(
