@@ -90,6 +90,9 @@ pub fn login(
       ),
     ]),
   )
+  use _ <- program.and_then(
+    program.log(log.singleton(log.uuid("session_id", session_id))),
+  )
 
   program.succeed(session_token)
 }
