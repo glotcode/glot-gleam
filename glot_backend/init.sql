@@ -70,18 +70,19 @@ CREATE INDEX idx_user_activities_ts ON user_activities(created_at);
 
 -- LOG ENTRIES
 
-CREATE TABLE IF NOT EXISTS log_entries (
+CREATE TABLE IF NOT EXISTS api_log (
   id UUID PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL,
   action TEXT NOT NULL,
   duration_ns BIGINT NOT NULL,
+  ip TEXT NULL,
   user_agent TEXT NULL,
   data JSONB NOT NULL DEFAULT '{}'::jsonb,
   error TEXT NULL,
   effects JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 
-CREATE INDEX idx_log_entries_created_at ON log_entries(created_at);
+CREATE INDEX idx_api_log_created_at ON api_log(created_at);
 
 -- JOBS
 

@@ -163,24 +163,26 @@ pub fn list_snippets_by_user_decoder() -> decode.Decoder(ListSnippetsByUser) {
   ))
 }
 
-pub fn insert_log_entry(
+pub fn insert_api_log(
   id id: BitArray,
   created_at created_at: Timestamp,
   action action: String,
   duration_ns duration_ns: Int,
+  ip ip: Option(String),
   user_agent user_agent: Option(String),
   error error: Option(String),
   data data: String,
   effects effects: String,
 ) {
   let sql =
-    "INSERT INTO log_entries (id, created_at, action, duration_ns, user_agent, error, data, effects)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+    "INSERT INTO api_log (id, created_at, action, duration_ns, ip, user_agent, error, data, effects)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamTimestamp(created_at),
     dev.ParamString(action),
     dev.ParamInt(duration_ns),
+    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
     dev.ParamString(data),

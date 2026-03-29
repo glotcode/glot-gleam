@@ -365,6 +365,7 @@ fn run_command(
       created_at: created_at,
       action: action,
       duration_ns: duration_ns,
+      ip: ip,
       user_agent: user_agent,
       error: error,
       data: data,
@@ -372,11 +373,12 @@ fn run_command(
     ) ->
       db_helpers.execute(
         db,
-        sql.insert_log_entry(
+        sql.insert_api_log(
           id: uuid.to_bit_array(id),
           created_at: created_at,
           action: action,
           duration_ns: duration_ns,
+          ip: ip,
           user_agent: user_agent,
           error: error,
           data: data,

@@ -127,6 +127,7 @@ pub type DbCommand {
     created_at: Timestamp,
     action: String,
     duration_ns: Int,
+    ip: option.Option(String),
     user_agent: option.Option(String),
     error: option.Option(String),
     data: String,
@@ -665,7 +666,7 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
     DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
     DbUpdateLoginToken(_, _, _, _, _) -> DbUpdateLoginTokenCommand
     DbInsertUserActivity(_, _, _, _, _) -> DbInsertUserActivityCommand
-    DbInsertLogEntry(_, _, _, _, _, _, _, _) -> DbInsertLogEntryCommand
+    DbInsertLogEntry(_, _, _, _, _, _, _, _, _) -> DbInsertLogEntryCommand
     DbMarkJobDone(_, _) -> DbMarkJobDoneCommand
     DbRescheduleJob(_, _, _, _) -> DbRescheduleJobCommand
   }

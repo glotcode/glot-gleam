@@ -259,6 +259,7 @@ fn save_log_entry(
     created_at: ctx.timestamp,
     action: api_action.to_string(action),
     duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
+    ip: ctx.client_ip,
     user_agent: ctx.client_user_agent,
     error: error,
     data: state.log_fields |> log.encode_fields |> json.to_string,
