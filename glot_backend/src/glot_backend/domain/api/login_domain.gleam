@@ -51,7 +51,12 @@ pub fn login(
     10,
   ))
   use matching_token <- program.and_then(program.from_result(
-    find_valid_token(tokens, request.token, ctx.timestamp),
+    find_valid_token(
+      tokens,
+      request.token,
+      ctx.timestamp,
+      ctx.config.auth.login_token_max_age,
+    ),
     function.identity,
   ))
 
@@ -102,6 +107,7 @@ fn find_valid_token(
   tokens: List(auth.LoginToken),
   submitted_token: String,
   now: timestamp.Timestamp,
+  max_age: Int,
 ) -> Result(auth.LoginToken, program.Error) {
   case list.find(tokens, fn(token) { token.token == submitted_token }) {
     Error(_) -> Error(program.LoginError(program.InvalidTokenError))
@@ -109,7 +115,7 @@ fn find_valid_token(
       case token.used_at {
         option.Some(_) -> Error(program.LoginError(program.TokenUsedError))
         option.None ->
-          case token_is_still_valid(token.created_at, now) {
+          case token_is_still_valid(token.created_at, now, max_age) {
             True -> Ok(token)
             False -> Error(program.LoginError(program.TokenExpiredError))
           }
@@ -120,10 +126,11 @@ fn find_valid_token(
 fn token_is_still_valid(
   created_at: timestamp.Timestamp,
   now: timestamp.Timestamp,
+  max_age: Int,
 ) -> Bool {
   let #(created_seconds, _) =
     timestamp.to_unix_seconds_and_nanoseconds(created_at)
   let #(now_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(now)
 
-  now_seconds >= created_seconds && now_seconds - created_seconds <= 600
+  now_seconds >= created_seconds && now_seconds - created_seconds <= max_age
 }

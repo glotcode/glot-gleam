@@ -23,6 +23,7 @@ pub type Config {
     static_base_path: String,
     postgres: PostgresConfig,
     docker_run: DockerRunConfig,
+    auth: AuthConfig,
     rate_limits: RateLimitsConfig,
   )
 }
@@ -31,11 +32,13 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))
   use docker_run <- result.try(docker_run_config_from_dict(values))
+  use auth <- result.try(auth_config_from_dict(values))
 
   Ok(Config(
     static_base_path: static_base_path,
     postgres: postgres,
     docker_run: docker_run,
+    auth: auth,
     rate_limits: rate_limits_config_from_dict(values),
   ))
 }
@@ -88,6 +91,35 @@ fn docker_run_config_from_dict(
   use access_token <- result.try(lookup(values, "DOCKER_RUN_ACCESS_TOKEN"))
 
   Ok(DockerRunConfig(base_url: base_url, access_token: access_token))
+}
+
+pub type AuthConfig {
+  AuthConfig(
+    login_token_max_age: Int,
+    session_token_max_age: Int,
+    session_cookie_max_age: Int,
+  )
+}
+
+fn auth_config_from_dict(values: Dict(String, String)) -> Result(AuthConfig, String) {
+  use login_token_max_age <- result.try(
+    lookup(values, "LOGIN_TOKEN_MAX_AGE")
+    |> result.try(string_to_int),
+  )
+  use session_token_max_age <- result.try(
+    lookup(values, "SESSION_TOKEN_MAX_AGE")
+    |> result.try(string_to_int),
+  )
+  use session_cookie_max_age <- result.try(
+    lookup(values, "SESSION_COOKIE_MAX_AGE")
+    |> result.try(string_to_int),
+  )
+
+  Ok(AuthConfig(
+    login_token_max_age: login_token_max_age,
+    session_token_max_age: session_token_max_age,
+    session_cookie_max_age: session_cookie_max_age,
+  ))
 }
 
 pub type RateLimitsConfig {

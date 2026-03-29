@@ -13,7 +13,13 @@ pub fn require_session(ctx: context.Context) -> program.Program(auth.Session) {
 
   case session {
     option.Some(session) ->
-      case session_is_expired(session.created_at, ctx.timestamp) {
+      case
+        session_is_expired(
+          session.created_at,
+          ctx.timestamp,
+          ctx.config.auth.session_token_max_age,
+        )
+      {
         True -> program.fail(program.SessionError(program.SessionExpiredError))
         False -> program.succeed(session)
       }
@@ -25,10 +31,11 @@ pub fn require_session(ctx: context.Context) -> program.Program(auth.Session) {
 fn session_is_expired(
   created_at: timestamp.Timestamp,
   now: timestamp.Timestamp,
+  max_age: Int,
 ) -> Bool {
   let #(created_seconds, _) =
     timestamp.to_unix_seconds_and_nanoseconds(created_at)
   let #(now_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(now)
 
-  now_seconds >= created_seconds && now_seconds - created_seconds > 31_536_000
+  now_seconds >= created_seconds && now_seconds - created_seconds > max_age
 }

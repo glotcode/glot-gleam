@@ -34,11 +34,12 @@ pub fn handle_request(
 }
 
 fn result_to_response(
+  ctx: context.Context,
   request: wisp.Request,
   result: Result(ApiResult, program.Error),
 ) -> wisp.Response {
   case result {
-    Ok(response) -> api_result_to_response(request, response)
+    Ok(response) -> api_result_to_response(ctx, request, response)
     Error(err) -> error_to_response(err)
   }
 }
@@ -192,10 +193,14 @@ fn handle_decoded_request(
       api_result,
     )
 
-  Ok(result_to_response(req, api_result))
+  Ok(result_to_response(ctx, req, api_result))
 }
 
-fn api_result_to_response(req: wisp.Request, result: ApiResult) -> wisp.Response {
+fn api_result_to_response(
+  ctx: context.Context,
+  req: wisp.Request,
+  result: ApiResult,
+) -> wisp.Response {
   case result {
     RunResultResponse(run_result) -> {
       success_response(run.encode_run_result(run_result))
@@ -207,7 +212,7 @@ fn api_result_to_response(req: wisp.Request, result: ApiResult) -> wisp.Response
         name: "session",
         value: session_token,
         security: wisp.Signed,
-        max_age: 60 * 60,
+        max_age: ctx.config.auth.session_cookie_max_age,
       )
     }
     NoContentResponse -> success_response(json.null())
