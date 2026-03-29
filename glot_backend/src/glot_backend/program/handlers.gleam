@@ -337,41 +337,31 @@ fn run_command(
     program.DbInsertUser(id:, email:, created_at:) ->
       db_helpers.execute(
         db,
-        sql.insert_user(uuid.to_bit_array(id), email, created_at),
+        sql.insert_user(
+          uuid.to_bit_array(id),
+          email,
+          created_at,
+        ),
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbInsertJob(job.Job(
-      id: id,
-      job_type: job_type,
-      payload: payload,
-      status: status,
-      attempts: attempts,
-      max_attempts: max_attempts,
-      timeout_seconds: timeout_seconds,
-      run_at: run_at,
-      started_at: started_at,
-      completed_at: completed_at,
-      last_error: last_error,
-      created_at: created_at,
-      updated_at: updated_at,
-    )) ->
+    program.DbInsertJob(j) ->
       db_helpers.execute(
         db,
         sql.insert_job(
-          id: uuid.to_bit_array(id),
-          job_type: job.job_type_to_string(job_type),
-          payload: payload,
-          status: job.status_to_string(status),
-          attempts: attempts,
-          max_attempts: max_attempts,
-          timeout_seconds: timeout_seconds,
-          run_at: run_at,
-          started_at: started_at,
-          completed_at: completed_at,
-          last_error: last_error,
-          created_at: created_at,
-          updated_at: updated_at,
+          id: uuid.to_bit_array(j.id),
+          job_type: job.job_type_to_string(j.job_type),
+          payload: j.payload,
+          status: job.status_to_string(j.status),
+          attempts: j.attempts,
+          max_attempts: j.max_attempts,
+          timeout_seconds: j.timeout_seconds,
+          run_at: j.run_at,
+          started_at: j.started_at,
+          completed_at: j.completed_at,
+          last_error: j.last_error,
+          created_at: j.created_at,
+          updated_at: j.updated_at,
         ),
         to_error,
       )
@@ -379,7 +369,7 @@ fn run_command(
     program.DbInsertSnippet(
       id: id,
       user_id: user_id,
-      snippet: snippet,
+      snippet: s,
       created_at: created_at,
       updated_at: updated_at,
     ) ->
@@ -388,12 +378,14 @@ fn run_command(
         sql.insert_snippet(
           id: uuid.to_bit_array(id),
           user_id: uuid.to_bit_array(user_id),
-          language: language.to_string(snippet.language),
-          title: snippet.title,
-          visibility: snippet.visibility_to_string(snippet.visibility),
-          stdin: snippet.stdin,
-          run_command: snippet.run_command,
-          files: json.to_string(json.array(snippet.files, snippet.encode_file)),
+          language: language.to_string(s.language),
+          title: s.title,
+          visibility: snippet.visibility_to_string(s.visibility),
+          stdin: s.stdin,
+          run_command: s.run_command,
+          files: json.to_string(
+            json.array(s.files, snippet.encode_file),
+          ),
           created_at: created_at,
           updated_at: updated_at,
         ),
@@ -508,7 +500,10 @@ fn run_command(
     program.DbMarkJobDone(id: id, completed_at: completed_at) ->
       db_helpers.execute(
         db,
-        sql.mark_job_done(uuid.to_bit_array(id), option.Some(completed_at)),
+        sql.mark_job_done(
+          uuid.to_bit_array(id),
+          option.Some(completed_at),
+        ),
         to_error,
       )
       |> result.map(fn(_) { Nil })
