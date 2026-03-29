@@ -6,11 +6,16 @@ pub type Snippet {
   Snippet(
     title: String,
     language: language.Language,
-    visibility: String,
+    visibility: Visibility,
     stdin: String,
     run_command: String,
     files: List(File),
   )
+}
+
+pub type Visibility {
+  Public
+  Unlisted
 }
 
 pub type SnippetWithMeta {
@@ -25,11 +30,22 @@ pub fn encode(snippet: Snippet) -> json.Json {
   json.object([
     #("title", json.string(snippet.title)),
     #("language", language.encode(snippet.language)),
-    #("visibility", json.string(snippet.visibility)),
+    #("visibility", encode_visibility(snippet.visibility)),
     #("stdin", json.string(snippet.stdin)),
     #("runCommand", json.string(snippet.run_command)),
     #("files", json.array(snippet.files, encode_file)),
   ])
+}
+
+pub fn encode_visibility(visibility: Visibility) -> json.Json {
+  json.string(visibility_to_string(visibility))
+}
+
+pub fn visibility_to_string(visibility: Visibility) -> String {
+  case visibility {
+    Public -> "public"
+    Unlisted -> "unlisted"
+  }
 }
 
 pub fn encode_file(file: File) -> json.Json {
@@ -42,7 +58,7 @@ pub fn encode_file(file: File) -> json.Json {
 pub fn decoder() -> decode.Decoder(Snippet) {
   use title <- decode.field("title", decode.string)
   use lang <- decode.field("language", language.decoder())
-  use visibility <- decode.field("visibility", decode.string)
+  use visibility <- decode.field("visibility", visibility_decoder())
   use stdin <- decode.field("stdin", decode.string)
   use run_command <- decode.field("runCommand", decode.string)
   use files <- decode.field("files", decode.list(file_decoder()))
@@ -54,6 +70,15 @@ pub fn decoder() -> decode.Decoder(Snippet) {
     run_command: run_command,
     files: files,
   ))
+}
+
+pub fn visibility_decoder() -> decode.Decoder(Visibility) {
+  use visibility <- decode.then(decode.string)
+  case visibility {
+    "public" -> decode.success(Public)
+    "unlisted" -> decode.success(Unlisted)
+    _ -> decode.failure(Public, "Visibility")
+  }
 }
 
 pub fn snippet_with_meta_decoder() -> decode.Decoder(SnippetWithMeta) {

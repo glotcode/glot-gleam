@@ -397,7 +397,7 @@ fn run_command(
           user_id: uuid.to_bit_array(user_id),
           language: language.to_string(language),
           title: title,
-          visibility: visibility,
+          visibility: snippet.visibility_to_string(visibility),
           stdin: stdin,
           run_command: run_command,
           files: json.to_string(json.array(files, snippet.encode_file)),

@@ -110,7 +110,7 @@ pub type DbCommand {
     user_id: Uuid,
     language: language.Language,
     title: String,
-    visibility: String,
+    visibility: snippet.Visibility,
     stdin: String,
     run_command: String,
     files: List(snippet.File),
