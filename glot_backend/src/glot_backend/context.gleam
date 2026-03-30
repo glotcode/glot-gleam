@@ -108,15 +108,15 @@ fn auth_config_from_dict(
   values: Dict(String, String),
 ) -> Result(AuthConfig, String) {
   use login_token_max_age <- result.try(
-    lookup(values, "LOGIN_TOKEN_MAX_AGE")
+    lookup(values, "AUTH_LOGIN_TOKEN_MAX_AGE")
     |> result.try(string_to_int),
   )
   use session_token_max_age <- result.try(
-    lookup(values, "SESSION_TOKEN_MAX_AGE")
+    lookup(values, "AUTH_SESSION_TOKEN_MAX_AGE")
     |> result.try(string_to_int),
   )
   use session_cookie_max_age <- result.try(
-    lookup(values, "SESSION_COOKIE_MAX_AGE")
+    lookup(values, "AUTH_SESSION_COOKIE_MAX_AGE")
     |> result.try(string_to_int),
   )
 

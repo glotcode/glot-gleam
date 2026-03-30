@@ -1,4 +1,3 @@
-import gleam/function
 import gleam/option.{type Option}
 import gleam/time/timestamp
 import glot_backend/context

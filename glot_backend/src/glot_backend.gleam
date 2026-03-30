@@ -37,7 +37,6 @@ pub fn main() {
     |> radiate.start()
 
   wisp.configure_logger()
-  let secret_key_base = wisp.random_string(64)
 
   let assert Ok(priv_directory) = wisp.priv_directory("glot_backend")
   let static_directory = priv_directory <> "/static"
