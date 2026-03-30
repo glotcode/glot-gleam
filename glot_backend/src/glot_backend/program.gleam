@@ -424,7 +424,8 @@ pub fn decode_json(
   decoder: decode.Decoder(a),
 ) -> Program(a) {
   decode.run(json_body, decoder)
-  |> from_result(DecodeError)
+  |> result.map_error(DecodeError)
+  |> from_result
 }
 
 pub fn new_token(length: Int) -> Program(String) {
@@ -669,10 +670,10 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
   }
 }
 
-pub fn from_result(value: Result(a, e), map_error: fn(e) -> Error) -> Program(a) {
+pub fn from_result(value: Result(a, Error)) -> Program(a) {
   case value {
     Ok(v) -> Done(v)
-    Error(err) -> Fail(map_error(err))
+    Error(err) -> Fail(err)
   }
 }
 

@@ -1,5 +1,4 @@
 import gleam/dynamic
-import gleam/function
 import gleam/list
 import gleam/option
 import gleam/time/timestamp
@@ -37,10 +36,7 @@ pub fn login(
   ))
 
   use maybe_user <- program.and_then(program.db_get_user_by_email(request.email))
-  use user <- program.and_then(program.from_result(
-    user_from_option(maybe_user),
-    function.identity,
-  ))
+  use user <- program.and_then(program.from_result(user_from_option(maybe_user)))
 
   use _ <- program.and_then(
     program.log(log.singleton(log.uuid("user_id", user.id))),
@@ -50,15 +46,12 @@ pub fn login(
     user.id,
     10,
   ))
-  use matching_token <- program.and_then(program.from_result(
-    find_valid_token(
-      tokens,
-      request.token,
-      ctx.timestamp,
-      ctx.config.auth.login_token_max_age,
-    ),
-    function.identity,
-  ))
+  use matching_token <- program.and_then(program.from_result(find_valid_token(
+    tokens,
+    request.token,
+    ctx.timestamp,
+    ctx.config.auth.login_token_max_age,
+  )))
 
   use session_id <- program.and_then(program.uuid_v7())
   use session_token <- program.and_then(program.new_token(32))

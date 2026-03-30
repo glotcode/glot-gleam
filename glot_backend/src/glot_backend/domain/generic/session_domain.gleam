@@ -1,4 +1,5 @@
 import gleam/option.{type Option}
+import gleam/result
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/program
@@ -25,7 +26,8 @@ pub fn require_session(ctx: context.Context) -> program.Program(auth.Session) {
   })
 
   validate_session(ctx, session)
-  |> program.from_result(program.SessionError)
+  |> result.map_error(program.SessionError)
+  |> program.from_result
 }
 
 fn validate_session(
