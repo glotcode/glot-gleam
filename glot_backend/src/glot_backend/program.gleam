@@ -176,9 +176,17 @@ pub type Handlers {
       Result(option.Option(auth.Session), DbQueryError),
     get_next_job: fn(Timestamp, job.Status, job.Status) ->
       Result(option.Option(job.Job), DbQueryError),
-    count_user_activities_by_ip: fn(List(rate_limit.Window), option.Option(String), ApiAction) ->
+    count_user_activities_by_ip: fn(
+      List(rate_limit.Window),
+      option.Option(String),
+      ApiAction,
+    ) ->
       Result(List(rate_limit.WindowCount), DbQueryError),
-    count_user_activities_by_user: fn(List(rate_limit.Window), option.Option(Uuid), ApiAction) ->
+    count_user_activities_by_user: fn(
+      List(rate_limit.Window),
+      option.Option(Uuid),
+      ApiAction,
+    ) ->
       Result(List(rate_limit.WindowCount), DbQueryError),
     run_command: fn(DbCommand) -> Result(Nil, DbCommandError),
     run_in_transaction: fn(List(DbCommand)) -> Result(Nil, DbTransactionError),

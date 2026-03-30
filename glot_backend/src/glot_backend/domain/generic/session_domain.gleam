@@ -1,8 +1,22 @@
-import gleam/option
+import gleam/function
+import gleam/option.{type Option}
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/program
 import glot_core/auth
+
+pub fn get_session(
+  ctx: context.Context,
+) -> program.Program(Option(auth.Session)) {
+  use session <- program.and_then(case ctx.client_info.session_token {
+    option.Some(session_token) -> program.db_get_session_by_token(session_token)
+    option.None -> program.succeed(option.None)
+  })
+
+  validate_session(ctx, session)
+  |> option.from_result
+  |> program.succeed()
+}
 
 pub fn require_session(ctx: context.Context) -> program.Program(auth.Session) {
   use session <- program.and_then(case ctx.client_info.session_token {
@@ -11,24 +25,31 @@ pub fn require_session(ctx: context.Context) -> program.Program(auth.Session) {
       program.fail(program.SessionError(program.MissingSessionTokenError))
   })
 
+  validate_session(ctx, session)
+  |> program.from_result(program.SessionError)
+}
+
+fn validate_session(
+  ctx: context.Context,
+  session: Option(auth.Session),
+) -> Result(auth.Session, program.SessionError) {
   case session {
     option.Some(session) ->
       case
-        session_is_expired(
+        is_expired(
           session.created_at,
           ctx.timestamp,
           ctx.config.auth.session_token_max_age,
         )
       {
-        True -> program.fail(program.SessionError(program.SessionExpiredError))
-        False -> program.succeed(session)
+        True -> Error(program.SessionExpiredError)
+        False -> Ok(session)
       }
-    option.None ->
-      program.fail(program.SessionError(program.SessionNotFoundError))
+    option.None -> Error(program.SessionNotFoundError)
   }
 }
 
-fn session_is_expired(
+fn is_expired(
   created_at: timestamp.Timestamp,
   now: timestamp.Timestamp,
   max_age: Int,

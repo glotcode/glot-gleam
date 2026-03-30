@@ -1,7 +1,10 @@
 import gleam/dynamic
+import gleam/option
 import glot_backend/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
+import glot_backend/domain/generic/session_domain
+import glot_backend/log
 import glot_backend/program
 import glot_core/run
 
@@ -21,8 +24,20 @@ pub fn run(
     action: api_action.RunAction,
   ))
 
+  use maybe_session <- program.and_then(session_domain.get_session(ctx))
+  let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
+
   use result <- program.and_then(program.post_run_request(ctx.config, request))
   use _ <- program.and_then(program.run_command(insert_activity_cmd))
+
+  use _ <- program.and_then(
+    program.log(
+      log.from_list([
+        log.string("image", request.image),
+        log.optional_uuid("session_id", maybe_session_id),
+      ]),
+    ),
+  )
 
   program.succeed(result)
 }

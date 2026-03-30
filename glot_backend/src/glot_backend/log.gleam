@@ -1,6 +1,7 @@
 import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
+import gleam/option.{type Option}
 import glot_core/email
 import youid/uuid
 
@@ -25,6 +26,13 @@ pub fn string(key: String, value: String) -> #(String, Value) {
 
 pub fn uuid(key: String, value: uuid.Uuid) -> #(String, Value) {
   #(key, String(uuid.to_string(value)))
+}
+
+pub fn optional_uuid(key: String, value: Option(uuid.Uuid)) -> #(String, Value) {
+  case value {
+    option.Some(v) -> #(key, String(uuid.to_string(v)))
+    option.None -> #(key, Null)
+  }
 }
 
 pub fn email(key: String, value: email.Email) -> #(String, Value) {
