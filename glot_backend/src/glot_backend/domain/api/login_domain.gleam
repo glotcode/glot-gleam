@@ -29,7 +29,7 @@ pub fn login(
     ),
   )
 
-  use _ <- program.and_then(rate_limit_domain.enforce_by_ip(
+  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce_by_ip(
     rate_limits: ctx.config.rate_limits.login,
     now: ctx.timestamp,
     ip: ctx.client_info.ip,
@@ -62,7 +62,6 @@ pub fn login(
 
   use session_id <- program.and_then(program.uuid_v7())
   use session_token <- program.and_then(program.new_token(32))
-  use activity_id <- program.and_then(program.uuid_v7())
 
   use _ <- program.and_then(
     program.run_in_transaction([
@@ -81,13 +80,7 @@ pub fn login(
         user_agent: ctx.client_info.user_agent,
         created_at: ctx.timestamp,
       ),
-      program.DbInsertUserActivity(
-        id: activity_id,
-        action: api_action.LoginAction,
-        ip: ctx.client_info.ip,
-        user_id: option.Some(user.id),
-        created_at: ctx.timestamp,
-      ),
+      insert_activity_cmd,
     ]),
   )
   use _ <- program.and_then(

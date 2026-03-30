@@ -13,6 +13,11 @@ pub fn snippet_create(
 ) -> program.Program(Nil) {
   use session <- program.and_then(session_domain.require_session(ctx))
 
+  use request <- program.and_then(program.decode_json(
+    json_body,
+    snippet.decoder(),
+  ))
+
   use _ <- program.and_then(
     program.log(
       log.from_list([
@@ -22,27 +27,25 @@ pub fn snippet_create(
     ),
   )
 
-  use _ <- program.and_then(rate_limit_domain.enforce_by_user(
+  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce_by_user(
     rate_limits: ctx.config.rate_limits.snippet_create,
     now: ctx.timestamp,
     user_id: session.user.id,
     action: api_action.SnippetCreateAction,
   ))
 
-  use request <- program.and_then(program.decode_json(
-    json_body,
-    snippet.decoder(),
-  ))
-
   use snippet_id <- program.and_then(program.uuid_v7())
   use _ <- program.and_then(
-    program.run_command(program.DbInsertSnippet(
-      id: snippet_id,
-      user_id: session.user.id,
-      snippet: request,
-      created_at: ctx.timestamp,
-      updated_at: ctx.timestamp,
-    )),
+    program.run_in_transaction([
+      program.DbInsertSnippet(
+        id: snippet_id,
+        user_id: session.user.id,
+        snippet: request,
+        created_at: ctx.timestamp,
+        updated_at: ctx.timestamp,
+      ),
+      insert_activity_cmd,
+    ]),
   )
   use _ <- program.and_then(
     program.log(log.singleton(log.uuid("snippet_id", snippet_id))),

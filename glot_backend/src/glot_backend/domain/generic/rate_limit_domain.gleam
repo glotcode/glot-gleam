@@ -11,7 +11,7 @@ pub fn enforce_by_ip(
   now now: Timestamp,
   ip ip: Option(String),
   action action: ApiAction,
-) -> Program(Nil) {
+) -> Program(program.DbCommand) {
   enforce(
     rate_limits: rate_limits,
     now: now,
@@ -31,7 +31,7 @@ pub fn enforce_by_user(
   now now: Timestamp,
   user_id user_id: Uuid,
   action action: ApiAction,
-) -> Program(Nil) {
+) -> Program(program.DbCommand) {
   enforce(
     rate_limits: rate_limits,
     now: now,
@@ -53,24 +53,23 @@ fn enforce(
   ip ip: Option(String),
   user_id user_id: Option(Uuid),
   counts_program counts_program: Program(List(rate_limit.WindowCount)),
-) -> Program(Nil) {
+) -> Program(program.DbCommand) {
   use counts <- program.and_then(counts_program)
-
-  use id <- program.and_then(program.uuid_v7())
-  use _ <- program.and_then(
-    program.run_command(program.DbInsertUserActivity(
-      id: id,
-      action: action,
-      ip: ip,
-      user_id: user_id,
-      created_at: now,
-    )),
-  )
 
   case first_exceeded_rate_limit(rate_limits, counts) {
     option.Some(#(count, rate_limit)) ->
       program.fail(program.TooManyRequestsError(count + 1, rate_limit))
-    option.None -> program.succeed(Nil)
+    option.None -> {
+      use id <- program.and_then(program.uuid_v7())
+
+      program.succeed(program.DbInsertUserActivity(
+        id: id,
+        action: action,
+        ip: ip,
+        user_id: user_id,
+        created_at: now,
+      ))
+    }
   }
 }
 

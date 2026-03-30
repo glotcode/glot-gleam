@@ -14,12 +14,15 @@ pub fn run(
     run.run_request_decoder(),
   ))
 
-  use _ <- program.and_then(rate_limit_domain.enforce_by_ip(
+  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce_by_ip(
     rate_limits: ctx.config.rate_limits.run,
     now: ctx.timestamp,
     ip: ctx.client_info.ip,
     action: api_action.RunAction,
   ))
 
-  program.post_run_request(ctx.config, request)
+  use result <- program.and_then(program.post_run_request(ctx.config, request))
+  use _ <- program.and_then(program.run_command(insert_activity_cmd))
+
+  program.succeed(result)
 }
