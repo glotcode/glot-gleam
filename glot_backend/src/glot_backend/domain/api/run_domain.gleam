@@ -17,15 +17,16 @@ pub fn run(
     run.run_request_decoder(),
   ))
 
-  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce_by_ip(
+  use maybe_session <- program.and_then(session_domain.get_session(ctx))
+  let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
+
+  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce(
     rate_limits: ctx.config.rate_limits.run,
     now: ctx.timestamp,
     ip: ctx.client_info.ip,
+    user_id: option.map(maybe_session, fn(s) { s.user.id }),
     action: api_action.RunAction,
   ))
-
-  use maybe_session <- program.and_then(session_domain.get_session(ctx))
-  let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
 
   use result <- program.and_then(program.post_run_request(ctx.config, request))
   use _ <- program.and_then(program.run_command(insert_activity_cmd))

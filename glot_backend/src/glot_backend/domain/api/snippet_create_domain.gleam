@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/option
 import glot_backend/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
@@ -27,10 +28,11 @@ pub fn snippet_create(
     ),
   )
 
-  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce_by_user(
+  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce(
     rate_limits: ctx.config.rate_limits.snippet_create,
     now: ctx.timestamp,
-    user_id: session.user.id,
+    ip: option.None,
+    user_id: option.Some(session.user.id),
     action: api_action.SnippetCreateAction,
   ))
 
