@@ -20,6 +20,7 @@ pub type Context {
 
 pub type Config {
   Config(
+    encryption_key: String,
     static_base_path: String,
     postgres: PostgresConfig,
     docker_run: DockerRunConfig,
@@ -29,12 +30,14 @@ pub type Config {
 }
 
 pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) {
+  use encryption_key <- result.try(lookup(values, "ENCRYPTION_KEY"))
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))
   use docker_run <- result.try(docker_run_config_from_dict(values))
   use auth <- result.try(auth_config_from_dict(values))
 
   Ok(Config(
+    encryption_key: encryption_key,
     static_base_path: static_base_path,
     postgres: postgres,
     docker_run: docker_run,
@@ -101,7 +104,9 @@ pub type AuthConfig {
   )
 }
 
-fn auth_config_from_dict(values: Dict(String, String)) -> Result(AuthConfig, String) {
+fn auth_config_from_dict(
+  values: Dict(String, String),
+) -> Result(AuthConfig, String) {
   use login_token_max_age <- result.try(
     lookup(values, "LOGIN_TOKEN_MAX_AGE")
     |> result.try(string_to_int),

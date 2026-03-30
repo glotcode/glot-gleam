@@ -71,7 +71,7 @@ pub fn main() {
 
         handle_request(ctx, log_worker_subject, req)
       },
-      secret_key_base,
+      cfg.encryption_key,
     )(conn)
   }
 
