@@ -92,6 +92,7 @@ fn context_from_state(state: State) -> context.Context {
     db: db,
     config: config,
     regexes: regexes,
+    request_id: uuid.v7(),
     timestamp: timestamp.system_time(),
     client_info: context.ClientInfo(
       session_token: option.None,

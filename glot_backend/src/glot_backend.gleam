@@ -23,6 +23,7 @@ import pog
 import radiate
 import wisp
 import wisp/wisp_mist
+import youid/uuid
 
 pub fn main() {
   // TODO: only in dev mode
@@ -63,6 +64,7 @@ pub fn main() {
           context.Context(
             db: db,
             config: cfg,
+            request_id: uuid.v7(),
             timestamp: timestamp.system_time(),
             regexes: regexes,
             client_info: get_client_info(req, conn.body),

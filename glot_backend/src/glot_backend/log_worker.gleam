@@ -13,6 +13,7 @@ import youid/uuid.{type Uuid}
 pub type LogEntry {
   LogEntry(
     id: Uuid,
+    request_id: Uuid,
     created_at: Timestamp,
     action: String,
     duration_ns: Int,
@@ -55,6 +56,7 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 fn insert_api_log(db: pog.Connection, entry: LogEntry) -> Nil {
   let LogEntry(
     id: id,
+    request_id: request_id,
     created_at: created_at,
     action: action,
     duration_ns: duration_ns,
@@ -70,6 +72,7 @@ fn insert_api_log(db: pog.Connection, entry: LogEntry) -> Nil {
       db,
       sql.insert_api_log(
         id: uuid.to_bit_array(id),
+        request_id: uuid.to_bit_array(request_id),
         created_at: created_at,
         action: action,
         duration_ns: duration_ns,

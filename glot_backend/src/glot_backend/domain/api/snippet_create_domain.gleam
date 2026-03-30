@@ -29,6 +29,7 @@ pub fn snippet_create(
   )
 
   use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce(
+    ctx: ctx,
     rate_limits: ctx.config.rate_limits.snippet_create,
     now: ctx.timestamp,
     ip: option.None,

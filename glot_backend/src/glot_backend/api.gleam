@@ -280,6 +280,7 @@ fn save_log_entry(
 
   log_worker.LogEntry(
     id: id,
+    request_id: ctx.request_id,
     created_at: ctx.timestamp,
     action: api_action.to_string(action),
     duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),

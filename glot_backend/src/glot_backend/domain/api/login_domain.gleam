@@ -29,6 +29,7 @@ pub fn login(
   )
 
   use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce(
+    ctx: ctx,
     rate_limits: ctx.config.rate_limits.login,
     now: ctx.timestamp,
     ip: ctx.client_info.ip,

@@ -165,6 +165,7 @@ pub fn list_snippets_by_user_decoder() -> decode.Decoder(ListSnippetsByUser) {
 
 pub fn insert_api_log(
   id id: BitArray,
+  request_id request_id: BitArray,
   created_at created_at: Timestamp,
   action action: String,
   duration_ns duration_ns: Int,
@@ -175,10 +176,11 @@ pub fn insert_api_log(
   effects effects: String,
 ) {
   let sql =
-    "INSERT INTO api_log (id, created_at, action, duration_ns, ip, user_agent, error, data, effects)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
+    "INSERT INTO api_log (id, request_id, created_at, action, duration_ns, ip, user_agent, error, data, effects)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
   #(sql, [
     dev.ParamBitArray(id),
+    dev.ParamBitArray(request_id),
     dev.ParamTimestamp(created_at),
     dev.ParamString(action),
     dev.ParamInt(duration_ns),
@@ -487,15 +489,17 @@ pub fn insert_user(
 
 pub fn insert_user_activity(
   id id: BitArray,
+  request_id request_id: BitArray,
   action action: String,
   ip ip: Option(String),
   user_id user_id: Option(BitArray),
   created_at created_at: Timestamp,
 ) {
   let sql =
-    "INSERT INTO user_activities (id, action, ip, user_id, created_at) VALUES ($1, $2, $3, $4, $5)"
+    "INSERT INTO user_activities (id, request_id, action, ip, user_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
   #(sql, [
     dev.ParamBitArray(id),
+    dev.ParamBitArray(request_id),
     dev.ParamString(action),
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),

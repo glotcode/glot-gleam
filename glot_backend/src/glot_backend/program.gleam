@@ -135,6 +135,7 @@ pub type DbCommand {
   )
   DbInsertUserActivity(
     id: Uuid,
+    request_id: Uuid,
     action: ApiAction,
     ip: option.Option(String),
     user_id: option.Option(Uuid),
@@ -142,6 +143,7 @@ pub type DbCommand {
   )
   DbInsertLogEntry(
     id: Uuid,
+    request_id: Uuid,
     created_at: Timestamp,
     action: String,
     duration_ns: Int,
@@ -663,8 +665,8 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
     DbInsertSession(_, _, _, _, _, _) -> DbInsertSessionCommand
     DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
     DbUpdateLoginToken(_, _, _, _, _) -> DbUpdateLoginTokenCommand
-    DbInsertUserActivity(_, _, _, _, _) -> DbInsertUserActivityCommand
-    DbInsertLogEntry(_, _, _, _, _, _, _, _, _) -> DbInsertLogEntryCommand
+    DbInsertUserActivity(_, _, _, _, _, _) -> DbInsertUserActivityCommand
+    DbInsertLogEntry(_, _, _, _, _, _, _, _, _, _) -> DbInsertLogEntryCommand
     DbMarkJobDone(_, _) -> DbMarkJobDoneCommand
     DbRescheduleJob(_, _, _, _) -> DbRescheduleJobCommand
   }

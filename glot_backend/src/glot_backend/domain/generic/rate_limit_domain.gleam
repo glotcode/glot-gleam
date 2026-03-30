@@ -2,11 +2,13 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action.{type ApiAction}
+import glot_backend/context
 import glot_backend/program.{type Program}
 import glot_core/rate_limit
 import youid/uuid.{type Uuid}
 
 pub fn enforce(
+  ctx ctx: context.Context,
   rate_limits rate_limits: List(rate_limit.RateLimit),
   now now: Timestamp,
   ip ip: Option(String),
@@ -37,6 +39,7 @@ pub fn enforce(
 
   program.succeed(program.DbInsertUserActivity(
     id: id,
+    request_id: ctx.request_id,
     action: action,
     ip: ip,
     user_id: user_id,

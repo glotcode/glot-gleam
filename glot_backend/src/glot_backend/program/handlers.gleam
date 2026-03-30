@@ -453,6 +453,7 @@ fn run_command(
       |> result.map(fn(_) { Nil })
     program.DbInsertUserActivity(
       id: id,
+      request_id: request_id,
       action: action,
       ip: ip,
       user_id: user_id,
@@ -462,6 +463,7 @@ fn run_command(
         db,
         sql.insert_user_activity(
           id: uuid.to_bit_array(id),
+          request_id: uuid.to_bit_array(request_id),
           action: api_action.to_db_string(action),
           ip: ip,
           user_id: option.map(user_id, uuid.to_bit_array),
@@ -472,6 +474,7 @@ fn run_command(
       |> result.map(fn(_) { Nil })
     program.DbInsertLogEntry(
       id: id,
+      request_id: request_id,
       created_at: created_at,
       action: action,
       duration_ns: duration_ns,
@@ -485,6 +488,7 @@ fn run_command(
         db,
         sql.insert_api_log(
           id: uuid.to_bit_array(id),
+          request_id: uuid.to_bit_array(request_id),
           created_at: created_at,
           action: action,
           duration_ns: duration_ns,

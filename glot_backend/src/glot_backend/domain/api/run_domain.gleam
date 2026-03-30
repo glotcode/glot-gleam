@@ -21,6 +21,7 @@ pub fn run(
   let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
 
   use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce(
+    ctx: ctx,
     rate_limits: ctx.config.rate_limits.run,
     now: ctx.timestamp,
     ip: ctx.client_info.ip,

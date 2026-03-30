@@ -57,6 +57,7 @@ CREATE INDEX idx_snippets_language ON snippets(language);
 
 CREATE TABLE user_activities (
   id UUID PRIMARY KEY,
+  request_id UUID NOT NULL,
   action TEXT NOT NULL,
   ip TEXT NULL,
   user_id UUID NULL,
@@ -77,6 +78,7 @@ CREATE INDEX idx_user_activities_user_action_created_at
 
 CREATE TABLE IF NOT EXISTS api_log (
   id UUID PRIMARY KEY,
+  request_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   action TEXT NOT NULL,
   duration_ns BIGINT NOT NULL,
