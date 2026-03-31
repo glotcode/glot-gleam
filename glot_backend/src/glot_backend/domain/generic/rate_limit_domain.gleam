@@ -1,3 +1,4 @@
+import gleam/dict
 import gleam/list
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
@@ -9,22 +10,23 @@ import youid/uuid.{type Uuid}
 
 pub fn enforce(
   ctx ctx: context.Context,
-  rate_limits rate_limits: List(rate_limit.RateLimit),
+  rate_limits rate_limits: context.RateLimitsConfig,
   now now: Timestamp,
   ip ip: Option(String),
   user_id user_id: Option(Uuid),
   action action: ApiAction,
 ) -> Program(program.DbCommand) {
+  let action_rate_limits = lookup_rate_limits(rate_limits, action)
   let counts_program = case user_id {
     option.Some(user_id) ->
       program.db_count_user_actions_by_user(
-        windows: rate_limit.to_windows(rate_limits, now),
+        windows: rate_limit.to_windows(action_rate_limits, now),
         user_id: option.Some(user_id),
         action: action,
       )
     option.None ->
       program.db_count_user_actions_by_ip(
-        windows: rate_limit.to_windows(rate_limits, now),
+        windows: rate_limit.to_windows(action_rate_limits, now),
         ip: ip,
         action: action,
       )
@@ -32,7 +34,7 @@ pub fn enforce(
 
   use counts <- program.and_then(counts_program)
   use _ <- program.and_then(
-    check_rate_limit(rate_limits, counts)
+    check_rate_limit(action_rate_limits, counts)
     |> program.from_result(),
   )
   use id <- program.and_then(program.uuid_v7())
@@ -45,6 +47,16 @@ pub fn enforce(
     user_id: user_id,
     created_at: now,
   ))
+}
+
+fn lookup_rate_limits(
+  rate_limits: context.RateLimitsConfig,
+  action: ApiAction,
+) -> List(rate_limit.RateLimit) {
+  case dict.get(rate_limits, action) {
+    Ok(rate_limits) -> rate_limits
+    Error(_) -> []
+  }
 }
 
 fn check_rate_limit(

@@ -30,7 +30,7 @@ pub fn login(
 
   use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
-    rate_limits: ctx.config.rate_limits.login,
+    rate_limits: ctx.config.rate_limits,
     now: ctx.timestamp,
     ip: ctx.client_info.ip,
     user_id: option.None,

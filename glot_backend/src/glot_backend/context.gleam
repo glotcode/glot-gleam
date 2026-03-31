@@ -5,6 +5,7 @@ import gleam/option.{type Option}
 import gleam/regexp
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
+import glot_backend/api_action
 import glot_core/rate_limit.{type RateLimit}
 import pog
 import youid/uuid.{type Uuid}
@@ -129,24 +130,23 @@ fn auth_config_from_dict(
   ))
 }
 
-pub type RateLimitsConfig {
-  RateLimitsConfig(
-    send_login_token: List(RateLimit),
-    login: List(RateLimit),
-    snippet_create: List(RateLimit),
-    run: List(RateLimit),
-  )
-}
+pub type RateLimitsConfig = Dict(api_action.ApiAction, List(RateLimit))
 
 fn rate_limits_config_from_dict(
   values: Dict(String, String),
 ) -> RateLimitsConfig {
-  RateLimitsConfig(
-    send_login_token: lookup_rate_limits(values, "SEND_LOGIN_TOKEN"),
-    login: lookup_rate_limits(values, "LOGIN"),
-    snippet_create: lookup_rate_limits(values, "SNIPPET_CREATE"),
-    run: lookup_rate_limits(values, "RUN"),
-  )
+  dict.from_list([
+    #(
+      api_action.SendLoginTokenAction,
+      lookup_rate_limits(values, "SEND_LOGIN_TOKEN"),
+    ),
+    #(api_action.LoginAction, lookup_rate_limits(values, "LOGIN")),
+    #(
+      api_action.SnippetCreateAction,
+      lookup_rate_limits(values, "SNIPPET_CREATE"),
+    ),
+    #(api_action.RunAction, lookup_rate_limits(values, "RUN")),
+  ])
 }
 
 fn lookup_rate_limits(
