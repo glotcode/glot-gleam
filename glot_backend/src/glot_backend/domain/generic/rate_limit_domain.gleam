@@ -1,7 +1,6 @@
 import gleam/dict
 import gleam/list
 import gleam/option.{type Option}
-import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
 import glot_backend/program.{type Program}
@@ -10,24 +9,21 @@ import youid/uuid.{type Uuid}
 
 pub fn enforce(
   ctx ctx: context.Context,
-  rate_limits rate_limits: context.RateLimitsConfig,
-  now now: Timestamp,
-  ip ip: Option(String),
   user_id user_id: Option(Uuid),
   action action: ApiAction,
 ) -> Program(program.DbCommand) {
-  let action_rate_limits = lookup_rate_limits(rate_limits, action)
+  let action_rate_limits = lookup_rate_limits(ctx.config.rate_limits, action)
   let counts_program = case user_id {
     option.Some(user_id) ->
       program.db_count_user_actions_by_user(
-        windows: rate_limit.to_windows(action_rate_limits, now),
+        windows: rate_limit.to_windows(action_rate_limits, ctx.timestamp),
         user_id: option.Some(user_id),
         action: action,
       )
     option.None ->
       program.db_count_user_actions_by_ip(
-        windows: rate_limit.to_windows(action_rate_limits, now),
-        ip: ip,
+        windows: rate_limit.to_windows(action_rate_limits, ctx.timestamp),
+        ip: ctx.client_info.ip,
         action: action,
       )
   }
@@ -43,9 +39,9 @@ pub fn enforce(
     id: id,
     request_id: ctx.request_id,
     action: action,
-    ip: ip,
+    ip: ctx.client_info.ip,
     user_id: user_id,
-    created_at: now,
+    created_at: ctx.timestamp,
   ))
 }
 
