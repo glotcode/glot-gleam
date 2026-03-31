@@ -17,13 +17,13 @@ pub fn enforce(
 ) -> Program(program.DbCommand) {
   let counts_program = case user_id {
     option.Some(user_id) ->
-      program.db_count_user_activities_by_user(
+      program.db_count_user_actions_by_user(
         windows: rate_limit.to_windows(rate_limits, now),
         user_id: option.Some(user_id),
         action: action,
       )
     option.None ->
-      program.db_count_user_activities_by_ip(
+      program.db_count_user_actions_by_ip(
         windows: rate_limit.to_windows(rate_limits, now),
         ip: ip,
         action: action,
@@ -37,7 +37,7 @@ pub fn enforce(
   )
   use id <- program.and_then(program.uuid_v7())
 
-  program.succeed(program.DbInsertUserActivity(
+  program.succeed(program.DbInsertUserAction(
     id: id,
     request_id: ctx.request_id,
     action: action,

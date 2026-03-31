@@ -1,4 +1,4 @@
--- name: CountUserActivitiesByIp :many
+-- name: CountUserActionsByUser :many
 WITH windows AS (
   SELECT
     (w->>'unit')::text AS unit,
@@ -9,8 +9,8 @@ SELECT
   w.unit,
   COUNT(a.*) AS count
 FROM windows w
-LEFT JOIN user_activities a
-  ON a.ip = @ip
+LEFT JOIN user_actions a
+  ON a.user_id = @user_id
  AND a.action = @action
  AND a.created_at >= w.cutoff
 GROUP BY w.unit;

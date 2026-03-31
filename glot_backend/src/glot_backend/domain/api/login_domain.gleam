@@ -28,7 +28,7 @@ pub fn login(
     ),
   )
 
-  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce(
+  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     rate_limits: ctx.config.rate_limits.login,
     now: ctx.timestamp,
@@ -75,7 +75,7 @@ pub fn login(
         user_agent: ctx.client_info.user_agent,
         created_at: ctx.timestamp,
       ),
-      insert_activity_cmd,
+      user_action_cmd,
     ]),
   )
   use _ <- program.and_then(

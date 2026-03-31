@@ -20,7 +20,7 @@ pub fn run(
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
   let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
 
-  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce(
+  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     rate_limits: ctx.config.rate_limits.run,
     now: ctx.timestamp,
@@ -30,7 +30,7 @@ pub fn run(
   ))
 
   use result <- program.and_then(program.post_run_request(ctx.config, request))
-  use _ <- program.and_then(program.run_command(insert_activity_cmd))
+  use _ <- program.and_then(program.run_command(user_action_cmd))
 
   use _ <- program.and_then(
     program.log(

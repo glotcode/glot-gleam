@@ -317,9 +317,8 @@ fn db_query_name_to_string(query_name: program.DbQueryName) -> String {
     program.DbListLoginTokensByUserQuery -> "db_list_login_tokens_by_user"
     program.DbGetSessionByTokenQuery -> "db_get_session_by_token"
     program.DbGetNextJobQuery -> "db_get_next_job"
-    program.DbCountUserActivitiesByIpQuery -> "db_count_user_activities_by_ip"
-    program.DbCountUserActivitiesByUserQuery ->
-      "db_count_user_activities_by_user"
+    program.DbCountUserActionsByIpQuery -> "db_count_user_actions_by_ip"
+    program.DbCountUserActionsByUserQuery -> "db_count_user_actions_by_user"
   }
 }
 
@@ -331,7 +330,7 @@ fn db_command_name_to_string(command_name: program.DbCommandName) -> String {
     program.DbInsertSessionCommand -> "db_insert_session"
     program.DbInsertLoginTokenCommand -> "db_insert_login_token"
     program.DbUpdateLoginTokenCommand -> "db_update_login_token"
-    program.DbInsertUserActivityCommand -> "db_insert_user_activity"
+    program.DbInsertUserActionCommand -> "db_insert_user_action"
     program.DbInsertLogEntryCommand -> "db_insert_log_entry"
     program.DbMarkJobDoneCommand -> "db_mark_job_done"
     program.DbRescheduleJobCommand -> "db_reschedule_job"

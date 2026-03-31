@@ -24,7 +24,7 @@ pub fn send_login_token(
     program.log(log.singleton(log.email("email", request.email))),
   )
 
-  use insert_activity_cmd <- program.and_then(rate_limit_domain.enforce(
+  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     rate_limits: ctx.config.rate_limits.send_login_token,
     now: ctx.timestamp,
@@ -60,7 +60,7 @@ pub fn send_login_token(
       used_at: option.None,
     ),
     program.DbInsertJob(send_email_job),
-    insert_activity_cmd,
+    user_action_cmd,
   ]
 
   program.run_in_transaction(commands)

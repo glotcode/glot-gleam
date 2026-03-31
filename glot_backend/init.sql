@@ -55,7 +55,7 @@ CREATE INDEX idx_snippets_language ON snippets(language);
 
 -- USER ACTIVITIES
 
-CREATE TABLE user_activities (
+CREATE TABLE user_actions (
   id UUID PRIMARY KEY,
   request_id UUID NOT NULL,
   action TEXT NOT NULL,
@@ -64,14 +64,14 @@ CREATE TABLE user_activities (
   created_at TIMESTAMPTZ NOT NULL
 );
 
-CREATE INDEX idx_user_activities_ip ON user_activities(ip);
-CREATE INDEX idx_user_activities_user_id ON user_activities(user_id);
-CREATE INDEX idx_user_activities_ip_action_created_at
-  ON user_activities (ip, action, created_at)
+CREATE INDEX idx_user_actions_ip ON user_actions(ip);
+CREATE INDEX idx_user_actions_user_id ON user_actions(user_id);
+CREATE INDEX idx_user_actions_ip_action_created_at
+  ON user_actions (ip, action, created_at)
   WHERE ip IS NOT NULL;
 
-CREATE INDEX idx_user_activities_user_action_created_at
-  ON user_activities (user_id, action, created_at)
+CREATE INDEX idx_user_actions_user_action_created_at
+  ON user_actions (user_id, action, created_at)
   WHERE user_id IS NOT NULL;
 
 -- LOG ENTRIES

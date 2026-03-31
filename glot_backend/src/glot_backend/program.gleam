@@ -87,13 +87,13 @@ pub type DbQuery(next) {
     running_status: job.Status,
     next: fn(option.Option(job.Job)) -> next,
   )
-  DbCountUserActivitiesByIp(
+  DbCountUserActionsByIp(
     windows: List(rate_limit.Window),
     ip: option.Option(String),
     action: ApiAction,
     next: fn(List(rate_limit.WindowCount)) -> next,
   )
-  DbCountUserActivitiesByUser(
+  DbCountUserActionsByUser(
     windows: List(rate_limit.Window),
     user_id: option.Option(Uuid),
     action: ApiAction,
@@ -133,7 +133,7 @@ pub type DbCommand {
     used_at: option.Option(Timestamp),
     id: Uuid,
   )
-  DbInsertUserActivity(
+  DbInsertUserAction(
     id: Uuid,
     request_id: Uuid,
     action: ApiAction,
@@ -178,13 +178,13 @@ pub type Handlers {
       Result(option.Option(auth.Session), DbQueryError),
     get_next_job: fn(Timestamp, job.Status, job.Status) ->
       Result(option.Option(job.Job), DbQueryError),
-    count_user_activities_by_ip: fn(
+    count_user_actions_by_ip: fn(
       List(rate_limit.Window),
       option.Option(String),
       ApiAction,
     ) ->
       Result(List(rate_limit.WindowCount), DbQueryError),
-    count_user_activities_by_user: fn(
+    count_user_actions_by_user: fn(
       List(rate_limit.Window),
       option.Option(Uuid),
       ApiAction,
@@ -213,8 +213,8 @@ pub type DbQueryName {
   DbListLoginTokensByUserQuery
   DbGetSessionByTokenQuery
   DbGetNextJobQuery
-  DbCountUserActivitiesByIpQuery
-  DbCountUserActivitiesByUserQuery
+  DbCountUserActionsByIpQuery
+  DbCountUserActionsByUserQuery
 }
 
 pub type DbCommandName {
@@ -224,7 +224,7 @@ pub type DbCommandName {
   DbInsertSessionCommand
   DbInsertLoginTokenCommand
   DbUpdateLoginTokenCommand
-  DbInsertUserActivityCommand
+  DbInsertUserActionCommand
   DbInsertLogEntryCommand
   DbMarkJobDoneCommand
   DbRescheduleJobCommand
@@ -535,12 +535,12 @@ pub fn db_get_next_job(
   ))
 }
 
-pub fn db_count_user_activities_by_ip(
+pub fn db_count_user_actions_by_ip(
   windows windows: List(rate_limit.Window),
   ip ip: option.Option(String),
   action action: ApiAction,
 ) -> Program(List(rate_limit.WindowCount)) {
-  run_query(DbCountUserActivitiesByIp(
+  run_query(DbCountUserActionsByIp(
     windows: windows,
     ip: ip,
     action: action,
@@ -548,12 +548,12 @@ pub fn db_count_user_activities_by_ip(
   ))
 }
 
-pub fn db_count_user_activities_by_user(
+pub fn db_count_user_actions_by_user(
   windows windows: List(rate_limit.Window),
   user_id user_id: option.Option(Uuid),
   action action: ApiAction,
 ) -> Program(List(rate_limit.WindowCount)) {
-  run_query(DbCountUserActivitiesByUser(
+  run_query(DbCountUserActionsByUser(
     windows: windows,
     user_id: user_id,
     action: action,
@@ -603,11 +603,11 @@ fn run_db_query(
     DbGetNextJob(now:, pending_status:, running_status:, next:) ->
       handlers.get_next_job(now, pending_status, running_status)
       |> result.map(next)
-    DbCountUserActivitiesByIp(windows:, ip:, action:, next:) ->
-      handlers.count_user_activities_by_ip(windows, ip, action)
+    DbCountUserActionsByIp(windows:, ip:, action:, next:) ->
+      handlers.count_user_actions_by_ip(windows, ip, action)
       |> result.map(next)
-    DbCountUserActivitiesByUser(windows:, user_id:, action:, next:) ->
-      handlers.count_user_activities_by_user(windows, user_id, action)
+    DbCountUserActionsByUser(windows:, user_id:, action:, next:) ->
+      handlers.count_user_actions_by_user(windows, user_id, action)
       |> result.map(next)
   }
 }
@@ -629,15 +629,15 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
         running_status: running_status,
         next: fn(value) { f(next(value)) },
       )
-    DbCountUserActivitiesByIp(windows:, ip:, action:, next:) ->
-      DbCountUserActivitiesByIp(
+    DbCountUserActionsByIp(windows:, ip:, action:, next:) ->
+      DbCountUserActionsByIp(
         windows: windows,
         ip: ip,
         action: action,
         next: fn(value) { f(next(value)) },
       )
-    DbCountUserActivitiesByUser(windows:, user_id:, action:, next:) ->
-      DbCountUserActivitiesByUser(
+    DbCountUserActionsByUser(windows:, user_id:, action:, next:) ->
+      DbCountUserActionsByUser(
         windows: windows,
         user_id: user_id,
         action: action,
@@ -652,8 +652,8 @@ fn db_query_name(query: DbQuery(a)) -> DbQueryName {
     DbListLoginTokensByUser(_, _, _) -> DbListLoginTokensByUserQuery
     DbGetSessionByToken(_, _) -> DbGetSessionByTokenQuery
     DbGetNextJob(_, _, _, _) -> DbGetNextJobQuery
-    DbCountUserActivitiesByIp(_, _, _, _) -> DbCountUserActivitiesByIpQuery
-    DbCountUserActivitiesByUser(_, _, _, _) -> DbCountUserActivitiesByUserQuery
+    DbCountUserActionsByIp(_, _, _, _) -> DbCountUserActionsByIpQuery
+    DbCountUserActionsByUser(_, _, _, _) -> DbCountUserActionsByUserQuery
   }
 }
 
@@ -665,7 +665,7 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
     DbInsertSession(_, _, _, _, _, _) -> DbInsertSessionCommand
     DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
     DbUpdateLoginToken(_, _, _, _, _) -> DbUpdateLoginTokenCommand
-    DbInsertUserActivity(_, _, _, _, _, _) -> DbInsertUserActivityCommand
+    DbInsertUserAction(_, _, _, _, _, _) -> DbInsertUserActionCommand
     DbInsertLogEntry(_, _, _, _, _, _, _, _, _, _) -> DbInsertLogEntryCommand
     DbMarkJobDone(_, _) -> DbMarkJobDoneCommand
     DbRescheduleJob(_, _, _, _) -> DbRescheduleJobCommand

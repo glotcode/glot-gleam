@@ -120,6 +120,26 @@ pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
   ))
 }
 
+pub fn insert_user_action(
+  id id: BitArray,
+  request_id request_id: BitArray,
+  action action: String,
+  ip ip: Option(String),
+  user_id user_id: Option(BitArray),
+  created_at created_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO user_actions (id, request_id, action, ip, user_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamBitArray(request_id),
+    dev.ParamString(action),
+    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamTimestamp(created_at),
+  ])
+}
+
 pub type ListSnippetsByUser {
   ListSnippetsByUser(
     id: BitArray,
@@ -229,6 +249,50 @@ pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
   decode.success(GetUserById(id:, email:, created_at:))
 }
 
+pub type CountUserActionsByIp {
+  CountUserActionsByIp(unit: String, count: Int)
+}
+
+pub fn count_user_actions_by_ip(
+  ip ip: Option(String),
+  action action: String,
+  windows windows: String,
+) {
+  let sql =
+    "WITH windows AS (
+  SELECT
+    (w->>'unit')::text AS unit,
+    (w->>'cutoff')::timestamptz AS cutoff
+  FROM jsonb_array_elements($3::jsonb) AS w
+)
+SELECT
+  w.unit,
+  COUNT(a.*) AS count
+FROM windows w
+LEFT JOIN user_actions a
+  ON a.ip = $1
+ AND a.action = $2
+ AND a.created_at >= w.cutoff
+GROUP BY w.unit"
+  #(
+    sql,
+    [
+      dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
+      dev.ParamString(action),
+      dev.ParamString(windows),
+    ],
+    count_user_actions_by_ip_decoder(),
+  )
+}
+
+pub fn count_user_actions_by_ip_decoder() -> decode.Decoder(
+  CountUserActionsByIp,
+) {
+  use unit <- decode.field(0, decode.string)
+  use count <- decode.field(1, decode.int)
+  decode.success(CountUserActionsByIp(unit:, count:))
+}
+
 pub type GetSnippetById {
   GetSnippetById(
     id: BitArray,
@@ -273,50 +337,6 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
     created_at:,
     updated_at:,
   ))
-}
-
-pub type CountUserActivitiesByUser {
-  CountUserActivitiesByUser(unit: String, count: Int)
-}
-
-pub fn count_user_activities_by_user(
-  user_id user_id: Option(BitArray),
-  action action: String,
-  windows windows: String,
-) {
-  let sql =
-    "WITH windows AS (
-  SELECT
-    (w->>'unit')::text AS unit,
-    (w->>'cutoff')::timestamptz AS cutoff
-  FROM jsonb_array_elements($3::jsonb) AS w
-)
-SELECT
-  w.unit,
-  COUNT(a.*) AS count
-FROM windows w
-LEFT JOIN user_activities a
-  ON a.user_id = $1
- AND a.action = $2
- AND a.created_at >= w.cutoff
-GROUP BY w.unit"
-  #(
-    sql,
-    [
-      dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
-      dev.ParamString(action),
-      dev.ParamString(windows),
-    ],
-    count_user_activities_by_user_decoder(),
-  )
-}
-
-pub fn count_user_activities_by_user_decoder() -> decode.Decoder(
-  CountUserActivitiesByUser,
-) {
-  use unit <- decode.field(0, decode.string)
-  use count <- decode.field(1, decode.int)
-  decode.success(CountUserActivitiesByUser(unit:, count:))
 }
 
 pub fn update_snippet(
@@ -487,24 +507,48 @@ pub fn insert_user(
   ])
 }
 
-pub fn insert_user_activity(
-  id id: BitArray,
-  request_id request_id: BitArray,
-  action action: String,
-  ip ip: Option(String),
+pub type CountUserActionsByUser {
+  CountUserActionsByUser(unit: String, count: Int)
+}
+
+pub fn count_user_actions_by_user(
   user_id user_id: Option(BitArray),
-  created_at created_at: Timestamp,
+  action action: String,
+  windows windows: String,
 ) {
   let sql =
-    "INSERT INTO user_activities (id, request_id, action, ip, user_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamBitArray(request_id),
-    dev.ParamString(action),
-    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamTimestamp(created_at),
-  ])
+    "WITH windows AS (
+  SELECT
+    (w->>'unit')::text AS unit,
+    (w->>'cutoff')::timestamptz AS cutoff
+  FROM jsonb_array_elements($3::jsonb) AS w
+)
+SELECT
+  w.unit,
+  COUNT(a.*) AS count
+FROM windows w
+LEFT JOIN user_actions a
+  ON a.user_id = $1
+ AND a.action = $2
+ AND a.created_at >= w.cutoff
+GROUP BY w.unit"
+  #(
+    sql,
+    [
+      dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamString(action),
+      dev.ParamString(windows),
+    ],
+    count_user_actions_by_user_decoder(),
+  )
+}
+
+pub fn count_user_actions_by_user_decoder() -> decode.Decoder(
+  CountUserActionsByUser,
+) {
+  use unit <- decode.field(0, decode.string)
+  use count <- decode.field(1, decode.int)
+  decode.success(CountUserActionsByUser(unit:, count:))
 }
 
 pub type GetSessionByToken {
@@ -599,50 +643,6 @@ WHERE id = $1"
     dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(updated_at),
   ])
-}
-
-pub type CountUserActivitiesByIp {
-  CountUserActivitiesByIp(unit: String, count: Int)
-}
-
-pub fn count_user_activities_by_ip(
-  ip ip: Option(String),
-  action action: String,
-  windows windows: String,
-) {
-  let sql =
-    "WITH windows AS (
-  SELECT
-    (w->>'unit')::text AS unit,
-    (w->>'cutoff')::timestamptz AS cutoff
-  FROM jsonb_array_elements($3::jsonb) AS w
-)
-SELECT
-  w.unit,
-  COUNT(a.*) AS count
-FROM windows w
-LEFT JOIN user_activities a
-  ON a.ip = $1
- AND a.action = $2
- AND a.created_at >= w.cutoff
-GROUP BY w.unit"
-  #(
-    sql,
-    [
-      dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-      dev.ParamString(action),
-      dev.ParamString(windows),
-    ],
-    count_user_activities_by_ip_decoder(),
-  )
-}
-
-pub fn count_user_activities_by_ip_decoder() -> decode.Decoder(
-  CountUserActivitiesByIp,
-) {
-  use unit <- decode.field(0, decode.string)
-  use count <- decode.field(1, decode.int)
-  decode.success(CountUserActivitiesByIp(unit:, count:))
 }
 
 pub fn update_login_token(

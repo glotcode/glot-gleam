@@ -40,11 +40,11 @@ pub fn from_context(ctx: context.Context) -> program.Handlers {
     get_next_job: fn(now, pending_status, running_status) {
       get_next_job(ctx, now, pending_status, running_status)
     },
-    count_user_activities_by_ip: fn(windows, ip, action) {
-      count_user_activities_by_ip(ctx, ip, action, windows)
+    count_user_actions_by_ip: fn(windows, ip, action) {
+      count_user_actions_by_ip(ctx, ip, action, windows)
     },
-    count_user_activities_by_user: fn(windows, user_id, action) {
-      count_user_activities_by_user(ctx, user_id, action, windows)
+    count_user_actions_by_user: fn(windows, user_id, action) {
+      count_user_actions_by_user(ctx, user_id, action, windows)
     },
     run_command: fn(command) { run_command(ctx.db, command) },
     run_in_transaction: fn(commands) { run_in_transaction(ctx.db, commands) },
@@ -195,7 +195,7 @@ fn session_from_row(
   }
 }
 
-fn count_user_activities_by_ip(
+fn count_user_actions_by_ip(
   ctx: context.Context,
   ip: option.Option(String),
   action: api_action.ApiAction,
@@ -203,7 +203,7 @@ fn count_user_activities_by_ip(
 ) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
   db_helpers.query(
     ctx.db,
-    sql.count_user_activities_by_ip(
+    sql.count_user_actions_by_ip(
       ip: ip,
       action: api_action.to_db_string(action),
       windows: json.array(windows, of: rate_limit.encode_window)
@@ -214,7 +214,7 @@ fn count_user_activities_by_ip(
   |> result.try(fn(returned) { window_counts_from_ip_rows(returned.rows) })
 }
 
-fn count_user_activities_by_user(
+fn count_user_actions_by_user(
   ctx: context.Context,
   user_id: option.Option(uuid.Uuid),
   action: api_action.ApiAction,
@@ -222,7 +222,7 @@ fn count_user_activities_by_user(
 ) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
   db_helpers.query(
     ctx.db,
-    sql.count_user_activities_by_user(
+    sql.count_user_actions_by_user(
       user_id: option.map(user_id, uuid.to_bit_array),
       action: api_action.to_db_string(action),
       windows: json.array(windows, of: rate_limit.encode_window)
@@ -234,7 +234,7 @@ fn count_user_activities_by_user(
 }
 
 fn window_counts_from_ip_rows(
-  rows: List(sql.CountUserActivitiesByIp),
+  rows: List(sql.CountUserActionsByIp),
 ) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
   case rows {
     [] -> Ok([])
@@ -247,7 +247,7 @@ fn window_counts_from_ip_rows(
 }
 
 fn window_counts_from_user_rows(
-  rows: List(sql.CountUserActivitiesByUser),
+  rows: List(sql.CountUserActionsByUser),
 ) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
   case rows {
     [] -> Ok([])
@@ -451,7 +451,7 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbInsertUserActivity(
+    program.DbInsertUserAction(
       id: id,
       request_id: request_id,
       action: action,
@@ -461,7 +461,7 @@ fn run_command(
     ) ->
       db_helpers.execute(
         db,
-        sql.insert_user_activity(
+        sql.insert_user_action(
           id: uuid.to_bit_array(id),
           request_id: uuid.to_bit_array(request_id),
           action: api_action.to_db_string(action),

@@ -95,14 +95,14 @@ fn test_handlers() -> program.Handlers {
     get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
       Ok(option.None)
     },
-    count_user_activities_by_ip: fn(
+    count_user_actions_by_ip: fn(
       _: List(rate_limit.Window),
       _: option.Option(String),
       _: api_action.ApiAction,
     ) {
       Ok([])
     },
-    count_user_activities_by_user: fn(
+    count_user_actions_by_user: fn(
       _: List(rate_limit.Window),
       _: option.Option(uuid.Uuid),
       _: api_action.ApiAction,
