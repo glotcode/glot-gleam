@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS api_log (
   request_id UUID NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   action TEXT NOT NULL,
+  body_bytes BIGINT NOT NULL,
   duration_ns BIGINT NOT NULL,
   ip TEXT NULL,
   user_agent TEXT NULL,

@@ -337,11 +337,7 @@ fn run_command(
     program.DbInsertUser(id:, email:, created_at:) ->
       db_helpers.execute(
         db,
-        sql.insert_user(
-          uuid.to_bit_array(id),
-          email,
-          created_at,
-        ),
+        sql.insert_user(uuid.to_bit_array(id), email, created_at),
         to_error,
       )
       |> result.map(fn(_) { Nil })
@@ -383,9 +379,7 @@ fn run_command(
           visibility: snippet.visibility_to_string(s.visibility),
           stdin: s.stdin,
           run_command: s.run_command,
-          files: json.to_string(
-            json.array(s.files, snippet.encode_file),
-          ),
+          files: json.to_string(json.array(s.files, snippet.encode_file)),
           created_at: created_at,
           updated_at: updated_at,
         ),
@@ -472,42 +466,10 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbInsertLogEntry(
-      id: id,
-      request_id: request_id,
-      created_at: created_at,
-      action: action,
-      duration_ns: duration_ns,
-      ip: ip,
-      user_agent: user_agent,
-      error: error,
-      data: data,
-      effects: effects,
-    ) ->
-      db_helpers.execute(
-        db,
-        sql.insert_api_log(
-          id: uuid.to_bit_array(id),
-          request_id: uuid.to_bit_array(request_id),
-          created_at: created_at,
-          action: action,
-          duration_ns: duration_ns,
-          ip: ip,
-          user_agent: user_agent,
-          error: error,
-          data: data,
-          effects: effects,
-        ),
-        to_error,
-      )
-      |> result.map(fn(_) { Nil })
     program.DbMarkJobDone(id: id, completed_at: completed_at) ->
       db_helpers.execute(
         db,
-        sql.mark_job_done(
-          uuid.to_bit_array(id),
-          option.Some(completed_at),
-        ),
+        sql.mark_job_done(uuid.to_bit_array(id), option.Some(completed_at)),
         to_error,
       )
       |> result.map(fn(_) { Nil })

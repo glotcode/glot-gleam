@@ -141,18 +141,6 @@ pub type DbCommand {
     user_id: option.Option(Uuid),
     created_at: Timestamp,
   )
-  DbInsertLogEntry(
-    id: Uuid,
-    request_id: Uuid,
-    created_at: Timestamp,
-    action: String,
-    duration_ns: Int,
-    ip: option.Option(String),
-    user_agent: option.Option(String),
-    error: option.Option(String),
-    data: String,
-    effects: String,
-  )
   DbMarkJobDone(id: Uuid, completed_at: Timestamp)
   DbRescheduleJob(
     id: Uuid,
@@ -225,7 +213,6 @@ pub type DbCommandName {
   DbInsertLoginTokenCommand
   DbUpdateLoginTokenCommand
   DbInsertUserActionCommand
-  DbInsertLogEntryCommand
   DbMarkJobDoneCommand
   DbRescheduleJobCommand
 }
@@ -666,7 +653,6 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
     DbInsertLoginToken(_, _, _, _, _) -> DbInsertLoginTokenCommand
     DbUpdateLoginToken(_, _, _, _, _) -> DbUpdateLoginTokenCommand
     DbInsertUserAction(_, _, _, _, _, _) -> DbInsertUserActionCommand
-    DbInsertLogEntry(_, _, _, _, _, _, _, _, _, _) -> DbInsertLogEntryCommand
     DbMarkJobDone(_, _) -> DbMarkJobDoneCommand
     DbRescheduleJob(_, _, _, _) -> DbRescheduleJobCommand
   }

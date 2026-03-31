@@ -16,6 +16,7 @@ pub type LogEntry {
     request_id: Uuid,
     created_at: Timestamp,
     action: String,
+    body_bytes: Int,
     duration_ns: Int,
     ip: Option(String),
     user_agent: Option(String),
@@ -54,37 +55,24 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 }
 
 fn insert_api_log(db: pog.Connection, entry: LogEntry) -> Nil {
-  let LogEntry(
-    id: id,
-    request_id: request_id,
-    created_at: created_at,
-    action: action,
-    duration_ns: duration_ns,
-    ip: ip,
-    user_agent: user_agent,
-    error: error,
-    data: data,
-    effects: effects,
-  ) = entry
-
-  case
-    db_helpers.execute(
-      db,
-      sql.insert_api_log(
-        id: uuid.to_bit_array(id),
-        request_id: uuid.to_bit_array(request_id),
-        created_at: created_at,
-        action: action,
-        duration_ns: duration_ns,
-        ip: ip,
-        user_agent: user_agent,
-        error: error,
-        data: data,
-        effects: effects,
-      ),
-      fn(err) { string.inspect(err) },
+  let query =
+    sql.insert_api_log(
+      id: uuid.to_bit_array(entry.id),
+      request_id: uuid.to_bit_array(entry.request_id),
+      created_at: entry.created_at,
+      action: entry.action,
+      body_bytes: entry.body_bytes,
+      duration_ns: entry.duration_ns,
+      ip: entry.ip,
+      user_agent: entry.user_agent,
+      error: entry.error,
+      data: entry.data,
+      effects: entry.effects,
     )
-  {
+
+  let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
+
+  case res {
     Ok(_) -> Nil
     Error(err) -> wisp.log_error("Failed to insert log entry: " <> err)
   }

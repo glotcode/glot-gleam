@@ -188,6 +188,7 @@ pub fn insert_api_log(
   request_id request_id: BitArray,
   created_at created_at: Timestamp,
   action action: String,
+  body_bytes body_bytes: Int,
   duration_ns duration_ns: Int,
   ip ip: Option(String),
   user_agent user_agent: Option(String),
@@ -196,13 +197,14 @@ pub fn insert_api_log(
   effects effects: String,
 ) {
   let sql =
-    "INSERT INTO api_log (id, request_id, created_at, action, duration_ns, ip, user_agent, error, data, effects)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+    "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, error, data, effects)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamBitArray(request_id),
     dev.ParamTimestamp(created_at),
     dev.ParamString(action),
+    dev.ParamInt(body_bytes),
     dev.ParamInt(duration_ns),
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
