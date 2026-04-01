@@ -8,6 +8,9 @@ import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/effect
+import glot_backend/effect/error
+import glot_backend/effect/core/core_effect
+import glot_backend/effect/program
 import glot_backend/email_message
 import glot_backend/erlang
 import glot_backend/job
@@ -105,17 +108,17 @@ fn context_from_state(state: State) -> context.Context {
 }
 
 fn process_next_job(ctx: context.Context) -> effect.Program(Bool) {
-  use now <- effect.and_then(effect.system_time())
-  use maybe_job <- effect.and_then(effect.db_get_next_job(
+  use now <- program.and_then(core_effect.system_time())
+  use maybe_job <- program.and_then(core_effect.db_get_next_job(
     now,
     job.Pending,
     job.Running,
   ))
 
   case maybe_job {
-    option.None -> effect.succeed(False)
+    option.None -> program.succeed(False)
     option.Some(next_job) ->
-      process_job(ctx, next_job) |> effect.map(fn(_) { True })
+      process_job(ctx, next_job) |> program.map(fn(_) { True })
   }
 }
 
@@ -139,28 +142,28 @@ fn process_send_email_job(
 ) -> effect.Program(Nil) {
   case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
-      use send_result <- effect.and_then(effect.attempt_send_email(message))
-      use now <- effect.and_then(effect.system_time())
+      use send_result <- program.and_then(core_effect.attempt_send_email(message))
+      use now <- program.and_then(core_effect.system_time())
 
       case send_result {
-        Ok(_) -> effect.run_command(effect.DbMarkJobDone(id, now))
+        Ok(_) -> core_effect.mark_job_done(id, now)
         Error(err) ->
-          effect.run_command(effect.DbRescheduleJob(
+          core_effect.reschedule_job(
             id: id,
             run_at: add_seconds(now, backoff_seconds(attempts)),
             last_error: option.Some(send_email_error_to_string(err)),
             updated_at: now,
-          ))
+          )
       }
     }
     Error(errors) -> {
-      use now <- effect.and_then(effect.system_time())
-      effect.run_command(effect.DbRescheduleJob(
+      use now <- program.and_then(core_effect.system_time())
+      core_effect.reschedule_job(
         id: id,
         run_at: add_seconds(now, backoff_seconds(attempts)),
         last_error: option.Some("decode_error:" <> string.inspect(errors)),
         updated_at: now,
-      ))
+      )
     }
   }
 }
@@ -188,7 +191,7 @@ fn add_seconds(
 
 fn send_email_error_to_string(err: effect.SendEmailError) -> String {
   case err {
-    effect.PublicSendEmailError(message) -> "send_email_public:" <> message
-    effect.InternalSendEmailError(message) -> "send_email_internal:" <> message
+    error.PublicSendEmailError(message) -> "send_email_public:" <> message
+    error.InternalSendEmailError(message) -> "send_email_internal:" <> message
   }
 }

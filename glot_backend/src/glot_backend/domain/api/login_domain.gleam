@@ -6,6 +6,11 @@ import glot_backend/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect
+import glot_backend/effect/auth/auth_effect
+import glot_backend/effect/core/core_effect
+import glot_backend/effect/error
+import glot_backend/effect/program
+import glot_backend/effect/transaction/transaction
 import glot_backend/log
 import glot_core/auth
 import glot_core/user
@@ -14,13 +19,13 @@ pub fn login(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
 ) -> effect.Program(String) {
-  use request <- effect.and_then(effect.decode_json(
+  use request <- program.and_then(program.decode_json(
     json_body,
     auth.login_request_decoder(ctx.regexes.is_email),
   ))
 
-  use _ <- effect.and_then(
-    effect.info(
+  use _ <- program.and_then(
+    core_effect.info(
       log.from_list([
         log.email("email", request.email),
         log.string("token", request.token),
@@ -28,27 +33,27 @@ pub fn login(
     ),
   )
 
-  use user_action_cmd <- effect.and_then(rate_limit_domain.enforce(
+  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     user_id: option.None,
     action: api_action.LoginAction,
   ))
 
-  use maybe_user <- effect.and_then(effect.db_get_user_by_email(request.email))
-  use user <- effect.and_then(
-    effect.from_result(user_from_option(maybe_user)),
+  use maybe_user <- program.and_then(auth_effect.db_get_user_by_email(request.email))
+  use user <- program.and_then(
+    program.from_result(user_from_option(maybe_user)),
   )
 
-  use _ <- effect.and_then(
-    effect.info(log.singleton(log.uuid("user_id", user.id))),
+  use _ <- program.and_then(
+    core_effect.info(log.singleton(log.uuid("user_id", user.id))),
   )
 
-  use tokens <- effect.and_then(effect.db_list_login_tokens_by_user(
+  use tokens <- program.and_then(auth_effect.db_list_login_tokens_by_user(
     user.id,
     10,
   ))
-  use matching_token <- effect.and_then(
-    effect.from_result(find_valid_token(
+  use matching_token <- program.and_then(
+    program.from_result(find_valid_token(
       tokens,
       request.token,
       ctx.timestamp,
@@ -56,19 +61,19 @@ pub fn login(
     )),
   )
 
-  use session_id <- effect.and_then(effect.uuid_v7())
-  use session_token <- effect.and_then(effect.new_token(32))
+  use session_id <- program.and_then(core_effect.uuid_v7())
+  use session_token <- program.and_then(core_effect.new_token(32))
 
-  use _ <- effect.and_then(
-    effect.run_in_transaction([
-      effect.DbUpdateLoginToken(
+  use _ <- program.and_then(
+    transaction.run_in_transaction([
+      auth_effect.update_login_token(
         user_id: user.id,
         token: matching_token.token,
         created_at: matching_token.created_at,
         used_at: option.Some(ctx.timestamp),
         id: matching_token.id,
       ),
-      effect.DbInsertSession(
+      auth_effect.insert_session(
         id: session_id,
         user_id: user.id,
         token: session_token,
@@ -79,11 +84,11 @@ pub fn login(
       user_action_cmd,
     ]),
   )
-  use _ <- effect.and_then(
-    effect.info(log.singleton(log.uuid("session_id", session_id))),
+  use _ <- program.and_then(
+    core_effect.info(log.singleton(log.uuid("session_id", session_id))),
   )
 
-  effect.succeed(session_token)
+  program.succeed(session_token)
 }
 
 fn user_from_option(
@@ -91,7 +96,7 @@ fn user_from_option(
 ) -> Result(user.User, effect.Error) {
   case maybe_user {
     option.Some(user) -> Ok(user)
-    option.None -> Error(effect.LoginError(effect.InvalidTokenError))
+    option.None -> Error(error.LoginError(error.InvalidTokenError))
   }
 }
 
@@ -102,14 +107,14 @@ fn find_valid_token(
   max_age: Int,
 ) -> Result(auth.LoginToken, effect.Error) {
   case list.find(tokens, fn(token) { token.token == submitted_token }) {
-    Error(_) -> Error(effect.LoginError(effect.InvalidTokenError))
+    Error(_) -> Error(error.LoginError(error.InvalidTokenError))
     Ok(token) ->
       case token.used_at {
-        option.Some(_) -> Error(effect.LoginError(effect.TokenUsedError))
+        option.Some(_) -> Error(error.LoginError(error.TokenUsedError))
         option.None ->
           case token_is_still_valid(token.created_at, now, max_age) {
             True -> Ok(token)
-            False -> Error(effect.LoginError(effect.TokenExpiredError))
+            False -> Error(error.LoginError(error.TokenExpiredError))
           }
       }
   }

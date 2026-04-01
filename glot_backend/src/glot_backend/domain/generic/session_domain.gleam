@@ -3,39 +3,42 @@ import gleam/result
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/effect
+import glot_backend/effect/auth/auth_effect
+import glot_backend/effect/error
+import glot_backend/effect/program
 import glot_core/auth
 
 pub fn get_session(
   ctx: context.Context,
 ) -> effect.Program(Option(auth.Session)) {
-  use session <- effect.and_then(case ctx.client_info.session_token {
+  use session <- program.and_then(case ctx.client_info.session_token {
     option.Some(session_token) ->
-      effect.db_get_session_by_token(session_token)
-    option.None -> effect.succeed(option.None)
+      auth_effect.db_get_session_by_token(session_token)
+    option.None -> program.succeed(option.None)
   })
 
   validate_session(ctx, session)
   |> option.from_result
-  |> effect.succeed()
+  |> program.succeed()
 }
 
 pub fn require_session(ctx: context.Context) -> effect.Program(auth.Session) {
-  use session <- effect.and_then(case ctx.client_info.session_token {
+  use session <- program.and_then(case ctx.client_info.session_token {
     option.Some(session_token) ->
-      effect.db_get_session_by_token(session_token)
+      auth_effect.db_get_session_by_token(session_token)
     option.None ->
-      effect.fail(effect.SessionError(effect.MissingSessionTokenError))
+      program.fail(error.SessionError(error.MissingSessionTokenError))
   })
 
   validate_session(ctx, session)
-  |> result.map_error(effect.SessionError)
-  |> effect.from_result
+  |> result.map_error(error.SessionError)
+  |> program.from_result
 }
 
 fn validate_session(
   ctx: context.Context,
   session: Option(auth.Session),
-) -> Result(auth.Session, effect.SessionError) {
+) -> Result(auth.Session, error.SessionError) {
   case session {
     option.Some(session) ->
       case
@@ -45,10 +48,10 @@ fn validate_session(
           ctx.config.auth.session_token_max_age,
         )
       {
-        True -> Error(effect.SessionExpiredError)
+        True -> Error(error.SessionExpiredError)
         False -> Ok(session)
       }
-    option.None -> Error(effect.SessionNotFoundError)
+    option.None -> Error(error.SessionNotFoundError)
   }
 }
 

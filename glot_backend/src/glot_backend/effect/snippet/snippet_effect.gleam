@@ -1,0 +1,34 @@
+import gleam/time/timestamp.{type Timestamp}
+import glot_backend/effect/error
+import glot_backend/effect/snippet/snippet
+import glot_backend/effect/types
+import glot_core/snippet as snippet_type
+import youid/uuid.{type Uuid}
+
+pub fn insert(
+  id id: Uuid,
+  user_id user_id: Uuid,
+  snippet snippet: snippet_type.Snippet,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) -> types.Program(Nil) {
+  types.Impure(types.SnippetEffect(snippet.RunCommand(
+    snippet.InsertSnippet(
+      id: id,
+      user_id: user_id,
+      snippet: snippet,
+      created_at: created_at,
+      updated_at: updated_at,
+    ),
+    command_next,
+  )))
+}
+
+fn command_next(
+  result: Result(Nil, error.DbCommandError),
+) -> types.Program(Nil) {
+  case result {
+    Ok(_) -> types.Pure(Nil)
+    Error(err) -> types.Fail(error.CommandError(err))
+  }
+}
