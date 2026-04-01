@@ -23,9 +23,7 @@ pub fn system_time() -> effect_model.Program(Timestamp) {
 }
 
 pub fn uuid_v7() -> effect_model.Program(Uuid) {
-  effect_model.Impure(
-    effect_model.CoreEffect(core.UuidV7(effect_model.Pure)),
-  )
+  effect_model.Impure(effect_model.CoreEffect(core.UuidV7(effect_model.Pure)))
 }
 
 pub fn info(fields: log.Fields) -> effect_model.Program(Nil) {
@@ -48,28 +46,19 @@ pub fn attempt_send_email(
   )
 }
 
-pub fn send_email(message: email_message.EmailMessage) -> effect_model.Program(Nil) {
-  effect_model.Impure(
-    effect_model.CoreEffect(core.AttemptSendEmail(message, fn(send_result) {
-      case send_result {
-        Ok(_) -> effect_model.Pure(Nil)
-        Error(err) -> effect_model.Fail(error.SendEmailError(err))
-      }
-    })),
-  )
-}
-
 pub fn db_get_next_job(
   now: Timestamp,
   pending_status: job.Status,
   running_status: job.Status,
 ) -> effect_model.Program(option.Option(job.Job)) {
-  effect_model.Impure(effect_model.CoreEffect(core.GetNextJob(
-    now: now,
-    pending_status: pending_status,
-    running_status: running_status,
-    next: effect_model.Pure,
-  )))
+  effect_model.Impure(
+    effect_model.CoreEffect(core.GetNextJob(
+      now: now,
+      pending_status: pending_status,
+      running_status: running_status,
+      next: effect_model.Pure,
+    )),
+  )
 }
 
 pub fn db_count_user_actions_by_ip(
@@ -77,12 +66,14 @@ pub fn db_count_user_actions_by_ip(
   ip ip: option.Option(String),
   action action: ApiAction,
 ) -> effect_model.Program(List(rate_limit.WindowCount)) {
-  effect_model.Impure(effect_model.CoreEffect(core.CountUserActionsByIp(
-    windows: windows,
-    ip: ip,
-    action: action,
-    next: effect_model.Pure,
-  )))
+  effect_model.Impure(
+    effect_model.CoreEffect(core.CountUserActionsByIp(
+      windows: windows,
+      ip: ip,
+      action: action,
+      next: effect_model.Pure,
+    )),
+  )
 }
 
 pub fn db_count_user_actions_by_user(
@@ -90,12 +81,14 @@ pub fn db_count_user_actions_by_user(
   user_id user_id: option.Option(Uuid),
   action action: ApiAction,
 ) -> effect_model.Program(List(rate_limit.WindowCount)) {
-  effect_model.Impure(effect_model.CoreEffect(core.CountUserActionsByUser(
-    windows: windows,
-    user_id: user_id,
-    action: action,
-    next: effect_model.Pure,
-  )))
+  effect_model.Impure(
+    effect_model.CoreEffect(core.CountUserActionsByUser(
+      windows: windows,
+      user_id: user_id,
+      action: action,
+      next: effect_model.Pure,
+    )),
+  )
 }
 
 pub fn insert_job(job job: job.Job) -> effect_model.Program(Nil) {
@@ -112,15 +105,17 @@ pub fn insert_user_action(
   user_id user_id: option.Option(Uuid),
   created_at created_at: Timestamp,
 ) -> effect_model.Program(Nil) {
-  effect_model.Impure(effect_model.CoreEffect(core.InsertUserAction(
-    id: id,
-    request_id: request_id,
-    action: action,
-    ip: ip,
-    user_id: user_id,
-    created_at: created_at,
-    next: command_next,
-  )))
+  effect_model.Impure(
+    effect_model.CoreEffect(core.InsertUserAction(
+      id: id,
+      request_id: request_id,
+      action: action,
+      ip: ip,
+      user_id: user_id,
+      created_at: created_at,
+      next: command_next,
+    )),
+  )
 }
 
 pub fn mark_job_done(
@@ -138,13 +133,15 @@ pub fn reschedule_job(
   last_error last_error: option.Option(String),
   updated_at updated_at: Timestamp,
 ) -> effect_model.Program(Nil) {
-  effect_model.Impure(effect_model.CoreEffect(core.RescheduleJob(
-    id: id,
-    run_at: run_at,
-    last_error: last_error,
-    updated_at: updated_at,
-    next: command_next,
-  )))
+  effect_model.Impure(
+    effect_model.CoreEffect(core.RescheduleJob(
+      id: id,
+      run_at: run_at,
+      last_error: last_error,
+      updated_at: updated_at,
+      next: command_next,
+    )),
+  )
 }
 
 fn command_next(
