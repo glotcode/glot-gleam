@@ -5,7 +5,6 @@ import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/int
 import gleam/json
-import gleam/list
 import gleam/option
 import gleam/string
 import glot_backend/api_action.{type ApiAction}
@@ -14,9 +13,7 @@ import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
-import glot_backend/effect/auth/auth
 import glot_backend/effect/error
-import glot_backend/effect/core/core
 import glot_backend/effect/effect_model
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
@@ -25,7 +22,6 @@ import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
 import glot_backend/effect/handlers
-import glot_backend/effect/snippet/snippet
 import glot_core/run
 import wisp
 
@@ -211,7 +207,7 @@ fn save_log_entry(
       |> option.map(json.to_string),
     effects: state.effect_timings
       |> non_empty_list
-      |> option.map(encode_effect_timings)
+      |> option.map(program_state.encode_effect_timings)
       |> option.map(json.to_string),
   )
 }
@@ -227,117 +223,6 @@ fn non_empty_list(l: List(a)) -> option.Option(List(a)) {
   case l {
     [] -> option.None
     _ -> option.Some(l)
-  }
-}
-
-fn effect_name_to_string(effect_name: effect_model.EffectName) -> String {
-  case effect_name {
-    effect_model.NewTokenEffect -> "new_token"
-    effect_model.SystemTimeEffect -> "system_time"
-    effect_model.UuidV7Effect -> "uuid_v7"
-    effect_model.LogEffect -> "log"
-    effect_model.DockerRunRequestEffect -> "post_run_request"
-    effect_model.SendEmailEffect -> "send_email"
-    effect_model.RunQueryEffect(query_name) -> db_query_name_to_string(query_name)
-    effect_model.RunCommandEffect(command_name) ->
-      db_command_name_to_string(command_name)
-    effect_model.RunInTransactionEffect(_) -> "run_in_transaction"
-  }
-}
-
-fn effect_category(effect_name: effect_model.EffectName) -> String {
-  case effect_name {
-    effect_model.NewTokenEffect -> "util"
-    effect_model.SystemTimeEffect -> "util"
-    effect_model.UuidV7Effect -> "util"
-    effect_model.LogEffect -> "log"
-    effect_model.DockerRunRequestEffect -> "docker_run"
-    effect_model.SendEmailEffect -> "email"
-    effect_model.RunQueryEffect(_) -> "db_read"
-    effect_model.RunCommandEffect(_) -> "db_write"
-    effect_model.RunInTransactionEffect(_) -> "db_write"
-  }
-}
-
-fn db_query_name_to_string(query_name: effect_model.DbQueryName) -> String {
-  case query_name {
-    effect_model.AuthQueryName(auth.GetUserByEmailQuery) ->
-      "db_get_user_by_email"
-    effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery) ->
-      "db_list_login_tokens_by_user"
-    effect_model.AuthQueryName(auth.GetSessionByTokenQuery) ->
-      "db_get_session_by_token"
-    effect_model.CoreQueryName(core.GetNextJobQuery) -> "db_get_next_job"
-    effect_model.CoreQueryName(core.CountUserActionsByIpQuery) ->
-      "db_count_user_actions_by_ip"
-    effect_model.CoreQueryName(core.CountUserActionsByUserQuery) ->
-      "db_count_user_actions_by_user"
-  }
-}
-
-fn db_command_name_to_string(command_name: effect_model.DbCommandName) -> String {
-  case command_name {
-    effect_model.AuthCommandName(auth.InsertUserCommand) ->
-      "db_insert_user"
-    effect_model.CoreCommandName(core.InsertJobCommand) ->
-      "db_insert_job"
-    effect_model.SnippetCommandName(snippet.InsertSnippetCommand) ->
-      "db_insert_snippet"
-    effect_model.AuthCommandName(auth.InsertSessionCommand) ->
-      "db_insert_session"
-    effect_model.AuthCommandName(auth.InsertLoginTokenCommand) ->
-      "db_insert_login_token"
-    effect_model.AuthCommandName(auth.UpdateLoginTokenCommand) ->
-      "db_update_login_token"
-    effect_model.CoreCommandName(core.InsertUserActionCommand) ->
-      "db_insert_user_action"
-    effect_model.CoreCommandName(core.MarkJobDoneCommand) ->
-      "db_mark_job_done"
-    effect_model.CoreCommandName(core.RescheduleJobCommand) ->
-      "db_reschedule_job"
-  }
-}
-
-fn encode_effect_timings(effects: List(effect_model.EffectTiming)) -> json.Json {
-  json.object([
-    #("effects", json.array(effects, encode_effect_timing)),
-    #(
-      "summary",
-      json.object([
-        #("count", json.int(list.length(effects))),
-        #(
-          "duration_ns",
-          json.int(
-            list.fold(effects, 0, fn(acc, effect_timing) {
-              let #(_, duration_ns) = effect_timing
-              acc + duration_ns
-            }),
-          ),
-        ),
-      ]),
-    ),
-  ])
-}
-
-fn encode_effect_timing(effect_timing: effect_model.EffectTiming) -> json.Json {
-  let #(effect_name, duration_ns) = effect_timing
-  case effect_name {
-    effect_model.RunInTransactionEffect(commands) ->
-      json.object([
-        #("category", json.string(effect_category(effect_name))),
-        #("name", json.string(effect_name_to_string(effect_name))),
-        #(
-          "commands",
-          json.array(list.map(commands, effect_name_to_string), json.string),
-        ),
-        #("duration_ns", json.int(duration_ns)),
-      ])
-    _ ->
-      json.object([
-        #("category", json.string(effect_category(effect_name))),
-        #("name", json.string(effect_name_to_string(effect_name))),
-        #("duration_ns", json.int(duration_ns)),
-      ])
   }
 }
 

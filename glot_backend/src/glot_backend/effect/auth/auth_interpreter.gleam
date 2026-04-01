@@ -25,6 +25,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.GetUserByEmailQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -36,6 +37,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.GetUserByEmailQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -53,6 +55,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -64,6 +67,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -81,6 +85,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.GetSessionByTokenQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -92,6 +97,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.GetSessionByTokenQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -107,6 +113,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.AuthCommandName(auth.InsertUserCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -137,6 +144,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.AuthCommandName(auth.InsertSessionCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -165,6 +173,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.AuthCommandName(auth.InsertLoginTokenCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -193,6 +202,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.AuthCommandName(auth.UpdateLoginTokenCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )

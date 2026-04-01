@@ -30,6 +30,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.SnippetCommandName(snippet.InsertSnippetCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )

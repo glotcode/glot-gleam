@@ -19,14 +19,14 @@ pub fn run(
   let nested_effects =
     transaction_state.effect_timings
     |> list.map(fn(timing) {
-      let #(effect_name, _) = timing
-      effect_name
+      timing.name
     })
   continue(
     next(transaction_result),
     program_state.measure_effect(
       state,
       effect_model.RunInTransactionEffect(nested_effects),
+      effect_model.DbWriteEffectCategory,
       started_at,
     ),
   )

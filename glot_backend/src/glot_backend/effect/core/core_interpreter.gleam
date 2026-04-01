@@ -19,7 +19,12 @@ pub fn run(
       let value = handlers.core.new_token(length)
       continue(
         next(value),
-        program_state.measure_effect(state, effect_model.NewTokenEffect, started_at),
+        program_state.measure_effect(
+          state,
+          effect_model.NewTokenEffect,
+          effect_model.UtilEffectCategory,
+          started_at,
+        ),
       )
     }
     core.SystemTime(next) -> {
@@ -30,6 +35,7 @@ pub fn run(
         program_state.measure_effect(
           state,
           effect_model.SystemTimeEffect,
+          effect_model.UtilEffectCategory,
           started_at,
         ),
       )
@@ -39,7 +45,12 @@ pub fn run(
       let value = handlers.core.uuid_v7()
       continue(
         next(value),
-        program_state.measure_effect(state, effect_model.UuidV7Effect, started_at),
+        program_state.measure_effect(
+          state,
+          effect_model.UuidV7Effect,
+          effect_model.UtilEffectCategory,
+          started_at,
+        ),
       )
     }
     core.Log(level, fields, next) -> {
@@ -50,7 +61,12 @@ pub fn run(
       }
       continue(
         next,
-        program_state.measure_effect(state, effect_model.LogEffect, started_at),
+        program_state.measure_effect(
+          state,
+          effect_model.LogEffect,
+          effect_model.LogEffectCategory,
+          started_at,
+        ),
       )
     }
     core.AttemptSendEmail(message, next) -> {
@@ -58,7 +74,12 @@ pub fn run(
       let send_result = handlers.core.send_email(message)
       continue(
         next(send_result),
-        program_state.measure_effect(state, effect_model.SendEmailEffect, started_at),
+        program_state.measure_effect(
+          state,
+          effect_model.SendEmailEffect,
+          effect_model.EmailEffectCategory,
+          started_at,
+        ),
       )
     }
     core.GetNextJob(now:, pending_status:, running_status:, next:) -> {
@@ -74,6 +95,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.CoreQueryName(core.GetNextJobQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -85,6 +107,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.CoreQueryName(core.GetNextJobQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -103,6 +126,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.CoreQueryName(core.CountUserActionsByIpQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -114,6 +138,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.CoreQueryName(core.CountUserActionsByIpQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -132,6 +157,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.CoreQueryName(core.CountUserActionsByUserQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -143,6 +169,7 @@ pub fn run(
               effect_model.RunQueryEffect(
                 effect_model.CoreQueryName(core.CountUserActionsByUserQuery),
               ),
+              effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -158,6 +185,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.CoreCommandName(core.InsertJobCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -188,6 +216,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.CoreCommandName(core.InsertUserActionCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -202,6 +231,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.CoreCommandName(core.MarkJobDoneCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -217,6 +247,7 @@ pub fn run(
           effect_model.RunCommandEffect(
             effect_model.CoreCommandName(core.RescheduleJobCommand),
           ),
+          effect_model.DbWriteEffectCategory,
           started_at,
         ),
       )

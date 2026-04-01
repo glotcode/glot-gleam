@@ -42,7 +42,10 @@ pub fn measurement_aggregation_test() {
   let #(run_result, state) = interpreter.run(measured_effect, handlers)
 
   assert run_result == Ok("ok")
-  let assert [#(effect_model.LogEffect, first), #(effect_model.LogEffect, second)] =
+  let assert [
+    program_state.EffectTiming(name: effect_model.LogEffect, duration_ns: first, ..),
+    program_state.EffectTiming(name: effect_model.LogEffect, duration_ns: second, ..),
+  ] =
     state.effect_timings
   assert first >= 0
   assert second >= 0
@@ -57,7 +60,9 @@ pub fn measures_effects_in_success_test() {
   let #(run_result, state) = interpreter.run(measured_effect, handlers)
 
   assert run_result == Ok("ok")
-  let assert [#(effect_model.NewTokenEffect, duration_ms)] = state.effect_timings
+  let assert [
+    program_state.EffectTiming(name: effect_model.NewTokenEffect, duration_ns: duration_ms, ..),
+  ] = state.effect_timings
   assert duration_ms >= 0
 }
 
@@ -70,7 +75,9 @@ pub fn measures_effects_in_error_test() {
   let #(run_result, state) = interpreter.run(failing_effect, handlers)
 
   assert run_result == Error(error.EmailInvalidError("bad"))
-  let assert [#(effect_model.NewTokenEffect, duration_ms)] = state.effect_timings
+  let assert [
+    program_state.EffectTiming(name: effect_model.NewTokenEffect, duration_ns: duration_ms, ..),
+  ] = state.effect_timings
   assert duration_ms >= 0
 }
 
