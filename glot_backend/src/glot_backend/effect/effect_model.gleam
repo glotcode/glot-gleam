@@ -39,6 +39,16 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
   }
 }
 
+pub fn effect_name_to_family(effect_name: EffectName) -> String {
+  case effect_name {
+    CoreEffectName(_) -> "core"
+    AuthEffectName(_) -> "auth"
+    SnippetEffectName(_) -> "snippet"
+    DockerRunEffectName(_) -> "docker_run"
+    RunInTransactionEffectName(_) -> "transaction"
+  }
+}
+
 pub type EffectCategory {
   UtilEffectCategory
   LogEffectCategory

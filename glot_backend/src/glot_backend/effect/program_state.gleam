@@ -90,6 +90,10 @@ pub fn encode_effect_timing(effect_timing: EffectTiming) -> json.Json {
     effect_model.RunInTransactionEffectName(commands) ->
       json.object([
         #("category", json.string(effect_category)),
+        #(
+          "family",
+          json.string(effect_model.effect_name_to_family(effect_name)),
+        ),
         #("name", json.string(effect_model.effect_name_to_string(effect_name))),
         #(
           "commands",
@@ -103,6 +107,10 @@ pub fn encode_effect_timing(effect_timing: EffectTiming) -> json.Json {
     _ ->
       json.object([
         #("category", json.string(effect_category)),
+        #(
+          "family",
+          json.string(effect_model.effect_name_to_family(effect_name)),
+        ),
         #("name", json.string(effect_model.effect_name_to_string(effect_name))),
         #("duration_ns", json.int(duration_ns)),
       ])
