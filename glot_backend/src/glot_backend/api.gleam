@@ -14,12 +14,12 @@ import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
+import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
 import glot_backend/program
 import glot_backend/program/handlers as program_handlers
 import glot_core/run
-import glot_core/timestamp_helpers
 import wisp
 
 pub fn handle_request(
@@ -180,7 +180,7 @@ fn save_log_entry(
 ) -> log_worker.LogEntry {
   let handlers = program_handlers.from_context(ctx)
   let id = handlers.uuid_v7()
-  let now = handlers.system_time()
+  let duration_ns = erlang.perf_counter_ns() - ctx.started_at
 
   log_worker.LogEntry(
     id: id,
@@ -188,7 +188,7 @@ fn save_log_entry(
     created_at: ctx.timestamp,
     action: api_action.to_string(api_request.action),
     body_bytes: api_request.bytes,
-    duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
+    duration_ns: duration_ns,
     ip: ctx.client_info.ip,
     user_agent: ctx.client_info.user_agent,
     info: state.info_fields

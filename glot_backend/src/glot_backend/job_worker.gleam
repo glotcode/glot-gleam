@@ -8,6 +8,7 @@ import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/email_message
+import glot_backend/erlang
 import glot_backend/job
 import glot_backend/program
 import glot_backend/program/handlers as program_handlers
@@ -93,6 +94,7 @@ fn context_from_state(state: State) -> context.Context {
     config: config,
     regexes: regexes,
     request_id: uuid.v7(),
+    started_at: erlang.perf_counter_ns(),
     timestamp: timestamp.system_time(),
     client_info: context.ClientInfo(
       session_token: option.None,

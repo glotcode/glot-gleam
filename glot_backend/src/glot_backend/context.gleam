@@ -16,6 +16,8 @@ pub type Context {
     config: Config,
     regexes: Regexes,
     request_id: Uuid,
+    // started_at is not a timestamp. Used for duration measurement
+    started_at: Int,
     timestamp: Timestamp,
     client_info: ClientInfo,
   )
@@ -130,7 +132,8 @@ fn auth_config_from_dict(
   ))
 }
 
-pub type RateLimitsConfig = Dict(api_action.ApiAction, List(RateLimit))
+pub type RateLimitsConfig =
+  Dict(api_action.ApiAction, List(RateLimit))
 
 fn rate_limits_config_from_dict(
   values: Dict(String, String),

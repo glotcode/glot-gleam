@@ -10,6 +10,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
 import glot_backend/email_message
+import glot_backend/erlang
 import glot_backend/job
 import glot_backend/log
 import glot_core/auth
@@ -280,7 +281,7 @@ fn run_with_state(
         add_effect_timings(state, name, duration_ns),
       )
     NewToken(length, next) -> {
-      let started_at = now_ns()
+      let started_at = erlang.perf_counter_ns()
       let value = handlers.new_token(length)
       run_with_state(
         next(value),
@@ -289,7 +290,7 @@ fn run_with_state(
       )
     }
     SystemTime(next) -> {
-      let started_at = now_ns()
+      let started_at = erlang.perf_counter_ns()
       let value = handlers.system_time()
       run_with_state(
         next(value),
@@ -298,7 +299,7 @@ fn run_with_state(
       )
     }
     UuidV7(next) -> {
-      let started_at = now_ns()
+      let started_at = erlang.perf_counter_ns()
       let value = handlers.uuid_v7()
       run_with_state(
         next(value),
@@ -307,7 +308,7 @@ fn run_with_state(
       )
     }
     Log(level, fields, next) -> {
-      let started_at = now_ns()
+      let started_at = erlang.perf_counter_ns()
       let state = case level {
         log.Info -> add_info_fields(state, fields)
         log.Warn -> add_warning_fields(state, fields)
@@ -319,7 +320,7 @@ fn run_with_state(
       )
     }
     AttemptPostRunRequest(cfg, request, next) -> {
-      let started_at = now_ns()
+      let started_at = erlang.perf_counter_ns()
       let send_result = handlers.post_run_request(cfg, request)
       run_with_state(
         next(send_result),
@@ -328,7 +329,7 @@ fn run_with_state(
       )
     }
     AttemptSendEmail(message, next) -> {
-      let started_at = now_ns()
+      let started_at = erlang.perf_counter_ns()
       let send_result = handlers.send_email(message)
       run_with_state(
         next(send_result),
@@ -337,17 +338,32 @@ fn run_with_state(
       )
     }
     AttemptRunQuery(query, on_error) -> {
-      let started_at = now_ns()
-      let next_state =
-        measure_effect(state, RunQueryEffect(db_query_name(query)), started_at)
+      let started_at = erlang.perf_counter_ns()
       case run_db_query(query, handlers) {
-        Ok(next_program) -> run_with_state(next_program, handlers, next_state)
+        Ok(next_program) ->
+          run_with_state(
+            next_program,
+            handlers,
+            measure_effect(
+              state,
+              RunQueryEffect(db_query_name(query)),
+              started_at,
+            ),
+          )
         Error(query_error) ->
-          run_with_state(on_error(query_error), handlers, next_state)
+          run_with_state(
+            on_error(query_error),
+            handlers,
+            measure_effect(
+              state,
+              RunQueryEffect(db_query_name(query)),
+              started_at,
+            ),
+          )
       }
     }
     AttemptRunCommand(command, next) -> {
-      let started_at = now_ns()
+      let started_at = erlang.perf_counter_ns()
       let command_result = handlers.run_command(command)
       run_with_state(
         next(command_result),
@@ -360,7 +376,7 @@ fn run_with_state(
       )
     }
     AttemptRunInTransaction(commands, next) -> {
-      let started_at = now_ns()
+      let started_at = erlang.perf_counter_ns()
       let transaction_result = handlers.run_in_transaction(commands)
       run_with_state(
         next(transaction_result),
@@ -686,7 +702,7 @@ fn measure_effect(
   effect_name: EffectName,
   started_at_ns: Int,
 ) -> State {
-  let elapsed_ns = now_ns() - started_at_ns
+  let elapsed_ns = erlang.perf_counter_ns() - started_at_ns
   let safe_elapsed_ns = int.max(elapsed_ns, 0)
   add_effect_timings(state, effect_name, safe_elapsed_ns)
 }
@@ -708,11 +724,4 @@ fn add_info_fields(state: State, fields: log.Fields) -> State {
 
 fn add_warning_fields(state: State, fields: log.Fields) -> State {
   State(..state, warning_fields: dict.merge(state.warning_fields, fields))
-}
-
-fn now_ns() -> Int {
-  let #(seconds, nanoseconds) =
-    timestamp.system_time()
-    |> timestamp.to_unix_seconds_and_nanoseconds
-  seconds * 1_000_000_000 + nanoseconds
 }

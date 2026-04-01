@@ -12,6 +12,7 @@ import gleam/string
 import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
+import glot_backend/erlang
 import glot_backend/job_worker
 import glot_backend/log_worker
 import glot_core/email
@@ -65,6 +66,7 @@ pub fn main() {
             db: db,
             config: cfg,
             request_id: uuid.v7(),
+            started_at: erlang.perf_counter_ns(),
             timestamp: timestamp.system_time(),
             regexes: regexes,
             client_info: get_client_info(req, conn.body),
