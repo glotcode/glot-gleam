@@ -90,6 +90,6 @@ pub type Handlers {
       Timestamp,
     ) -> Result(Nil, error.DbCommandError),
     run_in_transaction: fn(List(effect_model.Program(Nil))) ->
-      Result(Nil, error.DbTransactionError),
+      #(Result(Nil, error.DbTransactionError), effect_model.State),
   )
 }

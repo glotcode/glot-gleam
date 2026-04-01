@@ -32,7 +32,7 @@ pub type EffectName {
   SendEmailEffect
   RunQueryEffect(DbQueryName)
   RunCommandEffect(DbCommandName)
-  RunInTransactionEffect(List(DbCommandName))
+  RunInTransactionEffect(List(EffectName))
 }
 
 pub type EffectTiming =

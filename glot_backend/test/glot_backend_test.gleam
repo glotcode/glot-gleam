@@ -108,6 +108,6 @@ fn test_handlers() -> effect.Handlers {
     mark_job_done: fn(_, _) { Ok(Nil) },
     reschedule_job: fn(_, _, _, _) { Ok(Nil) },
     insert_snippet: fn(_, _, _, _, _) { Ok(Nil) },
-    run_in_transaction: fn(_) { Ok(Nil) },
+    run_in_transaction: fn(_) { #(Ok(Nil), effect_model.new_state()) },
   )
 }

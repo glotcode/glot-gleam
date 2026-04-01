@@ -327,7 +327,7 @@ fn encode_effect_timing(effect_timing: effect.EffectTiming) -> json.Json {
         #("name", json.string(effect_name_to_string(effect_name))),
         #(
           "commands",
-          json.array(list.map(commands, db_command_name_to_string), json.string),
+          json.array(list.map(commands, effect_name_to_string), json.string),
         ),
         #("duration_ns", json.int(duration_ns)),
       ])

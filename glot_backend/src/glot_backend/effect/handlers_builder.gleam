@@ -10,7 +10,7 @@ import glot_backend/effect/snippet/snippet_handlers
 pub fn from_context(
   ctx: context.Context,
   run_in_transaction: fn(List(effect_model.Program(Nil))) ->
-    Result(Nil, error.DbTransactionError),
+    #(Result(Nil, error.DbTransactionError), effect_model.State),
 ) -> handlers_types.Handlers {
   handlers_types.Handlers(
     new_token: core_handlers.new_token,
