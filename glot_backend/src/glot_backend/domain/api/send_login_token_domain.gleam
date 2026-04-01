@@ -21,7 +21,7 @@ pub fn send_login_token(
   ))
 
   use _ <- program.and_then(
-    program.log(log.singleton(log.email("email", request.email))),
+    program.info(log.singleton(log.email("email", request.email))),
   )
 
   use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
@@ -36,7 +36,7 @@ pub fn send_login_token(
   use job_id <- program.and_then(program.uuid_v7())
 
   use _ <- program.and_then(
-    program.log(
+    program.info(
       log.from_list([
         log.string("token", token),
         log.uuid("user_id", user.id),

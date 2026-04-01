@@ -30,7 +30,7 @@ pub fn run(
   use _ <- program.and_then(program.run_command(user_action_cmd))
 
   use _ <- program.and_then(
-    program.log(
+    program.info(
       log.from_list([
         log.string("image", request.image),
         log.optional_uuid("session_id", maybe_session_id),

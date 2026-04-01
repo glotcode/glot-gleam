@@ -85,9 +85,10 @@ CREATE TABLE IF NOT EXISTS api_log (
   duration_ns BIGINT NOT NULL,
   ip TEXT NULL,
   user_agent TEXT NULL,
-  data JSONB NOT NULL DEFAULT '{}'::jsonb,
-  error TEXT NULL,
-  effects JSONB NOT NULL DEFAULT '[]'::jsonb
+  info JSONB NULL,
+  warnings JSONB NULL,
+  error JSONB NULL,
+  effects JSONB NULL
 );
 
 CREATE INDEX idx_api_log_created_at ON api_log(created_at);

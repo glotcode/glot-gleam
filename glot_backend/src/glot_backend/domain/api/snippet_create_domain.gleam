@@ -20,7 +20,7 @@ pub fn snippet_create(
   ))
 
   use _ <- program.and_then(
-    program.log(
+    program.info(
       log.from_list([
         log.uuid("session_id", session.id),
         log.uuid("user_id", session.user.id),
@@ -48,7 +48,7 @@ pub fn snippet_create(
     ]),
   )
   use _ <- program.and_then(
-    program.log(log.singleton(log.uuid("snippet_id", snippet_id))),
+    program.info(log.singleton(log.uuid("snippet_id", snippet_id))),
   )
 
   program.succeed(Nil)

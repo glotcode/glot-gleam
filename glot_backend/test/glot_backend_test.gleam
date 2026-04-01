@@ -33,13 +33,10 @@ pub fn measurement_aggregation_test() {
     program.succeed("ok")
   }
 
-  let #(
-    run_result,
-    program.State(effect_timings: effect_timings, log_fields: _),
-  ) = program.run(measured_program, handlers)
+  let #(run_result, state) = program.run(measured_program, handlers)
 
   assert run_result == Ok("ok")
-  assert effect_timings
+  assert state.effect_timings
     == [
       #(program.CustomEffect("custom"), 3),
       #(program.CustomEffect("custom"), 9),
@@ -52,13 +49,10 @@ pub fn measures_effects_in_success_test() {
     use _ <- program.and_then(program.new_token(5))
     program.succeed("ok")
   }
-  let #(
-    run_result,
-    program.State(effect_timings: effect_timings, log_fields: _),
-  ) = program.run(measured_program, handlers)
+  let #(run_result, state) = program.run(measured_program, handlers)
 
   assert run_result == Ok("ok")
-  let assert [#(program.NewTokenEffect, duration_ms)] = effect_timings
+  let assert [#(program.NewTokenEffect, duration_ms)] = state.effect_timings
   assert duration_ms >= 0
 }
 
@@ -68,13 +62,10 @@ pub fn measures_effects_in_error_test() {
     use _ <- program.and_then(program.new_token(5))
     program.fail(program.EmailInvalidError("bad"))
   }
-  let #(
-    run_result,
-    program.State(effect_timings: effect_timings, log_fields: _),
-  ) = program.run(failing_program, handlers)
+  let #(run_result, state) = program.run(failing_program, handlers)
 
   assert run_result == Error(program.EmailInvalidError("bad"))
-  let assert [#(program.NewTokenEffect, duration_ms)] = effect_timings
+  let assert [#(program.NewTokenEffect, duration_ms)] = state.effect_timings
   assert duration_ms >= 0
 }
 

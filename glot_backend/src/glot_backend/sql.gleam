@@ -192,13 +192,14 @@ pub fn insert_api_log(
   duration_ns duration_ns: Int,
   ip ip: Option(String),
   user_agent user_agent: Option(String),
+  info info: Option(String),
+  warnings warnings: Option(String),
   error error: Option(String),
-  data data: String,
-  effects effects: String,
+  effects effects: Option(String),
 ) {
   let sql =
-    "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, error, data, effects)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+    "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, info, warnings, error, effects)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamBitArray(request_id),
@@ -208,9 +209,10 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
     dev.ParamInt(duration_ns),
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(info, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(warnings, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
-    dev.ParamString(data),
-    dev.ParamString(effects),
+    dev.ParamNullable(option.map(effects, fn(v) { dev.ParamString(v) })),
   ])
 }
 

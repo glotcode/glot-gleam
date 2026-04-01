@@ -1,4 +1,5 @@
 import gleam/bit_array
+import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/erlang/process
@@ -156,7 +157,7 @@ fn insert_log_entry(
 ) -> Nil {
   let error = case result {
     Ok(_) -> option.None
-    Error(err) -> option.Some(program_error_to_message(err))
+    Error(err) -> option.Some(err)
   }
 
   case process.subject_owner(log_worker_subject) {
@@ -175,7 +176,7 @@ fn save_log_entry(
   ctx: context.Context,
   state: program.State,
   api_request: ApiRequest,
-  error: option.Option(String),
+  error: option.Option(program.Error),
 ) -> log_worker.LogEntry {
   let handlers = program_handlers.from_context(ctx)
   let id = handlers.uuid_v7()
@@ -190,10 +191,33 @@ fn save_log_entry(
     duration_ns: timestamp_helpers.duration_in_ns(now, ctx.timestamp),
     ip: ctx.client_info.ip,
     user_agent: ctx.client_info.user_agent,
-    error: error,
-    data: state.log_fields |> log.encode_fields |> json.to_string,
-    effects: state.effect_timings |> effects_to_json |> json.to_string,
+    info: state.info_fields
+      |> non_empty_dict
+      |> option.map(log.encode_fields)
+      |> option.map(json.to_string),
+    warnings: option.None,
+    error: error
+      |> option.map(program_error_to_json)
+      |> option.map(json.to_string),
+    effects: state.effect_timings
+      |> non_empty_list
+      |> option.map(effects_to_json)
+      |> option.map(json.to_string),
   )
+}
+
+fn non_empty_dict(d: Dict(k, v)) -> option.Option(Dict(k, v)) {
+  case dict.is_empty(d) {
+    True -> option.None
+    False -> option.Some(d)
+  }
+}
+
+fn non_empty_list(l: List(a)) -> option.Option(List(a)) {
+  case l {
+    [] -> option.None
+    _ -> option.Some(l)
+  }
 }
 
 fn effect_name_to_string(effect_name: program.EffectName) -> String {
@@ -282,6 +306,12 @@ fn program_error_to_message(err: program.Error) -> String {
     program.RunError(program.InternalRunRequestError(message: message)) ->
       "run_error_internal:" <> message
   }
+}
+
+fn program_error_to_json(err: program.Error) -> json.Json {
+  json.object([
+    #("message", json.string(program_error_to_message(err))),
+  ])
 }
 
 fn result_to_response(

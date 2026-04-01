@@ -20,9 +20,10 @@ pub type LogEntry {
     duration_ns: Int,
     ip: Option(String),
     user_agent: Option(String),
+    info: Option(String),
+    warnings: Option(String),
     error: Option(String),
-    data: String,
-    effects: String,
+    effects: Option(String),
   )
 }
 
@@ -65,8 +66,9 @@ fn insert_api_log(db: pog.Connection, entry: LogEntry) -> Nil {
       duration_ns: entry.duration_ns,
       ip: entry.ip,
       user_agent: entry.user_agent,
+      info: entry.info,
+      warnings: entry.warnings,
       error: entry.error,
-      data: entry.data,
       effects: entry.effects,
     )
 

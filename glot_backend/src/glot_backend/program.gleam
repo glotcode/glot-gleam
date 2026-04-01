@@ -221,7 +221,15 @@ pub type EffectTiming =
   #(EffectName, Int)
 
 pub type State {
-  State(effect_timings: List(EffectTiming), log_fields: log.Fields)
+  State(
+    effect_timings: List(EffectTiming),
+    info_fields: log.Fields,
+    warning_fields: log.Fields,
+  )
+}
+
+fn new_state() -> State {
+  State(effect_timings: [], info_fields: log.new(), warning_fields: log.new())
 }
 
 pub opaque type Program(a) {
@@ -231,7 +239,7 @@ pub opaque type Program(a) {
   NewToken(Int, fn(String) -> Program(a))
   SystemTime(fn(Timestamp) -> Program(a))
   UuidV7(fn(Uuid) -> Program(a))
-  Log(log.Fields, Program(a))
+  Log(log.Level, log.Fields, Program(a))
   AttemptPostRunRequest(
     context.Config,
     run.RunRequest,
@@ -253,13 +261,7 @@ pub fn run(
   program: Program(a),
   handlers: Handlers,
 ) -> #(Result(a, Error), State) {
-  let #(result, state) =
-    run_with_state(
-      program,
-      handlers,
-      State(effect_timings: [], log_fields: log.new()),
-    )
-
+  let #(result, state) = run_with_state(program, handlers, new_state())
   #(result, State(..state, effect_timings: list.reverse(state.effect_timings)))
 }
 
@@ -304,9 +306,12 @@ fn run_with_state(
         measure_effect(state, UuidV7Effect, started_at),
       )
     }
-    Log(fields, next) -> {
+    Log(level, fields, next) -> {
       let started_at = now_ns()
-      let state = add_log_fields(state, fields)
+      let state = case level {
+        log.Info -> add_info_fields(state, fields)
+        log.Warn -> add_warning_fields(state, fields)
+      }
       run_with_state(
         next,
         handlers,
@@ -388,7 +393,7 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
       NewToken(length, fn(value) { and_then(next(value), f) })
     SystemTime(next) -> SystemTime(fn(value) { and_then(next(value), f) })
     UuidV7(next) -> UuidV7(fn(value) { and_then(next(value), f) })
-    Log(fields, next) -> Log(fields, and_then(next, f))
+    Log(level, fields, next) -> Log(level, fields, and_then(next, f))
     AttemptPostRunRequest(cfg, request, next) ->
       AttemptPostRunRequest(cfg, request, fn(value) { and_then(next(value), f) })
     AttemptSendEmail(message, next) ->
@@ -436,8 +441,12 @@ pub fn uuid_v7() -> Program(Uuid) {
   UuidV7(Done)
 }
 
-pub fn log(fields: log.Fields) -> Program(Nil) {
-  Log(fields, Done(Nil))
+pub fn info(fields: log.Fields) -> Program(Nil) {
+  Log(log.Info, fields, Done(Nil))
+}
+
+pub fn warn(fields: log.Fields) -> Program(Nil) {
+  Log(log.Warn, fields, Done(Nil))
 }
 
 pub fn attempt_post_run_request(
@@ -680,19 +689,18 @@ fn add_effect_timings(
   effect_name: EffectName,
   duration_ns: Int,
 ) -> State {
-  let State(effect_timings:, log_fields:) = state
-  State(
-    effect_timings: [#(effect_name, duration_ns), ..effect_timings],
-    log_fields: log_fields,
-  )
+  State(..state, effect_timings: [
+    #(effect_name, duration_ns),
+    ..state.effect_timings
+  ])
 }
 
-fn add_log_fields(state: State, fields: log.Fields) -> State {
-  let State(effect_timings:, log_fields:) = state
-  State(
-    effect_timings: effect_timings,
-    log_fields: dict.merge(log_fields, fields),
-  )
+fn add_info_fields(state: State, fields: log.Fields) -> State {
+  State(..state, info_fields: dict.merge(state.info_fields, fields))
+}
+
+fn add_warning_fields(state: State, fields: log.Fields) -> State {
+  State(..state, warning_fields: dict.merge(state.warning_fields, fields))
 }
 
 fn now_ns() -> Int {

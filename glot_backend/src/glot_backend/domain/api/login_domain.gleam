@@ -20,7 +20,7 @@ pub fn login(
   ))
 
   use _ <- program.and_then(
-    program.log(
+    program.info(
       log.from_list([
         log.email("email", request.email),
         log.string("token", request.token),
@@ -35,22 +35,26 @@ pub fn login(
   ))
 
   use maybe_user <- program.and_then(program.db_get_user_by_email(request.email))
-  use user <- program.and_then(program.from_result(user_from_option(maybe_user)))
+  use user <- program.and_then(
+    program.from_result(user_from_option(maybe_user)),
+  )
 
   use _ <- program.and_then(
-    program.log(log.singleton(log.uuid("user_id", user.id))),
+    program.info(log.singleton(log.uuid("user_id", user.id))),
   )
 
   use tokens <- program.and_then(program.db_list_login_tokens_by_user(
     user.id,
     10,
   ))
-  use matching_token <- program.and_then(program.from_result(find_valid_token(
-    tokens,
-    request.token,
-    ctx.timestamp,
-    ctx.config.auth.login_token_max_age,
-  )))
+  use matching_token <- program.and_then(
+    program.from_result(find_valid_token(
+      tokens,
+      request.token,
+      ctx.timestamp,
+      ctx.config.auth.login_token_max_age,
+    )),
+  )
 
   use session_id <- program.and_then(program.uuid_v7())
   use session_token <- program.and_then(program.new_token(32))
@@ -76,7 +80,7 @@ pub fn login(
     ]),
   )
   use _ <- program.and_then(
-    program.log(log.singleton(log.uuid("session_id", session_id))),
+    program.info(log.singleton(log.uuid("session_id", session_id))),
   )
 
   program.succeed(session_token)

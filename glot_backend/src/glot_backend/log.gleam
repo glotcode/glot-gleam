@@ -8,6 +8,11 @@ import youid/uuid
 pub type Fields =
   Dict(String, Value)
 
+pub type Level {
+  Info
+  Warn
+}
+
 pub fn new() -> Fields {
   dict.new()
 }
