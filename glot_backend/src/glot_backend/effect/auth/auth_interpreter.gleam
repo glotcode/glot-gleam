@@ -2,17 +2,16 @@ import glot_backend/effect/auth/auth
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
 import glot_backend/effect/handlers_types
+import glot_backend/effect/program_state
 import glot_backend/erlang
 
 pub fn run(
   effect: auth.AuthEffect(effect_model.Program(a)),
   handlers: handlers_types.Handlers,
-  state: effect_model.State,
-  continue: fn(effect_model.Program(a), effect_model.State) ->
-    #(Result(a, error.Error), effect_model.State),
-  measure: fn(effect_model.State, effect_model.EffectName, Int) ->
-    effect_model.State,
-) -> #(Result(a, error.Error), effect_model.State) {
+  state: program_state.State,
+  continue: fn(effect_model.Program(a), program_state.State) ->
+    #(Result(a, error.Error), program_state.State),
+) -> #(Result(a, error.Error), program_state.State) {
   case effect {
     auth.GetUserByEmail(email:, next:) -> {
       let started_at = erlang.perf_counter_ns()
@@ -21,7 +20,7 @@ pub fn run(
         Ok(value) ->
           continue(
             next(value),
-            measure(
+            program_state.measure_effect(
               state,
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.GetUserByEmailQuery),
@@ -32,7 +31,7 @@ pub fn run(
         Error(error) ->
           #(
             Error(error.QueryError(error)),
-            measure(
+            program_state.measure_effect(
               state,
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.GetUserByEmailQuery),
@@ -49,7 +48,7 @@ pub fn run(
         Ok(value) ->
           continue(
             next(value),
-            measure(
+            program_state.measure_effect(
               state,
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery),
@@ -60,7 +59,7 @@ pub fn run(
         Error(error) ->
           #(
             Error(error.QueryError(error)),
-            measure(
+            program_state.measure_effect(
               state,
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery),
@@ -77,7 +76,7 @@ pub fn run(
         Ok(value) ->
           continue(
             next(value),
-            measure(
+            program_state.measure_effect(
               state,
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.GetSessionByTokenQuery),
@@ -88,7 +87,7 @@ pub fn run(
         Error(error) ->
           #(
             Error(error.QueryError(error)),
-            measure(
+            program_state.measure_effect(
               state,
               effect_model.RunQueryEffect(
                 effect_model.AuthQueryName(auth.GetSessionByTokenQuery),
@@ -103,7 +102,7 @@ pub fn run(
       let result = handlers.auth.insert_user(id, email, created_at)
       continue(
         next(result),
-        measure(
+        program_state.measure_effect(
           state,
           effect_model.RunCommandEffect(
             effect_model.AuthCommandName(auth.InsertUserCommand),
@@ -133,7 +132,7 @@ pub fn run(
         )
       continue(
         next(result),
-        measure(
+        program_state.measure_effect(
           state,
           effect_model.RunCommandEffect(
             effect_model.AuthCommandName(auth.InsertSessionCommand),
@@ -161,7 +160,7 @@ pub fn run(
         )
       continue(
         next(result),
-        measure(
+        program_state.measure_effect(
           state,
           effect_model.RunCommandEffect(
             effect_model.AuthCommandName(auth.InsertLoginTokenCommand),
@@ -189,7 +188,7 @@ pub fn run(
         )
       continue(
         next(result),
-        measure(
+        program_state.measure_effect(
           state,
           effect_model.RunCommandEffect(
             effect_model.AuthCommandName(auth.UpdateLoginTokenCommand),

@@ -20,6 +20,7 @@ import glot_backend/effect/core/core
 import glot_backend/effect/effect_model
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
+import glot_backend/effect/program_state
 import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
@@ -157,7 +158,7 @@ fn error_response(code: String, message: String) -> wisp.Response {
 fn insert_log_entry(
   ctx: context.Context,
   log_worker_subject: process.Subject(log_worker.Message),
-  state: effect_model.State,
+  state: program_state.State,
   api_request: ApiRequest,
   result: Result(ApiResult, error.Error),
 ) -> Nil {
@@ -180,7 +181,7 @@ fn insert_log_entry(
 
 fn save_log_entry(
   ctx: context.Context,
-  state: effect_model.State,
+  state: program_state.State,
   api_request: ApiRequest,
   error: option.Option(error.Error),
 ) -> log_worker.LogEntry {

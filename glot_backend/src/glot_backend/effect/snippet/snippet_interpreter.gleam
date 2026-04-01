@@ -1,18 +1,17 @@
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
 import glot_backend/effect/handlers_types
+import glot_backend/effect/program_state
 import glot_backend/effect/snippet/snippet
 import glot_backend/erlang
 
 pub fn run(
   effect: snippet.SnippetEffect(effect_model.Program(a)),
   handlers: handlers_types.Handlers,
-  state: effect_model.State,
-  continue: fn(effect_model.Program(a), effect_model.State) ->
-    #(Result(a, error.Error), effect_model.State),
-  measure: fn(effect_model.State, effect_model.EffectName, Int) ->
-    effect_model.State,
-) -> #(Result(a, error.Error), effect_model.State) {
+  state: program_state.State,
+  continue: fn(effect_model.Program(a), program_state.State) ->
+    #(Result(a, error.Error), program_state.State),
+) -> #(Result(a, error.Error), program_state.State) {
   case effect {
     snippet.InsertSnippet(id, user_id, snippet_value, created_at, updated_at, next) -> {
       let started_at = erlang.perf_counter_ns()
@@ -26,7 +25,7 @@ pub fn run(
         )
       continue(
         next(result),
-        measure(
+        program_state.measure_effect(
           state,
           effect_model.RunCommandEffect(
             effect_model.SnippetCommandName(snippet.InsertSnippetCommand),

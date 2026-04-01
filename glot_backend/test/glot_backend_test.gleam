@@ -10,6 +10,7 @@ import glot_backend/effect/docker_run/docker_run_handlers_type
 import glot_backend/effect/interpreter
 import glot_backend/effect/error
 import glot_backend/effect/program
+import glot_backend/effect/program_state
 import glot_backend/effect/handlers_types
 import glot_backend/effect/effect_model
 import glot_backend/effect/snippet/snippet_handlers_type
@@ -122,7 +123,7 @@ fn test_handlers() -> handlers_types.Handlers {
       },
     ),
     transaction: transaction_handlers_type.TransactionHandlers(
-      run_in_transaction: fn(_) { #(Ok(Nil), effect_model.new_state()) },
+      run_in_transaction: fn(_) { #(Ok(Nil), program_state.new_state()) },
     ),
   )
 }

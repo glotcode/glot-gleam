@@ -8,6 +8,7 @@ import glot_backend/effect/docker_run/docker_run_handlers_type
 import glot_backend/effect/error
 import glot_backend/effect/effect_model
 import glot_backend/effect/handlers_types
+import glot_backend/effect/program_state
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/snippet/snippet_handlers_type
 import glot_backend/effect/transaction/transaction_handlers_type
@@ -15,7 +16,7 @@ import glot_backend/effect/transaction/transaction_handlers_type
 pub fn from_context(
   ctx: context.Context,
   run_in_transaction: fn(List(effect_model.Program(Nil))) ->
-    #(Result(Nil, error.DbTransactionError), effect_model.State),
+    #(Result(Nil, error.DbTransactionError), program_state.State),
 ) -> handlers_types.Handlers {
   handlers_types.Handlers(
     core: core_handlers_type.CoreHandlers(

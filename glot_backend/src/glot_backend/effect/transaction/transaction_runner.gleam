@@ -7,12 +7,13 @@ import glot_backend/effect/handlers_builder
 import glot_backend/effect/interpreter
 import glot_backend/effect/error
 import glot_backend/effect/handlers_types
+import glot_backend/effect/program_state
 import pog
 
 pub fn run_in_transaction(
   ctx: context.Context,
   commands: List(effect_model.Program(Nil)),
-) -> #(Result(Nil, error.DbTransactionError), effect_model.State) {
+) -> #(Result(Nil, error.DbTransactionError), program_state.State) {
   pog.transaction(ctx.db, fn(tx) {
     let tx_context = context.Context(..ctx, db: tx)
     let tx_handlers = handlers_builder.from_context(
@@ -30,9 +31,9 @@ pub fn run_in_transaction(
 fn execute_programs(
   handlers: handlers_types.Handlers,
   programs: List(effect_model.Program(Nil)),
-) -> #(Result(Nil, error.Error), effect_model.State) {
+) -> #(Result(Nil, error.Error), program_state.State) {
   case programs {
-    [] -> #(Ok(Nil), effect_model.new_state())
+    [] -> #(Ok(Nil), program_state.new_state())
     [program, ..rest] -> {
       let #(result, state) = interpreter.run(program, handlers)
       case result {
@@ -47,10 +48,10 @@ fn execute_programs(
 }
 
 fn combine_states(
-  first: effect_model.State,
-  second: effect_model.State,
-) -> effect_model.State {
-  effect_model.State(
+  first: program_state.State,
+  second: program_state.State,
+) -> program_state.State {
+  program_state.State(
     effect_timings: list.append(first.effect_timings, second.effect_timings),
     info_fields: dict.merge(first.info_fields, second.info_fields),
     warning_fields: dict.merge(first.warning_fields, second.warning_fields),
@@ -59,10 +60,10 @@ fn combine_states(
 
 fn collapse_transaction_result(
   result: Result(
-    effect_model.State,
-    pog.TransactionError(#(error.Error, effect_model.State)),
+    program_state.State,
+    pog.TransactionError(#(error.Error, program_state.State)),
   ),
-) -> #(Result(Nil, error.DbTransactionError), effect_model.State) {
+) -> #(Result(Nil, error.DbTransactionError), program_state.State) {
   case result {
     Ok(state) -> #(Ok(Nil), state)
     Error(pog.TransactionRolledBack(#(err, state))) ->
@@ -70,7 +71,7 @@ fn collapse_transaction_result(
     Error(err) ->
       #(
         Error(error.DbTransactionError(string.inspect(err))),
-        effect_model.new_state(),
+        program_state.new_state(),
       )
   }
 }
