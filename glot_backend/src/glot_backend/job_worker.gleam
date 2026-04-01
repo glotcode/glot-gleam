@@ -7,7 +7,7 @@ import gleam/otp/supervision
 import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
-import glot_backend/effect.{type Free}
+import glot_backend/effect
 import glot_backend/email_message
 import glot_backend/erlang
 import glot_backend/job
@@ -104,7 +104,7 @@ fn context_from_state(state: State) -> context.Context {
   )
 }
 
-fn process_next_job(ctx: context.Context) -> Free(Bool) {
+fn process_next_job(ctx: context.Context) -> effect.Program(Bool) {
   use now <- effect.and_then(effect.system_time())
   use maybe_job <- effect.and_then(effect.db_get_next_job(
     now,
@@ -119,7 +119,7 @@ fn process_next_job(ctx: context.Context) -> Free(Bool) {
   }
 }
 
-fn process_job(ctx: context.Context, next_job: job.Job) -> Free(Nil) {
+fn process_job(ctx: context.Context, next_job: job.Job) -> effect.Program(Nil) {
   case next_job {
     job.Job(
       id: id,
@@ -136,7 +136,7 @@ fn process_send_email_job(
   id: Uuid,
   payload: String,
   attempts: Int,
-) -> Free(Nil) {
+) -> effect.Program(Nil) {
   case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
       use send_result <- effect.and_then(effect.attempt_send_email(message))

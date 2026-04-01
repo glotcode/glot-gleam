@@ -3,7 +3,7 @@ import gleam/list
 import gleam/option.{type Option}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
-import glot_backend/effect.{type Free}
+import glot_backend/effect
 import glot_backend/log
 import glot_core/rate_limit
 import youid/uuid.{type Uuid}
@@ -12,7 +12,7 @@ pub fn enforce(
   ctx ctx: context.Context,
   user_id user_id: Option(Uuid),
   action action: ApiAction,
-) -> Free(effect.DbCommand) {
+) -> effect.Program(effect.DbCommand) {
   let action_rate_limits = lookup_rate_limits(ctx.config.rate_limits, action)
 
   use _ <- effect.and_then(effect.when(

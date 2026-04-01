@@ -233,10 +233,10 @@ fn new_state() -> State {
   State(effect_timings: [], info_fields: log.new(), warning_fields: log.new())
 }
 
-pub type Free(a) {
+pub type Program(a) {
   Pure(a)
   Fail(Error)
-  Impure(Effect(Free(a)))
+  Impure(Effect(Program(a)))
 }
 
 pub type Effect(next) {
@@ -263,7 +263,7 @@ pub type Effect(next) {
 }
 
 pub fn run(
-  effect: Free(a),
+  effect: Program(a),
   handlers: Handlers,
 ) -> #(Result(a, Error), State) {
   let #(result, state) = run_with_state(effect, handlers, new_state())
@@ -271,7 +271,7 @@ pub fn run(
 }
 
 fn run_with_state(
-  effect: Free(a),
+  effect: Program(a),
   handlers: Handlers,
   state: State,
 ) -> #(Result(a, Error), State) {
@@ -398,15 +398,15 @@ fn run_with_state(
   }
 }
 
-pub fn succeed(value: a) -> Free(a) {
+pub fn succeed(value: a) -> Program(a) {
   Pure(value)
 }
 
-pub fn fail(error: Error) -> Free(a) {
+pub fn fail(error: Error) -> Program(a) {
   Fail(error)
 }
 
-pub fn and_then(effect: Free(a), f: fn(a) -> Free(b)) -> Free(b) {
+pub fn and_then(effect: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
   case effect {
     Pure(value) -> f(value)
     Fail(error) -> Fail(error)
@@ -414,47 +414,47 @@ pub fn and_then(effect: Free(a), f: fn(a) -> Free(b)) -> Free(b) {
   }
 }
 
-pub fn map(effect: Free(a), f: fn(a) -> b) -> Free(b) {
+pub fn map(effect: Program(a), f: fn(a) -> b) -> Program(b) {
   and_then(effect, fn(value) { succeed(f(value)) })
 }
 
 pub fn decode_json(
   json_body: dynamic.Dynamic,
   decoder: decode.Decoder(a),
-) -> Free(a) {
+) -> Program(a) {
   decode.run(json_body, decoder)
   |> result.map_error(DecodeError)
   |> from_result
 }
 
-pub fn new_token(length: Int) -> Free(String) {
+pub fn new_token(length: Int) -> Program(String) {
   Impure(NewToken(length, Pure))
 }
 
-pub fn system_time() -> Free(Timestamp) {
+pub fn system_time() -> Program(Timestamp) {
   Impure(SystemTime(Pure))
 }
 
 pub fn measure_effect_duration(
   effect_name: EffectName,
   duration_ms: Int,
-) -> Free(Nil) {
+) -> Program(Nil) {
   Impure(MeasureEffectDuration(effect_name, duration_ms, Pure(Nil)))
 }
 
-pub fn uuid_v7() -> Free(Uuid) {
+pub fn uuid_v7() -> Program(Uuid) {
   Impure(UuidV7(Pure))
 }
 
-pub fn info(fields: log.Fields) -> Free(Nil) {
+pub fn info(fields: log.Fields) -> Program(Nil) {
   Impure(Log(log.Info, fields, Pure(Nil)))
 }
 
-pub fn warn(fields: log.Fields) -> Free(Nil) {
+pub fn warn(fields: log.Fields) -> Program(Nil) {
   Impure(Log(log.Warn, fields, Pure(Nil)))
 }
 
-pub fn when(condition: Bool, if_true: Free(Nil)) -> Free(Nil) {
+pub fn when(condition: Bool, if_true: Program(Nil)) -> Program(Nil) {
   case condition {
     True -> if_true
     False -> Pure(Nil)
@@ -464,14 +464,14 @@ pub fn when(condition: Bool, if_true: Free(Nil)) -> Free(Nil) {
 pub fn attempt_post_run_request(
   cfg: context.Config,
   request: run.RunRequest,
-) -> Free(Result(run.RunResult, RunRequestError)) {
+) -> Program(Result(run.RunResult, RunRequestError)) {
   Impure(AttemptPostRunRequest(cfg, request, Pure))
 }
 
 pub fn post_run_request(
   cfg: context.Config,
   request: run.RunRequest,
-) -> Free(run.RunResult) {
+) -> Program(run.RunResult) {
   use run_result <- and_then(attempt_post_run_request(cfg, request))
   case run_result {
     Ok(value) -> Pure(value)
@@ -481,11 +481,11 @@ pub fn post_run_request(
 
 pub fn attempt_send_email(
   message: email_message.EmailMessage,
-) -> Free(Result(Nil, SendEmailError)) {
+) -> Program(Result(Nil, SendEmailError)) {
   Impure(AttemptSendEmail(message, Pure))
 }
 
-pub fn send_email(message: email_message.EmailMessage) -> Free(Nil) {
+pub fn send_email(message: email_message.EmailMessage) -> Program(Nil) {
   use send_result <- and_then(attempt_send_email(message))
   case send_result {
     Ok(_) -> Pure(Nil)
@@ -493,7 +493,7 @@ pub fn send_email(message: email_message.EmailMessage) -> Free(Nil) {
   }
 }
 
-pub fn attempt_run_query(query: DbQuery(a)) -> Free(Result(a, DbQueryError)) {
+pub fn attempt_run_query(query: DbQuery(a)) -> Program(Result(a, DbQueryError)) {
   Impure(AttemptRunQuery(map_db_query(query, fn(value) { Pure(Ok(value)) }), fn(
     error,
   ) {
@@ -501,7 +501,7 @@ pub fn attempt_run_query(query: DbQuery(a)) -> Free(Result(a, DbQueryError)) {
   }))
 }
 
-pub fn run_query(query: DbQuery(a)) -> Free(a) {
+pub fn run_query(query: DbQuery(a)) -> Program(a) {
   use query_result <- and_then(attempt_run_query(query))
   case query_result {
     Ok(value) -> Pure(value)
@@ -511,14 +511,14 @@ pub fn run_query(query: DbQuery(a)) -> Free(a) {
 
 pub fn db_get_user_by_email(
   email email: email.Email,
-) -> Free(option.Option(user.User)) {
+) -> Program(option.Option(user.User)) {
   run_query(DbGetUserByEmail(email:, next: function.identity))
 }
 
 pub fn db_list_login_tokens_by_user(
   user_id user_id: Uuid,
   limit limit: Int,
-) -> Free(List(auth.LoginToken)) {
+) -> Program(List(auth.LoginToken)) {
   run_query(DbListLoginTokensByUser(
     user_id: user_id,
     limit: limit,
@@ -528,7 +528,7 @@ pub fn db_list_login_tokens_by_user(
 
 pub fn db_get_session_by_token(
   token token: String,
-) -> Free(option.Option(auth.Session)) {
+) -> Program(option.Option(auth.Session)) {
   run_query(DbGetSessionByToken(token: token, next: function.identity))
 }
 
@@ -536,7 +536,7 @@ pub fn db_get_next_job(
   now: Timestamp,
   pending_status: job.Status,
   running_status: job.Status,
-) -> Free(option.Option(job.Job)) {
+) -> Program(option.Option(job.Job)) {
   run_query(DbGetNextJob(
     now: now,
     pending_status: pending_status,
@@ -549,7 +549,7 @@ pub fn db_count_user_actions_by_ip(
   windows windows: List(rate_limit.Window),
   ip ip: option.Option(String),
   action action: ApiAction,
-) -> Free(List(rate_limit.WindowCount)) {
+) -> Program(List(rate_limit.WindowCount)) {
   run_query(DbCountUserActionsByIp(
     windows: windows,
     ip: ip,
@@ -562,7 +562,7 @@ pub fn db_count_user_actions_by_user(
   windows windows: List(rate_limit.Window),
   user_id user_id: option.Option(Uuid),
   action action: ApiAction,
-) -> Free(List(rate_limit.WindowCount)) {
+) -> Program(List(rate_limit.WindowCount)) {
   run_query(DbCountUserActionsByUser(
     windows: windows,
     user_id: user_id,
@@ -573,11 +573,11 @@ pub fn db_count_user_actions_by_user(
 
 pub fn attempt_run_command(
   command: DbCommand,
-) -> Free(Result(Nil, DbCommandError)) {
+) -> Program(Result(Nil, DbCommandError)) {
   Impure(AttemptRunCommand(command, Pure))
 }
 
-pub fn run_command(command: DbCommand) -> Free(Nil) {
+pub fn run_command(command: DbCommand) -> Program(Nil) {
   use command_result <- and_then(attempt_run_command(command))
   case command_result {
     Ok(_) -> Pure(Nil)
@@ -587,11 +587,11 @@ pub fn run_command(command: DbCommand) -> Free(Nil) {
 
 pub fn attempt_run_in_transaction(
   commands: List(DbCommand),
-) -> Free(Result(Nil, DbTransactionError)) {
+) -> Program(Result(Nil, DbTransactionError)) {
   Impure(AttemptRunInTransaction(commands, Pure))
 }
 
-pub fn run_in_transaction(commands: List(DbCommand)) -> Free(Nil) {
+pub fn run_in_transaction(commands: List(DbCommand)) -> Program(Nil) {
   use transaction_result <- and_then(attempt_run_in_transaction(commands))
   case transaction_result {
     Ok(_) -> Pure(Nil)
@@ -702,7 +702,7 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
   }
 }
 
-pub fn from_result(value: Result(a, Error)) -> Free(a) {
+pub fn from_result(value: Result(a, Error)) -> Program(a) {
   case value {
     Ok(v) -> Pure(v)
     Error(err) -> Fail(err)

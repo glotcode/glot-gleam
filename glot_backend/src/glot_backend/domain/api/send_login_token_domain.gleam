@@ -3,7 +3,7 @@ import gleam/option
 import glot_backend/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
-import glot_backend/effect.{type Free}
+import glot_backend/effect
 import glot_backend/email_message
 import glot_backend/job
 import glot_backend/log
@@ -14,7 +14,7 @@ import glot_core/user
 pub fn send_login_token(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> Free(Nil) {
+) -> effect.Program(Nil) {
   use request <- effect.and_then(effect.decode_json(
     json_body,
     auth.login_token_request_decoder(ctx.regexes.is_email),
@@ -74,7 +74,7 @@ pub fn send_login_token(
 fn find_or_create_user(
   ctx: context.Context,
   user_email: email.Email,
-) -> Free(#(user.User, option.Option(effect.DbCommand))) {
+) -> effect.Program(#(user.User, option.Option(effect.DbCommand))) {
   use maybe_user <- effect.and_then(effect.db_get_user_by_email(user_email))
 
   case maybe_user {
