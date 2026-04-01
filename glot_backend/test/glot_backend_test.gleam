@@ -99,7 +99,15 @@ fn test_handlers() -> effect.Handlers {
     ) {
       Ok([])
     },
-    run_command: fn(_) { Ok(Nil) },
+    insert_user: fn(_, _, _) { Ok(Nil) },
+    insert_session: fn(_, _, _, _, _, _) { Ok(Nil) },
+    insert_login_token: fn(_, _, _, _, _) { Ok(Nil) },
+    update_login_token: fn(_, _, _, _, _) { Ok(Nil) },
+    insert_job: fn(_) { Ok(Nil) },
+    insert_user_action: fn(_, _, _, _, _, _) { Ok(Nil) },
+    mark_job_done: fn(_, _) { Ok(Nil) },
+    reschedule_job: fn(_, _, _, _) { Ok(Nil) },
+    insert_snippet: fn(_, _, _, _, _) { Ok(Nil) },
     run_in_transaction: fn(_) { Ok(Nil) },
   )
 }

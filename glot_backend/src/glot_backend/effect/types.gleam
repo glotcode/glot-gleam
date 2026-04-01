@@ -2,9 +2,7 @@ import glot_backend/effect/auth/auth
 import glot_backend/effect/core/core
 import glot_backend/effect/docker_run/docker_run
 import glot_backend/effect/error
-import glot_backend/effect/runtime_types
 import glot_backend/effect/snippet/snippet
-import glot_backend/effect/transaction/transaction_command
 import glot_backend/log
 import gleam/dict
 
@@ -13,12 +11,6 @@ pub type Program(a) {
   Fail(error.Error)
   Impure(Effect(Program(a)))
 }
-
-pub type Handlers =
-  runtime_types.Handlers
-
-pub type TransactionCommand =
-  transaction_command.TransactionCommand
 
 pub type DbQueryName {
   CoreQueryName(core.CoreQueryName)

@@ -19,32 +19,6 @@ pub type AuthCommandName {
   UpdateLoginTokenCommand
 }
 
-pub type AuthCommand {
-  InsertUser(id: Uuid, email: String, created_at: Timestamp)
-  InsertSession(
-    id: Uuid,
-    user_id: Uuid,
-    token: String,
-    ip: option.Option(String),
-    user_agent: option.Option(String),
-    created_at: Timestamp,
-  )
-  InsertLoginToken(
-    id: Uuid,
-    user_id: Uuid,
-    token: String,
-    created_at: Timestamp,
-    used_at: option.Option(Timestamp),
-  )
-  UpdateLoginToken(
-    user_id: Uuid,
-    token: String,
-    created_at: Timestamp,
-    used_at: option.Option(Timestamp),
-    id: Uuid,
-  )
-}
-
 pub type AuthEffect(next) {
   GetUserByEmail(
     email: email.Email,
@@ -59,9 +33,36 @@ pub type AuthEffect(next) {
     token: String,
     next: fn(option.Option(auth.Session)) -> next,
   )
-  RunCommand(
-    AuthCommand,
-    fn(Result(Nil, error.DbCommandError)) -> next,
+  InsertUser(
+    id: Uuid,
+    email: String,
+    created_at: Timestamp,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  InsertSession(
+    id: Uuid,
+    user_id: Uuid,
+    token: String,
+    ip: option.Option(String),
+    user_agent: option.Option(String),
+    created_at: Timestamp,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  InsertLoginToken(
+    id: Uuid,
+    user_id: Uuid,
+    token: String,
+    created_at: Timestamp,
+    used_at: option.Option(Timestamp),
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  UpdateLoginToken(
+    user_id: Uuid,
+    token: String,
+    created_at: Timestamp,
+    used_at: option.Option(Timestamp),
+    id: Uuid,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
 }
 
@@ -75,15 +76,57 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       })
     GetSessionByToken(token:, next:) ->
       GetSessionByToken(token: token, next: fn(value) { f(next(value)) })
-    RunCommand(command, next) -> RunCommand(command, fn(value) { f(next(value)) })
-  }
-}
-
-pub fn command_name(command: AuthCommand) -> AuthCommandName {
-  case command {
-    InsertUser(_, _, _) -> InsertUserCommand
-    InsertSession(_, _, _, _, _, _) -> InsertSessionCommand
-    InsertLoginToken(_, _, _, _, _) -> InsertLoginTokenCommand
-    UpdateLoginToken(_, _, _, _, _) -> UpdateLoginTokenCommand
+    InsertUser(id:, email:, created_at:, next:) ->
+      InsertUser(id:, email:, created_at:, next: fn(value) { f(next(value)) })
+    InsertSession(
+      id: id,
+      user_id: user_id,
+      token: token,
+      ip: ip,
+      user_agent: user_agent,
+      created_at: created_at,
+      next: next,
+    ) ->
+      InsertSession(
+        id: id,
+        user_id: user_id,
+        token: token,
+        ip: ip,
+        user_agent: user_agent,
+        created_at: created_at,
+        next: fn(value) { f(next(value)) },
+      )
+    InsertLoginToken(
+      id: id,
+      user_id: user_id,
+      token: token,
+      created_at: created_at,
+      used_at: used_at,
+      next: next,
+    ) ->
+      InsertLoginToken(
+        id: id,
+        user_id: user_id,
+        token: token,
+        created_at: created_at,
+        used_at: used_at,
+        next: fn(value) { f(next(value)) },
+      )
+    UpdateLoginToken(
+      user_id: user_id,
+      token: token,
+      created_at: created_at,
+      used_at: used_at,
+      id: id,
+      next: next,
+    ) ->
+      UpdateLoginToken(
+        user_id: user_id,
+        token: token,
+        created_at: created_at,
+        used_at: used_at,
+        id: id,
+        next: fn(value) { f(next(value)) },
+      )
   }
 }

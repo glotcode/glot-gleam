@@ -7,31 +7,27 @@ pub type SnippetCommandName {
   InsertSnippetCommand
 }
 
-pub type SnippetCommand {
+pub type SnippetEffect(next) {
   InsertSnippet(
     id: Uuid,
     user_id: Uuid,
     snippet: snippet.Snippet,
     created_at: Timestamp,
     updated_at: Timestamp,
-  )
-}
-
-pub type SnippetEffect(next) {
-  RunCommand(
-    SnippetCommand,
-    fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
 }
 
 pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
   case effect {
-    RunCommand(command, next) -> RunCommand(command, fn(value) { f(next(value)) })
-  }
-}
-
-pub fn command_name(command: SnippetCommand) -> SnippetCommandName {
-  case command {
-    InsertSnippet(_, _, _, _, _) -> InsertSnippetCommand
+    InsertSnippet(id, user_id, snippet, created_at, updated_at, next) ->
+      InsertSnippet(
+        id,
+      user_id,
+      snippet,
+      created_at,
+      updated_at,
+      next: fn(value) { f(next(value)) },
+    )
   }
 }

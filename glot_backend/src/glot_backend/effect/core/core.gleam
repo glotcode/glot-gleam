@@ -21,25 +21,6 @@ pub type CoreCommandName {
   RescheduleJobCommand
 }
 
-pub type CoreCommand {
-  InsertJob(job.Job)
-  InsertUserAction(
-    id: Uuid,
-    request_id: Uuid,
-    action: ApiAction,
-    ip: option.Option(String),
-    user_id: option.Option(Uuid),
-    created_at: Timestamp,
-  )
-  MarkJobDone(id: Uuid, completed_at: Timestamp)
-  RescheduleJob(
-    id: Uuid,
-    run_at: Timestamp,
-    last_error: option.Option(String),
-    updated_at: Timestamp,
-  )
-}
-
 pub type CoreEffect(next) {
   NewToken(Int, fn(String) -> next)
   SystemTime(fn(Timestamp) -> next)
@@ -67,9 +48,27 @@ pub type CoreEffect(next) {
     action: ApiAction,
     next: fn(List(rate_limit.WindowCount)) -> next,
   )
-  RunCommand(
-    CoreCommand,
-    fn(Result(Nil, error.DbCommandError)) -> next,
+  InsertJob(job.Job, next: fn(Result(Nil, error.DbCommandError)) -> next)
+  InsertUserAction(
+    id: Uuid,
+    request_id: Uuid,
+    action: ApiAction,
+    ip: option.Option(String),
+    user_id: option.Option(Uuid),
+    created_at: Timestamp,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  MarkJobDone(
+    id: Uuid,
+    completed_at: Timestamp,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  RescheduleJob(
+    id: Uuid,
+    run_at: Timestamp,
+    last_error: option.Option(String),
+    updated_at: Timestamp,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
 }
 
@@ -102,15 +101,30 @@ pub fn map(effect: CoreEffect(a), f: fn(a) -> b) -> CoreEffect(b) {
         action: action,
         next: fn(value) { f(next(value)) },
       )
-    RunCommand(command, next) -> RunCommand(command, fn(value) { f(next(value)) })
-  }
-}
-
-pub fn command_name(command: CoreCommand) -> CoreCommandName {
-  case command {
-    InsertJob(_) -> InsertJobCommand
-    InsertUserAction(_, _, _, _, _, _) -> InsertUserActionCommand
-    MarkJobDone(_, _) -> MarkJobDoneCommand
-    RescheduleJob(_, _, _, _) -> RescheduleJobCommand
+    InsertJob(job, next) -> InsertJob(job, next: fn(value) { f(next(value)) })
+    InsertUserAction(
+      id: id,
+      request_id: request_id,
+      action: action,
+      ip: ip,
+      user_id: user_id,
+      created_at: created_at,
+      next: next,
+    ) ->
+      InsertUserAction(
+        id: id,
+        request_id: request_id,
+        action: action,
+        ip: ip,
+        user_id: user_id,
+        created_at: created_at,
+        next: fn(value) { f(next(value)) },
+      )
+    MarkJobDone(id, completed_at, next) ->
+      MarkJobDone(id, completed_at, next: fn(value) { f(next(value)) })
+    RescheduleJob(id, run_at, last_error, updated_at, next) ->
+      RescheduleJob(id, run_at, last_error, updated_at, next: fn(value) {
+        f(next(value))
+      })
   }
 }

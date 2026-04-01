@@ -1,7 +1,6 @@
 import glot_backend/effect/auth/auth
 import glot_backend/effect/error
 import glot_backend/effect/runtime_types
-import glot_backend/effect/transaction/transaction_command
 import glot_backend/effect/types
 import glot_backend/erlang
 
@@ -89,15 +88,82 @@ pub fn run(
           )
       }
     }
-    auth.RunCommand(command, next) -> {
+    auth.InsertUser(id:, email:, created_at:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.run_command(transaction_command.AuthCommand(command))
+      let result = handlers.insert_user(id, email, created_at)
       continue(
         next(result),
         measure(
           state,
           types.RunCommandEffect(
-            types.AuthCommandName(auth.command_name(command)),
+            types.AuthCommandName(auth.InsertUserCommand),
+          ),
+          started_at,
+        ),
+      )
+    }
+    auth.InsertSession(
+      id: id,
+      user_id: user_id,
+      token: token,
+      ip: ip,
+      user_agent: user_agent,
+      created_at: created_at,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        handlers.insert_session(id, user_id, token, ip, user_agent, created_at)
+      continue(
+        next(result),
+        measure(
+          state,
+          types.RunCommandEffect(
+            types.AuthCommandName(auth.InsertSessionCommand),
+          ),
+          started_at,
+        ),
+      )
+    }
+    auth.InsertLoginToken(
+      id: id,
+      user_id: user_id,
+      token: token,
+      created_at: created_at,
+      used_at: used_at,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        handlers.insert_login_token(id, user_id, token, created_at, used_at)
+      continue(
+        next(result),
+        measure(
+          state,
+          types.RunCommandEffect(
+            types.AuthCommandName(auth.InsertLoginTokenCommand),
+          ),
+          started_at,
+        ),
+      )
+    }
+    auth.UpdateLoginToken(
+      user_id: user_id,
+      token: token,
+      created_at: created_at,
+      used_at: used_at,
+      id: id,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        handlers.update_login_token(user_id, token, created_at, used_at, id)
+      continue(
+        next(result),
+        measure(
+          state,
+          types.RunCommandEffect(
+            types.AuthCommandName(auth.UpdateLoginTokenCommand),
           ),
           started_at,
         ),

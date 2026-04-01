@@ -1,9 +1,9 @@
 import gleam/option
 import gleam/result
 import gleam/string
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/db_helpers
-import glot_backend/effect/auth/auth
 import glot_backend/effect/error
 import glot_backend/sql
 import glot_core/auth as auth_core
@@ -48,80 +48,94 @@ pub fn get_session_by_token(
   |> result.try(fn(returned) { session_from_rows(ctx, returned.rows) })
 }
 
-pub fn run_command(
+pub fn insert_user(
   db: pog.Connection,
-  command: auth.AuthCommand,
+  id: Uuid,
+  email: String,
+  created_at: Timestamp,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
-  case command {
-    auth.InsertUser(id:, email:, created_at:) ->
-      db_helpers.execute(
-        db,
-        sql.insert_user(uuid.to_bit_array(id), email, created_at),
-        to_error,
-      )
-      |> result.map(fn(_) { Nil })
-    auth.InsertLoginToken(
-      id: id,
-      user_id: user_id,
+  db_helpers.execute(
+    db,
+    sql.insert_user(uuid.to_bit_array(id), email, created_at),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn insert_login_token(
+  db: pog.Connection,
+  id: Uuid,
+  user_id: Uuid,
+  token: String,
+  created_at: Timestamp,
+  used_at: option.Option(Timestamp),
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.insert_login_token(
+      id: uuid.to_bit_array(id),
+      user_id: uuid.to_bit_array(user_id),
       token: token,
       created_at: created_at,
       used_at: used_at,
-    ) ->
-      db_helpers.execute(
-        db,
-        sql.insert_login_token(
-          id: uuid.to_bit_array(id),
-          user_id: uuid.to_bit_array(user_id),
-          token: token,
-          created_at: created_at,
-          used_at: used_at,
-        ),
-        to_error,
-      )
-      |> result.map(fn(_) { Nil })
-    auth.InsertSession(
-      id: id,
-      user_id: user_id,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn insert_session(
+  db: pog.Connection,
+  id: Uuid,
+  user_id: Uuid,
+  token: String,
+  ip: option.Option(String),
+  user_agent: option.Option(String),
+  created_at: Timestamp,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.insert_session(
+      id: uuid.to_bit_array(id),
+      user_id: uuid.to_bit_array(user_id),
       token: token,
       ip: ip,
       user_agent: user_agent,
       created_at: created_at,
-    ) ->
-      db_helpers.execute(
-        db,
-        sql.insert_session(
-          id: uuid.to_bit_array(id),
-          user_id: uuid.to_bit_array(user_id),
-          token: token,
-          ip: ip,
-          user_agent: user_agent,
-          created_at: created_at,
-        ),
-        to_error,
-      )
-      |> result.map(fn(_) { Nil })
-    auth.UpdateLoginToken(
-      user_id: user_id,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn update_login_token(
+  db: pog.Connection,
+  user_id: Uuid,
+  token: String,
+  created_at: Timestamp,
+  used_at: option.Option(Timestamp),
+  id: Uuid,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.update_login_token(
+      user_id: uuid.to_bit_array(user_id),
       token: token,
       created_at: created_at,
       used_at: used_at,
-      id: id,
-    ) ->
-      db_helpers.execute(
-        db,
-        sql.update_login_token(
-          user_id: uuid.to_bit_array(user_id),
-          token: token,
-          created_at: created_at,
-          used_at: used_at,
-          id: uuid.to_bit_array(id),
-        ),
-        to_error,
-      )
-      |> result.map(fn(_) { Nil })
-  }
+      id: uuid.to_bit_array(id),
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
 }
 
 fn user_from_rows(

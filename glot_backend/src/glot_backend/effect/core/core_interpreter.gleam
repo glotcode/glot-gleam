@@ -1,7 +1,6 @@
 import glot_backend/effect/core/core
 import glot_backend/effect/error
 import glot_backend/effect/runtime_types
-import glot_backend/effect/transaction/transaction_command
 import glot_backend/effect/types
 import glot_backend/erlang
 import glot_backend/log
@@ -122,15 +121,74 @@ pub fn run(
           )
       }
     }
-    core.RunCommand(command, next) -> {
+    core.InsertJob(job, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.run_command(transaction_command.CoreCommand(command))
+      let result = handlers.insert_job(job)
       continue(
         next(result),
         measure(
           state,
           types.RunCommandEffect(
-            types.CoreCommandName(core.command_name(command)),
+            types.CoreCommandName(core.InsertJobCommand),
+          ),
+          started_at,
+        ),
+      )
+    }
+    core.InsertUserAction(
+      id: id,
+      request_id: request_id,
+      action: action,
+      ip: ip,
+      user_id: user_id,
+      created_at: created_at,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        handlers.insert_user_action(
+          id,
+          request_id,
+          action,
+          ip,
+          user_id,
+          created_at,
+        )
+      continue(
+        next(result),
+        measure(
+          state,
+          types.RunCommandEffect(
+            types.CoreCommandName(core.InsertUserActionCommand),
+          ),
+          started_at,
+        ),
+      )
+    }
+    core.MarkJobDone(id, completed_at, next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.mark_job_done(id, completed_at)
+      continue(
+        next(result),
+        measure(
+          state,
+          types.RunCommandEffect(
+            types.CoreCommandName(core.MarkJobDoneCommand),
+          ),
+          started_at,
+        ),
+      )
+    }
+    core.RescheduleJob(id, run_at, last_error, updated_at, next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        handlers.reschedule_job(id, run_at, last_error, updated_at)
+      continue(
+        next(result),
+        measure(
+          state,
+          types.RunCommandEffect(
+            types.CoreCommandName(core.RescheduleJobCommand),
           ),
           started_at,
         ),

@@ -85,7 +85,7 @@ pub fn db_count_user_actions_by_user(
 }
 
 pub fn insert_job(job job: job.Job) -> types.Program(Nil) {
-  types.Impure(types.CoreEffect(core.RunCommand(core.InsertJob(job), command_next)))
+  types.Impure(types.CoreEffect(core.InsertJob(job, command_next)))
 }
 
 pub fn insert_user_action(
@@ -96,16 +96,14 @@ pub fn insert_user_action(
   user_id user_id: option.Option(Uuid),
   created_at created_at: Timestamp,
 ) -> types.Program(Nil) {
-  types.Impure(types.CoreEffect(core.RunCommand(
-    core.InsertUserAction(
-      id: id,
-      request_id: request_id,
-      action: action,
-      ip: ip,
-      user_id: user_id,
-      created_at: created_at,
-    ),
-    command_next,
+  types.Impure(types.CoreEffect(core.InsertUserAction(
+    id: id,
+    request_id: request_id,
+    action: action,
+    ip: ip,
+    user_id: user_id,
+    created_at: created_at,
+    next: command_next,
   )))
 }
 
@@ -113,10 +111,7 @@ pub fn mark_job_done(
   id id: Uuid,
   completed_at completed_at: Timestamp,
 ) -> types.Program(Nil) {
-  types.Impure(types.CoreEffect(core.RunCommand(
-    core.MarkJobDone(id, completed_at),
-    command_next,
-  )))
+  types.Impure(types.CoreEffect(core.MarkJobDone(id, completed_at, command_next)))
 }
 
 pub fn reschedule_job(
@@ -125,9 +120,12 @@ pub fn reschedule_job(
   last_error last_error: option.Option(String),
   updated_at updated_at: Timestamp,
 ) -> types.Program(Nil) {
-  types.Impure(types.CoreEffect(core.RunCommand(
-    core.RescheduleJob(id:, run_at:, last_error:, updated_at:),
-    command_next,
+  types.Impure(types.CoreEffect(core.RescheduleJob(
+    id: id,
+    run_at: run_at,
+    last_error: last_error,
+    updated_at: updated_at,
+    next: command_next,
   )))
 }
 

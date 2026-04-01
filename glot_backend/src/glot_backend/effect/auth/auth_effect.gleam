@@ -38,10 +38,7 @@ pub fn insert_user(
   email email: String,
   created_at created_at: Timestamp,
 ) -> types.Program(Nil) {
-  types.Impure(types.AuthEffect(auth.RunCommand(
-    auth.InsertUser(id:, email:, created_at:),
-    command_next,
-  )))
+  types.Impure(types.AuthEffect(auth.InsertUser(id:, email:, created_at:, next: command_next)))
 }
 
 pub fn insert_session(
@@ -52,16 +49,14 @@ pub fn insert_session(
   user_agent user_agent: option.Option(String),
   created_at created_at: Timestamp,
 ) -> types.Program(Nil) {
-  types.Impure(types.AuthEffect(auth.RunCommand(
-    auth.InsertSession(
-      id: id,
-      user_id: user_id,
-      token: token,
-      ip: ip,
-      user_agent: user_agent,
-      created_at: created_at,
-    ),
-    command_next,
+  types.Impure(types.AuthEffect(auth.InsertSession(
+    id: id,
+    user_id: user_id,
+    token: token,
+    ip: ip,
+    user_agent: user_agent,
+    created_at: created_at,
+    next: command_next,
   )))
 }
 
@@ -72,15 +67,13 @@ pub fn insert_login_token(
   created_at created_at: Timestamp,
   used_at used_at: option.Option(Timestamp),
 ) -> types.Program(Nil) {
-  types.Impure(types.AuthEffect(auth.RunCommand(
-    auth.InsertLoginToken(
-      id: id,
-      user_id: user_id,
-      token: token,
-      created_at: created_at,
-      used_at: used_at,
-    ),
-    command_next,
+  types.Impure(types.AuthEffect(auth.InsertLoginToken(
+    id: id,
+    user_id: user_id,
+    token: token,
+    created_at: created_at,
+    used_at: used_at,
+    next: command_next,
   )))
 }
 
@@ -91,15 +84,13 @@ pub fn update_login_token(
   used_at used_at: option.Option(Timestamp),
   id id: Uuid,
 ) -> types.Program(Nil) {
-  types.Impure(types.AuthEffect(auth.RunCommand(
-    auth.UpdateLoginToken(
-      user_id: user_id,
-      token: token,
-      created_at: created_at,
-      used_at: used_at,
-      id: id,
-    ),
-    command_next,
+  types.Impure(types.AuthEffect(auth.UpdateLoginToken(
+    user_id: user_id,
+    token: token,
+    created_at: created_at,
+    used_at: used_at,
+    id: id,
+    next: command_next,
   )))
 }
 

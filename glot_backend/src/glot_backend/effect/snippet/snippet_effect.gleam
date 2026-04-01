@@ -12,15 +12,13 @@ pub fn insert(
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
 ) -> types.Program(Nil) {
-  types.Impure(types.SnippetEffect(snippet.RunCommand(
-    snippet.InsertSnippet(
-      id: id,
-      user_id: user_id,
-      snippet: snippet,
-      created_at: created_at,
-      updated_at: updated_at,
-    ),
-    command_next,
+  types.Impure(types.SnippetEffect(snippet.InsertSnippet(
+    id: id,
+    user_id: user_id,
+    snippet: snippet,
+    created_at: created_at,
+    updated_at: updated_at,
+    next: command_next,
   )))
 }
 
