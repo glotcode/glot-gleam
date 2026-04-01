@@ -7,9 +7,10 @@ import gleam/otp/supervision
 import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
-import glot_backend/effect
 import glot_backend/effect/error
 import glot_backend/effect/core/core_effect
+import glot_backend/effect/effect_model
+import glot_backend/effect/interpreter
 import glot_backend/effect/program
 import glot_backend/email_message
 import glot_backend/erlang
@@ -79,7 +80,7 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 fn run_once(state: State) -> Bool {
   let ctx = context_from_state(state)
   let handlers = handlers.from_context(ctx)
-  let #(result, _) = process_next_job(ctx) |> effect.run(handlers)
+  let #(result, _) = process_next_job(ctx) |> interpreter.run(handlers)
 
   case result {
     Ok(processed_job) -> processed_job
@@ -107,7 +108,7 @@ fn context_from_state(state: State) -> context.Context {
   )
 }
 
-fn process_next_job(ctx: context.Context) -> effect.Program(Bool) {
+fn process_next_job(ctx: context.Context) -> effect_model.Program(Bool) {
   use now <- program.and_then(core_effect.system_time())
   use maybe_job <- program.and_then(core_effect.db_get_next_job(
     now,
@@ -122,7 +123,10 @@ fn process_next_job(ctx: context.Context) -> effect.Program(Bool) {
   }
 }
 
-fn process_job(ctx: context.Context, next_job: job.Job) -> effect.Program(Nil) {
+fn process_job(
+  ctx: context.Context,
+  next_job: job.Job,
+) -> effect_model.Program(Nil) {
   case next_job {
     job.Job(
       id: id,
@@ -139,7 +143,7 @@ fn process_send_email_job(
   id: Uuid,
   payload: String,
   attempts: Int,
-) -> effect.Program(Nil) {
+) -> effect_model.Program(Nil) {
   case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
       use send_result <- program.and_then(core_effect.attempt_send_email(message))
@@ -189,7 +193,7 @@ fn add_seconds(
   timestamp.from_unix_seconds_and_nanoseconds(seconds + seconds_to_add, nanos)
 }
 
-fn send_email_error_to_string(err: effect.SendEmailError) -> String {
+fn send_email_error_to_string(err: error.SendEmailError) -> String {
   case err {
     error.PublicSendEmailError(message) -> "send_email_public:" <> message
     error.InternalSendEmailError(message) -> "send_email_internal:" <> message

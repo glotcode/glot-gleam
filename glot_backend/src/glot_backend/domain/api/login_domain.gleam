@@ -5,9 +5,9 @@ import gleam/time/timestamp
 import glot_backend/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
-import glot_backend/effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/core/core_effect
+import glot_backend/effect/effect_model
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/transaction/transaction
@@ -18,7 +18,7 @@ import glot_core/user
 pub fn login(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> effect.Program(String) {
+) -> effect_model.Program(String) {
   use request <- program.and_then(program.decode_json(
     json_body,
     auth.login_request_decoder(ctx.regexes.is_email),
@@ -93,7 +93,7 @@ pub fn login(
 
 fn user_from_option(
   maybe_user: option.Option(user.User),
-) -> Result(user.User, effect.Error) {
+) -> Result(user.User, error.Error) {
   case maybe_user {
     option.Some(user) -> Ok(user)
     option.None -> Error(error.LoginError(error.InvalidTokenError))
@@ -105,7 +105,7 @@ fn find_valid_token(
   submitted_token: String,
   now: timestamp.Timestamp,
   max_age: Int,
-) -> Result(auth.LoginToken, effect.Error) {
+) -> Result(auth.LoginToken, error.Error) {
   case list.find(tokens, fn(token) { token.token == submitted_token }) {
     Error(_) -> Error(error.LoginError(error.InvalidTokenError))
     Ok(token) ->

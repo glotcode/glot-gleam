@@ -14,17 +14,17 @@ import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
-import glot_backend/effect
 import glot_backend/effect/auth/auth
 import glot_backend/effect/error
 import glot_backend/effect/core/core
+import glot_backend/effect/effect_model
+import glot_backend/effect/interpreter
 import glot_backend/effect/program
 import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
 import glot_backend/effect/handlers
 import glot_backend/effect/snippet/snippet
-import glot_backend/effect/effect_model
 import glot_core/run
 import wisp
 
@@ -38,7 +38,7 @@ pub fn handle_request(
 
   let #(api_result, state) =
     handle_api_request(ctx, api_request)
-    |> effect.run(handlers)
+    |> interpreter.run(handlers)
 
   insert_log_entry(ctx, log_worker_subject, state, api_request, api_result)
   result_to_response(ctx, req, api_result)
@@ -47,7 +47,7 @@ pub fn handle_request(
 fn handle_api_request(
   ctx: context.Context,
   api_request: ApiRequest,
-) -> effect.Program(ApiResult) {
+) -> effect_model.Program(ApiResult) {
   case api_request.action {
     api_action.RunAction ->
       run_domain.run(ctx, api_request.data)
@@ -157,9 +157,9 @@ fn error_response(code: String, message: String) -> wisp.Response {
 fn insert_log_entry(
   ctx: context.Context,
   log_worker_subject: process.Subject(log_worker.Message),
-  state: effect.State,
+  state: effect_model.State,
   api_request: ApiRequest,
-  result: Result(ApiResult, effect.Error),
+  result: Result(ApiResult, error.Error),
 ) -> Nil {
   let error = case result {
     Ok(_) -> option.None
@@ -180,9 +180,9 @@ fn insert_log_entry(
 
 fn save_log_entry(
   ctx: context.Context,
-  state: effect.State,
+  state: effect_model.State,
   api_request: ApiRequest,
-  error: option.Option(effect.Error),
+  error: option.Option(error.Error),
 ) -> log_worker.LogEntry {
   let handlers = handlers.from_context(ctx)
   let id = handlers.core.uuid_v7()
@@ -229,7 +229,7 @@ fn non_empty_list(l: List(a)) -> option.Option(List(a)) {
   }
 }
 
-fn effect_name_to_string(effect_name: effect.EffectName) -> String {
+fn effect_name_to_string(effect_name: effect_model.EffectName) -> String {
   case effect_name {
     effect_model.NewTokenEffect -> "new_token"
     effect_model.SystemTimeEffect -> "system_time"
@@ -244,7 +244,7 @@ fn effect_name_to_string(effect_name: effect.EffectName) -> String {
   }
 }
 
-fn effect_category(effect_name: effect.EffectName) -> String {
+fn effect_category(effect_name: effect_model.EffectName) -> String {
   case effect_name {
     effect_model.NewTokenEffect -> "util"
     effect_model.SystemTimeEffect -> "util"
@@ -258,7 +258,7 @@ fn effect_category(effect_name: effect.EffectName) -> String {
   }
 }
 
-fn db_query_name_to_string(query_name: effect.DbQueryName) -> String {
+fn db_query_name_to_string(query_name: effect_model.DbQueryName) -> String {
   case query_name {
     effect_model.AuthQueryName(auth.GetUserByEmailQuery) ->
       "db_get_user_by_email"
@@ -274,7 +274,7 @@ fn db_query_name_to_string(query_name: effect.DbQueryName) -> String {
   }
 }
 
-fn db_command_name_to_string(command_name: effect.DbCommandName) -> String {
+fn db_command_name_to_string(command_name: effect_model.DbCommandName) -> String {
   case command_name {
     effect_model.AuthCommandName(auth.InsertUserCommand) ->
       "db_insert_user"
@@ -297,7 +297,7 @@ fn db_command_name_to_string(command_name: effect.DbCommandName) -> String {
   }
 }
 
-fn encode_effect_timings(effects: List(effect.EffectTiming)) -> json.Json {
+fn encode_effect_timings(effects: List(effect_model.EffectTiming)) -> json.Json {
   json.object([
     #("effects", json.array(effects, encode_effect_timing)),
     #(
@@ -318,7 +318,7 @@ fn encode_effect_timings(effects: List(effect.EffectTiming)) -> json.Json {
   ])
 }
 
-fn encode_effect_timing(effect_timing: effect.EffectTiming) -> json.Json {
+fn encode_effect_timing(effect_timing: effect_model.EffectTiming) -> json.Json {
   let #(effect_name, duration_ns) = effect_timing
   case effect_name {
     effect_model.RunInTransactionEffect(commands) ->
@@ -340,7 +340,7 @@ fn encode_effect_timing(effect_timing: effect.EffectTiming) -> json.Json {
   }
 }
 
-fn effect_error_to_message(err: effect.Error) -> String {
+fn effect_error_to_message(err: error.Error) -> String {
   case err {
     error.DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
     error.EmailInvalidError(message) -> "email_invalid:" <> message
@@ -383,7 +383,7 @@ fn effect_error_to_message(err: effect.Error) -> String {
   }
 }
 
-fn error_to_json(err: effect.Error) -> json.Json {
+fn error_to_json(err: error.Error) -> json.Json {
   json.object([
     #("message", json.string(effect_error_to_message(err))),
   ])
@@ -392,7 +392,7 @@ fn error_to_json(err: effect.Error) -> json.Json {
 fn result_to_response(
   ctx: context.Context,
   request: wisp.Request,
-  result: Result(ApiResult, effect.Error),
+  result: Result(ApiResult, error.Error),
 ) -> wisp.Response {
   case result {
     Ok(response) -> api_result_to_response(ctx, request, response)
@@ -400,7 +400,7 @@ fn result_to_response(
   }
 }
 
-fn error_to_response(error: effect.Error) -> wisp.Response {
+fn error_to_response(error: error.Error) -> wisp.Response {
   case error {
     error.DecodeError(errors) ->
       error_response("decode_error", "Decode error: " <> string.inspect(errors))

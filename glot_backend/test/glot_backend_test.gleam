@@ -3,11 +3,11 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/api_action
 import glot_backend/job
-import glot_backend/effect
 import glot_backend/effect/auth/auth_handlers_type
 import glot_backend/effect/core/core_effect
 import glot_backend/effect/core/core_handlers_type
 import glot_backend/effect/docker_run/docker_run_handlers_type
+import glot_backend/effect/interpreter
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/handlers_types
@@ -38,7 +38,7 @@ pub fn measurement_aggregation_test() {
     program.succeed("ok")
   }
 
-  let #(run_result, state) = effect.run(measured_effect, handlers)
+  let #(run_result, state) = interpreter.run(measured_effect, handlers)
 
   assert run_result == Ok("ok")
   let assert [#(effect_model.LogEffect, first), #(effect_model.LogEffect, second)] =
@@ -53,7 +53,7 @@ pub fn measures_effects_in_success_test() {
     use _ <- program.and_then(core_effect.new_token(5))
     program.succeed("ok")
   }
-  let #(run_result, state) = effect.run(measured_effect, handlers)
+  let #(run_result, state) = interpreter.run(measured_effect, handlers)
 
   assert run_result == Ok("ok")
   let assert [#(effect_model.NewTokenEffect, duration_ms)] = state.effect_timings
@@ -66,14 +66,14 @@ pub fn measures_effects_in_error_test() {
     use _ <- program.and_then(core_effect.new_token(5))
     program.fail(error.EmailInvalidError("bad"))
   }
-  let #(run_result, state) = effect.run(failing_effect, handlers)
+  let #(run_result, state) = interpreter.run(failing_effect, handlers)
 
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [#(effect_model.NewTokenEffect, duration_ms)] = state.effect_timings
   assert duration_ms >= 0
 }
 
-fn test_handlers() -> effect.Handlers {
+fn test_handlers() -> handlers_types.Handlers {
   handlers_types.Handlers(
     core: core_handlers_type.CoreHandlers(
       new_token: fn(_) { "random" },
