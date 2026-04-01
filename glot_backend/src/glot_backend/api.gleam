@@ -204,7 +204,7 @@ fn save_log_entry(
       |> option.map(json.to_string),
     effects: state.effect_timings
       |> non_empty_list
-      |> option.map(effects_to_json)
+      |> option.map(encode_effect_timings)
       |> option.map(json.to_string),
   )
 }
@@ -231,14 +231,26 @@ fn effect_name_to_string(effect_name: program.EffectName) -> String {
     program.LogEffect -> "log"
     program.PostRunRequestEffect -> "post_run_request"
     program.SendEmailEffect -> "send_email"
-    program.RunQueryEffect(query_name) ->
-      "run_query:" <> db_query_name_to_string(query_name)
+    program.RunQueryEffect(query_name) -> db_query_name_to_string(query_name)
     program.RunCommandEffect(command_name) ->
-      "run_command:" <> db_command_name_to_string(command_name)
-    program.RunInTransactionEffect(command_names) ->
-      "run_in_transaction:"
-      <> string.join(list.map(command_names, db_command_name_to_string), ",")
+      db_command_name_to_string(command_name)
+    program.RunInTransactionEffect(_) -> "run_in_transaction"
     program.CustomEffect(name) -> "custom:" <> name
+  }
+}
+
+fn effect_category(effect_name: program.EffectName) -> String {
+  case effect_name {
+    program.NewTokenEffect -> "util"
+    program.SystemTimeEffect -> "util"
+    program.UuidV7Effect -> "util"
+    program.LogEffect -> "log"
+    program.PostRunRequestEffect -> "docker_run"
+    program.SendEmailEffect -> "email"
+    program.RunQueryEffect(_) -> "db_read"
+    program.RunCommandEffect(_) -> "db_write"
+    program.RunInTransactionEffect(_) -> "db_write"
+    program.CustomEffect(_) -> "custom"
   }
 }
 
@@ -267,16 +279,47 @@ fn db_command_name_to_string(command_name: program.DbCommandName) -> String {
   }
 }
 
-fn effects_to_json(effects: List(program.EffectTiming)) -> json.Json {
-  json.array(effects, effect_timing_to_json)
+fn encode_effect_timings(effects: List(program.EffectTiming)) -> json.Json {
+  json.object([
+    #("effects", json.array(effects, encode_effect_timing)),
+    #(
+      "summary",
+      json.object([
+        #("count", json.int(list.length(effects))),
+        #(
+          "duration_ns",
+          json.int(
+            list.fold(effects, 0, fn(acc, effect_timing) {
+              let #(_, duration_ns) = effect_timing
+              acc + duration_ns
+            }),
+          ),
+        ),
+      ]),
+    ),
+  ])
 }
 
-fn effect_timing_to_json(effect_timing: program.EffectTiming) -> json.Json {
+fn encode_effect_timing(effect_timing: program.EffectTiming) -> json.Json {
   let #(effect_name, duration_ns) = effect_timing
-  json.object([
-    #("name", json.string(effect_name_to_string(effect_name))),
-    #("duration_ns", json.int(duration_ns)),
-  ])
+  case effect_name {
+    program.RunInTransactionEffect(commands) ->
+      json.object([
+        #("category", json.string(effect_category(effect_name))),
+        #("name", json.string(effect_name_to_string(effect_name))),
+        #(
+          "commands",
+          json.array(list.map(commands, db_command_name_to_string), json.string),
+        ),
+        #("duration_ns", json.int(duration_ns)),
+      ])
+    _ ->
+      json.object([
+        #("category", json.string(effect_category(effect_name))),
+        #("name", json.string(effect_name_to_string(effect_name))),
+        #("duration_ns", json.int(duration_ns)),
+      ])
+  }
 }
 
 fn program_error_to_message(err: program.Error) -> String {
