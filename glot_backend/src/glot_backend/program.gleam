@@ -449,6 +449,13 @@ pub fn warn(fields: log.Fields) -> Program(Nil) {
   Log(log.Warn, fields, Done(Nil))
 }
 
+pub fn when(condition: Bool, if_true: Program(Nil)) -> Program(Nil) {
+  case condition {
+    True -> if_true
+    False -> Done(Nil)
+  }
+}
+
 pub fn attempt_post_run_request(
   cfg: context.Config,
   request: run.RunRequest,

@@ -195,7 +195,10 @@ fn save_log_entry(
       |> non_empty_dict
       |> option.map(log.encode_fields)
       |> option.map(json.to_string),
-    warnings: option.None,
+    warnings: state.warning_fields
+      |> non_empty_dict
+      |> option.map(log.encode_fields)
+      |> option.map(json.to_string),
     error: error
       |> option.map(program_error_to_json)
       |> option.map(json.to_string),

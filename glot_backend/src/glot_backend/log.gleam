@@ -29,6 +29,10 @@ pub fn string(key: String, value: String) -> #(String, Value) {
   #(key, String(value))
 }
 
+pub fn object(key: String, items: List(#(String, Value))) -> #(String, Value) {
+  #(key, Object(dict.from_list(items)))
+}
+
 pub fn uuid(key: String, value: uuid.Uuid) -> #(String, Value) {
   #(key, String(uuid.to_string(value)))
 }

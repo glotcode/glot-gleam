@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option.{type Option}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
+import glot_backend/log
 import glot_backend/program.{type Program}
 import glot_core/rate_limit
 import youid/uuid.{type Uuid}
@@ -13,6 +14,19 @@ pub fn enforce(
   action action: ApiAction,
 ) -> Program(program.DbCommand) {
   let action_rate_limits = lookup_rate_limits(ctx.config.rate_limits, action)
+
+  use _ <- program.and_then(program.when(
+    list.is_empty(action_rate_limits),
+    program.warn(
+      log.singleton(
+        log.object("rate_limit", [
+          log.string("message", "No rate limits configured for this action"),
+          log.string("action", api_action.to_string(action)),
+        ]),
+      ),
+    ),
+  ))
+
   let counts_program = case user_id {
     option.Some(user_id) ->
       program.db_count_user_actions_by_user(
