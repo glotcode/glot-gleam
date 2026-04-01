@@ -16,7 +16,7 @@ pub fn run(
   case effect {
     docker_run.AttemptPostRunRequest(cfg, request, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let run_result = handlers.post_run_request(cfg, request)
+      let run_result = handlers.docker_run.post_run_request(cfg, request)
       continue(
         next(run_result),
         measure(state, effect_model.DockerRunRequestEffect, started_at),

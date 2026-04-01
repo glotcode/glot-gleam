@@ -185,7 +185,7 @@ fn save_log_entry(
   error: option.Option(effect.Error),
 ) -> log_worker.LogEntry {
   let handlers = handlers.from_context(ctx)
-  let id = handlers.uuid_v7()
+  let id = handlers.core.uuid_v7()
   let duration_ns = erlang.perf_counter_ns() - ctx.started_at
 
   log_worker.LogEntry(

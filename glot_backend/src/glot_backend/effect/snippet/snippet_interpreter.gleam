@@ -17,7 +17,7 @@ pub fn run(
     snippet.InsertSnippet(id, user_id, snippet_value, created_at, updated_at, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
-        handlers.insert_snippet(
+        handlers.snippet.insert_snippet(
           id,
           user_id,
           snippet_value,

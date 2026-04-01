@@ -14,7 +14,7 @@ pub fn run(
 ) -> #(Result(a, error.Error), effect_model.State) {
   let started_at = erlang.perf_counter_ns()
   let #(transaction_result, transaction_state) =
-    handlers.run_in_transaction(commands)
+    handlers.transaction.run_in_transaction(commands)
   let nested_effects =
     transaction_state.effect_timings
     |> list.map(fn(timing) {

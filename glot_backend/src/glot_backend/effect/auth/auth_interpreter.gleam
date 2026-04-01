@@ -16,7 +16,7 @@ pub fn run(
   case effect {
     auth.GetUserByEmail(email:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.get_user_by_email(email)
+      let result = handlers.auth.get_user_by_email(email)
       case result {
         Ok(value) ->
           continue(
@@ -44,7 +44,7 @@ pub fn run(
     }
     auth.ListLoginTokensByUser(user_id:, limit:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.list_login_tokens_by_user(user_id, limit)
+      let result = handlers.auth.list_login_tokens_by_user(user_id, limit)
       case result {
         Ok(value) ->
           continue(
@@ -72,7 +72,7 @@ pub fn run(
     }
     auth.GetSessionByToken(token:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.get_session_by_token(token)
+      let result = handlers.auth.get_session_by_token(token)
       case result {
         Ok(value) ->
           continue(
@@ -100,7 +100,7 @@ pub fn run(
     }
     auth.InsertUser(id:, email:, created_at:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.insert_user(id, email, created_at)
+      let result = handlers.auth.insert_user(id, email, created_at)
       continue(
         next(result),
         measure(
@@ -123,7 +123,14 @@ pub fn run(
     ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
-        handlers.insert_session(id, user_id, token, ip, user_agent, created_at)
+        handlers.auth.insert_session(
+          id,
+          user_id,
+          token,
+          ip,
+          user_agent,
+          created_at,
+        )
       continue(
         next(result),
         measure(
@@ -145,7 +152,13 @@ pub fn run(
     ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
-        handlers.insert_login_token(id, user_id, token, created_at, used_at)
+        handlers.auth.insert_login_token(
+          id,
+          user_id,
+          token,
+          created_at,
+          used_at,
+        )
       continue(
         next(result),
         measure(
@@ -167,7 +180,13 @@ pub fn run(
     ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
-        handlers.update_login_token(user_id, token, created_at, used_at, id)
+        handlers.auth.update_login_token(
+          user_id,
+          token,
+          created_at,
+          used_at,
+          id,
+        )
       continue(
         next(result),
         measure(

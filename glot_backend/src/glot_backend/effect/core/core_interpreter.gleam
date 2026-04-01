@@ -17,7 +17,7 @@ pub fn run(
   case effect {
     core.NewToken(length, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.new_token(length)
+      let value = handlers.core.new_token(length)
       continue(
         next(value),
         measure(state, effect_model.NewTokenEffect, started_at),
@@ -25,7 +25,7 @@ pub fn run(
     }
     core.SystemTime(next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.system_time()
+      let value = handlers.core.system_time()
       continue(
         next(value),
         measure(state, effect_model.SystemTimeEffect, started_at),
@@ -33,7 +33,7 @@ pub fn run(
     }
     core.UuidV7(next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.uuid_v7()
+      let value = handlers.core.uuid_v7()
       continue(
         next(value),
         measure(state, effect_model.UuidV7Effect, started_at),
@@ -49,7 +49,7 @@ pub fn run(
     }
     core.AttemptSendEmail(message, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let send_result = handlers.send_email(message)
+      let send_result = handlers.core.send_email(message)
       continue(
         next(send_result),
         measure(state, effect_model.SendEmailEffect, started_at),
@@ -57,7 +57,8 @@ pub fn run(
     }
     core.GetNextJob(now:, pending_status:, running_status:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.get_next_job(now, pending_status, running_status)
+      let result =
+        handlers.core.get_next_job(now, pending_status, running_status)
       case result {
         Ok(value) ->
           continue(
@@ -85,7 +86,8 @@ pub fn run(
     }
     core.CountUserActionsByIp(windows:, ip:, action:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.count_user_actions_by_ip(windows, ip, action)
+      let result =
+        handlers.core.count_user_actions_by_ip(windows, ip, action)
       case result {
         Ok(value) ->
           continue(
@@ -113,7 +115,8 @@ pub fn run(
     }
     core.CountUserActionsByUser(windows:, user_id:, action:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.count_user_actions_by_user(windows, user_id, action)
+      let result =
+        handlers.core.count_user_actions_by_user(windows, user_id, action)
       case result {
         Ok(value) ->
           continue(
@@ -141,7 +144,7 @@ pub fn run(
     }
     core.InsertJob(job, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.insert_job(job)
+      let result = handlers.core.insert_job(job)
       continue(
         next(result),
         measure(
@@ -164,7 +167,7 @@ pub fn run(
     ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
-        handlers.insert_user_action(
+        handlers.core.insert_user_action(
           id,
           request_id,
           action,
@@ -185,7 +188,7 @@ pub fn run(
     }
     core.MarkJobDone(id, completed_at, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.mark_job_done(id, completed_at)
+      let result = handlers.core.mark_job_done(id, completed_at)
       continue(
         next(result),
         measure(
@@ -200,7 +203,7 @@ pub fn run(
     core.RescheduleJob(id, run_at, last_error, updated_at, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
-        handlers.reschedule_job(id, run_at, last_error, updated_at)
+        handlers.core.reschedule_job(id, run_at, last_error, updated_at)
       continue(
         next(result),
         measure(
