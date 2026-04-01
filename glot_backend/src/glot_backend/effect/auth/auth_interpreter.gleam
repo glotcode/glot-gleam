@@ -1,16 +1,18 @@
 import glot_backend/effect/auth/auth
+import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/runtime_types
-import glot_backend/effect/types
+import glot_backend/effect/handlers_types
 import glot_backend/erlang
 
 pub fn run(
-  effect: auth.AuthEffect(types.Program(a)),
-  handlers: runtime_types.Handlers,
-  state: types.State,
-  continue: fn(types.Program(a), types.State) -> #(Result(a, error.Error), types.State),
-  measure: fn(types.State, types.EffectName, Int) -> types.State,
-) -> #(Result(a, error.Error), types.State) {
+  effect: auth.AuthEffect(effect_model.Program(a)),
+  handlers: handlers_types.Handlers,
+  state: effect_model.State,
+  continue: fn(effect_model.Program(a), effect_model.State) ->
+    #(Result(a, error.Error), effect_model.State),
+  measure: fn(effect_model.State, effect_model.EffectName, Int) ->
+    effect_model.State,
+) -> #(Result(a, error.Error), effect_model.State) {
   case effect {
     auth.GetUserByEmail(email:, next:) -> {
       let started_at = erlang.perf_counter_ns()
@@ -21,7 +23,9 @@ pub fn run(
             next(value),
             measure(
               state,
-              types.RunQueryEffect(types.AuthQueryName(auth.GetUserByEmailQuery)),
+              effect_model.RunQueryEffect(
+                effect_model.AuthQueryName(auth.GetUserByEmailQuery),
+              ),
               started_at,
             ),
           )
@@ -30,7 +34,9 @@ pub fn run(
             Error(error.QueryError(error)),
             measure(
               state,
-              types.RunQueryEffect(types.AuthQueryName(auth.GetUserByEmailQuery)),
+              effect_model.RunQueryEffect(
+                effect_model.AuthQueryName(auth.GetUserByEmailQuery),
+              ),
               started_at,
             ),
           )
@@ -45,8 +51,8 @@ pub fn run(
             next(value),
             measure(
               state,
-              types.RunQueryEffect(
-                types.AuthQueryName(auth.ListLoginTokensByUserQuery),
+              effect_model.RunQueryEffect(
+                effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery),
               ),
               started_at,
             ),
@@ -56,8 +62,8 @@ pub fn run(
             Error(error.QueryError(error)),
             measure(
               state,
-              types.RunQueryEffect(
-                types.AuthQueryName(auth.ListLoginTokensByUserQuery),
+              effect_model.RunQueryEffect(
+                effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery),
               ),
               started_at,
             ),
@@ -73,7 +79,9 @@ pub fn run(
             next(value),
             measure(
               state,
-              types.RunQueryEffect(types.AuthQueryName(auth.GetSessionByTokenQuery)),
+              effect_model.RunQueryEffect(
+                effect_model.AuthQueryName(auth.GetSessionByTokenQuery),
+              ),
               started_at,
             ),
           )
@@ -82,7 +90,9 @@ pub fn run(
             Error(error.QueryError(error)),
             measure(
               state,
-              types.RunQueryEffect(types.AuthQueryName(auth.GetSessionByTokenQuery)),
+              effect_model.RunQueryEffect(
+                effect_model.AuthQueryName(auth.GetSessionByTokenQuery),
+              ),
               started_at,
             ),
           )
@@ -95,8 +105,8 @@ pub fn run(
         next(result),
         measure(
           state,
-          types.RunCommandEffect(
-            types.AuthCommandName(auth.InsertUserCommand),
+          effect_model.RunCommandEffect(
+            effect_model.AuthCommandName(auth.InsertUserCommand),
           ),
           started_at,
         ),
@@ -118,8 +128,8 @@ pub fn run(
         next(result),
         measure(
           state,
-          types.RunCommandEffect(
-            types.AuthCommandName(auth.InsertSessionCommand),
+          effect_model.RunCommandEffect(
+            effect_model.AuthCommandName(auth.InsertSessionCommand),
           ),
           started_at,
         ),
@@ -140,8 +150,8 @@ pub fn run(
         next(result),
         measure(
           state,
-          types.RunCommandEffect(
-            types.AuthCommandName(auth.InsertLoginTokenCommand),
+          effect_model.RunCommandEffect(
+            effect_model.AuthCommandName(auth.InsertLoginTokenCommand),
           ),
           started_at,
         ),
@@ -162,8 +172,8 @@ pub fn run(
         next(result),
         measure(
           state,
-          types.RunCommandEffect(
-            types.AuthCommandName(auth.UpdateLoginTokenCommand),
+          effect_model.RunCommandEffect(
+            effect_model.AuthCommandName(auth.UpdateLoginTokenCommand),
           ),
           started_at,
         ),

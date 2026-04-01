@@ -3,16 +3,16 @@ import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/core/core_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/error
-import glot_backend/effect/runtime_types
+import glot_backend/effect/effect_model
+import glot_backend/effect/handlers_types
 import glot_backend/effect/snippet/snippet_handlers
-import glot_backend/effect/types
 
 pub fn from_context(
   ctx: context.Context,
-  run_in_transaction: fn(List(types.Program(Nil))) ->
+  run_in_transaction: fn(List(effect_model.Program(Nil))) ->
     Result(Nil, error.DbTransactionError),
-) -> runtime_types.Handlers {
-  runtime_types.Handlers(
+) -> handlers_types.Handlers {
+  handlers_types.Handlers(
     new_token: core_handlers.new_token,
     system_time: core_handlers.system_time,
     uuid_v7: fn() { core_handlers.uuid_v7(ctx) },

@@ -5,10 +5,10 @@ import glot_backend/api_action
 import glot_backend/job
 import glot_backend/effect
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/error as effect_error
+import glot_backend/effect/error
 import glot_backend/effect/program
-import glot_backend/effect/runtime_types
-import glot_backend/effect/types as effect_types
+import glot_backend/effect/handlers_types
+import glot_backend/effect/effect_model
 import glot_backend/log
 import glot_core/rate_limit
 import youid/uuid
@@ -36,7 +36,7 @@ pub fn measurement_aggregation_test() {
   let #(run_result, state) = effect.run(measured_effect, handlers)
 
   assert run_result == Ok("ok")
-  let assert [#(effect_types.LogEffect, first), #(effect_types.LogEffect, second)] =
+  let assert [#(effect_model.LogEffect, first), #(effect_model.LogEffect, second)] =
     state.effect_timings
   assert first >= 0
   assert second >= 0
@@ -51,7 +51,7 @@ pub fn measures_effects_in_success_test() {
   let #(run_result, state) = effect.run(measured_effect, handlers)
 
   assert run_result == Ok("ok")
-  let assert [#(effect_types.NewTokenEffect, duration_ms)] = state.effect_timings
+  let assert [#(effect_model.NewTokenEffect, duration_ms)] = state.effect_timings
   assert duration_ms >= 0
 }
 
@@ -59,25 +59,25 @@ pub fn measures_effects_in_error_test() {
   let handlers = test_handlers()
   let failing_effect = {
     use _ <- program.and_then(core_effect.new_token(5))
-    program.fail(effect_error.EmailInvalidError("bad"))
+    program.fail(error.EmailInvalidError("bad"))
   }
   let #(run_result, state) = effect.run(failing_effect, handlers)
 
-  assert run_result == Error(effect_error.EmailInvalidError("bad"))
-  let assert [#(effect_types.NewTokenEffect, duration_ms)] = state.effect_timings
+  assert run_result == Error(error.EmailInvalidError("bad"))
+  let assert [#(effect_model.NewTokenEffect, duration_ms)] = state.effect_timings
   assert duration_ms >= 0
 }
 
 fn test_handlers() -> effect.Handlers {
-  runtime_types.Handlers(
+  handlers_types.Handlers(
     new_token: fn(_) { "random" },
     system_time: timestamp.system_time,
     uuid_v7: fn() { uuid.nil },
     post_run_request: fn(_, _) {
-      Error(effect_error.InternalRunRequestError("unused in test"))
+      Error(error.InternalRunRequestError("unused in test"))
     },
     send_email: fn(_) {
-      Error(effect_error.InternalSendEmailError("unused in test"))
+      Error(error.InternalSendEmailError("unused in test"))
     },
     get_user_by_email: fn(_) { Ok(option.None) },
     list_login_tokens_by_user: fn(_, _) { Ok([]) },

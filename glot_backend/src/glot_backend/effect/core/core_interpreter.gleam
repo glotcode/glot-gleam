@@ -1,45 +1,59 @@
 import glot_backend/effect/core/core
+import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/runtime_types
-import glot_backend/effect/types
+import glot_backend/effect/handlers_types
 import glot_backend/erlang
 import glot_backend/log
 
 pub fn run(
-  effect: core.CoreEffect(types.Program(a)),
-  handlers: runtime_types.Handlers,
-  state: types.State,
-  continue: fn(types.Program(a), types.State) -> #(Result(a, error.Error), types.State),
-  measure: fn(types.State, types.EffectName, Int) -> types.State,
-) -> #(Result(a, error.Error), types.State) {
+  effect: core.CoreEffect(effect_model.Program(a)),
+  handlers: handlers_types.Handlers,
+  state: effect_model.State,
+  continue: fn(effect_model.Program(a), effect_model.State) ->
+    #(Result(a, error.Error), effect_model.State),
+  measure: fn(effect_model.State, effect_model.EffectName, Int) ->
+    effect_model.State,
+) -> #(Result(a, error.Error), effect_model.State) {
   case effect {
     core.NewToken(length, next) -> {
       let started_at = erlang.perf_counter_ns()
       let value = handlers.new_token(length)
-      continue(next(value), measure(state, types.NewTokenEffect, started_at))
+      continue(
+        next(value),
+        measure(state, effect_model.NewTokenEffect, started_at),
+      )
     }
     core.SystemTime(next) -> {
       let started_at = erlang.perf_counter_ns()
       let value = handlers.system_time()
-      continue(next(value), measure(state, types.SystemTimeEffect, started_at))
+      continue(
+        next(value),
+        measure(state, effect_model.SystemTimeEffect, started_at),
+      )
     }
     core.UuidV7(next) -> {
       let started_at = erlang.perf_counter_ns()
       let value = handlers.uuid_v7()
-      continue(next(value), measure(state, types.UuidV7Effect, started_at))
+      continue(
+        next(value),
+        measure(state, effect_model.UuidV7Effect, started_at),
+      )
     }
     core.Log(level, fields, next) -> {
       let started_at = erlang.perf_counter_ns()
       let state = case level {
-        log.Info -> types.add_info_fields(state, fields)
-        log.Warn -> types.add_warning_fields(state, fields)
+        log.Info -> effect_model.add_info_fields(state, fields)
+        log.Warn -> effect_model.add_warning_fields(state, fields)
       }
-      continue(next, measure(state, types.LogEffect, started_at))
+      continue(next, measure(state, effect_model.LogEffect, started_at))
     }
     core.AttemptSendEmail(message, next) -> {
       let started_at = erlang.perf_counter_ns()
       let send_result = handlers.send_email(message)
-      continue(next(send_result), measure(state, types.SendEmailEffect, started_at))
+      continue(
+        next(send_result),
+        measure(state, effect_model.SendEmailEffect, started_at),
+      )
     }
     core.GetNextJob(now:, pending_status:, running_status:, next:) -> {
       let started_at = erlang.perf_counter_ns()
@@ -50,7 +64,9 @@ pub fn run(
             next(value),
             measure(
               state,
-              types.RunQueryEffect(types.CoreQueryName(core.GetNextJobQuery)),
+              effect_model.RunQueryEffect(
+                effect_model.CoreQueryName(core.GetNextJobQuery),
+              ),
               started_at,
             ),
           )
@@ -59,7 +75,9 @@ pub fn run(
             Error(error.QueryError(error)),
             measure(
               state,
-              types.RunQueryEffect(types.CoreQueryName(core.GetNextJobQuery)),
+              effect_model.RunQueryEffect(
+                effect_model.CoreQueryName(core.GetNextJobQuery),
+              ),
               started_at,
             ),
           )
@@ -74,8 +92,8 @@ pub fn run(
             next(value),
             measure(
               state,
-              types.RunQueryEffect(
-                types.CoreQueryName(core.CountUserActionsByIpQuery),
+              effect_model.RunQueryEffect(
+                effect_model.CoreQueryName(core.CountUserActionsByIpQuery),
               ),
               started_at,
             ),
@@ -85,8 +103,8 @@ pub fn run(
             Error(error.QueryError(error)),
             measure(
               state,
-              types.RunQueryEffect(
-                types.CoreQueryName(core.CountUserActionsByIpQuery),
+              effect_model.RunQueryEffect(
+                effect_model.CoreQueryName(core.CountUserActionsByIpQuery),
               ),
               started_at,
             ),
@@ -102,8 +120,8 @@ pub fn run(
             next(value),
             measure(
               state,
-              types.RunQueryEffect(
-                types.CoreQueryName(core.CountUserActionsByUserQuery),
+              effect_model.RunQueryEffect(
+                effect_model.CoreQueryName(core.CountUserActionsByUserQuery),
               ),
               started_at,
             ),
@@ -113,8 +131,8 @@ pub fn run(
             Error(error.QueryError(error)),
             measure(
               state,
-              types.RunQueryEffect(
-                types.CoreQueryName(core.CountUserActionsByUserQuery),
+              effect_model.RunQueryEffect(
+                effect_model.CoreQueryName(core.CountUserActionsByUserQuery),
               ),
               started_at,
             ),
@@ -128,8 +146,8 @@ pub fn run(
         next(result),
         measure(
           state,
-          types.RunCommandEffect(
-            types.CoreCommandName(core.InsertJobCommand),
+          effect_model.RunCommandEffect(
+            effect_model.CoreCommandName(core.InsertJobCommand),
           ),
           started_at,
         ),
@@ -158,8 +176,8 @@ pub fn run(
         next(result),
         measure(
           state,
-          types.RunCommandEffect(
-            types.CoreCommandName(core.InsertUserActionCommand),
+          effect_model.RunCommandEffect(
+            effect_model.CoreCommandName(core.InsertUserActionCommand),
           ),
           started_at,
         ),
@@ -172,8 +190,8 @@ pub fn run(
         next(result),
         measure(
           state,
-          types.RunCommandEffect(
-            types.CoreCommandName(core.MarkJobDoneCommand),
+          effect_model.RunCommandEffect(
+            effect_model.CoreCommandName(core.MarkJobDoneCommand),
           ),
           started_at,
         ),
@@ -187,8 +205,8 @@ pub fn run(
         next(result),
         measure(
           state,
-          types.RunCommandEffect(
-            types.CoreCommandName(core.RescheduleJobCommand),
+          effect_model.RunCommandEffect(
+            effect_model.CoreCommandName(core.RescheduleJobCommand),
           ),
           started_at,
         ),

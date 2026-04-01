@@ -14,7 +14,7 @@ import glot_backend/effect/program
 import glot_backend/email_message
 import glot_backend/erlang
 import glot_backend/job
-import glot_backend/effect/handlers as effect_handlers
+import glot_backend/effect/handlers
 import pog
 import wisp
 import youid/uuid.{type Uuid}
@@ -78,7 +78,7 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 
 fn run_once(state: State) -> Bool {
   let ctx = context_from_state(state)
-  let handlers = effect_handlers.from_context(ctx)
+  let handlers = handlers.from_context(ctx)
   let #(result, _) = process_next_job(ctx) |> effect.run(handlers)
 
   case result {

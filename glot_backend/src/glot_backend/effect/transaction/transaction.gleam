@@ -1,21 +1,21 @@
+import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/types
 
 pub fn run_in_transaction(
-  commands: List(types.Program(Nil)),
-) -> types.Program(Nil) {
-  types.Impure(
-    types.TransactionEffect(commands, fn(transaction_result) {
+  commands: List(effect_model.Program(Nil)),
+) -> effect_model.Program(Nil) {
+  effect_model.Impure(
+    effect_model.TransactionEffect(commands, fn(transaction_result) {
       case transaction_result {
-        Ok(_) -> types.Pure(Nil)
-        Error(err) -> types.Fail(error.TransactionError(err))
+        Ok(_) -> effect_model.Pure(Nil)
+        Error(err) -> effect_model.Fail(error.TransactionError(err))
       }
     }),
   )
 }
 
 pub fn attempt_run_in_transaction(
-  commands: List(types.Program(Nil)),
-) -> types.Program(Result(Nil, error.DbTransactionError)) {
-  types.Impure(types.TransactionEffect(commands, types.Pure))
+  commands: List(effect_model.Program(Nil)),
+) -> effect_model.Program(Result(Nil, error.DbTransactionError)) {
+  effect_model.Impure(effect_model.TransactionEffect(commands, effect_model.Pure))
 }

@@ -2,67 +2,76 @@ import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/result
 import glot_backend/effect/auth/auth
+import glot_backend/effect/effect_model
 import glot_backend/effect/error
 import glot_backend/effect/core/core
 import glot_backend/effect/docker_run/docker_run
 import glot_backend/effect/snippet/snippet
-import glot_backend/effect/types
 
-pub fn succeed(value: a) -> types.Program(a) {
-  types.Pure(value)
+pub fn succeed(value: a) -> effect_model.Program(a) {
+  effect_model.Pure(value)
 }
 
-pub fn fail(error: error.Error) -> types.Program(a) {
-  types.Fail(error)
+pub fn fail(error: error.Error) -> effect_model.Program(a) {
+  effect_model.Fail(error)
 }
 
 pub fn and_then(
-  effect: types.Program(a),
-  f: fn(a) -> types.Program(b),
-) -> types.Program(b) {
+  effect: effect_model.Program(a),
+  f: fn(a) -> effect_model.Program(b),
+) -> effect_model.Program(b) {
   case effect {
-    types.Pure(value) -> f(value)
-    types.Fail(error) -> types.Fail(error)
-    types.Impure(effect) ->
-      types.Impure(map_effect(effect, fn(value) { and_then(value, f) }))
+    effect_model.Pure(value) -> f(value)
+    effect_model.Fail(error) -> effect_model.Fail(error)
+    effect_model.Impure(effect) ->
+      effect_model.Impure(map_effect(effect, fn(value) { and_then(value, f) }))
   }
 }
 
-pub fn map(effect: types.Program(a), f: fn(a) -> b) -> types.Program(b) {
+pub fn map(effect: effect_model.Program(a), f: fn(a) -> b) -> effect_model.Program(b) {
   and_then(effect, fn(value) { succeed(f(value)) })
 }
 
-pub fn from_result(value: Result(a, error.Error)) -> types.Program(a) {
+pub fn from_result(value: Result(a, error.Error)) -> effect_model.Program(a) {
   case value {
-    Ok(v) -> types.Pure(v)
-    Error(err) -> types.Fail(err)
+    Ok(v) -> effect_model.Pure(v)
+    Error(err) -> effect_model.Fail(err)
   }
 }
 
 pub fn decode_json(
   json_body: dynamic.Dynamic,
   decoder: decode.Decoder(a),
-) -> types.Program(a) {
+) -> effect_model.Program(a) {
   decode.run(json_body, decoder)
   |> result.map_error(error.DecodeError)
   |> from_result
 }
 
-pub fn when(condition: Bool, if_true: types.Program(Nil)) -> types.Program(Nil) {
+pub fn when(
+  condition: Bool,
+  if_true: effect_model.Program(Nil),
+) -> effect_model.Program(Nil) {
   case condition {
     True -> if_true
-    False -> types.Pure(Nil)
+    False -> effect_model.Pure(Nil)
   }
 }
 
-fn map_effect(effect: types.Effect(a), f: fn(a) -> b) -> types.Effect(b) {
+fn map_effect(
+  effect: effect_model.Effect(a),
+  f: fn(a) -> b,
+) -> effect_model.Effect(b) {
   case effect {
-    types.CoreEffect(effect) -> types.CoreEffect(core.map(effect, f))
-    types.AuthEffect(effect) -> types.AuthEffect(auth.map(effect, f))
-    types.SnippetEffect(effect) -> types.SnippetEffect(snippet.map(effect, f))
-    types.DockerRunEffect(effect) ->
-      types.DockerRunEffect(docker_run.map(effect, f))
-    types.TransactionEffect(commands, next) ->
-      types.TransactionEffect(commands, fn(value) { f(next(value)) })
+    effect_model.CoreEffect(effect) ->
+      effect_model.CoreEffect(core.map(effect, f))
+    effect_model.AuthEffect(effect) ->
+      effect_model.AuthEffect(auth.map(effect, f))
+    effect_model.SnippetEffect(effect) ->
+      effect_model.SnippetEffect(snippet.map(effect, f))
+    effect_model.DockerRunEffect(effect) ->
+      effect_model.DockerRunEffect(docker_run.map(effect, f))
+    effect_model.TransactionEffect(commands, next) ->
+      effect_model.TransactionEffect(commands, fn(value) { f(next(value)) })
   }
 }

@@ -1,10 +1,10 @@
 import glot_backend/effect/error
+import glot_backend/effect/effect_model
 import glot_backend/effect/interpreter
-import glot_backend/effect/runtime_types
-import glot_backend/effect/types
+import glot_backend/effect/handlers_types
 
 pub type Program(a) =
-  types.Program(a)
+  effect_model.Program(a)
 
 pub type DbQueryError =
   error.DbQueryError
@@ -31,22 +31,22 @@ pub type Error =
   error.Error
 
 pub type DbQueryName =
-  types.DbQueryName
+  effect_model.DbQueryName
 
 pub type DbCommandName =
-  types.DbCommandName
+  effect_model.DbCommandName
 
 pub type EffectName =
-  types.EffectName
+  effect_model.EffectName
 
 pub type EffectTiming =
-  types.EffectTiming
+  effect_model.EffectTiming
 
 pub type State =
-  types.State
+  effect_model.State
 
 pub type Handlers =
-  runtime_types.Handlers
+  handlers_types.Handlers
 
 pub fn run(
   effect: Program(a),

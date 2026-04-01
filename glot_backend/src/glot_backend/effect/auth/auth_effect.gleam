@@ -1,8 +1,8 @@
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/auth/auth
+import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/types
 import glot_core/auth as auth_core
 import glot_core/email
 import glot_core/user
@@ -10,26 +10,30 @@ import youid/uuid.{type Uuid}
 
 pub fn db_get_user_by_email(
   email email: email.Email,
-) -> types.Program(option.Option(user.User)) {
-  types.Impure(types.AuthEffect(auth.GetUserByEmail(email:, next: types.Pure)))
+) -> effect_model.Program(option.Option(user.User)) {
+  effect_model.Impure(
+    effect_model.AuthEffect(auth.GetUserByEmail(email:, next: effect_model.Pure)),
+  )
 }
 
 pub fn db_list_login_tokens_by_user(
   user_id user_id: Uuid,
   limit limit: Int,
-) -> types.Program(List(auth_core.LoginToken)) {
-  types.Impure(types.AuthEffect(auth.ListLoginTokensByUser(
+) -> effect_model.Program(List(auth_core.LoginToken)) {
+  effect_model.Impure(effect_model.AuthEffect(auth.ListLoginTokensByUser(
     user_id: user_id,
     limit: limit,
-    next: types.Pure,
+    next: effect_model.Pure,
   )))
 }
 
 pub fn db_get_session_by_token(
   token token: String,
-) -> types.Program(option.Option(auth_core.Session)) {
-  types.Impure(
-    types.AuthEffect(auth.GetSessionByToken(token: token, next: types.Pure)),
+) -> effect_model.Program(option.Option(auth_core.Session)) {
+  effect_model.Impure(
+    effect_model.AuthEffect(
+      auth.GetSessionByToken(token: token, next: effect_model.Pure),
+    ),
   )
 }
 
@@ -37,8 +41,12 @@ pub fn insert_user(
   id id: Uuid,
   email email: String,
   created_at created_at: Timestamp,
-) -> types.Program(Nil) {
-  types.Impure(types.AuthEffect(auth.InsertUser(id:, email:, created_at:, next: command_next)))
+) -> effect_model.Program(Nil) {
+  effect_model.Impure(
+    effect_model.AuthEffect(
+      auth.InsertUser(id:, email:, created_at:, next: command_next),
+    ),
+  )
 }
 
 pub fn insert_session(
@@ -48,8 +56,8 @@ pub fn insert_session(
   ip ip: option.Option(String),
   user_agent user_agent: option.Option(String),
   created_at created_at: Timestamp,
-) -> types.Program(Nil) {
-  types.Impure(types.AuthEffect(auth.InsertSession(
+) -> effect_model.Program(Nil) {
+  effect_model.Impure(effect_model.AuthEffect(auth.InsertSession(
     id: id,
     user_id: user_id,
     token: token,
@@ -66,8 +74,8 @@ pub fn insert_login_token(
   token token: String,
   created_at created_at: Timestamp,
   used_at used_at: option.Option(Timestamp),
-) -> types.Program(Nil) {
-  types.Impure(types.AuthEffect(auth.InsertLoginToken(
+) -> effect_model.Program(Nil) {
+  effect_model.Impure(effect_model.AuthEffect(auth.InsertLoginToken(
     id: id,
     user_id: user_id,
     token: token,
@@ -83,8 +91,8 @@ pub fn update_login_token(
   created_at created_at: Timestamp,
   used_at used_at: option.Option(Timestamp),
   id id: Uuid,
-) -> types.Program(Nil) {
-  types.Impure(types.AuthEffect(auth.UpdateLoginToken(
+) -> effect_model.Program(Nil) {
+  effect_model.Impure(effect_model.AuthEffect(auth.UpdateLoginToken(
     user_id: user_id,
     token: token,
     created_at: created_at,
@@ -96,9 +104,9 @@ pub fn update_login_token(
 
 fn command_next(
   result: Result(Nil, error.DbCommandError),
-) -> types.Program(Nil) {
+) -> effect_model.Program(Nil) {
   case result {
-    Ok(_) -> types.Pure(Nil)
-    Error(err) -> types.Fail(error.CommandError(err))
+    Ok(_) -> effect_model.Pure(Nil)
+    Error(err) -> effect_model.Fail(error.CommandError(err))
   }
 }

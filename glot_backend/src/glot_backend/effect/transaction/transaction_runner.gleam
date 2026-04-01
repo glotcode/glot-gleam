@@ -1,16 +1,16 @@
 import glot_backend/context
 import gleam/result
 import gleam/string
+import glot_backend/effect/effect_model
 import glot_backend/effect/handlers_builder
 import glot_backend/effect/interpreter
 import glot_backend/effect/error
-import glot_backend/effect/runtime_types
-import glot_backend/effect/types
+import glot_backend/effect/handlers_types
 import pog
 
 pub fn run_in_transaction(
   ctx: context.Context,
-  commands: List(types.Program(Nil)),
+  commands: List(effect_model.Program(Nil)),
 ) -> Result(Nil, error.DbTransactionError) {
   pog.transaction(ctx.db, fn(tx) {
     let tx_context = context.Context(..ctx, db: tx)
@@ -27,8 +27,8 @@ pub fn run_in_transaction(
 }
 
 fn execute_programs(
-  handlers: runtime_types.Handlers,
-  programs: List(types.Program(Nil)),
+  handlers: handlers_types.Handlers,
+  programs: List(effect_model.Program(Nil)),
 ) -> Result(Nil, error.Error) {
   case programs {
     [] -> Ok(Nil)

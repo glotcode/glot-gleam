@@ -2,8 +2,8 @@ import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
+import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/types
 import glot_backend/email_message
 import glot_backend/job
 import glot_core/auth as auth_core
@@ -89,7 +89,7 @@ pub type Handlers {
       Timestamp,
       Timestamp,
     ) -> Result(Nil, error.DbCommandError),
-    run_in_transaction: fn(List(types.Program(Nil))) ->
+    run_in_transaction: fn(List(effect_model.Program(Nil))) ->
       Result(Nil, error.DbTransactionError),
   )
 }

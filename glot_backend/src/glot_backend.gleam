@@ -6,7 +6,7 @@ import gleam/http/request
 import gleam/io
 import gleam/list
 import gleam/option
-import gleam/otp/static_supervisor as supervisor
+import gleam/otp/static_supervisor
 import gleam/regexp
 import gleam/string
 import gleam/time/timestamp
@@ -190,12 +190,12 @@ fn start_supervisor_tree(
   log_worker_name: process.Name(log_worker.Message),
   mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
 ) {
-  supervisor.new(supervisor.RestForOne)
-  |> supervisor.add(pog.supervised(pog_config))
-  |> supervisor.add(log_worker.supervised(log_worker_name, db))
-  |> supervisor.add(job_worker.supervised(db, config, regexes))
-  |> supervisor.add(mist.supervised(mist_builder))
-  |> supervisor.start
+  static_supervisor.new(static_supervisor.RestForOne)
+  |> static_supervisor.add(pog.supervised(pog_config))
+  |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
+  |> static_supervisor.add(job_worker.supervised(db, config, regexes))
+  |> static_supervisor.add(mist.supervised(mist_builder))
+  |> static_supervisor.start
 }
 
 fn postgres_config(
