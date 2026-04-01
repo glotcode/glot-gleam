@@ -1,4 +1,3 @@
-import gleam/list
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
 import glot_backend/effect/handlers_types
@@ -6,7 +5,7 @@ import glot_backend/effect/program_state
 import glot_backend/erlang
 
 pub fn run(
-  commands: List(effect_model.Program(Nil)),
+  sub_effects: List(effect_model.Program(Nil)),
   next: fn(Result(Nil, error.DbTransactionError)) -> effect_model.Program(a),
   handlers: handlers_types.Handlers,
   state: program_state.State,
@@ -15,15 +14,12 @@ pub fn run(
 ) -> #(Result(a, error.Error), program_state.State) {
   let started_at = erlang.perf_counter_ns()
   let #(transaction_result, transaction_state) =
-    handlers.transaction.run_in_transaction(commands)
-  let nested_effects =
-    transaction_state.effect_timings
-    |> list.map(fn(timing) { timing.name })
+    handlers.transaction.run_in_transaction(sub_effects)
   continue(
     next(transaction_result),
     program_state.measure_effect(
       state,
-      effect_model.RunInTransactionEffectName(nested_effects),
+      effect_model.RunInTransactionEffectName(transaction_state.effect_timings),
       effect_model.DbWriteEffectCategory,
       started_at,
     ),

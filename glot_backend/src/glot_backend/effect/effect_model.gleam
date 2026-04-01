@@ -1,3 +1,5 @@
+import gleam/json
+import gleam/list
 import glot_backend/effect/auth/auth
 import glot_backend/effect/core/core
 import glot_backend/effect/docker_run/docker_run
@@ -26,7 +28,7 @@ pub type EffectName {
   AuthEffectName(auth.EffectName)
   SnippetEffectName(snippet.EffectName)
   DockerRunEffectName(docker_run.EffectName)
-  RunInTransactionEffectName(List(EffectName))
+  RunInTransactionEffectName(List(EffectTiming))
 }
 
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
@@ -66,5 +68,52 @@ pub fn effect_category_to_string(category: EffectCategory) -> String {
     EmailEffectCategory -> "email"
     DbReadEffectCategory -> "db_read"
     DbWriteEffectCategory -> "db_write"
+  }
+}
+
+pub type EffectTiming {
+  EffectTiming(name: EffectName, category: EffectCategory, duration_ns: Int)
+}
+
+pub fn encode_effect_timings(effects: List(EffectTiming)) -> json.Json {
+  json.object([
+    #("effects", json.array(effects, encode_effect_timing)),
+    #(
+      "summary",
+      json.object([
+        #("count", json.int(list.length(effects))),
+        #(
+          "duration_ns",
+          json.int(
+            list.fold(effects, 0, fn(acc, effect_timing) {
+              acc + effect_timing.duration_ns
+            }),
+          ),
+        ),
+      ]),
+    ),
+  ])
+}
+
+pub fn encode_effect_timing(effect_timing: EffectTiming) -> json.Json {
+  let effect_name = effect_timing.name
+  let duration_ns = effect_timing.duration_ns
+  let effect_category = effect_category_to_string(effect_timing.category)
+  case effect_name {
+    RunInTransactionEffectName(sub_effects) ->
+      json.object([
+        #("category", json.string(effect_category)),
+        #("family", json.string(effect_name_to_family(effect_name))),
+        #("name", json.string(effect_name_to_string(effect_name))),
+        #("effects", json.array(sub_effects, encode_effect_timing)),
+        #("duration_ns", json.int(duration_ns)),
+      ])
+    _ ->
+      json.object([
+        #("category", json.string(effect_category)),
+        #("family", json.string(effect_name_to_family(effect_name))),
+        #("name", json.string(effect_name_to_string(effect_name))),
+        #("duration_ns", json.int(duration_ns)),
+      ])
   }
 }

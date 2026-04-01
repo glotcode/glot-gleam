@@ -44,12 +44,12 @@ pub fn measurement_aggregation_test() {
 
   assert run_result == Ok("ok")
   let assert [
-    program_state.EffectTiming(
+    effect_model.EffectTiming(
       name: effect_model.CoreEffectName(core.LogEffectName),
       duration_ns: first,
       ..
     ),
-    program_state.EffectTiming(
+    effect_model.EffectTiming(
       name: effect_model.CoreEffectName(core.LogEffectName),
       duration_ns: second,
       ..
@@ -70,7 +70,7 @@ pub fn measures_effects_in_success_test() {
 
   assert run_result == Ok("ok")
   let assert [
-    program_state.EffectTiming(
+    effect_model.EffectTiming(
       name: effect_model.CoreEffectName(core.NewTokenEffectName),
       duration_ns: duration_ms,
       ..
@@ -89,7 +89,7 @@ pub fn measures_effects_in_error_test() {
 
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
-    program_state.EffectTiming(
+    effect_model.EffectTiming(
       name: effect_model.CoreEffectName(core.NewTokenEffectName),
       duration_ns: duration_ms,
       ..

@@ -2,10 +2,10 @@ import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/result
 import glot_backend/effect/auth/auth
-import glot_backend/effect/effect_model
-import glot_backend/effect/error
 import glot_backend/effect/core/core
 import glot_backend/effect/docker_run/docker_run
+import glot_backend/effect/effect_model
+import glot_backend/effect/error
 import glot_backend/effect/snippet/snippet
 
 pub fn succeed(value: a) -> effect_model.Program(a) {
@@ -28,7 +28,10 @@ pub fn and_then(
   }
 }
 
-pub fn map(effect: effect_model.Program(a), f: fn(a) -> b) -> effect_model.Program(b) {
+pub fn map(
+  effect: effect_model.Program(a),
+  f: fn(a) -> b,
+) -> effect_model.Program(b) {
   and_then(effect, fn(value) { succeed(f(value)) })
 }
 
@@ -71,7 +74,7 @@ fn map_effect(
       effect_model.SnippetEffect(snippet.map(effect, f))
     effect_model.DockerRunEffect(effect) ->
       effect_model.DockerRunEffect(docker_run.map(effect, f))
-    effect_model.TransactionEffect(commands, next) ->
-      effect_model.TransactionEffect(commands, fn(value) { f(next(value)) })
+    effect_model.TransactionEffect(sub_effects, next) ->
+      effect_model.TransactionEffect(sub_effects, fn(value) { f(next(value)) })
   }
 }

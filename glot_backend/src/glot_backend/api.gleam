@@ -13,15 +13,15 @@ import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
-import glot_backend/effect/error
 import glot_backend/effect/effect_model
+import glot_backend/effect/error
+import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
 import glot_backend/effect/program_state
 import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
-import glot_backend/effect/handlers
 import glot_core/run
 import wisp
 
@@ -207,7 +207,7 @@ fn save_log_entry(
       |> option.map(json.to_string),
     effects: state.effect_timings
       |> non_empty_list
-      |> option.map(program_state.encode_effect_timings)
+      |> option.map(effect_model.encode_effect_timings)
       |> option.map(json.to_string),
   )
 }
@@ -236,23 +236,14 @@ fn effect_error_to_message(err: error.Error) -> String {
       "query_error:" <> message
     error.CommandError(error.DbCommandError(message: message)) ->
       "command_error:" <> message
-    error.TransactionError(
-      error.DbTransactionError(message: message),
-    ) ->
+    error.TransactionError(error.DbTransactionError(message: message)) ->
       "transaction_error:" <> message
-    error.LoginError(error.InvalidTokenError) ->
-      "login_error:invalid_token"
-    error.LoginError(error.TokenUsedError) ->
-      "login_error:token_used"
-    error.LoginError(error.TokenExpiredError) ->
-      "login_error:token_expired"
-    error.SendEmailError(
-      error.PublicSendEmailError(message: message),
-    ) ->
+    error.LoginError(error.InvalidTokenError) -> "login_error:invalid_token"
+    error.LoginError(error.TokenUsedError) -> "login_error:token_used"
+    error.LoginError(error.TokenExpiredError) -> "login_error:token_expired"
+    error.SendEmailError(error.PublicSendEmailError(message: message)) ->
       "send_email_public:" <> message
-    error.SendEmailError(
-      error.InternalSendEmailError(message: message),
-    ) ->
+    error.SendEmailError(error.InternalSendEmailError(message: message)) ->
       "send_email_internal:" <> message
     error.SessionError(error.MissingSessionTokenError) ->
       "session_error:missing_session_token"
@@ -262,9 +253,7 @@ fn effect_error_to_message(err: error.Error) -> String {
       "session_error:session_expired"
     error.RunError(error.PublicRunRequestError(message: message)) ->
       "run_error_public:" <> message
-    error.RunError(
-      error.InternalRunRequestError(message: message),
-    ) ->
+    error.RunError(error.InternalRunRequestError(message: message)) ->
       "run_error_internal:" <> message
   }
 }
@@ -310,9 +299,7 @@ fn error_to_response(error: error.Error) -> wisp.Response {
       wisp.log_error("Command error: " <> message)
       error_response("command_error", "Failed to run command")
     }
-    error.TransactionError(
-      error.DbTransactionError(message: message),
-    ) -> {
+    error.TransactionError(error.DbTransactionError(message: message)) -> {
       wisp.log_error("Transaction error: " <> message)
       error_response("transaction_error", "Transaction failed")
     }

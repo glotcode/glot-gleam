@@ -15,7 +15,13 @@ pub fn run(
 ) -> #(Result(a, error.Error), program_state.State) {
   let #(result, state) =
     run_with_state(effect, handlers, program_state.new_state())
-  #(result, program_state.State(..state, effect_timings: list.reverse(state.effect_timings)))
+  #(
+    result,
+    program_state.State(
+      ..state,
+      effect_timings: list.reverse(state.effect_timings),
+    ),
+  )
 }
 
 fn run_with_state(
@@ -39,15 +45,10 @@ fn run_with_state(
         effect_model.SnippetEffect(effect) ->
           snippet_interpreter.run(effect, handlers, state, continue)
         effect_model.DockerRunEffect(effect) ->
-          docker_run_interpreter.run(
-            effect,
-            handlers,
-            state,
-            continue,
-          )
-        effect_model.TransactionEffect(commands, next) ->
+          docker_run_interpreter.run(effect, handlers, state, continue)
+        effect_model.TransactionEffect(sub_effects, next) ->
           transaction_interpreter.run(
-            commands,
+            sub_effects,
             next,
             handlers,
             state,

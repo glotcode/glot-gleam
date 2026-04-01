@@ -1,26 +1,26 @@
-import glot_backend/context
 import gleam/dict
 import gleam/list
 import gleam/string
+import glot_backend/context
 import glot_backend/effect/effect_model
-import glot_backend/effect/handlers_builder
-import glot_backend/effect/interpreter
 import glot_backend/effect/error
+import glot_backend/effect/handlers_builder
 import glot_backend/effect/handlers_types
+import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
 import pog
 
 pub fn run_in_transaction(
   ctx: context.Context,
-  commands: List(effect_model.Program(Nil)),
+  sub_effects: List(effect_model.Program(Nil)),
 ) -> #(Result(Nil, error.DbTransactionError), program_state.State) {
   pog.transaction(ctx.db, fn(tx) {
     let tx_context = context.Context(..ctx, db: tx)
-    let tx_handlers = handlers_builder.from_context(
-      tx_context,
-      fn(programs) { run_in_transaction(tx_context, programs) },
-    )
-    case execute_programs(tx_handlers, commands) {
+    let tx_handlers =
+      handlers_builder.from_context(tx_context, fn(programs) {
+        run_in_transaction(tx_context, programs)
+      })
+    case execute_programs(tx_handlers, sub_effects) {
       #(Ok(_), state) -> Ok(state)
       #(Error(err), state) -> Error(#(err, state))
     }
@@ -66,12 +66,13 @@ fn collapse_transaction_result(
 ) -> #(Result(Nil, error.DbTransactionError), program_state.State) {
   case result {
     Ok(state) -> #(Ok(Nil), state)
-    Error(pog.TransactionRolledBack(#(err, state))) ->
-      #(Error(error.DbTransactionError(string.inspect(err))), state)
-    Error(err) ->
-      #(
-        Error(error.DbTransactionError(string.inspect(err))),
-        program_state.new_state(),
-      )
+    Error(pog.TransactionRolledBack(#(err, state))) -> #(
+      Error(error.DbTransactionError(string.inspect(err))),
+      state,
+    )
+    Error(err) -> #(
+      Error(error.DbTransactionError(string.inspect(err))),
+      program_state.new_state(),
+    )
   }
 }
