@@ -27,9 +27,7 @@ pub fn run(
         next(result),
         program_state.measure_effect(
           state,
-          effect_model.RunCommandEffect(
-            effect_model.SnippetCommandName(snippet.InsertSnippetCommand),
-          ),
+          effect_model.SnippetEffectName(snippet.InsertSnippetEffectName),
           effect_model.DbWriteEffectCategory,
           started_at,
         ),

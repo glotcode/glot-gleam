@@ -6,24 +6,8 @@ import glot_core/email
 import glot_core/user
 import youid/uuid.{type Uuid}
 
-pub type AuthQueryName {
-  GetUserByEmailQuery
-  ListLoginTokensByUserQuery
-  GetSessionByTokenQuery
-}
-
-pub type AuthCommandName {
-  InsertUserCommand
-  InsertSessionCommand
-  InsertLoginTokenCommand
-  UpdateLoginTokenCommand
-}
-
 pub type AuthEffect(next) {
-  GetUserByEmail(
-    email: email.Email,
-    next: fn(option.Option(user.User)) -> next,
-  )
+  GetUserByEmail(email: email.Email, next: fn(option.Option(user.User)) -> next)
   ListLoginTokensByUser(
     user_id: Uuid,
     limit: Int,
@@ -128,5 +112,27 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
         id: id,
         next: fn(value) { f(next(value)) },
       )
+  }
+}
+
+pub type EffectName {
+  GetUserByEmailEffectName
+  ListLoginTokensByUserEffectName
+  GetSessionByTokenEffectName
+  InsertUserEffectName
+  InsertSessionEffectName
+  InsertLoginTokenEffectName
+  UpdateLoginTokenEffectName
+}
+
+pub fn effect_name_to_string(name: EffectName) -> String {
+  case name {
+    GetUserByEmailEffectName -> "get_user_by_email"
+    ListLoginTokensByUserEffectName -> "list_login_tokens_by_user"
+    GetSessionByTokenEffectName -> "get_session_by_token"
+    InsertUserEffectName -> "insert_user"
+    InsertSessionEffectName -> "insert_session"
+    InsertLoginTokenEffectName -> "insert_login_token"
+    UpdateLoginTokenEffectName -> "update_login_token"
   }
 }

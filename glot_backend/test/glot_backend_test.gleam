@@ -4,6 +4,7 @@ import gleeunit
 import glot_backend/api_action
 import glot_backend/job
 import glot_backend/effect/auth/auth_handlers_type
+import glot_backend/effect/core/core
 import glot_backend/effect/core/core_effect
 import glot_backend/effect/core/core_handlers_type
 import glot_backend/effect/docker_run/docker_run_handlers_type
@@ -43,8 +44,16 @@ pub fn measurement_aggregation_test() {
 
   assert run_result == Ok("ok")
   let assert [
-    program_state.EffectTiming(name: effect_model.LogEffect, duration_ns: first, ..),
-    program_state.EffectTiming(name: effect_model.LogEffect, duration_ns: second, ..),
+    program_state.EffectTiming(
+      name: effect_model.CoreEffectName(core.LogEffectName),
+      duration_ns: first,
+      ..
+    ),
+    program_state.EffectTiming(
+      name: effect_model.CoreEffectName(core.LogEffectName),
+      duration_ns: second,
+      ..
+    ),
   ] =
     state.effect_timings
   assert first >= 0
@@ -61,7 +70,11 @@ pub fn measures_effects_in_success_test() {
 
   assert run_result == Ok("ok")
   let assert [
-    program_state.EffectTiming(name: effect_model.NewTokenEffect, duration_ns: duration_ms, ..),
+    program_state.EffectTiming(
+      name: effect_model.CoreEffectName(core.NewTokenEffectName),
+      duration_ns: duration_ms,
+      ..
+    ),
   ] = state.effect_timings
   assert duration_ms >= 0
 }
@@ -76,7 +89,11 @@ pub fn measures_effects_in_error_test() {
 
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
-    program_state.EffectTiming(name: effect_model.NewTokenEffect, duration_ns: duration_ms, ..),
+    program_state.EffectTiming(
+      name: effect_model.CoreEffectName(core.NewTokenEffectName),
+      duration_ns: duration_ms,
+      ..
+    ),
   ] = state.effect_timings
   assert duration_ms >= 0
 }

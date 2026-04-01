@@ -20,7 +20,9 @@ pub fn run(
         next(run_result),
         program_state.measure_effect(
           state,
-          effect_model.DockerRunRequestEffect,
+          effect_model.DockerRunEffectName(
+            docker_run.AttemptPostRunRequestEffectName,
+          ),
           effect_model.DockerRunEffectCategory,
           started_at,
         ),

@@ -16,3 +16,13 @@ pub fn map(effect: DockerRunEffect(a), f: fn(a) -> b) -> DockerRunEffect(b) {
       AttemptPostRunRequest(cfg, request, fn(value) { f(next(value)) })
   }
 }
+
+pub type EffectName {
+  AttemptPostRunRequestEffectName
+}
+
+pub fn effect_name_to_string(name: EffectName) -> String {
+  case name {
+    AttemptPostRunRequestEffectName -> "attempt_post_run_request"
+  }
+}

@@ -17,5 +17,8 @@ pub fn run_in_transaction(
 pub fn attempt_run_in_transaction(
   commands: List(effect_model.Program(Nil)),
 ) -> effect_model.Program(Result(Nil, error.DbTransactionError)) {
-  effect_model.Impure(effect_model.TransactionEffect(commands, effect_model.Pure))
+  effect_model.Impure(effect_model.TransactionEffect(
+    commands,
+    effect_model.Pure,
+  ))
 }

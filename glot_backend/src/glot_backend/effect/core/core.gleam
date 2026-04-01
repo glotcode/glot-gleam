@@ -8,19 +8,6 @@ import glot_backend/log
 import glot_core/rate_limit
 import youid/uuid.{type Uuid}
 
-pub type CoreQueryName {
-  GetNextJobQuery
-  CountUserActionsByIpQuery
-  CountUserActionsByUserQuery
-}
-
-pub type CoreCommandName {
-  InsertJobCommand
-  InsertUserActionCommand
-  MarkJobDoneCommand
-  RescheduleJobCommand
-}
-
 pub type CoreEffect(next) {
   NewToken(Int, fn(String) -> next)
   SystemTime(fn(Timestamp) -> next)
@@ -126,5 +113,37 @@ pub fn map(effect: CoreEffect(a), f: fn(a) -> b) -> CoreEffect(b) {
       RescheduleJob(id, run_at, last_error, updated_at, next: fn(value) {
         f(next(value))
       })
+  }
+}
+
+pub type EffectName {
+  NewTokenEffectName
+  SystemTimeEffectName
+  UuidV7EffectName
+  LogEffectName
+  AttemptSendEmailEffectName
+  GetNextJobEffectName
+  CountUserActionsByIpEffectName
+  CountUserActionsByUserEffectName
+  InsertJobEffectName
+  InsertUserActionEffectName
+  MarkJobDoneEffectName
+  RescheduleJobEffectName
+}
+
+pub fn effect_name_to_string(name: EffectName) -> String {
+  case name {
+    NewTokenEffectName -> "new_token"
+    SystemTimeEffectName -> "system_time"
+    UuidV7EffectName -> "uuid_v7"
+    LogEffectName -> "log"
+    AttemptSendEmailEffectName -> "attempt_send_email"
+    GetNextJobEffectName -> "get_next_job"
+    CountUserActionsByIpEffectName -> "count_user_actions_by_ip"
+    CountUserActionsByUserEffectName -> "count_user_actions_by_user"
+    InsertJobEffectName -> "insert_job"
+    InsertUserActionEffectName -> "insert_user_action"
+    MarkJobDoneEffectName -> "mark_job_done"
+    RescheduleJobEffectName -> "reschedule_job"
   }
 }

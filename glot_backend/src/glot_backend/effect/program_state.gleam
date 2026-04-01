@@ -46,10 +46,7 @@ pub fn add_info_fields(state: State, fields: log.Fields) -> State {
   State(..state, info_fields: dict.merge(state.info_fields, fields))
 }
 
-pub fn add_warning_fields(
-  state: State,
-  fields: log.Fields,
-) -> State {
+pub fn add_warning_fields(state: State, fields: log.Fields) -> State {
   State(..state, warning_fields: dict.merge(state.warning_fields, fields))
 }
 
@@ -90,13 +87,16 @@ pub fn encode_effect_timing(effect_timing: EffectTiming) -> json.Json {
   let effect_category =
     effect_model.effect_category_to_string(effect_timing.category)
   case effect_name {
-    effect_model.RunInTransactionEffect(commands) ->
+    effect_model.RunInTransactionEffectName(commands) ->
       json.object([
         #("category", json.string(effect_category)),
         #("name", json.string(effect_model.effect_name_to_string(effect_name))),
         #(
           "commands",
-          json.array(list.map(commands, effect_model.effect_name_to_string), json.string),
+          json.array(
+            list.map(commands, effect_model.effect_name_to_string),
+            json.string,
+          ),
         ),
         #("duration_ns", json.int(duration_ns)),
       ])

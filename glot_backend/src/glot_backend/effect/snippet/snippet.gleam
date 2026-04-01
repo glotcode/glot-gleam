@@ -3,10 +3,6 @@ import glot_backend/effect/error
 import glot_core/snippet
 import youid/uuid.{type Uuid}
 
-pub type SnippetCommandName {
-  InsertSnippetCommand
-}
-
 pub type SnippetEffect(next) {
   InsertSnippet(
     id: Uuid,
@@ -23,11 +19,21 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
     InsertSnippet(id, user_id, snippet, created_at, updated_at, next) ->
       InsertSnippet(
         id,
-      user_id,
-      snippet,
-      created_at,
-      updated_at,
-      next: fn(value) { f(next(value)) },
-    )
+        user_id,
+        snippet,
+        created_at,
+        updated_at,
+        next: fn(value) { f(next(value)) },
+      )
+  }
+}
+
+pub type EffectName {
+  InsertSnippetEffectName
+}
+
+pub fn effect_name_to_string(name: EffectName) -> String {
+  case name {
+    InsertSnippetEffectName -> "insert_snippet"
   }
 }

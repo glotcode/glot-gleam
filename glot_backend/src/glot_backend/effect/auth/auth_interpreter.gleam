@@ -22,9 +22,7 @@ pub fn run(
             next(value),
             program_state.measure_effect(
               state,
-              effect_model.RunQueryEffect(
-                effect_model.AuthQueryName(auth.GetUserByEmailQuery),
-              ),
+              effect_model.AuthEffectName(auth.GetUserByEmailEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
@@ -34,9 +32,7 @@ pub fn run(
             Error(error.QueryError(error)),
             program_state.measure_effect(
               state,
-              effect_model.RunQueryEffect(
-                effect_model.AuthQueryName(auth.GetUserByEmailQuery),
-              ),
+              effect_model.AuthEffectName(auth.GetUserByEmailEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
@@ -52,9 +48,7 @@ pub fn run(
             next(value),
             program_state.measure_effect(
               state,
-              effect_model.RunQueryEffect(
-                effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery),
-              ),
+              effect_model.AuthEffectName(auth.ListLoginTokensByUserEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
@@ -64,9 +58,7 @@ pub fn run(
             Error(error.QueryError(error)),
             program_state.measure_effect(
               state,
-              effect_model.RunQueryEffect(
-                effect_model.AuthQueryName(auth.ListLoginTokensByUserQuery),
-              ),
+              effect_model.AuthEffectName(auth.ListLoginTokensByUserEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
@@ -82,9 +74,7 @@ pub fn run(
             next(value),
             program_state.measure_effect(
               state,
-              effect_model.RunQueryEffect(
-                effect_model.AuthQueryName(auth.GetSessionByTokenQuery),
-              ),
+              effect_model.AuthEffectName(auth.GetSessionByTokenEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
@@ -94,9 +84,7 @@ pub fn run(
             Error(error.QueryError(error)),
             program_state.measure_effect(
               state,
-              effect_model.RunQueryEffect(
-                effect_model.AuthQueryName(auth.GetSessionByTokenQuery),
-              ),
+              effect_model.AuthEffectName(auth.GetSessionByTokenEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
@@ -110,9 +98,7 @@ pub fn run(
         next(result),
         program_state.measure_effect(
           state,
-          effect_model.RunCommandEffect(
-            effect_model.AuthCommandName(auth.InsertUserCommand),
-          ),
+          effect_model.AuthEffectName(auth.InsertUserEffectName),
           effect_model.DbWriteEffectCategory,
           started_at,
         ),
@@ -141,9 +127,7 @@ pub fn run(
         next(result),
         program_state.measure_effect(
           state,
-          effect_model.RunCommandEffect(
-            effect_model.AuthCommandName(auth.InsertSessionCommand),
-          ),
+          effect_model.AuthEffectName(auth.InsertSessionEffectName),
           effect_model.DbWriteEffectCategory,
           started_at,
         ),
@@ -170,9 +154,7 @@ pub fn run(
         next(result),
         program_state.measure_effect(
           state,
-          effect_model.RunCommandEffect(
-            effect_model.AuthCommandName(auth.InsertLoginTokenCommand),
-          ),
+          effect_model.AuthEffectName(auth.InsertLoginTokenEffectName),
           effect_model.DbWriteEffectCategory,
           started_at,
         ),
@@ -199,9 +181,7 @@ pub fn run(
         next(result),
         program_state.measure_effect(
           state,
-          effect_model.RunCommandEffect(
-            effect_model.AuthCommandName(auth.UpdateLoginTokenCommand),
-          ),
+          effect_model.AuthEffectName(auth.UpdateLoginTokenEffectName),
           effect_model.DbWriteEffectCategory,
           started_at,
         ),
