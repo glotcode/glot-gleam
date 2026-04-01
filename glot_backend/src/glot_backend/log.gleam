@@ -29,6 +29,10 @@ pub fn string(key: String, value: String) -> #(String, Value) {
   #(key, String(value))
 }
 
+pub fn bool(key: String, value: Bool) -> #(String, Value) {
+  #(key, Bool(value))
+}
+
 pub fn object(key: String, items: List(#(String, Value))) -> #(String, Value) {
   #(key, Object(dict.from_list(items)))
 }
