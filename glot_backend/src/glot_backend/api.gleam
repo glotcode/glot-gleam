@@ -14,11 +14,11 @@ import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
+import glot_backend/effect.{type Effect}
 import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
-import glot_backend/program
-import glot_backend/program/handlers as program_handlers
+import glot_backend/effect/handlers as effect_handlers
 import glot_core/run
 import wisp
 
@@ -28,11 +28,11 @@ pub fn handle_request(
   req: wisp.Request,
 ) -> wisp.Response {
   use api_request <- require_api_request(req)
-  let handlers = program_handlers.from_context(ctx)
+  let handlers = effect_handlers.from_context(ctx)
 
   let #(api_result, state) =
     handle_api_request(ctx, api_request)
-    |> program.run(handlers)
+    |> effect.run(handlers)
 
   insert_log_entry(ctx, log_worker_subject, state, api_request, api_result)
   result_to_response(ctx, req, api_result)
@@ -41,20 +41,20 @@ pub fn handle_request(
 fn handle_api_request(
   ctx: context.Context,
   api_request: ApiRequest,
-) -> program.Program(ApiResult) {
+) -> Effect(ApiResult) {
   case api_request.action {
     api_action.RunAction ->
       run_domain.run(ctx, api_request.data)
-      |> program.map(RunResultResponse)
+      |> effect.map(RunResultResponse)
     api_action.SnippetCreateAction ->
       snippet_create_domain.snippet_create(ctx, api_request.data)
-      |> program.map(fn(_) { NoContentResponse })
+      |> effect.map(fn(_) { NoContentResponse })
     api_action.SendLoginTokenAction ->
       send_login_token_domain.send_login_token(ctx, api_request.data)
-      |> program.map(fn(_) { NoContentResponse })
+      |> effect.map(fn(_) { NoContentResponse })
     api_action.LoginAction ->
       login_domain.login(ctx, api_request.data)
-      |> program.map(LoginResponse)
+      |> effect.map(LoginResponse)
   }
 }
 
@@ -151,9 +151,9 @@ fn error_response(code: String, message: String) -> wisp.Response {
 fn insert_log_entry(
   ctx: context.Context,
   log_worker_subject: process.Subject(log_worker.Message),
-  state: program.State,
+  state: effect.State,
   api_request: ApiRequest,
-  result: Result(ApiResult, program.Error),
+  result: Result(ApiResult, effect.Error),
 ) -> Nil {
   let error = case result {
     Ok(_) -> option.None
@@ -174,11 +174,11 @@ fn insert_log_entry(
 
 fn save_log_entry(
   ctx: context.Context,
-  state: program.State,
+  state: effect.State,
   api_request: ApiRequest,
-  error: option.Option(program.Error),
+  error: option.Option(effect.Error),
 ) -> log_worker.LogEntry {
-  let handlers = program_handlers.from_context(ctx)
+  let handlers = effect_handlers.from_context(ctx)
   let id = handlers.uuid_v7()
   let duration_ns = erlang.perf_counter_ns() - ctx.started_at
 
@@ -200,7 +200,7 @@ fn save_log_entry(
       |> option.map(log.encode_fields)
       |> option.map(json.to_string),
     error: error
-      |> option.map(program_error_to_json)
+      |> option.map(effect_error_to_json)
       |> option.map(json.to_string),
     effects: state.effect_timings
       |> non_empty_list
@@ -223,63 +223,63 @@ fn non_empty_list(l: List(a)) -> option.Option(List(a)) {
   }
 }
 
-fn effect_name_to_string(effect_name: program.EffectName) -> String {
+fn effect_name_to_string(effect_name: effect.EffectName) -> String {
   case effect_name {
-    program.NewTokenEffect -> "new_token"
-    program.SystemTimeEffect -> "system_time"
-    program.UuidV7Effect -> "uuid_v7"
-    program.LogEffect -> "log"
-    program.PostRunRequestEffect -> "post_run_request"
-    program.SendEmailEffect -> "send_email"
-    program.RunQueryEffect(query_name) -> db_query_name_to_string(query_name)
-    program.RunCommandEffect(command_name) ->
+    effect.NewTokenEffect -> "new_token"
+    effect.SystemTimeEffect -> "system_time"
+    effect.UuidV7Effect -> "uuid_v7"
+    effect.LogEffect -> "log"
+    effect.PostRunRequestEffect -> "post_run_request"
+    effect.SendEmailEffect -> "send_email"
+    effect.RunQueryEffect(query_name) -> db_query_name_to_string(query_name)
+    effect.RunCommandEffect(command_name) ->
       db_command_name_to_string(command_name)
-    program.RunInTransactionEffect(_) -> "run_in_transaction"
-    program.CustomEffect(name) -> "custom:" <> name
+    effect.RunInTransactionEffect(_) -> "run_in_transaction"
+    effect.CustomEffect(name) -> "custom:" <> name
   }
 }
 
-fn effect_category(effect_name: program.EffectName) -> String {
+fn effect_category(effect_name: effect.EffectName) -> String {
   case effect_name {
-    program.NewTokenEffect -> "util"
-    program.SystemTimeEffect -> "util"
-    program.UuidV7Effect -> "util"
-    program.LogEffect -> "log"
-    program.PostRunRequestEffect -> "docker_run"
-    program.SendEmailEffect -> "email"
-    program.RunQueryEffect(_) -> "db_read"
-    program.RunCommandEffect(_) -> "db_write"
-    program.RunInTransactionEffect(_) -> "db_write"
-    program.CustomEffect(_) -> "custom"
+    effect.NewTokenEffect -> "util"
+    effect.SystemTimeEffect -> "util"
+    effect.UuidV7Effect -> "util"
+    effect.LogEffect -> "log"
+    effect.PostRunRequestEffect -> "docker_run"
+    effect.SendEmailEffect -> "email"
+    effect.RunQueryEffect(_) -> "db_read"
+    effect.RunCommandEffect(_) -> "db_write"
+    effect.RunInTransactionEffect(_) -> "db_write"
+    effect.CustomEffect(_) -> "custom"
   }
 }
 
-fn db_query_name_to_string(query_name: program.DbQueryName) -> String {
+fn db_query_name_to_string(query_name: effect.DbQueryName) -> String {
   case query_name {
-    program.DbGetUserByEmailQuery -> "db_get_user_by_email"
-    program.DbListLoginTokensByUserQuery -> "db_list_login_tokens_by_user"
-    program.DbGetSessionByTokenQuery -> "db_get_session_by_token"
-    program.DbGetNextJobQuery -> "db_get_next_job"
-    program.DbCountUserActionsByIpQuery -> "db_count_user_actions_by_ip"
-    program.DbCountUserActionsByUserQuery -> "db_count_user_actions_by_user"
+    effect.DbGetUserByEmailQuery -> "db_get_user_by_email"
+    effect.DbListLoginTokensByUserQuery -> "db_list_login_tokens_by_user"
+    effect.DbGetSessionByTokenQuery -> "db_get_session_by_token"
+    effect.DbGetNextJobQuery -> "db_get_next_job"
+    effect.DbCountUserActionsByIpQuery -> "db_count_user_actions_by_ip"
+    effect.DbCountUserActionsByUserQuery -> "db_count_user_actions_by_user"
   }
 }
 
-fn db_command_name_to_string(command_name: program.DbCommandName) -> String {
+fn db_command_name_to_string(command_name: effect.DbCommandName) -> String {
   case command_name {
-    program.DbInsertUserCommand -> "db_insert_user"
-    program.DbInsertJobCommand -> "db_insert_job"
-    program.DbInsertSnippetCommand -> "db_insert_snippet"
-    program.DbInsertSessionCommand -> "db_insert_session"
-    program.DbInsertLoginTokenCommand -> "db_insert_login_token"
-    program.DbUpdateLoginTokenCommand -> "db_update_login_token"
-    program.DbInsertUserActionCommand -> "db_insert_user_action"
-    program.DbMarkJobDoneCommand -> "db_mark_job_done"
-    program.DbRescheduleJobCommand -> "db_reschedule_job"
+    effect.DbInsertUserCommand -> "db_insert_user"
+    effect.DbInsertJobCommand -> "db_insert_job"
+    effect.DbInsertSnippetCommand -> "db_insert_snippet"
+    effect.DbInsertSessionCommand -> "db_insert_session"
+    effect.DbInsertLoginTokenCommand -> "db_insert_login_token"
+    effect.DbUpdateLoginTokenCommand -> "db_update_login_token"
+    effect.DbInsertUserActionCommand -> "db_insert_user_action"
+    effect.DbMarkJobDoneCommand -> "db_mark_job_done"
+    effect.DbRescheduleJobCommand -> "db_reschedule_job"
   }
 }
 
-fn encode_effect_timings(effects: List(program.EffectTiming)) -> json.Json {
+fn encode_effect_timings(effects: List(effect.EffectTiming)) -> json.Json {
   json.object([
     #("effects", json.array(effects, encode_effect_timing)),
     #(
@@ -300,10 +300,10 @@ fn encode_effect_timings(effects: List(program.EffectTiming)) -> json.Json {
   ])
 }
 
-fn encode_effect_timing(effect_timing: program.EffectTiming) -> json.Json {
+fn encode_effect_timing(effect_timing: effect.EffectTiming) -> json.Json {
   let #(effect_name, duration_ns) = effect_timing
   case effect_name {
-    program.RunInTransactionEffect(commands) ->
+    effect.RunInTransactionEffect(commands) ->
       json.object([
         #("category", json.string(effect_category(effect_name))),
         #("name", json.string(effect_name_to_string(effect_name))),
@@ -322,48 +322,48 @@ fn encode_effect_timing(effect_timing: program.EffectTiming) -> json.Json {
   }
 }
 
-fn program_error_to_message(err: program.Error) -> String {
+fn effect_error_to_message(err: effect.Error) -> String {
   case err {
-    program.DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
-    program.EmailInvalidError(message) -> "email_invalid:" <> message
-    program.TooManyRequestsError(count, _) ->
+    effect.DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
+    effect.EmailInvalidError(message) -> "email_invalid:" <> message
+    effect.TooManyRequestsError(count, _) ->
       "too_many_requests:" <> int.to_string(count)
-    program.QueryError(program.DbQueryError(message: message)) ->
+    effect.QueryError(effect.DbQueryError(message: message)) ->
       "query_error:" <> message
-    program.CommandError(program.DbCommandError(message: message)) ->
+    effect.CommandError(effect.DbCommandError(message: message)) ->
       "command_error:" <> message
-    program.TransactionError(program.DbTransactionError(message: message)) ->
+    effect.TransactionError(effect.DbTransactionError(message: message)) ->
       "transaction_error:" <> message
-    program.LoginError(program.InvalidTokenError) -> "login_error:invalid_token"
-    program.LoginError(program.TokenUsedError) -> "login_error:token_used"
-    program.LoginError(program.TokenExpiredError) -> "login_error:token_expired"
-    program.SendEmailError(program.PublicSendEmailError(message: message)) ->
+    effect.LoginError(effect.InvalidTokenError) -> "login_error:invalid_token"
+    effect.LoginError(effect.TokenUsedError) -> "login_error:token_used"
+    effect.LoginError(effect.TokenExpiredError) -> "login_error:token_expired"
+    effect.SendEmailError(effect.PublicSendEmailError(message: message)) ->
       "send_email_public:" <> message
-    program.SendEmailError(program.InternalSendEmailError(message: message)) ->
+    effect.SendEmailError(effect.InternalSendEmailError(message: message)) ->
       "send_email_internal:" <> message
-    program.SessionError(program.MissingSessionTokenError) ->
+    effect.SessionError(effect.MissingSessionTokenError) ->
       "session_error:missing_session_token"
-    program.SessionError(program.SessionNotFoundError) ->
+    effect.SessionError(effect.SessionNotFoundError) ->
       "session_error:session_not_found"
-    program.SessionError(program.SessionExpiredError) ->
+    effect.SessionError(effect.SessionExpiredError) ->
       "session_error:session_expired"
-    program.RunError(program.PublicRunRequestError(message: message)) ->
+    effect.RunError(effect.PublicRunRequestError(message: message)) ->
       "run_error_public:" <> message
-    program.RunError(program.InternalRunRequestError(message: message)) ->
+    effect.RunError(effect.InternalRunRequestError(message: message)) ->
       "run_error_internal:" <> message
   }
 }
 
-fn program_error_to_json(err: program.Error) -> json.Json {
+fn effect_error_to_json(err: effect.Error) -> json.Json {
   json.object([
-    #("message", json.string(program_error_to_message(err))),
+    #("message", json.string(effect_error_to_message(err))),
   ])
 }
 
 fn result_to_response(
   ctx: context.Context,
   request: wisp.Request,
-  result: Result(ApiResult, program.Error),
+  result: Result(ApiResult, effect.Error),
 ) -> wisp.Response {
   case result {
     Ok(response) -> api_result_to_response(ctx, request, response)
@@ -371,14 +371,14 @@ fn result_to_response(
   }
 }
 
-fn error_to_response(error: program.Error) -> wisp.Response {
+fn error_to_response(error: effect.Error) -> wisp.Response {
   case error {
-    program.DecodeError(errors) ->
+    effect.DecodeError(errors) ->
       error_response("decode_error", "Decode error: " <> string.inspect(errors))
-    program.EmailInvalidError(message) -> {
+    effect.EmailInvalidError(message) -> {
       error_response("email_invalid", "Invalid email: " <> message)
     }
-    program.TooManyRequestsError(count, config) -> {
+    effect.TooManyRequestsError(count, config) -> {
       error_response(
         "too_many_requests",
         "Too many requests: "
@@ -387,66 +387,66 @@ fn error_to_response(error: program.Error) -> wisp.Response {
           <> int.to_string(config.max_requests),
       )
     }
-    program.QueryError(program.DbQueryError(message: message)) -> {
+    effect.QueryError(effect.DbQueryError(message: message)) -> {
       wisp.log_error("Query error: " <> message)
       error_response("query_error", "Failed to query data")
     }
-    program.CommandError(program.DbCommandError(message: message)) -> {
+    effect.CommandError(effect.DbCommandError(message: message)) -> {
       wisp.log_error("Command error: " <> message)
       error_response("command_error", "Failed to run command")
     }
-    program.TransactionError(program.DbTransactionError(message: message)) -> {
+    effect.TransactionError(effect.DbTransactionError(message: message)) -> {
       wisp.log_error("Transaction error: " <> message)
       error_response("transaction_error", "Transaction failed")
     }
-    program.LoginError(login_error) ->
+    effect.LoginError(login_error) ->
       case login_error {
-        program.InvalidTokenError -> {
+        effect.InvalidTokenError -> {
           wisp.log_error("Login error: invalid token")
           error_response("login_error", "Invalid login token")
         }
-        program.TokenUsedError -> {
+        effect.TokenUsedError -> {
           wisp.log_error("Login error: token used")
           error_response("login_error", "Login token already used")
         }
-        program.TokenExpiredError -> {
+        effect.TokenExpiredError -> {
           wisp.log_error("Login error: token expired")
           error_response("login_error", "Login token expired")
         }
       }
-    program.SendEmailError(send_email_error) ->
+    effect.SendEmailError(send_email_error) ->
       case send_email_error {
-        program.PublicSendEmailError(message: message) -> {
+        effect.PublicSendEmailError(message: message) -> {
           wisp.log_error("Send email error (public): " <> message)
           error_response("send_email_error", message)
         }
-        program.InternalSendEmailError(message: message) -> {
+        effect.InternalSendEmailError(message: message) -> {
           wisp.log_error("Send email error (private): " <> message)
           error_response("send_email_error", "Failed to send email")
         }
       }
-    program.SessionError(session_error) ->
+    effect.SessionError(session_error) ->
       case session_error {
-        program.MissingSessionTokenError -> {
+        effect.MissingSessionTokenError -> {
           wisp.log_error("Session error: missing session token")
           error_response("session_error", "Missing session token")
         }
-        program.SessionNotFoundError -> {
+        effect.SessionNotFoundError -> {
           wisp.log_error("Session error: session not found")
           error_response("session_error", "Session not found")
         }
-        program.SessionExpiredError -> {
+        effect.SessionExpiredError -> {
           wisp.log_error("Session error: session expired")
           error_response("session_error", "Session expired")
         }
       }
-    program.RunError(run_request_error) ->
+    effect.RunError(run_request_error) ->
       case run_request_error {
-        program.PublicRunRequestError(message: message) -> {
+        effect.PublicRunRequestError(message: message) -> {
           wisp.log_error("Run request error (public): " <> message)
           error_response("run_error", message)
         }
-        program.InternalRunRequestError(message: message) -> {
+        effect.InternalRunRequestError(message: message) -> {
           wisp.log_error("Run request error (private): " <> message)
           error_response("run_error", "Failed to run code")
         }

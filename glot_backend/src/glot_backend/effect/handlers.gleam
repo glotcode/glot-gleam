@@ -12,7 +12,7 @@ import glot_backend/db_helpers
 import glot_backend/email_message
 import glot_backend/http_client
 import glot_backend/job
-import glot_backend/program
+import glot_backend/effect
 import glot_backend/sql
 import glot_core/auth
 import glot_core/email
@@ -25,8 +25,8 @@ import glot_core/uuid_helpers
 import pog
 import youid/uuid
 
-pub fn from_context(ctx: context.Context) -> program.Handlers {
-  program.Handlers(
+pub fn from_context(ctx: context.Context) -> effect.Handlers {
+  effect.Handlers(
     new_token: crypto_helpers.new_token,
     system_time: timestamp.system_time,
     uuid_v7: fn() { uuid_helpers.v7(ctx.timestamp) },
@@ -53,14 +53,14 @@ pub fn from_context(ctx: context.Context) -> program.Handlers {
 
 fn send_email(
   _message: email_message.EmailMessage,
-) -> Result(Nil, program.SendEmailError) {
-  Error(program.InternalSendEmailError("send_email not implemented"))
+) -> Result(Nil, effect.SendEmailError) {
+  Error(effect.InternalSendEmailError("send_email not implemented"))
 }
 
 fn post_run_request(
   cfg: context.Config,
   request: run.RunRequest,
-) -> Result(run.RunResult, program.RunRequestError) {
+) -> Result(run.RunResult, effect.RunRequestError) {
   http_client.post_json(
     url: cfg.docker_run.base_url <> "/run",
     body: run.encode_run_request(request),
@@ -73,11 +73,11 @@ fn post_run_request(
 fn get_user_by_email(
   ctx: context.Context,
   user_email: email.Email,
-) -> Result(option.Option(user.User), program.DbQueryError) {
+) -> Result(option.Option(user.User), effect.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.get_user_by_email(email.to_string(user_email)),
-    fn(err) { program.DbQueryError(string.inspect(err)) },
+    fn(err) { effect.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { user_from_rows(ctx, returned.rows) })
 }
@@ -86,11 +86,11 @@ fn list_login_tokens_by_user(
   ctx: context.Context,
   user_id: uuid.Uuid,
   limit: Int,
-) -> Result(List(auth.LoginToken), program.DbQueryError) {
+) -> Result(List(auth.LoginToken), effect.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.list_login_tokens_by_user(uuid.to_bit_array(user_id), limit),
-    fn(err) { program.DbQueryError(string.inspect(err)) },
+    fn(err) { effect.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { login_tokens_from_rows(returned.rows) })
 }
@@ -98,9 +98,9 @@ fn list_login_tokens_by_user(
 fn get_session_by_token(
   ctx: context.Context,
   token: String,
-) -> Result(option.Option(auth.Session), program.DbQueryError) {
+) -> Result(option.Option(auth.Session), effect.DbQueryError) {
   db_helpers.query(ctx.db, sql.get_session_by_token(token), fn(err) {
-    program.DbQueryError(string.inspect(err))
+    effect.DbQueryError(string.inspect(err))
   })
   |> result.try(fn(returned) { session_from_rows(ctx, returned.rows) })
 }
@@ -108,18 +108,18 @@ fn get_session_by_token(
 fn user_from_rows(
   ctx: context.Context,
   rows: List(sql.GetUserByEmail),
-) -> Result(option.Option(user.User), program.DbQueryError) {
+) -> Result(option.Option(user.User), effect.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> user_from_row(ctx, first) |> result.map(option.Some)
-    _ -> Error(program.DbQueryError("Expected at most one user row"))
+    _ -> Error(effect.DbQueryError("Expected at most one user row"))
   }
 }
 
 fn user_from_row(
   ctx: context.Context,
   row: sql.GetUserByEmail,
-) -> Result(user.User, program.DbQueryError) {
+) -> Result(user.User, effect.DbQueryError) {
   case email.from_string(ctx.regexes.is_email, row.email) {
     option.Some(valid_email) ->
       Ok(user.User(
@@ -128,7 +128,7 @@ fn user_from_row(
         created_at: row.created_at,
       ))
     option.None ->
-      Error(program.DbQueryError(
+      Error(effect.DbQueryError(
         "Invalid email format in user row: " <> row.email,
       ))
   }
@@ -136,7 +136,7 @@ fn user_from_row(
 
 fn login_tokens_from_rows(
   rows: List(sql.ListLoginTokensByUser),
-) -> Result(List(auth.LoginToken), program.DbQueryError) {
+) -> Result(List(auth.LoginToken), effect.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -149,7 +149,7 @@ fn login_tokens_from_rows(
 
 fn login_token_from_row(
   row: sql.ListLoginTokensByUser,
-) -> Result(auth.LoginToken, program.DbQueryError) {
+) -> Result(auth.LoginToken, effect.DbQueryError) {
   Ok(auth.LoginToken(
     id: uuid_helpers.from_bit_array(row.id),
     user_id: uuid_helpers.from_bit_array(row.user_id),
@@ -162,18 +162,18 @@ fn login_token_from_row(
 fn session_from_rows(
   ctx: context.Context,
   rows: List(sql.GetSessionByToken),
-) -> Result(option.Option(auth.Session), program.DbQueryError) {
+) -> Result(option.Option(auth.Session), effect.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> session_from_row(ctx, first) |> result.map(option.Some)
-    _ -> Error(program.DbQueryError("Expected at most one session row"))
+    _ -> Error(effect.DbQueryError("Expected at most one session row"))
   }
 }
 
 fn session_from_row(
   ctx: context.Context,
   row: sql.GetSessionByToken,
-) -> Result(auth.Session, program.DbQueryError) {
+) -> Result(auth.Session, effect.DbQueryError) {
   case email.from_string(ctx.regexes.is_email, row.user_email) {
     option.Some(valid_email) ->
       Ok(auth.Session(
@@ -189,7 +189,7 @@ fn session_from_row(
         created_at: row.created_at,
       ))
     option.None ->
-      Error(program.DbQueryError(
+      Error(effect.DbQueryError(
         "Invalid email format in session row: " <> row.user_email,
       ))
   }
@@ -200,7 +200,7 @@ fn count_user_actions_by_ip(
   ip: option.Option(String),
   action: api_action.ApiAction,
   windows: List(rate_limit.Window),
-) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), effect.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.count_user_actions_by_ip(
@@ -209,7 +209,7 @@ fn count_user_actions_by_ip(
       windows: json.array(windows, of: rate_limit.encode_window)
         |> json.to_string(),
     ),
-    fn(err) { program.DbQueryError(string.inspect(err)) },
+    fn(err) { effect.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { window_counts_from_ip_rows(returned.rows) })
 }
@@ -219,7 +219,7 @@ fn count_user_actions_by_user(
   user_id: option.Option(uuid.Uuid),
   action: api_action.ApiAction,
   windows: List(rate_limit.Window),
-) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), effect.DbQueryError) {
   db_helpers.query(
     ctx.db,
     sql.count_user_actions_by_user(
@@ -228,14 +228,14 @@ fn count_user_actions_by_user(
       windows: json.array(windows, of: rate_limit.encode_window)
         |> json.to_string(),
     ),
-    fn(err) { program.DbQueryError(string.inspect(err)) },
+    fn(err) { effect.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { window_counts_from_user_rows(returned.rows) })
 }
 
 fn window_counts_from_ip_rows(
   rows: List(sql.CountUserActionsByIp),
-) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), effect.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -248,7 +248,7 @@ fn window_counts_from_ip_rows(
 
 fn window_counts_from_user_rows(
   rows: List(sql.CountUserActionsByUser),
-) -> Result(List(rate_limit.WindowCount), program.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), effect.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -262,12 +262,12 @@ fn window_counts_from_user_rows(
 fn window_count_from_row(
   unit: String,
   count: Int,
-) -> Result(rate_limit.WindowCount, program.DbQueryError) {
+) -> Result(rate_limit.WindowCount, effect.DbQueryError) {
   case rate_limit.unit_from_string(unit) {
     option.Some(parsed_unit) ->
       Ok(rate_limit.WindowCount(unit: parsed_unit, count: count))
     option.None ->
-      Error(program.DbQueryError(
+      Error(effect.DbQueryError(
         "Invalid time unit in rate limit row: " <> unit,
       ))
   }
@@ -278,7 +278,7 @@ fn get_next_job(
   now: Timestamp,
   pending_status: job.Status,
   running_status: job.Status,
-) -> Result(option.Option(job.Job), program.DbQueryError) {
+) -> Result(option.Option(job.Job), effect.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       ctx.db,
@@ -287,27 +287,27 @@ fn get_next_job(
         option.Some(now),
         job.status_to_string(pending_status),
       ),
-      fn(err) { program.DbQueryError(string.inspect(err)) },
+      fn(err) { effect.DbQueryError(string.inspect(err)) },
     ),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> get_job_from_row(row) |> result.map(option.Some)
-    _ -> Error(program.DbQueryError("Expected at most one job row"))
+    _ -> Error(effect.DbQueryError("Expected at most one job row"))
   }
 }
 
 fn get_job_from_row(
   row: sql.GetNextJob,
-) -> Result(job.Job, program.DbQueryError) {
+) -> Result(job.Job, effect.DbQueryError) {
   use status <- result.try(
     job.status_from_string(row.status)
-    |> result.map_error(program.DbQueryError),
+    |> result.map_error(effect.DbQueryError),
   )
   use job_type <- result.try(
     job.job_type_from_string(row.job_type)
-    |> result.map_error(program.DbQueryError),
+    |> result.map_error(effect.DbQueryError),
   )
 
   Ok(job.Job(
@@ -329,19 +329,19 @@ fn get_job_from_row(
 
 fn run_command(
   db: pog.Connection,
-  command: program.DbCommand,
-) -> Result(Nil, program.DbCommandError) {
-  let to_error = fn(err) { program.DbCommandError(string.inspect(err)) }
+  command: effect.DbCommand,
+) -> Result(Nil, effect.DbCommandError) {
+  let to_error = fn(err) { effect.DbCommandError(string.inspect(err)) }
 
   case command {
-    program.DbInsertUser(id:, email:, created_at:) ->
+    effect.DbInsertUser(id:, email:, created_at:) ->
       db_helpers.execute(
         db,
         sql.insert_user(uuid.to_bit_array(id), email, created_at),
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbInsertJob(j) ->
+    effect.DbInsertJob(j) ->
       db_helpers.execute(
         db,
         sql.insert_job(
@@ -362,7 +362,7 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbInsertSnippet(
+    effect.DbInsertSnippet(
       id: id,
       user_id: user_id,
       snippet: s,
@@ -386,7 +386,7 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbInsertLoginToken(
+    effect.DbInsertLoginToken(
       id: id,
       user_id: user_id,
       token: token,
@@ -405,7 +405,7 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbInsertSession(
+    effect.DbInsertSession(
       id: id,
       user_id: user_id,
       token: token,
@@ -426,7 +426,7 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbUpdateLoginToken(
+    effect.DbUpdateLoginToken(
       user_id: user_id,
       token: token,
       created_at: created_at,
@@ -445,7 +445,7 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbInsertUserAction(
+    effect.DbInsertUserAction(
       id: id,
       request_id: request_id,
       action: action,
@@ -466,14 +466,14 @@ fn run_command(
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbMarkJobDone(id: id, completed_at: completed_at) ->
+    effect.DbMarkJobDone(id: id, completed_at: completed_at) ->
       db_helpers.execute(
         db,
         sql.mark_job_done(uuid.to_bit_array(id), option.Some(completed_at)),
         to_error,
       )
       |> result.map(fn(_) { Nil })
-    program.DbRescheduleJob(
+    effect.DbRescheduleJob(
       id: id,
       run_at: run_at,
       last_error: last_error,
@@ -495,19 +495,19 @@ fn run_command(
 
 fn run_in_transaction(
   db: pog.Connection,
-  commands: List(program.DbCommand),
-) -> Result(Nil, program.DbTransactionError) {
+  commands: List(effect.DbCommand),
+) -> Result(Nil, effect.DbTransactionError) {
   pog.transaction(db, fn(tx) { execute_commands(tx, commands) })
   |> result.map(fn(_) { Nil })
   |> result.map_error(fn(err) {
-    program.DbTransactionError(string.inspect(err))
+    effect.DbTransactionError(string.inspect(err))
   })
 }
 
 fn execute_commands(
   db: pog.Connection,
-  commands: List(program.DbCommand),
-) -> Result(Nil, program.DbCommandError) {
+  commands: List(effect.DbCommand),
+) -> Result(Nil, effect.DbCommandError) {
   case commands {
     [] -> Ok(Nil)
     [command, ..rest] -> {
@@ -517,14 +517,14 @@ fn execute_commands(
   }
 }
 
-fn map_run_http_error(err: http_client.HttpError) -> program.RunRequestError {
+fn map_run_http_error(err: http_client.HttpError) -> effect.RunRequestError {
   case err {
     http_client.BadStatus(status: _, body: body) ->
       case json.parse(body, run_error_message_decoder()) {
-        Ok(message) -> program.PublicRunRequestError(message)
-        Error(_) -> program.InternalRunRequestError(string.inspect(err))
+        Ok(message) -> effect.PublicRunRequestError(message)
+        Error(_) -> effect.InternalRunRequestError(string.inspect(err))
       }
-    _ -> program.InternalRunRequestError(string.inspect(err))
+    _ -> effect.InternalRunRequestError(string.inspect(err))
   }
 }
 

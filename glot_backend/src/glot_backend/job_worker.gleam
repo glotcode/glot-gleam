@@ -7,11 +7,11 @@ import gleam/otp/supervision
 import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
+import glot_backend/effect.{type Effect}
 import glot_backend/email_message
 import glot_backend/erlang
 import glot_backend/job
-import glot_backend/program
-import glot_backend/program/handlers as program_handlers
+import glot_backend/effect/handlers as effect_handlers
 import pog
 import wisp
 import youid/uuid.{type Uuid}
@@ -75,8 +75,8 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 
 fn run_once(state: State) -> Bool {
   let ctx = context_from_state(state)
-  let handlers = program_handlers.from_context(ctx)
-  let #(result, _) = process_next_job(ctx) |> program.run(handlers)
+  let handlers = effect_handlers.from_context(ctx)
+  let #(result, _) = process_next_job(ctx) |> effect.run(handlers)
 
   case result {
     Ok(processed_job) -> processed_job
@@ -104,22 +104,22 @@ fn context_from_state(state: State) -> context.Context {
   )
 }
 
-fn process_next_job(ctx: context.Context) -> program.Program(Bool) {
-  use now <- program.and_then(program.system_time())
-  use maybe_job <- program.and_then(program.db_get_next_job(
+fn process_next_job(ctx: context.Context) -> Effect(Bool) {
+  use now <- effect.and_then(effect.system_time())
+  use maybe_job <- effect.and_then(effect.db_get_next_job(
     now,
     job.Pending,
     job.Running,
   ))
 
   case maybe_job {
-    option.None -> program.succeed(False)
+    option.None -> effect.succeed(False)
     option.Some(next_job) ->
-      process_job(ctx, next_job) |> program.map(fn(_) { True })
+      process_job(ctx, next_job) |> effect.map(fn(_) { True })
   }
 }
 
-fn process_job(ctx: context.Context, next_job: job.Job) -> program.Program(Nil) {
+fn process_job(ctx: context.Context, next_job: job.Job) -> Effect(Nil) {
   case next_job {
     job.Job(
       id: id,
@@ -136,16 +136,16 @@ fn process_send_email_job(
   id: Uuid,
   payload: String,
   attempts: Int,
-) -> program.Program(Nil) {
+) -> Effect(Nil) {
   case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
-      use send_result <- program.and_then(program.attempt_send_email(message))
-      use now <- program.and_then(program.system_time())
+      use send_result <- effect.and_then(effect.attempt_send_email(message))
+      use now <- effect.and_then(effect.system_time())
 
       case send_result {
-        Ok(_) -> program.run_command(program.DbMarkJobDone(id, now))
+        Ok(_) -> effect.run_command(effect.DbMarkJobDone(id, now))
         Error(err) ->
-          program.run_command(program.DbRescheduleJob(
+          effect.run_command(effect.DbRescheduleJob(
             id: id,
             run_at: add_seconds(now, backoff_seconds(attempts)),
             last_error: option.Some(send_email_error_to_string(err)),
@@ -154,8 +154,8 @@ fn process_send_email_job(
       }
     }
     Error(errors) -> {
-      use now <- program.and_then(program.system_time())
-      program.run_command(program.DbRescheduleJob(
+      use now <- effect.and_then(effect.system_time())
+      effect.run_command(effect.DbRescheduleJob(
         id: id,
         run_at: add_seconds(now, backoff_seconds(attempts)),
         last_error: option.Some("decode_error:" <> string.inspect(errors)),
@@ -186,9 +186,9 @@ fn add_seconds(
   timestamp.from_unix_seconds_and_nanoseconds(seconds + seconds_to_add, nanos)
 }
 
-fn send_email_error_to_string(err: program.SendEmailError) -> String {
+fn send_email_error_to_string(err: effect.SendEmailError) -> String {
   case err {
-    program.PublicSendEmailError(message) -> "send_email_public:" <> message
-    program.InternalSendEmailError(message) -> "send_email_internal:" <> message
+    effect.PublicSendEmailError(message) -> "send_email_public:" <> message
+    effect.InternalSendEmailError(message) -> "send_email_internal:" <> message
   }
 }

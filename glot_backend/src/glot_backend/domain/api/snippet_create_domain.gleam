@@ -4,23 +4,23 @@ import glot_backend/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/domain/generic/session_domain
+import glot_backend/effect.{type Effect}
 import glot_backend/log
-import glot_backend/program
 import glot_core/snippet
 
 pub fn snippet_create(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> program.Program(Nil) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+) -> Effect(Nil) {
+  use session <- effect.and_then(session_domain.require_session(ctx))
 
-  use request <- program.and_then(program.decode_json(
+  use request <- effect.and_then(effect.decode_json(
     json_body,
     snippet.decoder(),
   ))
 
-  use _ <- program.and_then(
-    program.info(
+  use _ <- effect.and_then(
+    effect.info(
       log.from_list([
         log.uuid("session_id", session.id),
         log.uuid("user_id", session.user.id),
@@ -28,16 +28,16 @@ pub fn snippet_create(
     ),
   )
 
-  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
+  use user_action_cmd <- effect.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     user_id: option.Some(session.user.id),
     action: api_action.SnippetCreateAction,
   ))
 
-  use snippet_id <- program.and_then(program.uuid_v7())
-  use _ <- program.and_then(
-    program.run_in_transaction([
-      program.DbInsertSnippet(
+  use snippet_id <- effect.and_then(effect.uuid_v7())
+  use _ <- effect.and_then(
+    effect.run_in_transaction([
+      effect.DbInsertSnippet(
         id: snippet_id,
         user_id: session.user.id,
         snippet: request,
@@ -47,9 +47,9 @@ pub fn snippet_create(
       user_action_cmd,
     ]),
   )
-  use _ <- program.and_then(
-    program.info(log.singleton(log.uuid("snippet_id", snippet_id))),
+  use _ <- effect.and_then(
+    effect.info(log.singleton(log.uuid("snippet_id", snippet_id))),
   )
 
-  program.succeed(Nil)
+  effect.succeed(Nil)
 }

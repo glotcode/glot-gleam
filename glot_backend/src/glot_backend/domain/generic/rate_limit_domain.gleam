@@ -3,8 +3,8 @@ import gleam/list
 import gleam/option.{type Option}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
+import glot_backend/effect.{type Effect}
 import glot_backend/log
-import glot_backend/program.{type Program}
 import glot_core/rate_limit
 import youid/uuid.{type Uuid}
 
@@ -12,12 +12,12 @@ pub fn enforce(
   ctx ctx: context.Context,
   user_id user_id: Option(Uuid),
   action action: ApiAction,
-) -> Program(program.DbCommand) {
+) -> Effect(effect.DbCommand) {
   let action_rate_limits = lookup_rate_limits(ctx.config.rate_limits, action)
 
-  use _ <- program.and_then(program.when(
+  use _ <- effect.and_then(effect.when(
     list.is_empty(action_rate_limits),
-    program.warn(
+    effect.warn(
       log.singleton(
         log.object("rate_limit", [
           log.string("message", "No rate limits configured for this action"),
@@ -27,29 +27,29 @@ pub fn enforce(
     ),
   ))
 
-  let counts_program = case user_id {
+  let counts_effect = case user_id {
     option.Some(user_id) ->
-      program.db_count_user_actions_by_user(
+      effect.db_count_user_actions_by_user(
         windows: rate_limit.to_windows(action_rate_limits, ctx.timestamp),
         user_id: option.Some(user_id),
         action: action,
       )
     option.None ->
-      program.db_count_user_actions_by_ip(
+      effect.db_count_user_actions_by_ip(
         windows: rate_limit.to_windows(action_rate_limits, ctx.timestamp),
         ip: ctx.client_info.ip,
         action: action,
       )
   }
 
-  use counts <- program.and_then(counts_program)
-  use _ <- program.and_then(
+  use counts <- effect.and_then(counts_effect)
+  use _ <- effect.and_then(
     check_rate_limit(action_rate_limits, counts)
-    |> program.from_result(),
+    |> effect.from_result(),
   )
-  use id <- program.and_then(program.uuid_v7())
+  use id <- effect.and_then(effect.uuid_v7())
 
-  program.succeed(program.DbInsertUserAction(
+  effect.succeed(effect.DbInsertUserAction(
     id: id,
     request_id: ctx.request_id,
     action: action,
@@ -72,10 +72,10 @@ fn lookup_rate_limits(
 fn check_rate_limit(
   rate_limits: List(rate_limit.RateLimit),
   counts: List(rate_limit.WindowCount),
-) -> Result(Nil, program.Error) {
+) -> Result(Nil, effect.Error) {
   case first_exceeded_rate_limit(rate_limits, counts) {
     option.Some(#(count, rate_limit)) ->
-      Error(program.TooManyRequestsError(count + 1, rate_limit))
+      Error(effect.TooManyRequestsError(count + 1, rate_limit))
     option.None -> Ok(Nil)
   }
 }

@@ -233,45 +233,45 @@ fn new_state() -> State {
   State(effect_timings: [], info_fields: log.new(), warning_fields: log.new())
 }
 
-pub opaque type Program(a) {
+pub opaque type Effect(a) {
   Done(a)
   Fail(Error)
-  MeasureEffectDuration(EffectName, Int, Program(a))
-  NewToken(Int, fn(String) -> Program(a))
-  SystemTime(fn(Timestamp) -> Program(a))
-  UuidV7(fn(Uuid) -> Program(a))
-  Log(log.Level, log.Fields, Program(a))
+  MeasureEffectDuration(EffectName, Int, Effect(a))
+  NewToken(Int, fn(String) -> Effect(a))
+  SystemTime(fn(Timestamp) -> Effect(a))
+  UuidV7(fn(Uuid) -> Effect(a))
+  Log(log.Level, log.Fields, Effect(a))
   AttemptPostRunRequest(
     context.Config,
     run.RunRequest,
-    fn(Result(run.RunResult, RunRequestError)) -> Program(a),
+    fn(Result(run.RunResult, RunRequestError)) -> Effect(a),
   )
   AttemptSendEmail(
     email_message.EmailMessage,
-    fn(Result(Nil, SendEmailError)) -> Program(a),
+    fn(Result(Nil, SendEmailError)) -> Effect(a),
   )
-  AttemptRunQuery(DbQuery(Program(a)), fn(DbQueryError) -> Program(a))
-  AttemptRunCommand(DbCommand, fn(Result(Nil, DbCommandError)) -> Program(a))
+  AttemptRunQuery(DbQuery(Effect(a)), fn(DbQueryError) -> Effect(a))
+  AttemptRunCommand(DbCommand, fn(Result(Nil, DbCommandError)) -> Effect(a))
   AttemptRunInTransaction(
     List(DbCommand),
-    fn(Result(Nil, DbTransactionError)) -> Program(a),
+    fn(Result(Nil, DbTransactionError)) -> Effect(a),
   )
 }
 
 pub fn run(
-  program: Program(a),
+  effect: Effect(a),
   handlers: Handlers,
 ) -> #(Result(a, Error), State) {
-  let #(result, state) = run_with_state(program, handlers, new_state())
+  let #(result, state) = run_with_state(effect, handlers, new_state())
   #(result, State(..state, effect_timings: list.reverse(state.effect_timings)))
 }
 
 fn run_with_state(
-  program: Program(a),
+  effect: Effect(a),
   handlers: Handlers,
   state: State,
 ) -> #(Result(a, Error), State) {
-  case program {
+  case effect {
     Done(value) -> #(Ok(value), state)
     Fail(error) -> #(Error(error), state)
     MeasureEffectDuration(name, duration_ns, next) ->
@@ -340,9 +340,9 @@ fn run_with_state(
     AttemptRunQuery(query, on_error) -> {
       let started_at = erlang.perf_counter_ns()
       case run_db_query(query, handlers) {
-        Ok(next_program) ->
+        Ok(next_effect) ->
           run_with_state(
-            next_program,
+            next_effect,
             handlers,
             measure_effect(
               state,
@@ -391,16 +391,16 @@ fn run_with_state(
   }
 }
 
-pub fn succeed(value: a) -> Program(a) {
+pub fn succeed(value: a) -> Effect(a) {
   Done(value)
 }
 
-pub fn fail(error: Error) -> Program(a) {
+pub fn fail(error: Error) -> Effect(a) {
   Fail(error)
 }
 
-pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
-  case program {
+pub fn and_then(effect: Effect(a), f: fn(a) -> Effect(b)) -> Effect(b) {
+  case effect {
     Done(value) -> f(value)
     Fail(error) -> Fail(error)
     MeasureEffectDuration(name, duration_ms, next) ->
@@ -425,47 +425,47 @@ pub fn and_then(program: Program(a), f: fn(a) -> Program(b)) -> Program(b) {
   }
 }
 
-pub fn map(program: Program(a), f: fn(a) -> b) -> Program(b) {
-  and_then(program, fn(value) { succeed(f(value)) })
+pub fn map(effect: Effect(a), f: fn(a) -> b) -> Effect(b) {
+  and_then(effect, fn(value) { succeed(f(value)) })
 }
 
 pub fn decode_json(
   json_body: dynamic.Dynamic,
   decoder: decode.Decoder(a),
-) -> Program(a) {
+) -> Effect(a) {
   decode.run(json_body, decoder)
   |> result.map_error(DecodeError)
   |> from_result
 }
 
-pub fn new_token(length: Int) -> Program(String) {
+pub fn new_token(length: Int) -> Effect(String) {
   NewToken(length, Done)
 }
 
-pub fn system_time() -> Program(Timestamp) {
+pub fn system_time() -> Effect(Timestamp) {
   SystemTime(Done)
 }
 
 pub fn measure_effect_duration(
   effect_name: EffectName,
   duration_ms: Int,
-) -> Program(Nil) {
+) -> Effect(Nil) {
   MeasureEffectDuration(effect_name, duration_ms, Done(Nil))
 }
 
-pub fn uuid_v7() -> Program(Uuid) {
+pub fn uuid_v7() -> Effect(Uuid) {
   UuidV7(Done)
 }
 
-pub fn info(fields: log.Fields) -> Program(Nil) {
+pub fn info(fields: log.Fields) -> Effect(Nil) {
   Log(log.Info, fields, Done(Nil))
 }
 
-pub fn warn(fields: log.Fields) -> Program(Nil) {
+pub fn warn(fields: log.Fields) -> Effect(Nil) {
   Log(log.Warn, fields, Done(Nil))
 }
 
-pub fn when(condition: Bool, if_true: Program(Nil)) -> Program(Nil) {
+pub fn when(condition: Bool, if_true: Effect(Nil)) -> Effect(Nil) {
   case condition {
     True -> if_true
     False -> Done(Nil)
@@ -475,14 +475,14 @@ pub fn when(condition: Bool, if_true: Program(Nil)) -> Program(Nil) {
 pub fn attempt_post_run_request(
   cfg: context.Config,
   request: run.RunRequest,
-) -> Program(Result(run.RunResult, RunRequestError)) {
+) -> Effect(Result(run.RunResult, RunRequestError)) {
   AttemptPostRunRequest(cfg, request, Done)
 }
 
 pub fn post_run_request(
   cfg: context.Config,
   request: run.RunRequest,
-) -> Program(run.RunResult) {
+) -> Effect(run.RunResult) {
   use run_result <- and_then(attempt_post_run_request(cfg, request))
   case run_result {
     Ok(value) -> Done(value)
@@ -492,11 +492,11 @@ pub fn post_run_request(
 
 pub fn attempt_send_email(
   message: email_message.EmailMessage,
-) -> Program(Result(Nil, SendEmailError)) {
+) -> Effect(Result(Nil, SendEmailError)) {
   AttemptSendEmail(message, Done)
 }
 
-pub fn send_email(message: email_message.EmailMessage) -> Program(Nil) {
+pub fn send_email(message: email_message.EmailMessage) -> Effect(Nil) {
   use send_result <- and_then(attempt_send_email(message))
   case send_result {
     Ok(_) -> Done(Nil)
@@ -504,13 +504,13 @@ pub fn send_email(message: email_message.EmailMessage) -> Program(Nil) {
   }
 }
 
-pub fn attempt_run_query(query: DbQuery(a)) -> Program(Result(a, DbQueryError)) {
+pub fn attempt_run_query(query: DbQuery(a)) -> Effect(Result(a, DbQueryError)) {
   AttemptRunQuery(map_db_query(query, fn(value) { Done(Ok(value)) }), fn(error) {
     Done(Error(error))
   })
 }
 
-pub fn run_query(query: DbQuery(a)) -> Program(a) {
+pub fn run_query(query: DbQuery(a)) -> Effect(a) {
   use query_result <- and_then(attempt_run_query(query))
   case query_result {
     Ok(value) -> Done(value)
@@ -520,14 +520,14 @@ pub fn run_query(query: DbQuery(a)) -> Program(a) {
 
 pub fn db_get_user_by_email(
   email email: email.Email,
-) -> Program(option.Option(user.User)) {
+) -> Effect(option.Option(user.User)) {
   run_query(DbGetUserByEmail(email:, next: function.identity))
 }
 
 pub fn db_list_login_tokens_by_user(
   user_id user_id: Uuid,
   limit limit: Int,
-) -> Program(List(auth.LoginToken)) {
+) -> Effect(List(auth.LoginToken)) {
   run_query(DbListLoginTokensByUser(
     user_id: user_id,
     limit: limit,
@@ -537,7 +537,7 @@ pub fn db_list_login_tokens_by_user(
 
 pub fn db_get_session_by_token(
   token token: String,
-) -> Program(option.Option(auth.Session)) {
+) -> Effect(option.Option(auth.Session)) {
   run_query(DbGetSessionByToken(token: token, next: function.identity))
 }
 
@@ -545,7 +545,7 @@ pub fn db_get_next_job(
   now: Timestamp,
   pending_status: job.Status,
   running_status: job.Status,
-) -> Program(option.Option(job.Job)) {
+) -> Effect(option.Option(job.Job)) {
   run_query(DbGetNextJob(
     now: now,
     pending_status: pending_status,
@@ -558,7 +558,7 @@ pub fn db_count_user_actions_by_ip(
   windows windows: List(rate_limit.Window),
   ip ip: option.Option(String),
   action action: ApiAction,
-) -> Program(List(rate_limit.WindowCount)) {
+) -> Effect(List(rate_limit.WindowCount)) {
   run_query(DbCountUserActionsByIp(
     windows: windows,
     ip: ip,
@@ -571,7 +571,7 @@ pub fn db_count_user_actions_by_user(
   windows windows: List(rate_limit.Window),
   user_id user_id: option.Option(Uuid),
   action action: ApiAction,
-) -> Program(List(rate_limit.WindowCount)) {
+) -> Effect(List(rate_limit.WindowCount)) {
   run_query(DbCountUserActionsByUser(
     windows: windows,
     user_id: user_id,
@@ -582,11 +582,11 @@ pub fn db_count_user_actions_by_user(
 
 pub fn attempt_run_command(
   command: DbCommand,
-) -> Program(Result(Nil, DbCommandError)) {
+) -> Effect(Result(Nil, DbCommandError)) {
   AttemptRunCommand(command, Done)
 }
 
-pub fn run_command(command: DbCommand) -> Program(Nil) {
+pub fn run_command(command: DbCommand) -> Effect(Nil) {
   use command_result <- and_then(attempt_run_command(command))
   case command_result {
     Ok(_) -> Done(Nil)
@@ -596,11 +596,11 @@ pub fn run_command(command: DbCommand) -> Program(Nil) {
 
 pub fn attempt_run_in_transaction(
   commands: List(DbCommand),
-) -> Program(Result(Nil, DbTransactionError)) {
+) -> Effect(Result(Nil, DbTransactionError)) {
   AttemptRunInTransaction(commands, Done)
 }
 
-pub fn run_in_transaction(commands: List(DbCommand)) -> Program(Nil) {
+pub fn run_in_transaction(commands: List(DbCommand)) -> Effect(Nil) {
   use transaction_result <- and_then(attempt_run_in_transaction(commands))
   case transaction_result {
     Ok(_) -> Done(Nil)
@@ -690,7 +690,7 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
   }
 }
 
-pub fn from_result(value: Result(a, Error)) -> Program(a) {
+pub fn from_result(value: Result(a, Error)) -> Effect(a) {
   case value {
     Ok(v) -> Done(v)
     Error(err) -> Fail(err)

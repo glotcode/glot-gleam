@@ -3,7 +3,7 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/api_action
 import glot_backend/job
-import glot_backend/program
+import glot_backend/effect
 import glot_core/rate_limit
 import youid/uuid
 
@@ -21,65 +21,65 @@ pub fn hello_world_test() {
 
 pub fn measurement_aggregation_test() {
   let handlers = test_handlers()
-  let measured_program = {
-    use _ <- program.and_then(program.measure_effect_duration(
-      program.CustomEffect("custom"),
+  let measured_effect = {
+    use _ <- effect.and_then(effect.measure_effect_duration(
+      effect.CustomEffect("custom"),
       3,
     ))
-    use _ <- program.and_then(program.measure_effect_duration(
-      program.CustomEffect("custom"),
+    use _ <- effect.and_then(effect.measure_effect_duration(
+      effect.CustomEffect("custom"),
       9,
     ))
-    program.succeed("ok")
+    effect.succeed("ok")
   }
 
-  let #(run_result, state) = program.run(measured_program, handlers)
+  let #(run_result, state) = effect.run(measured_effect, handlers)
 
   assert run_result == Ok("ok")
   assert state.effect_timings
     == [
-      #(program.CustomEffect("custom"), 3),
-      #(program.CustomEffect("custom"), 9),
+      #(effect.CustomEffect("custom"), 3),
+      #(effect.CustomEffect("custom"), 9),
     ]
 }
 
 pub fn measures_effects_in_success_test() {
   let handlers = test_handlers()
-  let measured_program = {
-    use _ <- program.and_then(program.new_token(5))
-    program.succeed("ok")
+  let measured_effect = {
+    use _ <- effect.and_then(effect.new_token(5))
+    effect.succeed("ok")
   }
-  let #(run_result, state) = program.run(measured_program, handlers)
+  let #(run_result, state) = effect.run(measured_effect, handlers)
 
   assert run_result == Ok("ok")
-  let assert [#(program.NewTokenEffect, duration_ms)] = state.effect_timings
+  let assert [#(effect.NewTokenEffect, duration_ms)] = state.effect_timings
   assert duration_ms >= 0
 }
 
 pub fn measures_effects_in_error_test() {
   let handlers = test_handlers()
-  let failing_program = {
-    use _ <- program.and_then(program.new_token(5))
-    program.fail(program.EmailInvalidError("bad"))
+  let failing_effect = {
+    use _ <- effect.and_then(effect.new_token(5))
+    effect.fail(effect.EmailInvalidError("bad"))
   }
-  let #(run_result, state) = program.run(failing_program, handlers)
+  let #(run_result, state) = effect.run(failing_effect, handlers)
 
-  assert run_result == Error(program.EmailInvalidError("bad"))
-  let assert [#(program.NewTokenEffect, duration_ms)] = state.effect_timings
+  assert run_result == Error(effect.EmailInvalidError("bad"))
+  let assert [#(effect.NewTokenEffect, duration_ms)] = state.effect_timings
   assert duration_ms >= 0
 }
 
-fn test_handlers() -> program.Handlers {
-  program.Handlers(
+fn test_handlers() -> effect.Handlers {
+  effect.Handlers(
     new_token: fn(_) { "random" },
     system_time: timestamp.system_time,
     uuid_v7: fn() { uuid.nil },
     post_run_request: fn(_, _) {
-      Error(program.InternalRunRequestError("unused in test"))
+      Error(effect.InternalRunRequestError("unused in test"))
     },
     send_email: fn(_) {
-      Error(program.InternalSendEmailError("unused in test"))
-    },
+      Error(effect.InternalSendEmailError("unused in test"))
+  },
     get_user_by_email: fn(_) { Ok(option.None) },
     list_login_tokens_by_user: fn(_, _) { Ok([]) },
     get_session_by_token: fn(_) { Ok(option.None) },
