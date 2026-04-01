@@ -4,14 +4,14 @@ import glot_backend/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/domain/generic/session_domain
-import glot_backend/effect.{type Effect}
+import glot_backend/effect.{type Free}
 import glot_backend/log
 import glot_core/snippet
 
 pub fn snippet_create(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> Effect(Nil) {
+) -> Free(Nil) {
   use session <- effect.and_then(session_domain.require_session(ctx))
 
   use request <- effect.and_then(effect.decode_json(

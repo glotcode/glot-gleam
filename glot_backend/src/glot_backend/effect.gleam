@@ -233,33 +233,37 @@ fn new_state() -> State {
   State(effect_timings: [], info_fields: log.new(), warning_fields: log.new())
 }
 
-pub opaque type Effect(a) {
-  Done(a)
+pub type Free(a) {
+  Pure(a)
   Fail(Error)
-  MeasureEffectDuration(EffectName, Int, Effect(a))
-  NewToken(Int, fn(String) -> Effect(a))
-  SystemTime(fn(Timestamp) -> Effect(a))
-  UuidV7(fn(Uuid) -> Effect(a))
-  Log(log.Level, log.Fields, Effect(a))
+  Impure(Effect(Free(a)))
+}
+
+pub type Effect(next) {
+  MeasureEffectDuration(EffectName, Int, next)
+  NewToken(Int, fn(String) -> next)
+  SystemTime(fn(Timestamp) -> next)
+  UuidV7(fn(Uuid) -> next)
+  Log(log.Level, log.Fields, next)
   AttemptPostRunRequest(
     context.Config,
     run.RunRequest,
-    fn(Result(run.RunResult, RunRequestError)) -> Effect(a),
+    fn(Result(run.RunResult, RunRequestError)) -> next,
   )
   AttemptSendEmail(
     email_message.EmailMessage,
-    fn(Result(Nil, SendEmailError)) -> Effect(a),
+    fn(Result(Nil, SendEmailError)) -> next,
   )
-  AttemptRunQuery(DbQuery(Effect(a)), fn(DbQueryError) -> Effect(a))
-  AttemptRunCommand(DbCommand, fn(Result(Nil, DbCommandError)) -> Effect(a))
+  AttemptRunQuery(DbQuery(next), fn(DbQueryError) -> next)
+  AttemptRunCommand(DbCommand, fn(Result(Nil, DbCommandError)) -> next)
   AttemptRunInTransaction(
     List(DbCommand),
-    fn(Result(Nil, DbTransactionError)) -> Effect(a),
+    fn(Result(Nil, DbTransactionError)) -> next,
   )
 }
 
 pub fn run(
-  effect: Effect(a),
+  effect: Free(a),
   handlers: Handlers,
 ) -> #(Result(a, Error), State) {
   let #(result, state) = run_with_state(effect, handlers, new_state())
@@ -267,267 +271,254 @@ pub fn run(
 }
 
 fn run_with_state(
-  effect: Effect(a),
+  effect: Free(a),
   handlers: Handlers,
   state: State,
 ) -> #(Result(a, Error), State) {
   case effect {
-    Done(value) -> #(Ok(value), state)
+    Pure(value) -> #(Ok(value), state)
     Fail(error) -> #(Error(error), state)
-    MeasureEffectDuration(name, duration_ns, next) ->
-      run_with_state(
-        next,
-        handlers,
-        add_effect_timings(state, name, duration_ns),
-      )
-    NewToken(length, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let value = handlers.new_token(length)
-      run_with_state(
-        next(value),
-        handlers,
-        measure_effect(state, NewTokenEffect, started_at),
-      )
-    }
-    SystemTime(next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let value = handlers.system_time()
-      run_with_state(
-        next(value),
-        handlers,
-        measure_effect(state, SystemTimeEffect, started_at),
-      )
-    }
-    UuidV7(next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let value = handlers.uuid_v7()
-      run_with_state(
-        next(value),
-        handlers,
-        measure_effect(state, UuidV7Effect, started_at),
-      )
-    }
-    Log(level, fields, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let state = case level {
-        log.Info -> add_info_fields(state, fields)
-        log.Warn -> add_warning_fields(state, fields)
-      }
-      run_with_state(
-        next,
-        handlers,
-        measure_effect(state, LogEffect, started_at),
-      )
-    }
-    AttemptPostRunRequest(cfg, request, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let send_result = handlers.post_run_request(cfg, request)
-      run_with_state(
-        next(send_result),
-        handlers,
-        measure_effect(state, PostRunRequestEffect, started_at),
-      )
-    }
-    AttemptSendEmail(message, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let send_result = handlers.send_email(message)
-      run_with_state(
-        next(send_result),
-        handlers,
-        measure_effect(state, SendEmailEffect, started_at),
-      )
-    }
-    AttemptRunQuery(query, on_error) -> {
-      let started_at = erlang.perf_counter_ns()
-      case run_db_query(query, handlers) {
-        Ok(next_effect) ->
+    Impure(effect) ->
+      case effect {
+        MeasureEffectDuration(name, duration_ns, next) ->
           run_with_state(
-            next_effect,
+            next,
+            handlers,
+            add_effect_timings(state, name, duration_ns),
+          )
+        NewToken(length, next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let value = handlers.new_token(length)
+          run_with_state(
+            next(value),
+            handlers,
+            measure_effect(state, NewTokenEffect, started_at),
+          )
+        }
+        SystemTime(next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let value = handlers.system_time()
+          run_with_state(
+            next(value),
+            handlers,
+            measure_effect(state, SystemTimeEffect, started_at),
+          )
+        }
+        UuidV7(next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let value = handlers.uuid_v7()
+          run_with_state(
+            next(value),
+            handlers,
+            measure_effect(state, UuidV7Effect, started_at),
+          )
+        }
+        Log(level, fields, next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let state = case level {
+            log.Info -> add_info_fields(state, fields)
+            log.Warn -> add_warning_fields(state, fields)
+          }
+          run_with_state(
+            next,
+            handlers,
+            measure_effect(state, LogEffect, started_at),
+          )
+        }
+        AttemptPostRunRequest(cfg, request, next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let send_result = handlers.post_run_request(cfg, request)
+          run_with_state(
+            next(send_result),
+            handlers,
+            measure_effect(state, PostRunRequestEffect, started_at),
+          )
+        }
+        AttemptSendEmail(message, next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let send_result = handlers.send_email(message)
+          run_with_state(
+            next(send_result),
+            handlers,
+            measure_effect(state, SendEmailEffect, started_at),
+          )
+        }
+        AttemptRunQuery(query, on_error) -> {
+          let started_at = erlang.perf_counter_ns()
+          case run_db_query(query, handlers) {
+            Ok(next_effect) ->
+              run_with_state(
+                next_effect,
+                handlers,
+                measure_effect(
+                  state,
+                  RunQueryEffect(db_query_name(query)),
+                  started_at,
+                ),
+              )
+            Error(query_error) ->
+              run_with_state(
+                on_error(query_error),
+                handlers,
+                measure_effect(
+                  state,
+                  RunQueryEffect(db_query_name(query)),
+                  started_at,
+                ),
+              )
+          }
+        }
+        AttemptRunCommand(command, next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let command_result = handlers.run_command(command)
+          run_with_state(
+            next(command_result),
             handlers,
             measure_effect(
               state,
-              RunQueryEffect(db_query_name(query)),
+              RunCommandEffect(db_command_name(command)),
               started_at,
             ),
           )
-        Error(query_error) ->
+        }
+        AttemptRunInTransaction(commands, next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let transaction_result = handlers.run_in_transaction(commands)
           run_with_state(
-            on_error(query_error),
+            next(transaction_result),
             handlers,
             measure_effect(
               state,
-              RunQueryEffect(db_query_name(query)),
+              RunInTransactionEffect(list.map(commands, db_command_name)),
               started_at,
             ),
           )
+        }
       }
-    }
-    AttemptRunCommand(command, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let command_result = handlers.run_command(command)
-      run_with_state(
-        next(command_result),
-        handlers,
-        measure_effect(
-          state,
-          RunCommandEffect(db_command_name(command)),
-          started_at,
-        ),
-      )
-    }
-    AttemptRunInTransaction(commands, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let transaction_result = handlers.run_in_transaction(commands)
-      run_with_state(
-        next(transaction_result),
-        handlers,
-        measure_effect(
-          state,
-          RunInTransactionEffect(list.map(commands, db_command_name)),
-          started_at,
-        ),
-      )
-    }
   }
 }
 
-pub fn succeed(value: a) -> Effect(a) {
-  Done(value)
+pub fn succeed(value: a) -> Free(a) {
+  Pure(value)
 }
 
-pub fn fail(error: Error) -> Effect(a) {
+pub fn fail(error: Error) -> Free(a) {
   Fail(error)
 }
 
-pub fn and_then(effect: Effect(a), f: fn(a) -> Effect(b)) -> Effect(b) {
+pub fn and_then(effect: Free(a), f: fn(a) -> Free(b)) -> Free(b) {
   case effect {
-    Done(value) -> f(value)
+    Pure(value) -> f(value)
     Fail(error) -> Fail(error)
-    MeasureEffectDuration(name, duration_ms, next) ->
-      MeasureEffectDuration(name, duration_ms, and_then(next, f))
-    NewToken(length, next) ->
-      NewToken(length, fn(value) { and_then(next(value), f) })
-    SystemTime(next) -> SystemTime(fn(value) { and_then(next(value), f) })
-    UuidV7(next) -> UuidV7(fn(value) { and_then(next(value), f) })
-    Log(level, fields, next) -> Log(level, fields, and_then(next, f))
-    AttemptPostRunRequest(cfg, request, next) ->
-      AttemptPostRunRequest(cfg, request, fn(value) { and_then(next(value), f) })
-    AttemptSendEmail(message, next) ->
-      AttemptSendEmail(message, fn(value) { and_then(next(value), f) })
-    AttemptRunQuery(query, on_error) ->
-      AttemptRunQuery(map_db_query(query, fn(p) { and_then(p, f) }), fn(error) {
-        and_then(on_error(error), f)
-      })
-    AttemptRunCommand(command, next) ->
-      AttemptRunCommand(command, fn(value) { and_then(next(value), f) })
-    AttemptRunInTransaction(commands, next) ->
-      AttemptRunInTransaction(commands, fn(value) { and_then(next(value), f) })
+    Impure(next) -> Impure(map_effect(next, fn(value) { and_then(value, f) }))
   }
 }
 
-pub fn map(effect: Effect(a), f: fn(a) -> b) -> Effect(b) {
+pub fn map(effect: Free(a), f: fn(a) -> b) -> Free(b) {
   and_then(effect, fn(value) { succeed(f(value)) })
 }
 
 pub fn decode_json(
   json_body: dynamic.Dynamic,
   decoder: decode.Decoder(a),
-) -> Effect(a) {
+) -> Free(a) {
   decode.run(json_body, decoder)
   |> result.map_error(DecodeError)
   |> from_result
 }
 
-pub fn new_token(length: Int) -> Effect(String) {
-  NewToken(length, Done)
+pub fn new_token(length: Int) -> Free(String) {
+  Impure(NewToken(length, Pure))
 }
 
-pub fn system_time() -> Effect(Timestamp) {
-  SystemTime(Done)
+pub fn system_time() -> Free(Timestamp) {
+  Impure(SystemTime(Pure))
 }
 
 pub fn measure_effect_duration(
   effect_name: EffectName,
   duration_ms: Int,
-) -> Effect(Nil) {
-  MeasureEffectDuration(effect_name, duration_ms, Done(Nil))
+) -> Free(Nil) {
+  Impure(MeasureEffectDuration(effect_name, duration_ms, Pure(Nil)))
 }
 
-pub fn uuid_v7() -> Effect(Uuid) {
-  UuidV7(Done)
+pub fn uuid_v7() -> Free(Uuid) {
+  Impure(UuidV7(Pure))
 }
 
-pub fn info(fields: log.Fields) -> Effect(Nil) {
-  Log(log.Info, fields, Done(Nil))
+pub fn info(fields: log.Fields) -> Free(Nil) {
+  Impure(Log(log.Info, fields, Pure(Nil)))
 }
 
-pub fn warn(fields: log.Fields) -> Effect(Nil) {
-  Log(log.Warn, fields, Done(Nil))
+pub fn warn(fields: log.Fields) -> Free(Nil) {
+  Impure(Log(log.Warn, fields, Pure(Nil)))
 }
 
-pub fn when(condition: Bool, if_true: Effect(Nil)) -> Effect(Nil) {
+pub fn when(condition: Bool, if_true: Free(Nil)) -> Free(Nil) {
   case condition {
     True -> if_true
-    False -> Done(Nil)
+    False -> Pure(Nil)
   }
 }
 
 pub fn attempt_post_run_request(
   cfg: context.Config,
   request: run.RunRequest,
-) -> Effect(Result(run.RunResult, RunRequestError)) {
-  AttemptPostRunRequest(cfg, request, Done)
+) -> Free(Result(run.RunResult, RunRequestError)) {
+  Impure(AttemptPostRunRequest(cfg, request, Pure))
 }
 
 pub fn post_run_request(
   cfg: context.Config,
   request: run.RunRequest,
-) -> Effect(run.RunResult) {
+) -> Free(run.RunResult) {
   use run_result <- and_then(attempt_post_run_request(cfg, request))
   case run_result {
-    Ok(value) -> Done(value)
+    Ok(value) -> Pure(value)
     Error(error) -> Fail(RunError(error))
   }
 }
 
 pub fn attempt_send_email(
   message: email_message.EmailMessage,
-) -> Effect(Result(Nil, SendEmailError)) {
-  AttemptSendEmail(message, Done)
+) -> Free(Result(Nil, SendEmailError)) {
+  Impure(AttemptSendEmail(message, Pure))
 }
 
-pub fn send_email(message: email_message.EmailMessage) -> Effect(Nil) {
+pub fn send_email(message: email_message.EmailMessage) -> Free(Nil) {
   use send_result <- and_then(attempt_send_email(message))
   case send_result {
-    Ok(_) -> Done(Nil)
+    Ok(_) -> Pure(Nil)
     Error(error) -> Fail(SendEmailError(error))
   }
 }
 
-pub fn attempt_run_query(query: DbQuery(a)) -> Effect(Result(a, DbQueryError)) {
-  AttemptRunQuery(map_db_query(query, fn(value) { Done(Ok(value)) }), fn(error) {
-    Done(Error(error))
-  })
+pub fn attempt_run_query(query: DbQuery(a)) -> Free(Result(a, DbQueryError)) {
+  Impure(AttemptRunQuery(map_db_query(query, fn(value) { Pure(Ok(value)) }), fn(
+    error,
+  ) {
+    Pure(Error(error))
+  }))
 }
 
-pub fn run_query(query: DbQuery(a)) -> Effect(a) {
+pub fn run_query(query: DbQuery(a)) -> Free(a) {
   use query_result <- and_then(attempt_run_query(query))
   case query_result {
-    Ok(value) -> Done(value)
+    Ok(value) -> Pure(value)
     Error(error) -> Fail(QueryError(error))
   }
 }
 
 pub fn db_get_user_by_email(
   email email: email.Email,
-) -> Effect(option.Option(user.User)) {
+) -> Free(option.Option(user.User)) {
   run_query(DbGetUserByEmail(email:, next: function.identity))
 }
 
 pub fn db_list_login_tokens_by_user(
   user_id user_id: Uuid,
   limit limit: Int,
-) -> Effect(List(auth.LoginToken)) {
+) -> Free(List(auth.LoginToken)) {
   run_query(DbListLoginTokensByUser(
     user_id: user_id,
     limit: limit,
@@ -537,7 +528,7 @@ pub fn db_list_login_tokens_by_user(
 
 pub fn db_get_session_by_token(
   token token: String,
-) -> Effect(option.Option(auth.Session)) {
+) -> Free(option.Option(auth.Session)) {
   run_query(DbGetSessionByToken(token: token, next: function.identity))
 }
 
@@ -545,7 +536,7 @@ pub fn db_get_next_job(
   now: Timestamp,
   pending_status: job.Status,
   running_status: job.Status,
-) -> Effect(option.Option(job.Job)) {
+) -> Free(option.Option(job.Job)) {
   run_query(DbGetNextJob(
     now: now,
     pending_status: pending_status,
@@ -558,7 +549,7 @@ pub fn db_count_user_actions_by_ip(
   windows windows: List(rate_limit.Window),
   ip ip: option.Option(String),
   action action: ApiAction,
-) -> Effect(List(rate_limit.WindowCount)) {
+) -> Free(List(rate_limit.WindowCount)) {
   run_query(DbCountUserActionsByIp(
     windows: windows,
     ip: ip,
@@ -571,7 +562,7 @@ pub fn db_count_user_actions_by_user(
   windows windows: List(rate_limit.Window),
   user_id user_id: option.Option(Uuid),
   action action: ApiAction,
-) -> Effect(List(rate_limit.WindowCount)) {
+) -> Free(List(rate_limit.WindowCount)) {
   run_query(DbCountUserActionsByUser(
     windows: windows,
     user_id: user_id,
@@ -582,28 +573,28 @@ pub fn db_count_user_actions_by_user(
 
 pub fn attempt_run_command(
   command: DbCommand,
-) -> Effect(Result(Nil, DbCommandError)) {
-  AttemptRunCommand(command, Done)
+) -> Free(Result(Nil, DbCommandError)) {
+  Impure(AttemptRunCommand(command, Pure))
 }
 
-pub fn run_command(command: DbCommand) -> Effect(Nil) {
+pub fn run_command(command: DbCommand) -> Free(Nil) {
   use command_result <- and_then(attempt_run_command(command))
   case command_result {
-    Ok(_) -> Done(Nil)
+    Ok(_) -> Pure(Nil)
     Error(error) -> Fail(CommandError(error))
   }
 }
 
 pub fn attempt_run_in_transaction(
   commands: List(DbCommand),
-) -> Effect(Result(Nil, DbTransactionError)) {
-  AttemptRunInTransaction(commands, Done)
+) -> Free(Result(Nil, DbTransactionError)) {
+  Impure(AttemptRunInTransaction(commands, Pure))
 }
 
-pub fn run_in_transaction(commands: List(DbCommand)) -> Effect(Nil) {
+pub fn run_in_transaction(commands: List(DbCommand)) -> Free(Nil) {
   use transaction_result <- and_then(attempt_run_in_transaction(commands))
   case transaction_result {
-    Ok(_) -> Done(Nil)
+    Ok(_) -> Pure(Nil)
     Error(error) -> Fail(TransactionError(error))
   }
 }
@@ -665,6 +656,27 @@ fn map_db_query(query: DbQuery(a), f: fn(a) -> b) -> DbQuery(b) {
   }
 }
 
+fn map_effect(effect: Effect(a), f: fn(a) -> b) -> Effect(b) {
+  case effect {
+    MeasureEffectDuration(name, duration_ms, next) ->
+      MeasureEffectDuration(name, duration_ms, f(next))
+    NewToken(length, next) -> NewToken(length, fn(value) { f(next(value)) })
+    SystemTime(next) -> SystemTime(fn(value) { f(next(value)) })
+    UuidV7(next) -> UuidV7(fn(value) { f(next(value)) })
+    Log(level, fields, next) -> Log(level, fields, f(next))
+    AttemptPostRunRequest(cfg, request, next) ->
+      AttemptPostRunRequest(cfg, request, fn(value) { f(next(value)) })
+    AttemptSendEmail(message, next) ->
+      AttemptSendEmail(message, fn(value) { f(next(value)) })
+    AttemptRunQuery(query, on_error) ->
+      AttemptRunQuery(map_db_query(query, f), fn(error) { f(on_error(error)) })
+    AttemptRunCommand(command, next) ->
+      AttemptRunCommand(command, fn(value) { f(next(value)) })
+    AttemptRunInTransaction(commands, next) ->
+      AttemptRunInTransaction(commands, fn(value) { f(next(value)) })
+  }
+}
+
 fn db_query_name(query: DbQuery(a)) -> DbQueryName {
   case query {
     DbGetUserByEmail(_, _) -> DbGetUserByEmailQuery
@@ -690,9 +702,9 @@ fn db_command_name(command: DbCommand) -> DbCommandName {
   }
 }
 
-pub fn from_result(value: Result(a, Error)) -> Effect(a) {
+pub fn from_result(value: Result(a, Error)) -> Free(a) {
   case value {
-    Ok(v) -> Done(v)
+    Ok(v) -> Pure(v)
     Error(err) -> Fail(err)
   }
 }

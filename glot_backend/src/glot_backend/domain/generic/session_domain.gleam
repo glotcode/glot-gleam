@@ -2,12 +2,12 @@ import gleam/option.{type Option}
 import gleam/result
 import gleam/time/timestamp
 import glot_backend/context
-import glot_backend/effect.{type Effect}
+import glot_backend/effect.{type Free}
 import glot_core/auth
 
 pub fn get_session(
   ctx: context.Context,
-) -> Effect(Option(auth.Session)) {
+) -> Free(Option(auth.Session)) {
   use session <- effect.and_then(case ctx.client_info.session_token {
     option.Some(session_token) ->
       effect.db_get_session_by_token(session_token)
@@ -19,7 +19,7 @@ pub fn get_session(
   |> effect.succeed()
 }
 
-pub fn require_session(ctx: context.Context) -> Effect(auth.Session) {
+pub fn require_session(ctx: context.Context) -> Free(auth.Session) {
   use session <- effect.and_then(case ctx.client_info.session_token {
     option.Some(session_token) ->
       effect.db_get_session_by_token(session_token)

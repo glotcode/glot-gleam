@@ -5,7 +5,7 @@ import gleam/time/timestamp
 import glot_backend/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
-import glot_backend/effect.{type Effect}
+import glot_backend/effect.{type Free}
 import glot_backend/log
 import glot_core/auth
 import glot_core/user
@@ -13,7 +13,7 @@ import glot_core/user
 pub fn login(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> Effect(String) {
+) -> Free(String) {
   use request <- effect.and_then(effect.decode_json(
     json_body,
     auth.login_request_decoder(ctx.regexes.is_email),

@@ -14,7 +14,7 @@ import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
-import glot_backend/effect.{type Effect}
+import glot_backend/effect.{type Free}
 import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
@@ -41,7 +41,7 @@ pub fn handle_request(
 fn handle_api_request(
   ctx: context.Context,
   api_request: ApiRequest,
-) -> Effect(ApiResult) {
+) -> Free(ApiResult) {
   case api_request.action {
     api_action.RunAction ->
       run_domain.run(ctx, api_request.data)
