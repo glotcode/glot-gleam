@@ -28,7 +28,7 @@ pub type EffectName {
   AuthEffectName(auth.EffectName)
   SnippetEffectName(snippet.EffectName)
   DockerRunEffectName(docker_run.EffectName)
-  RunInTransactionEffectName(List(EffectTiming))
+  RunInTransactionEffectName(List(EffectMeasurement))
 }
 
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
@@ -71,13 +71,17 @@ pub fn effect_category_to_string(category: EffectCategory) -> String {
   }
 }
 
-pub type EffectTiming {
-  EffectTiming(name: EffectName, category: EffectCategory, duration_ns: Int)
+pub type EffectMeasurement {
+  EffectMeasurement(
+    name: EffectName,
+    category: EffectCategory,
+    duration_ns: Int,
+  )
 }
 
-pub fn encode_effect_timings(effects: List(EffectTiming)) -> json.Json {
+pub fn encode_effect_measurements(effects: List(EffectMeasurement)) -> json.Json {
   json.object([
-    #("effects", json.array(effects, encode_effect_timing)),
+    #("effects", json.array(effects, encode_effect_measurement)),
     #(
       "summary",
       json.object([
@@ -85,8 +89,8 @@ pub fn encode_effect_timings(effects: List(EffectTiming)) -> json.Json {
         #(
           "duration_ns",
           json.int(
-            list.fold(effects, 0, fn(acc, effect_timing) {
-              acc + effect_timing.duration_ns
+            list.fold(effects, 0, fn(acc, effect_measurement) {
+              acc + effect_measurement.duration_ns
             }),
           ),
         ),
@@ -95,17 +99,19 @@ pub fn encode_effect_timings(effects: List(EffectTiming)) -> json.Json {
   ])
 }
 
-pub fn encode_effect_timing(effect_timing: EffectTiming) -> json.Json {
-  let effect_name = effect_timing.name
-  let duration_ns = effect_timing.duration_ns
-  let effect_category = effect_category_to_string(effect_timing.category)
+pub fn encode_effect_measurement(
+  effect_measurement: EffectMeasurement,
+) -> json.Json {
+  let effect_name = effect_measurement.name
+  let duration_ns = effect_measurement.duration_ns
+  let effect_category = effect_category_to_string(effect_measurement.category)
   case effect_name {
     RunInTransactionEffectName(sub_effects) ->
       json.object([
         #("category", json.string(effect_category)),
         #("family", json.string(effect_name_to_family(effect_name))),
         #("name", json.string(effect_name_to_string(effect_name))),
-        #("effects", json.array(sub_effects, encode_effect_timing)),
+        #("effects", json.array(sub_effects, encode_effect_measurement)),
         #("duration_ns", json.int(duration_ns)),
       ])
     _ ->

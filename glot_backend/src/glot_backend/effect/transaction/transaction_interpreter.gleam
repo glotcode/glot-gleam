@@ -17,9 +17,11 @@ pub fn run(
     handlers.transaction.run_in_transaction(sub_effects)
   continue(
     next(transaction_result),
-    program_state.measure_effect(
+    program_state.add_effect_measurement(
       state,
-      effect_model.RunInTransactionEffectName(transaction_state.effect_timings),
+      effect_model.RunInTransactionEffectName(
+        transaction_state.effect_measurements,
+      ),
       effect_model.DbWriteEffectCategory,
       started_at,
     ),

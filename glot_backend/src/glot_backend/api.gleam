@@ -205,9 +205,9 @@ fn save_log_entry(
     error: error
       |> option.map(error_to_json)
       |> option.map(json.to_string),
-    effects: state.effect_timings
+    effects: state.effect_measurements
       |> non_empty_list
-      |> option.map(effect_model.encode_effect_timings)
+      |> option.map(effect_model.encode_effect_measurements)
       |> option.map(json.to_string),
   )
 }

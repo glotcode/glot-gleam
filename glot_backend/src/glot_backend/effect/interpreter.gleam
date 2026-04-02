@@ -19,7 +19,7 @@ pub fn run(
     result,
     program_state.State(
       ..state,
-      effect_timings: list.reverse(state.effect_timings),
+      effect_measurements: list.reverse(state.effect_measurements),
     ),
   )
 }

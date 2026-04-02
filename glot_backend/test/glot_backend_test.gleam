@@ -2,20 +2,20 @@ import gleam/option
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/api_action
-import glot_backend/job
 import glot_backend/effect/auth/auth_handlers_type
 import glot_backend/effect/core/core
 import glot_backend/effect/core/core_effect
 import glot_backend/effect/core/core_handlers_type
 import glot_backend/effect/docker_run/docker_run_handlers_type
-import glot_backend/effect/interpreter
+import glot_backend/effect/effect_model
 import glot_backend/effect/error
+import glot_backend/effect/handlers_types
+import glot_backend/effect/interpreter
 import glot_backend/effect/program
 import glot_backend/effect/program_state
-import glot_backend/effect/handlers_types
-import glot_backend/effect/effect_model
 import glot_backend/effect/snippet/snippet_handlers_type
 import glot_backend/effect/transaction/transaction_handlers_type
+import glot_backend/job
 import glot_backend/log
 import glot_core/rate_limit
 import youid/uuid
@@ -44,18 +44,17 @@ pub fn measurement_aggregation_test() {
 
   assert run_result == Ok("ok")
   let assert [
-    effect_model.EffectTiming(
+    effect_model.EffectMeasurement(
       name: effect_model.CoreEffectName(core.LogEffectName),
       duration_ns: first,
-      ..
+      ..,
     ),
-    effect_model.EffectTiming(
+    effect_model.EffectMeasurement(
       name: effect_model.CoreEffectName(core.LogEffectName),
       duration_ns: second,
-      ..
+      ..,
     ),
-  ] =
-    state.effect_timings
+  ] = state.effect_measurements
   assert first >= 0
   assert second >= 0
 }
@@ -70,12 +69,12 @@ pub fn measures_effects_in_success_test() {
 
   assert run_result == Ok("ok")
   let assert [
-    effect_model.EffectTiming(
+    effect_model.EffectMeasurement(
       name: effect_model.CoreEffectName(core.NewTokenEffectName),
       duration_ns: duration_ms,
-      ..
+      ..,
     ),
-  ] = state.effect_timings
+  ] = state.effect_measurements
   assert duration_ms >= 0
 }
 
@@ -89,12 +88,12 @@ pub fn measures_effects_in_error_test() {
 
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
-    effect_model.EffectTiming(
+    effect_model.EffectMeasurement(
       name: effect_model.CoreEffectName(core.NewTokenEffectName),
       duration_ns: duration_ms,
-      ..
+      ..,
     ),
-  ] = state.effect_timings
+  ] = state.effect_measurements
   assert duration_ms >= 0
 }
 

@@ -19,7 +19,7 @@ pub fn run(
       let value = handlers.core.new_token(length)
       continue(
         next(value),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.NewTokenEffectName),
           effect_model.UtilEffectCategory,
@@ -32,7 +32,7 @@ pub fn run(
       let value = handlers.core.system_time()
       continue(
         next(value),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.SystemTimeEffectName),
           effect_model.UtilEffectCategory,
@@ -45,7 +45,7 @@ pub fn run(
       let value = handlers.core.uuid_v7()
       continue(
         next(value),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.UuidV7EffectName),
           effect_model.UtilEffectCategory,
@@ -61,7 +61,7 @@ pub fn run(
       }
       continue(
         next,
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.LogEffectName),
           effect_model.LogEffectCategory,
@@ -74,7 +74,7 @@ pub fn run(
       let send_result = handlers.core.send_email(message)
       continue(
         next(send_result),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.AttemptSendEmailEffectName),
           effect_model.EmailEffectCategory,
@@ -90,50 +90,47 @@ pub fn run(
         Ok(value) ->
           continue(
             next(value),
-            program_state.measure_effect(
+            program_state.add_effect_measurement(
               state,
               effect_model.CoreEffectName(core.GetNextJobEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
-        Error(error) ->
-          #(
-            Error(error.QueryError(error)),
-            program_state.measure_effect(
-              state,
-              effect_model.CoreEffectName(core.GetNextJobEffectName),
-              effect_model.DbReadEffectCategory,
-              started_at,
-            ),
-          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_model.CoreEffectName(core.GetNextJobEffectName),
+            effect_model.DbReadEffectCategory,
+            started_at,
+          ),
+        )
       }
     }
     core.CountUserActionsByIp(windows:, ip:, action:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.core.count_user_actions_by_ip(windows, ip, action)
+      let result = handlers.core.count_user_actions_by_ip(windows, ip, action)
       case result {
         Ok(value) ->
           continue(
             next(value),
-            program_state.measure_effect(
+            program_state.add_effect_measurement(
               state,
               effect_model.CoreEffectName(core.CountUserActionsByIpEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
-        Error(error) ->
-          #(
-            Error(error.QueryError(error)),
-            program_state.measure_effect(
-              state,
-              effect_model.CoreEffectName(core.CountUserActionsByIpEffectName),
-              effect_model.DbReadEffectCategory,
-              started_at,
-            ),
-          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_model.CoreEffectName(core.CountUserActionsByIpEffectName),
+            effect_model.DbReadEffectCategory,
+            started_at,
+          ),
+        )
       }
     }
     core.CountUserActionsByUser(windows:, user_id:, action:, next:) -> {
@@ -144,23 +141,22 @@ pub fn run(
         Ok(value) ->
           continue(
             next(value),
-            program_state.measure_effect(
+            program_state.add_effect_measurement(
               state,
               effect_model.CoreEffectName(core.CountUserActionsByUserEffectName),
               effect_model.DbReadEffectCategory,
               started_at,
             ),
           )
-        Error(error) ->
-          #(
-            Error(error.QueryError(error)),
-            program_state.measure_effect(
-              state,
-              effect_model.CoreEffectName(core.CountUserActionsByUserEffectName),
-              effect_model.DbReadEffectCategory,
-              started_at,
-            ),
-          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_model.CoreEffectName(core.CountUserActionsByUserEffectName),
+            effect_model.DbReadEffectCategory,
+            started_at,
+          ),
+        )
       }
     }
     core.InsertJob(job, next) -> {
@@ -168,7 +164,7 @@ pub fn run(
       let result = handlers.core.insert_job(job)
       continue(
         next(result),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.InsertJobEffectName),
           effect_model.DbWriteEffectCategory,
@@ -197,7 +193,7 @@ pub fn run(
         )
       continue(
         next(result),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.InsertUserActionEffectName),
           effect_model.DbWriteEffectCategory,
@@ -210,7 +206,7 @@ pub fn run(
       let result = handlers.core.mark_job_done(id, completed_at)
       continue(
         next(result),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.MarkJobDoneEffectName),
           effect_model.DbWriteEffectCategory,
@@ -224,7 +220,7 @@ pub fn run(
         handlers.core.reschedule_job(id, run_at, last_error, updated_at)
       continue(
         next(result),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.RescheduleJobEffectName),
           effect_model.DbWriteEffectCategory,

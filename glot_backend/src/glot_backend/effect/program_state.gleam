@@ -6,30 +6,18 @@ import glot_backend/log
 
 pub type State {
   State(
-    effect_timings: List(effect_model.EffectTiming),
+    effect_measurements: List(effect_model.EffectMeasurement),
     info_fields: log.Fields,
     warning_fields: log.Fields,
   )
 }
 
 pub fn new_state() -> State {
-  State(effect_timings: [], info_fields: log.new(), warning_fields: log.new())
-}
-
-pub fn add_effect_timings(
-  state: State,
-  effect_name: effect_model.EffectName,
-  effect_category: effect_model.EffectCategory,
-  duration_ns: Int,
-) -> State {
-  State(..state, effect_timings: [
-    effect_model.EffectTiming(
-      name: effect_name,
-      category: effect_category,
-      duration_ns: duration_ns,
-    ),
-    ..state.effect_timings
-  ])
+  State(
+    effect_measurements: [],
+    info_fields: log.new(),
+    warning_fields: log.new(),
+  )
 }
 
 pub fn add_info_fields(state: State, fields: log.Fields) -> State {
@@ -40,13 +28,16 @@ pub fn add_warning_fields(state: State, fields: log.Fields) -> State {
   State(..state, warning_fields: dict.merge(state.warning_fields, fields))
 }
 
-pub fn measure_effect(
+pub fn add_effect_measurement(
   state: State,
-  effect_name: effect_model.EffectName,
-  effect_category: effect_model.EffectCategory,
+  name: effect_model.EffectName,
+  category: effect_model.EffectCategory,
   started_at_ns: Int,
 ) -> State {
-  let elapsed_ns = erlang.perf_counter_ns() - started_at_ns
-  let safe_elapsed_ns = int.max(elapsed_ns, 0)
-  add_effect_timings(state, effect_name, effect_category, safe_elapsed_ns)
+  let duration_ns = int.max(erlang.perf_counter_ns() - started_at_ns, 0)
+
+  State(..state, effect_measurements: [
+    effect_model.EffectMeasurement(name:, category:, duration_ns:),
+    ..state.effect_measurements
+  ])
 }

@@ -13,7 +13,14 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    snippet.InsertSnippet(id, user_id, snippet_value, created_at, updated_at, next) -> {
+    snippet.InsertSnippet(
+      id,
+      user_id,
+      snippet_value,
+      created_at,
+      updated_at,
+      next,
+    ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
         handlers.snippet.insert_snippet(
@@ -25,7 +32,7 @@ pub fn run(
         )
       continue(
         next(result),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.SnippetEffectName(snippet.InsertSnippetEffectName),
           effect_model.DbWriteEffectCategory,

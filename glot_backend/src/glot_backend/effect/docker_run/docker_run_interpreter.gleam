@@ -18,7 +18,7 @@ pub fn run(
       let run_result = handlers.docker_run.post_run_request(cfg, request)
       continue(
         next(run_result),
-        program_state.measure_effect(
+        program_state.add_effect_measurement(
           state,
           effect_model.DockerRunEffectName(
             docker_run.AttemptPostRunRequestEffectName,

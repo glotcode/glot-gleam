@@ -52,7 +52,10 @@ fn combine_states(
   second: program_state.State,
 ) -> program_state.State {
   program_state.State(
-    effect_timings: list.append(first.effect_timings, second.effect_timings),
+    effect_measurements: list.append(
+      first.effect_measurements,
+      second.effect_measurements,
+    ),
     info_fields: dict.merge(first.info_fields, second.info_fields),
     warning_fields: dict.merge(first.warning_fields, second.warning_fields),
   )
