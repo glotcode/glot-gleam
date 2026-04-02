@@ -10,16 +10,16 @@ import glot_core/run
 
 pub type DockerRunHandlers {
   DockerRunHandlers(
-    post_run_request: fn(context.Config, run.RunRequest) ->
+    run_code: fn(context.Config, run.RunRequest) ->
       Result(run.RunResult, error.RunRequestError),
   )
 }
 
 pub fn from_context(_ctx: context.Context) -> DockerRunHandlers {
-  DockerRunHandlers(post_run_request: post_run_request)
+  DockerRunHandlers(run_code: run_code)
 }
 
-pub fn post_run_request(
+pub fn run_code(
   cfg: context.Config,
   request: run.RunRequest,
 ) -> Result(run.RunResult, error.RunRequestError) {

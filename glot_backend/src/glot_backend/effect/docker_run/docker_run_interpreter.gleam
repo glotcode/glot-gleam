@@ -14,16 +14,14 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    docker_run.AttemptPostRunRequest(cfg, request, next) -> {
+    docker_run.RunCode(cfg, request, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let run_result = handlers.docker_run.post_run_request(cfg, request)
+      let run_result = handlers.docker_run.run_code(cfg, request)
       continue(
         next(run_result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.DockerRunEffectName(
-            docker_run.AttemptPostRunRequestEffectName,
-          ),
+          effect_trace.DockerRunEffectName(docker_run.RunCodeEffectName),
           effect_trace.DockerRunEffectCategory,
           started_at,
         ),

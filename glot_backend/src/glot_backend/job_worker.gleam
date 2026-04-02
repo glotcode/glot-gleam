@@ -149,7 +149,7 @@ fn process_send_email_job(
 ) -> program_types.Program(Nil) {
   case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
-      use send_result <- program.and_then(core_effect.attempt_send_email(message))
+      use send_result <- program.and_then(core_effect.send_email(message))
       use now <- program.and_then(core_effect.system_time())
 
       case send_result {

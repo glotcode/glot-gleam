@@ -29,10 +29,7 @@ pub fn run(
     action: api_action.RunAction,
   ))
 
-  use result <- program.and_then(docker_run_effect.post_run_request(
-    ctx.config,
-    request,
-  ))
+  use result <- program.and_then(docker_run_effect.run_code(ctx.config, request))
   use _ <- program.and_then(user_action_cmd)
 
   use _ <- program.and_then(

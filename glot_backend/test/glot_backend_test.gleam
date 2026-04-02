@@ -147,7 +147,7 @@ fn test_handlers() -> handlers.Handlers {
       insert_snippet: fn(_, _, _, _, _) { Ok(Nil) },
     ),
     docker_run: docker_run_handlers.DockerRunHandlers(
-      post_run_request: fn(_, _) {
+      run_code: fn(_, _) {
         Error(error.InternalRunRequestError("unused in test"))
       },
     ),

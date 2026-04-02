@@ -70,14 +70,14 @@ pub fn run(
         ),
       )
     }
-    core.AttemptSendEmail(message, next) -> {
+    core.SendEmail(message, next) -> {
       let started_at = erlang.perf_counter_ns()
       let send_result = handlers.core.send_email(message)
       continue(
         next(send_result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.CoreEffectName(core.AttemptSendEmailEffectName),
+          effect_trace.CoreEffectName(core.SendEmailEffectName),
           effect_trace.EmailEffectCategory,
           started_at,
         ),

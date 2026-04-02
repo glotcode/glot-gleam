@@ -37,11 +37,11 @@ pub fn warn(fields: log.Fields) -> program_types.Program(Nil) {
   )
 }
 
-pub fn attempt_send_email(
+pub fn send_email(
   message: email_message.EmailMessage,
 ) -> program_types.Program(Result(Nil, error.SendEmailError)) {
   program_types.Impure(
-    program_types.CoreEffect(core.AttemptSendEmail(message, program_types.Pure)),
+    program_types.CoreEffect(core.SendEmail(message, program_types.Pure)),
   )
 }
 

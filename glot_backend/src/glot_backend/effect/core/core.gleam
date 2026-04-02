@@ -12,7 +12,7 @@ pub type CoreEffect(next) {
   SystemTime(fn(Timestamp) -> next)
   UuidV7(fn(Uuid) -> next)
   Log(log.Level, log.Fields, next)
-  AttemptSendEmail(
+  SendEmail(
     email_message.EmailMessage,
     fn(Result(Nil, error.SendEmailError)) -> next,
   )
@@ -45,8 +45,8 @@ pub fn map(effect: CoreEffect(a), f: fn(a) -> b) -> CoreEffect(b) {
     SystemTime(next) -> SystemTime(fn(value) { f(next(value)) })
     UuidV7(next) -> UuidV7(fn(value) { f(next(value)) })
     Log(level, fields, next) -> Log(level, fields, f(next))
-    AttemptSendEmail(message, next) ->
-      AttemptSendEmail(message, fn(value) { f(next(value)) })
+    SendEmail(message, next) ->
+      SendEmail(message, fn(value) { f(next(value)) })
     CountUserActionsByIp(windows:, ip:, action:, next:) ->
       CountUserActionsByIp(
         windows: windows,
@@ -87,7 +87,7 @@ pub type EffectName {
   SystemTimeEffectName
   UuidV7EffectName
   LogEffectName
-  AttemptSendEmailEffectName
+  SendEmailEffectName
   CountUserActionsByIpEffectName
   CountUserActionsByUserEffectName
   InsertUserActionEffectName
@@ -99,7 +99,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     SystemTimeEffectName -> "system_time"
     UuidV7EffectName -> "uuid_v7"
     LogEffectName -> "log"
-    AttemptSendEmailEffectName -> "attempt_send_email"
+    SendEmailEffectName -> "send_email"
     CountUserActionsByIpEffectName -> "count_user_actions_by_ip"
     CountUserActionsByUserEffectName -> "count_user_actions_by_user"
     InsertUserActionEffectName -> "insert_user_action"
