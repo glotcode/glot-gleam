@@ -45,6 +45,32 @@ pub type CoreHandlers {
   )
 }
 
+pub fn from_context(ctx: context.Context) -> CoreHandlers {
+  CoreHandlers(
+    new_token: new_token,
+    system_time: system_time,
+    uuid_v7: fn() { uuid_v7(ctx) },
+    send_email: send_email,
+    count_user_actions_by_ip: fn(windows, ip, action) {
+      count_user_actions_by_ip(ctx, ip, action, windows)
+    },
+    count_user_actions_by_user: fn(windows, user_id, action) {
+      count_user_actions_by_user(ctx, user_id, action, windows)
+    },
+    insert_user_action: fn(id, request_id, action, ip, user_id, created_at) {
+      insert_user_action(
+        ctx.db,
+        id,
+        request_id,
+        action,
+        ip,
+        user_id,
+        created_at,
+      )
+    },
+  )
+}
+
 pub fn new_token(length: Int) -> String {
   crypto_helpers.new_token(length)
 }

@@ -15,6 +15,10 @@ pub type DockerRunHandlers {
   )
 }
 
+pub fn from_context(_ctx: context.Context) -> DockerRunHandlers {
+  DockerRunHandlers(post_run_request: post_run_request)
+}
+
 pub fn post_run_request(
   cfg: context.Config,
   request: run.RunRequest,

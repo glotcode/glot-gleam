@@ -47,6 +47,28 @@ pub type AuthHandlers {
   )
 }
 
+pub fn from_context(ctx: context.Context) -> AuthHandlers {
+  AuthHandlers(
+    get_user_by_email: fn(email) { get_user_by_email(ctx, email) },
+    list_login_tokens_by_user: fn(user_id, limit) {
+      list_login_tokens_by_user(ctx, user_id, limit)
+    },
+    get_session_by_token: fn(token) { get_session_by_token(ctx, token) },
+    insert_user: fn(id, email, created_at) {
+      insert_user(ctx.db, id, email, created_at)
+    },
+    insert_session: fn(id, user_id, token, ip, user_agent, created_at) {
+      insert_session(ctx.db, id, user_id, token, ip, user_agent, created_at)
+    },
+    insert_login_token: fn(id, user_id, token, created_at, used_at) {
+      insert_login_token(ctx.db, id, user_id, token, created_at, used_at)
+    },
+    update_login_token: fn(user_id, token, created_at, used_at, id) {
+      update_login_token(ctx.db, user_id, token, created_at, used_at, id)
+    },
+  )
+}
+
 pub fn get_user_by_email(
   ctx: context.Context,
   user_email: email.Email,

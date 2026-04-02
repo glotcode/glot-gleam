@@ -26,6 +26,19 @@ pub type JobHandlers {
   )
 }
 
+pub fn from_context(ctx: context.Context) -> JobHandlers {
+  JobHandlers(
+    get_next_job: fn(now, pending_status, running_status) {
+      get_next_job(ctx, now, pending_status, running_status)
+    },
+    insert_job: fn(job) { insert_job(ctx.db, job) },
+    mark_job_done: fn(id, completed_at) { mark_job_done(ctx.db, id, completed_at) },
+    reschedule_job: fn(id, run_at, last_error, updated_at) {
+      reschedule_job(ctx.db, id, run_at, last_error, updated_at)
+    },
+  )
+}
+
 pub fn get_next_job(
   ctx: context.Context,
   now: Timestamp,
