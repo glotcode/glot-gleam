@@ -7,12 +7,10 @@ import gleam/result
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action
 import glot_core/rate_limit.{type RateLimit}
-import pog
 import youid/uuid.{type Uuid}
 
 pub type Context {
   Context(
-    db: pog.Connection,
     config: Config,
     regexes: Regexes,
     request_id: Uuid,

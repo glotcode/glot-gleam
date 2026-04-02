@@ -63,7 +63,6 @@ pub fn main() {
       fn(req: request.Request(wisp.Connection)) {
         let ctx =
           context.Context(
-            db: db,
             config: cfg,
             request_id: uuid.v7(),
             started_at: erlang.perf_counter_ns(),
@@ -72,7 +71,7 @@ pub fn main() {
             client_info: get_client_info(req, conn.body),
           )
 
-        handle_request(ctx, log_worker_subject, req)
+        handle_request(db, ctx, log_worker_subject, req)
       },
       cfg.encryption_key,
     )(conn)
@@ -96,6 +95,7 @@ pub fn main() {
 }
 
 pub fn handle_request(
+  db: pog.Connection,
   ctx: context.Context,
   log_worker_subject: process.Subject(log_worker.Message),
   req: wisp.Request,
@@ -106,7 +106,7 @@ pub fn handle_request(
     //Get, [] -> home_page.home_page()
     http.Get, _ -> serve_spa_page()
     http.Post, ["api", "mux"] ->
-      api.handle_request(ctx, log_worker_subject, req)
+      api.handle_request(db, ctx, log_worker_subject, req)
     _, _ -> wisp.not_found()
   }
 }

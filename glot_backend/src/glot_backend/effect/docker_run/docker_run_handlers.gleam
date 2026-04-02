@@ -15,7 +15,7 @@ pub type DockerRunHandlers {
   )
 }
 
-pub fn from_context(_ctx: context.Context) -> DockerRunHandlers {
+pub fn new() -> DockerRunHandlers {
   DockerRunHandlers(run_code: run_code)
 }
 

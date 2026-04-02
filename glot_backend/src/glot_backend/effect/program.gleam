@@ -77,7 +77,10 @@ fn map_effect(
       program_types.SnippetEffect(snippet.map(effect, f))
     program_types.DockerRunEffect(effect) ->
       program_types.DockerRunEffect(docker_run.map(effect, f))
-    program_types.TransactionEffect(sub_effects, next) ->
-      program_types.TransactionEffect(sub_effects, fn(value) { f(next(value)) })
+    program_types.TransactionEffect(run) ->
+      program_types.TransactionEffect(fn(db, ctx) {
+        let #(value, state) = run(db, ctx)
+        #(f(value), state)
+      })
   }
 }

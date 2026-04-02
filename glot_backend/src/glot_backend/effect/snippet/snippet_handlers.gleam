@@ -2,7 +2,6 @@ import gleam/json
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/context
 import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
@@ -23,10 +22,10 @@ pub type SnippetHandlers {
   )
 }
 
-pub fn from_context(ctx: context.Context) -> SnippetHandlers {
+pub fn new(db: pog.Connection) -> SnippetHandlers {
   SnippetHandlers(
     insert_snippet: fn(id, user_id, snippet, created_at, updated_at) {
-      insert_snippet(ctx.db, id, user_id, snippet, created_at, updated_at)
+      insert_snippet(db, id, user_id, snippet, created_at, updated_at)
     },
   )
 }

@@ -4,7 +4,6 @@ import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action
-import glot_backend/context
 import glot_backend/crypto_helpers
 import glot_backend/db_helpers
 import glot_backend/effect/error
@@ -19,7 +18,7 @@ pub type CoreHandlers {
   CoreHandlers(
     new_token: fn(Int) -> String,
     system_time: fn() -> Timestamp,
-    uuid_v7: fn() -> Uuid,
+    uuid_v7: fn(Timestamp) -> Uuid,
     send_email: fn(email_message.EmailMessage) ->
       Result(Nil, error.SendEmailError),
     count_user_actions_by_ip: fn(
@@ -45,21 +44,21 @@ pub type CoreHandlers {
   )
 }
 
-pub fn from_context(ctx: context.Context) -> CoreHandlers {
+pub fn new(db: pog.Connection) -> CoreHandlers {
   CoreHandlers(
     new_token: new_token,
     system_time: system_time,
-    uuid_v7: fn() { uuid_v7(ctx) },
+    uuid_v7: uuid_v7,
     send_email: send_email,
     count_user_actions_by_ip: fn(windows, ip, action) {
-      count_user_actions_by_ip(ctx, ip, action, windows)
+      count_user_actions_by_ip(db, ip, action, windows)
     },
     count_user_actions_by_user: fn(windows, user_id, action) {
-      count_user_actions_by_user(ctx, user_id, action, windows)
+      count_user_actions_by_user(db, user_id, action, windows)
     },
     insert_user_action: fn(id, request_id, action, ip, user_id, created_at) {
       insert_user_action(
-        ctx.db,
+        db,
         id,
         request_id,
         action,
@@ -79,8 +78,8 @@ pub fn system_time() -> Timestamp {
   timestamp.system_time()
 }
 
-pub fn uuid_v7(ctx: context.Context) -> Uuid {
-  uuid_helpers.v7(ctx.timestamp)
+pub fn uuid_v7(now: Timestamp) -> Uuid {
+  uuid_helpers.v7(now)
 }
 
 pub fn send_email(
@@ -90,13 +89,13 @@ pub fn send_email(
 }
 
 pub fn count_user_actions_by_ip(
-  ctx: context.Context,
+  db: pog.Connection,
   ip: option.Option(String),
   action: api_action.ApiAction,
   windows: List(rate_limit.Window),
 ) -> Result(List(rate_limit.WindowCount), error.DbQueryError) {
   db_helpers.query(
-    ctx.db,
+    db,
     sql.count_user_actions_by_ip(
       ip: ip,
       action: api_action.to_db_string(action),
@@ -109,13 +108,13 @@ pub fn count_user_actions_by_ip(
 }
 
 pub fn count_user_actions_by_user(
-  ctx: context.Context,
+  db: pog.Connection,
   user_id: option.Option(Uuid),
   action: api_action.ApiAction,
   windows: List(rate_limit.Window),
 ) -> Result(List(rate_limit.WindowCount), error.DbQueryError) {
   db_helpers.query(
-    ctx.db,
+    db,
     sql.count_user_actions_by_user(
       user_id: option.map(user_id, uuid.to_bit_array),
       action: api_action.to_db_string(action),

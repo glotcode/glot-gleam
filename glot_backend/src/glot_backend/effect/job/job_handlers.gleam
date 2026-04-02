@@ -2,7 +2,6 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/context
 import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/job
@@ -20,25 +19,25 @@ pub type JobHandlers {
   )
 }
 
-pub fn from_context(ctx: context.Context) -> JobHandlers {
+pub fn new(db: pog.Connection) -> JobHandlers {
   JobHandlers(
     get_next_job: fn(now, pending_status, running_status) {
-      get_next_job(ctx, now, pending_status, running_status)
+      get_next_job(db, now, pending_status, running_status)
     },
-    insert_job: fn(job) { insert_job(ctx.db, job) },
-    update_job: fn(job) { update_job(ctx.db, job) },
+    insert_job: fn(job) { insert_job(db, job) },
+    update_job: fn(job) { update_job(db, job) },
   )
 }
 
 pub fn get_next_job(
-  ctx: context.Context,
+  db: pog.Connection,
   now: Timestamp,
   pending_status: job.Status,
   running_status: job.Status,
 ) -> Result(option.Option(job.Job), error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
-      ctx.db,
+      db,
       sql.get_next_job(
         job.status_to_string(running_status),
         option.Some(now),

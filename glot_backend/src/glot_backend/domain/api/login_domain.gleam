@@ -65,7 +65,7 @@ pub fn login(
   use session_token <- program.and_then(core_effect.new_token(32))
 
   use _ <- program.and_then(
-    transaction_effect.run([
+    transaction_effect.run_all([
       auth_effect.update_login_token(
         user_id: user.id,
         token: matching_token.token,

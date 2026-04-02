@@ -65,7 +65,7 @@ pub fn send_login_token(
       used_at: option.None,
     )
 
-  transaction_effect.run(
+  transaction_effect.run_all(
     [
       maybe_insert_user_cmd,
       option.Some(insert_token_cmd),

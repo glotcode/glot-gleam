@@ -1,8 +1,8 @@
 import gleam/option
+import gleam/regexp.{type Regexp}
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/context
 import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
@@ -15,11 +15,11 @@ import youid/uuid.{type Uuid}
 
 pub type AuthHandlers {
   AuthHandlers(
-    get_user_by_email: fn(email.Email) ->
+    get_user_by_email: fn(Regexp, email.Email) ->
       Result(option.Option(user.User), error.DbQueryError),
     list_login_tokens_by_user: fn(Uuid, Int) ->
       Result(List(auth_core.LoginToken), error.DbQueryError),
-    get_session_by_token: fn(String) ->
+    get_session_by_token: fn(Regexp, String) ->
       Result(option.Option(auth_core.Session), error.DbQueryError),
     insert_user: fn(Uuid, String, Timestamp) -> Result(Nil, error.DbCommandError),
     insert_session: fn(
@@ -47,47 +47,46 @@ pub type AuthHandlers {
   )
 }
 
-pub fn from_context(ctx: context.Context) -> AuthHandlers {
+pub fn new(db: pog.Connection) -> AuthHandlers {
   AuthHandlers(
-    get_user_by_email: fn(email) { get_user_by_email(ctx, email) },
-    list_login_tokens_by_user: fn(user_id, limit) {
-      list_login_tokens_by_user(ctx, user_id, limit)
+    get_user_by_email: fn(is_email, email) { get_user_by_email(db, is_email, email) },
+    list_login_tokens_by_user: fn(user_id, limit) { list_login_tokens_by_user(db, user_id, limit) },
+    get_session_by_token: fn(is_email, token) {
+      get_session_by_token(db, is_email, token)
     },
-    get_session_by_token: fn(token) { get_session_by_token(ctx, token) },
-    insert_user: fn(id, email, created_at) {
-      insert_user(ctx.db, id, email, created_at)
-    },
+    insert_user: fn(id, email, created_at) { insert_user(db, id, email, created_at) },
     insert_session: fn(id, user_id, token, ip, user_agent, created_at) {
-      insert_session(ctx.db, id, user_id, token, ip, user_agent, created_at)
+      insert_session(db, id, user_id, token, ip, user_agent, created_at)
     },
     insert_login_token: fn(id, user_id, token, created_at, used_at) {
-      insert_login_token(ctx.db, id, user_id, token, created_at, used_at)
+      insert_login_token(db, id, user_id, token, created_at, used_at)
     },
     update_login_token: fn(user_id, token, created_at, used_at, id) {
-      update_login_token(ctx.db, user_id, token, created_at, used_at, id)
+      update_login_token(db, user_id, token, created_at, used_at, id)
     },
   )
 }
 
 pub fn get_user_by_email(
-  ctx: context.Context,
+  db: pog.Connection,
+  is_email: Regexp,
   user_email: email.Email,
 ) -> Result(option.Option(user.User), error.DbQueryError) {
   db_helpers.query(
-    ctx.db,
+    db,
     sql.get_user_by_email(email.to_string(user_email)),
     fn(err) { error.DbQueryError(string.inspect(err)) },
   )
-  |> result.try(fn(returned) { user_from_rows(ctx, returned.rows) })
+  |> result.try(fn(returned) { user_from_rows(is_email, returned.rows) })
 }
 
 pub fn list_login_tokens_by_user(
-  ctx: context.Context,
+  db: pog.Connection,
   user_id: Uuid,
   limit: Int,
 ) -> Result(List(auth_core.LoginToken), error.DbQueryError) {
   db_helpers.query(
-    ctx.db,
+    db,
     sql.list_login_tokens_by_user(uuid.to_bit_array(user_id), limit),
     fn(err) { error.DbQueryError(string.inspect(err)) },
   )
@@ -95,13 +94,14 @@ pub fn list_login_tokens_by_user(
 }
 
 pub fn get_session_by_token(
-  ctx: context.Context,
+  db: pog.Connection,
+  is_email: Regexp,
   token: String,
 ) -> Result(option.Option(auth_core.Session), error.DbQueryError) {
-  db_helpers.query(ctx.db, sql.get_session_by_token(token), fn(err) {
+  db_helpers.query(db, sql.get_session_by_token(token), fn(err) {
     error.DbQueryError(string.inspect(err))
   })
-  |> result.try(fn(returned) { session_from_rows(ctx, returned.rows) })
+  |> result.try(fn(returned) { session_from_rows(is_email, returned.rows) })
 }
 
 pub fn insert_user(
@@ -195,21 +195,21 @@ pub fn update_login_token(
 }
 
 fn user_from_rows(
-  ctx: context.Context,
+  is_email: Regexp,
   rows: List(sql.GetUserByEmail),
 ) -> Result(option.Option(user.User), error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
-    [first] -> user_from_row(ctx, first) |> result.map(option.Some)
+    [first] -> user_from_row(is_email, first) |> result.map(option.Some)
     _ -> Error(error.DbQueryError("Expected at most one user row"))
   }
 }
 
 fn user_from_row(
-  ctx: context.Context,
+  is_email: Regexp,
   row: sql.GetUserByEmail,
 ) -> Result(user.User, error.DbQueryError) {
-  case email.from_string(ctx.regexes.is_email, row.email) {
+  case email.from_string(is_email, row.email) {
     option.Some(valid_email) ->
       Ok(user.User(
         id: uuid_helpers.from_bit_array(row.id),
@@ -249,21 +249,21 @@ fn login_token_from_row(
 }
 
 fn session_from_rows(
-  ctx: context.Context,
+  is_email: Regexp,
   rows: List(sql.GetSessionByToken),
 ) -> Result(option.Option(auth_core.Session), error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
-    [first] -> session_from_row(ctx, first) |> result.map(option.Some)
+    [first] -> session_from_row(is_email, first) |> result.map(option.Some)
     _ -> Error(error.DbQueryError("Expected at most one session row"))
   }
 }
 
 fn session_from_row(
-  ctx: context.Context,
+  is_email: Regexp,
   row: sql.GetSessionByToken,
 ) -> Result(auth_core.Session, error.DbQueryError) {
-  case email.from_string(ctx.regexes.is_email, row.user_email) {
+  case email.from_string(is_email, row.user_email) {
     option.Some(valid_email) ->
       Ok(auth_core.Session(
         id: uuid_helpers.from_bit_array(row.id),

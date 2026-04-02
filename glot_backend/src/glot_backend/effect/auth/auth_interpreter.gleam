@@ -1,3 +1,4 @@
+import glot_backend/context
 import glot_backend/effect/auth/auth
 import glot_backend/effect/program_types
 import glot_backend/effect/effect_trace
@@ -8,6 +9,7 @@ import glot_backend/erlang
 
 pub fn run(
   effect: auth.AuthEffect(program_types.Program(a)),
+  ctx: context.Context,
   handlers: handlers.Handlers,
   state: program_state.State,
   continue: fn(program_types.Program(a), program_state.State) ->
@@ -16,7 +18,7 @@ pub fn run(
   case effect {
     auth.GetUserByEmail(email:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.get_user_by_email(email)
+      let result = handlers.auth.get_user_by_email(ctx.regexes.is_email, email)
       case result {
         Ok(value) ->
           continue(
@@ -66,7 +68,7 @@ pub fn run(
     }
     auth.GetSessionByToken(token:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.get_session_by_token(token)
+      let result = handlers.auth.get_session_by_token(ctx.regexes.is_email, token)
       case result {
         Ok(value) ->
           continue(

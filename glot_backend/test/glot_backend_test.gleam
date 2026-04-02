@@ -1,7 +1,10 @@
+import gleam/dict
 import gleam/option
+import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/api_action
+import glot_backend/context
 import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/core/core
 import glot_backend/effect/core/core_effect
@@ -13,8 +16,6 @@ import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
-import glot_backend/effect/program_state
-import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/job
 import glot_backend/log
@@ -35,14 +36,15 @@ pub fn hello_world_test() {
 
 pub fn measurement_aggregation_test() {
   let handlers = test_handlers()
-  let runtime = test_runtime()
+  let ctx = test_context()
   let measured_effect = {
     use _ <- program.and_then(core_effect.info(log.new()))
     use _ <- program.and_then(core_effect.info(log.new()))
     program.succeed("ok")
   }
 
-  let #(run_result, state) = interpreter.run(measured_effect, handlers, runtime)
+  let #(run_result, state) =
+    interpreter.run(measured_effect, handlers, option.None, ctx)
 
   assert run_result == Ok("ok")
   let assert [
@@ -63,12 +65,13 @@ pub fn measurement_aggregation_test() {
 
 pub fn measures_effects_in_success_test() {
   let handlers = test_handlers()
-  let runtime = test_runtime()
+  let ctx = test_context()
   let measured_effect = {
     use _ <- program.and_then(core_effect.new_token(5))
     program.succeed("ok")
   }
-  let #(run_result, state) = interpreter.run(measured_effect, handlers, runtime)
+  let #(run_result, state) =
+    interpreter.run(measured_effect, handlers, option.None, ctx)
 
   assert run_result == Ok("ok")
   let assert [
@@ -83,12 +86,13 @@ pub fn measures_effects_in_success_test() {
 
 pub fn measures_effects_in_error_test() {
   let handlers = test_handlers()
-  let runtime = test_runtime()
+  let ctx = test_context()
   let failing_effect = {
     use _ <- program.and_then(core_effect.new_token(5))
     program.fail(error.EmailInvalidError("bad"))
   }
-  let #(run_result, state) = interpreter.run(failing_effect, handlers, runtime)
+  let #(run_result, state) =
+    interpreter.run(failing_effect, handlers, option.None, ctx)
 
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
@@ -106,7 +110,7 @@ fn test_handlers() -> handlers.Handlers {
     core: core_handlers.CoreHandlers(
       new_token: fn(_) { "random" },
       system_time: timestamp.system_time,
-      uuid_v7: fn() { uuid.nil },
+      uuid_v7: fn(_) { uuid.nil },
       send_email: fn(_) {
         Error(error.InternalSendEmailError("unused in test"))
       },
@@ -134,9 +138,9 @@ fn test_handlers() -> handlers.Handlers {
       update_job: fn(_) { Ok(Nil) },
     ),
     auth: auth_handlers.AuthHandlers(
-      get_user_by_email: fn(_) { Ok(option.None) },
+      get_user_by_email: fn(_, _) { Ok(option.None) },
       list_login_tokens_by_user: fn(_, _) { Ok([]) },
-      get_session_by_token: fn(_) { Ok(option.None) },
+      get_session_by_token: fn(_, _) { Ok(option.None) },
       insert_user: fn(_, _, _) { Ok(Nil) },
       insert_session: fn(_, _, _, _, _, _) { Ok(Nil) },
       insert_login_token: fn(_, _, _, _, _) { Ok(Nil) },
@@ -153,6 +157,40 @@ fn test_handlers() -> handlers.Handlers {
   )
 }
 
-fn test_runtime() -> runtime.Runtime {
-  runtime.from_runner(fn(_) { #(Ok(Nil), program_state.new_state()) })
+fn test_context() -> context.Context {
+  let assert Ok(is_email) = regexp.from_string(".*")
+
+  context.Context(
+    config: context.Config(
+      encryption_key: "test",
+      static_base_path: "/tmp",
+      postgres: context.PostgresConfig(
+        host: "localhost",
+        port: 5432,
+        db: "test",
+        user: "test",
+        pass: "test",
+        pool_size: 1,
+      ),
+      docker_run: context.DockerRunConfig(
+        base_url: "http://localhost",
+        access_token: "test",
+      ),
+      auth: context.AuthConfig(
+        login_token_max_age: 900,
+        session_token_max_age: 86400,
+        session_cookie_max_age: 86400,
+      ),
+      rate_limits: dict.new(),
+    ),
+    regexes: context.Regexes(is_email: is_email),
+    request_id: uuid.nil,
+    started_at: 0,
+    timestamp: timestamp.system_time(),
+    client_info: context.ClientInfo(
+      session_token: option.None,
+      ip: option.None,
+      user_agent: option.None,
+    ),
+  )
 }

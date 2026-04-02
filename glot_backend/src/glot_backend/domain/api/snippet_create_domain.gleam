@@ -40,7 +40,7 @@ pub fn snippet_create(
 
   use snippet_id <- program.and_then(core_effect.uuid_v7())
   use _ <- program.and_then(
-    transaction_effect.run([
+    transaction_effect.run_all([
       snippet_effect.insert(
         id: snippet_id,
         user_id: session.user.id,

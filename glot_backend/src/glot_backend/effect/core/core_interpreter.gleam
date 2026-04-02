@@ -1,3 +1,4 @@
+import glot_backend/context
 import glot_backend/effect/core/core
 import glot_backend/effect/program_types
 import glot_backend/effect/effect_trace
@@ -9,6 +10,7 @@ import glot_backend/log
 
 pub fn run(
   effect: core.CoreEffect(program_types.Program(a)),
+  ctx: context.Context,
   handlers: handlers.Handlers,
   state: program_state.State,
   continue: fn(program_types.Program(a), program_state.State) ->
@@ -43,7 +45,7 @@ pub fn run(
     }
     core.UuidV7(next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.core.uuid_v7()
+      let value = handlers.core.uuid_v7(ctx.timestamp)
       continue(
         next(value),
         program_state.add_effect_measurement(
