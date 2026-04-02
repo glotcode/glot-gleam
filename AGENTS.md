@@ -14,7 +14,10 @@ Repository instructions for future agent sessions.
 - `glot_backend/program/handlers.gleam` is the boundary where SQL rows should be converted into domain types.
 - Keep generated SQL row types confined to the DB layer when possible.
 - Never import `glot_backend/sql` from domain modules. Domain modules should not depend on generated SQL row types or query-layer types; convert at the DB/program handler boundary first.
-- Imports should only import the type that matches the module name. Example: from `glot_backend/api_action`, only import `ApiAction`; do not import constructors like `RunAction` or `SendLoginTokenAction` directly.
+- For imports from domain modules, only import the main type from `.{type ...}` imports. Example: from `glot_core/api_action`, import `ApiAction`; do not import constructors like `RunAction` or `SendLoginTokenAction` directly.
+- In type positions, prefer the directly imported main type, e.g. `import glot_core/api_action.{type ApiAction}` and then `action: ApiAction`.
+- In value positions, constructors and module functions should still be referenced through the module namespace, e.g. `api_action.LoginAction`, `api_action.to_string(action)`, or `user_action.UserAction(...)`.
+- If a file needs both type annotations and module-qualified values from the same module, prefer keeping the `.{type ...}` import and also use the module namespace if Gleam requires it for value references.
 - Avoid destructuring nested structures in patterns unless it is clearly simpler. Prefer simple bindings and read nested fields directly where that improves readability. Avoid introducing `as c`-style whole-value aliases unless they actually make the code clearer.
 
 ## Generated Files

@@ -2,7 +2,7 @@ import gleam/dynamic
 import gleam/list
 import gleam/option
 import gleam/time/timestamp
-import glot_backend/api_action
+import glot_core/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect/auth/auth_effect

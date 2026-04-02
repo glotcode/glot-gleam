@@ -1,12 +1,11 @@
-import gleam/option
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/api_action.{type ApiAction}
 import glot_backend/effect/core/core
 import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/email_message
 import glot_backend/log
 import glot_core/rate_limit
+import glot_core/user_action
 import youid/uuid.{type Uuid}
 
 pub fn new_token(length: Int) -> program_types.Program(String) {
@@ -45,54 +44,23 @@ pub fn send_email(
   )
 }
 
-pub fn db_count_user_actions_by_ip(
-  windows windows: List(rate_limit.Window),
-  ip ip: option.Option(String),
-  action action: ApiAction,
+pub fn db_count_user_actions(
+  filter filter: user_action.UserActionFilter,
 ) -> program_types.Program(List(rate_limit.WindowCount)) {
   program_types.Impure(
-    program_types.CoreEffect(core.CountUserActionsByIp(
-      windows: windows,
-      ip: ip,
-      action: action,
-      next: program_types.Pure,
-    )),
-  )
-}
-
-pub fn db_count_user_actions_by_user(
-  windows windows: List(rate_limit.Window),
-  user_id user_id: option.Option(Uuid),
-  action action: ApiAction,
-) -> program_types.Program(List(rate_limit.WindowCount)) {
-  program_types.Impure(
-    program_types.CoreEffect(core.CountUserActionsByUser(
-      windows: windows,
-      user_id: user_id,
-      action: action,
-      next: program_types.Pure,
-    )),
+    program_types.CoreEffect(
+      core.CountUserActions(filter: filter, next: program_types.Pure),
+    ),
   )
 }
 
 pub fn insert_user_action(
-  id id: Uuid,
-  request_id request_id: Uuid,
-  action action: ApiAction,
-  ip ip: option.Option(String),
-  user_id user_id: option.Option(Uuid),
-  created_at created_at: Timestamp,
+  user_action user_action: user_action.UserAction,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.CoreEffect(core.InsertUserAction(
-      id: id,
-      request_id: request_id,
-      action: action,
-      ip: ip,
-      user_id: user_id,
-      created_at: created_at,
-      next: command_next,
-    )),
+    program_types.CoreEffect(
+      core.InsertUserAction(user_action: user_action, next: command_next),
+    ),
   )
 }
 

@@ -3,13 +3,14 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/api_action
+import glot_core/api_action
 import glot_backend/crypto_helpers
 import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/email_message
 import glot_backend/sql
 import glot_core/rate_limit
+import glot_core/user_action
 import glot_core/uuid_helpers
 import pog
 import youid/uuid.{type Uuid}
@@ -21,26 +22,9 @@ pub type CoreHandlers {
     uuid_v7: fn(Timestamp) -> Uuid,
     send_email: fn(email_message.EmailMessage) ->
       Result(Nil, error.SendEmailError),
-    count_user_actions_by_ip: fn(
-      List(rate_limit.Window),
-      option.Option(String),
-      api_action.ApiAction,
-    ) ->
+    count_user_actions: fn(user_action.UserActionFilter) ->
       Result(List(rate_limit.WindowCount), error.DbQueryError),
-    count_user_actions_by_user: fn(
-      List(rate_limit.Window),
-      option.Option(Uuid),
-      api_action.ApiAction,
-    ) ->
-      Result(List(rate_limit.WindowCount), error.DbQueryError),
-    insert_user_action: fn(
-      Uuid,
-      Uuid,
-      api_action.ApiAction,
-      option.Option(String),
-      option.Option(Uuid),
-      Timestamp,
-    ) -> Result(Nil, error.DbCommandError),
+    insert_user_action: fn(user_action.UserAction) -> Result(Nil, error.DbCommandError),
   )
 }
 
@@ -50,22 +34,11 @@ pub fn new(db: pog.Connection) -> CoreHandlers {
     system_time: system_time,
     uuid_v7: uuid_v7,
     send_email: send_email,
-    count_user_actions_by_ip: fn(windows, ip, action) {
-      count_user_actions_by_ip(db, ip, action, windows)
+    count_user_actions: fn(filter) {
+      count_user_actions(db, filter)
     },
-    count_user_actions_by_user: fn(windows, user_id, action) {
-      count_user_actions_by_user(db, user_id, action, windows)
-    },
-    insert_user_action: fn(id, request_id, action, ip, user_id, created_at) {
-      insert_user_action(
-        db,
-        id,
-        request_id,
-        action,
-        ip,
-        user_id,
-        created_at,
-      )
+    insert_user_action: fn(user_action) {
+      insert_user_action(db, user_action)
     },
   )
 }
@@ -88,64 +61,53 @@ pub fn send_email(
   Error(error.InternalSendEmailError("send_email not implemented"))
 }
 
-pub fn count_user_actions_by_ip(
+pub fn count_user_actions(
   db: pog.Connection,
-  ip: option.Option(String),
-  action: api_action.ApiAction,
-  windows: List(rate_limit.Window),
+  filter: user_action.UserActionFilter,
 ) -> Result(List(rate_limit.WindowCount), error.DbQueryError) {
-  db_helpers.query(
-    db,
-    sql.count_user_actions_by_ip(
-      ip: ip,
-      action: api_action.to_db_string(action),
-      windows: json.array(windows, of: rate_limit.encode_window)
-        |> json.to_string(),
-    ),
-    fn(err) { error.DbQueryError(string.inspect(err)) },
-  )
-  |> result.try(fn(returned) { window_counts_from_ip_rows(returned.rows) })
-}
-
-pub fn count_user_actions_by_user(
-  db: pog.Connection,
-  user_id: option.Option(Uuid),
-  action: api_action.ApiAction,
-  windows: List(rate_limit.Window),
-) -> Result(List(rate_limit.WindowCount), error.DbQueryError) {
-  db_helpers.query(
-    db,
-    sql.count_user_actions_by_user(
-      user_id: option.map(user_id, uuid.to_bit_array),
-      action: api_action.to_db_string(action),
-      windows: json.array(windows, of: rate_limit.encode_window)
-        |> json.to_string(),
-    ),
-    fn(err) { error.DbQueryError(string.inspect(err)) },
-  )
-  |> result.try(fn(returned) { window_counts_from_user_rows(returned.rows) })
+  case filter.count_by {
+    user_action.CountByIp(ip) ->
+      db_helpers.query(
+        db,
+        sql.count_user_actions_by_ip(
+          ip: option.Some(ip),
+          action: api_action.to_db_string(filter.action),
+          windows: json.array(filter.windows, of: rate_limit.encode_window)
+            |> json.to_string(),
+        ),
+        fn(err) { error.DbQueryError(string.inspect(err)) },
+      )
+      |> result.try(fn(returned) { window_counts_from_ip_rows(returned.rows) })
+    user_action.CountByUser(user_id) ->
+      db_helpers.query(
+        db,
+        sql.count_user_actions_by_user(
+          user_id: option.Some(uuid.to_bit_array(user_id)),
+          action: api_action.to_db_string(filter.action),
+          windows: json.array(filter.windows, of: rate_limit.encode_window)
+            |> json.to_string(),
+        ),
+        fn(err) { error.DbQueryError(string.inspect(err)) },
+      )
+      |> result.try(fn(returned) { window_counts_from_user_rows(returned.rows) })
+  }
 }
 
 pub fn insert_user_action(
   db: pog.Connection,
-  id: Uuid,
-  request_id: Uuid,
-  action: api_action.ApiAction,
-  ip: option.Option(String),
-  user_id: option.Option(Uuid),
-  created_at: Timestamp,
+  user_action: user_action.UserAction,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
     sql.insert_user_action(
-      id: uuid.to_bit_array(id),
-      request_id: uuid.to_bit_array(request_id),
-      action: api_action.to_db_string(action),
-      ip: ip,
-      user_id: option.map(user_id, uuid.to_bit_array),
-      created_at: created_at,
+      id: uuid.to_bit_array(user_action.id),
+      request_id: uuid.to_bit_array(user_action.request_id),
+      action: api_action.to_db_string(user_action.action),
+      ip: user_action.ip,
+      user_id: option.map(user_action.user_id, uuid.to_bit_array),
+      created_at: user_action.created_at,
     ),
     to_error,
   )

@@ -7,23 +7,23 @@ import gleam/int
 import gleam/json
 import gleam/option
 import gleam/string
-import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
 import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
-import glot_backend/effect/program_types
+import glot_backend/effect/core/core_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
-import glot_backend/effect/core/core_handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
 import glot_backend/effect/program_state
+import glot_backend/effect/program_types
 import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
+import glot_core/api_action.{type ApiAction}
 import glot_core/run
 import pog
 import wisp
@@ -254,6 +254,8 @@ fn effect_error_to_message(err: error.Error) -> String {
       "session_error:session_not_found"
     error.SessionError(error.SessionExpiredError) ->
       "session_error:session_expired"
+    error.ClientInfoError(error.MissingUserIdAndIpError) ->
+      "client_info_error:missing_user_id_and_ip"
     error.RunError(error.PublicRunRequestError(message: message)) ->
       "run_error_public:" <> message
     error.RunError(error.InternalRunRequestError(message: message)) ->
@@ -345,6 +347,13 @@ fn error_to_response(error: error.Error) -> wisp.Response {
         error.SessionExpiredError -> {
           wisp.log_error("Session error: session expired")
           error_response("session_error", "Session expired")
+        }
+      }
+    error.ClientInfoError(client_info_error) ->
+      case client_info_error {
+        error.MissingUserIdAndIpError -> {
+          wisp.log_error("Client info error: missing user_id and ip")
+          error_response("client_info_error", "Missing user_id and ip")
         }
       }
     error.RunError(run_request_error) ->

@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/dynamic/decode
+import gleam/option
 import gleam/result
 import glot_backend/effect/auth/auth
 import glot_backend/effect/core/core
@@ -40,6 +41,16 @@ pub fn from_result(value: Result(a, error.Error)) -> program_types.Program(a) {
   case value {
     Ok(v) -> program_types.Pure(v)
     Error(err) -> program_types.Fail(err)
+  }
+}
+
+pub fn from_option(
+  value: option.Option(a),
+  err: error.Error,
+) -> program_types.Program(a) {
+  case value {
+    option.Some(v) -> program_types.Pure(v)
+    option.None -> program_types.Fail(err)
   }
 }
 

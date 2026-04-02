@@ -85,16 +85,16 @@ pub fn run(
         ),
       )
     }
-    core.CountUserActionsByIp(windows:, ip:, action:, next:) -> {
+    core.CountUserActions(filter:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.core.count_user_actions_by_ip(windows, ip, action)
+      let result = handlers.core.count_user_actions(filter)
       case result {
         Ok(value) ->
           continue(
             next(value),
             program_state.add_effect_measurement(
               state,
-              effect_trace.CoreEffectName(core.CountUserActionsByIpEffectName),
+              effect_trace.CoreEffectName(core.CountUserActionsEffectName),
               effect_trace.DbReadEffectCategory,
               started_at,
             ),
@@ -103,58 +103,16 @@ pub fn run(
           Error(error.QueryError(error)),
           program_state.add_effect_measurement(
             state,
-            effect_trace.CoreEffectName(core.CountUserActionsByIpEffectName),
+            effect_trace.CoreEffectName(core.CountUserActionsEffectName),
             effect_trace.DbReadEffectCategory,
             started_at,
           ),
         )
       }
     }
-    core.CountUserActionsByUser(windows:, user_id:, action:, next:) -> {
+    core.InsertUserAction(user_action: user_action, next: next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.core.count_user_actions_by_user(windows, user_id, action)
-      case result {
-        Ok(value) ->
-          continue(
-            next(value),
-            program_state.add_effect_measurement(
-              state,
-              effect_trace.CoreEffectName(core.CountUserActionsByUserEffectName),
-              effect_trace.DbReadEffectCategory,
-              started_at,
-            ),
-          )
-        Error(error) -> #(
-          Error(error.QueryError(error)),
-          program_state.add_effect_measurement(
-            state,
-            effect_trace.CoreEffectName(core.CountUserActionsByUserEffectName),
-            effect_trace.DbReadEffectCategory,
-            started_at,
-          ),
-        )
-      }
-    }
-    core.InsertUserAction(
-      id: id,
-      request_id: request_id,
-      action: action,
-      ip: ip,
-      user_id: user_id,
-      created_at: created_at,
-      next: next,
-    ) -> {
-      let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.core.insert_user_action(
-          id,
-          request_id,
-          action,
-          ip,
-          user_id,
-          created_at,
-        )
+      let result = handlers.core.insert_user_action(user_action)
       continue(
         next(result),
         program_state.add_effect_measurement(

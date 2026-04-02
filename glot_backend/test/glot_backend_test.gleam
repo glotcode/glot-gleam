@@ -3,7 +3,6 @@ import gleam/option
 import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
-import glot_backend/api_action
 import glot_backend/context
 import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/core/core
@@ -19,7 +18,6 @@ import glot_backend/effect/program
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/job
 import glot_backend/log
-import glot_core/rate_limit
 import youid/uuid
 
 pub fn main() -> Nil {
@@ -114,21 +112,10 @@ fn test_handlers() -> handlers.Handlers {
       send_email: fn(_) {
         Error(error.InternalSendEmailError("unused in test"))
       },
-      count_user_actions_by_ip: fn(
-        _: List(rate_limit.Window),
-        _: option.Option(String),
-        _: api_action.ApiAction,
-      ) {
+      count_user_actions: fn(_) {
         Ok([])
       },
-      count_user_actions_by_user: fn(
-        _: List(rate_limit.Window),
-        _: option.Option(uuid.Uuid),
-        _: api_action.ApiAction,
-      ) {
-        Ok([])
-      },
-      insert_user_action: fn(_, _, _, _, _, _) { Ok(Nil) },
+      insert_user_action: fn(_) { Ok(Nil) },
     ),
     job: job_handlers.JobHandlers(
       get_next_job: fn(_: timestamp.Timestamp, _: job.Status) {

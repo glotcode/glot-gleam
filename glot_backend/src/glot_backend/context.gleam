@@ -5,7 +5,7 @@ import gleam/option.{type Option}
 import gleam/regexp
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/api_action
+import glot_core/api_action
 import glot_core/rate_limit.{type RateLimit}
 import youid/uuid.{type Uuid}
 

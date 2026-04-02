@@ -35,6 +35,10 @@ pub type SessionError {
   SessionExpiredError
 }
 
+pub type ClientInfoError {
+  MissingUserIdAndIpError
+}
+
 pub type Error {
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
@@ -46,4 +50,5 @@ pub type Error {
   LoginError(LoginError)
   SendEmailError(SendEmailError)
   SessionError(SessionError)
+  ClientInfoError(ClientInfoError)
 }

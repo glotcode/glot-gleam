@@ -1,14 +1,16 @@
 import gleam/dict
 import gleam/list
 import gleam/option.{type Option}
-import glot_backend/api_action.{type ApiAction}
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/program
+import glot_backend/effect/program_types
 import glot_backend/log
+import glot_core/api_action.{type ApiAction}
 import glot_core/rate_limit
+import glot_core/user_action
 import youid/uuid.{type Uuid}
 
 pub fn enforce(
@@ -29,23 +31,18 @@ pub fn enforce(
       ),
     ),
   ))
+  use filter <- program.and_then(program.from_option(
+    user_action_filter(
+      action_rate_limits: action_rate_limits,
+      timestamp: ctx.timestamp,
+      user_id: user_id,
+      ip: ctx.client_info.ip,
+      action: action,
+    ),
+    error.ClientInfoError(error.MissingUserIdAndIpError),
+  ))
 
-  let counts_effect = case user_id {
-    option.Some(user_id) ->
-      core_effect.db_count_user_actions_by_user(
-        windows: rate_limit.to_windows(action_rate_limits, ctx.timestamp),
-        user_id: option.Some(user_id),
-        action: action,
-      )
-    option.None ->
-      core_effect.db_count_user_actions_by_ip(
-        windows: rate_limit.to_windows(action_rate_limits, ctx.timestamp),
-        ip: ctx.client_info.ip,
-        action: action,
-      )
-  }
-
-  use counts <- program.and_then(counts_effect)
+  use counts <- program.and_then(core_effect.db_count_user_actions(filter))
   use _ <- program.and_then(
     check_rate_limit(action_rate_limits, counts)
     |> program.from_result(),
@@ -53,15 +50,41 @@ pub fn enforce(
   use id <- program.and_then(core_effect.uuid_v7())
 
   program.succeed(
-    core_effect.insert_user_action(
+    core_effect.insert_user_action(user_action.UserAction(
       id: id,
       request_id: ctx.request_id,
       action: action,
       ip: ctx.client_info.ip,
       user_id: user_id,
       created_at: ctx.timestamp,
-    ),
+    )),
   )
+}
+
+fn user_action_filter(
+  action_rate_limits action_rate_limits: List(rate_limit.RateLimit),
+  timestamp timestamp: Timestamp,
+  user_id user_id: Option(Uuid),
+  ip ip: Option(String),
+  action action: ApiAction,
+) -> Option(user_action.UserActionFilter) {
+  let windows = rate_limit.to_windows(action_rate_limits, timestamp)
+
+  case user_id, ip {
+    option.Some(user_id), _ ->
+      option.Some(user_action.UserActionFilter(
+        windows: windows,
+        action: action,
+        count_by: user_action.CountByUser(user_id),
+      ))
+    option.None, option.Some(ip) ->
+      option.Some(user_action.UserActionFilter(
+        windows: windows,
+        action: action,
+        count_by: user_action.CountByIp(ip),
+      ))
+    option.None, option.None -> option.None
+  }
 }
 
 fn lookup_rate_limits(
