@@ -4,7 +4,7 @@ import glot_backend/effect/core/core_interpreter
 import glot_backend/effect/docker_run/docker_run_interpreter
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/handlers_types
+import glot_backend/effect/handlers
 import glot_backend/effect/job/job_interpreter
 import glot_backend/effect/program_state
 import glot_backend/effect/snippet/snippet_interpreter
@@ -12,7 +12,7 @@ import glot_backend/effect/transaction/transaction_interpreter
 
 pub fn run(
   effect: effect_model.Program(a),
-  handlers: handlers_types.Handlers,
+  handlers: handlers.Handlers,
 ) -> #(Result(a, error.Error), program_state.State) {
   let #(result, state) =
     run_with_state(effect, handlers, program_state.new_state())
@@ -27,7 +27,7 @@ pub fn run(
 
 fn run_with_state(
   effect: effect_model.Program(a),
-  handlers: handlers_types.Handlers,
+  handlers: handlers.Handlers,
   state: program_state.State,
 ) -> #(Result(a, error.Error), program_state.State) {
   let continue = fn(next_effect, next_state) {

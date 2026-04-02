@@ -9,7 +9,7 @@ import glot_backend/effect/core/core_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/handlers_types
+import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
@@ -98,8 +98,8 @@ pub fn measures_effects_in_error_test() {
   assert duration_ms >= 0
 }
 
-fn test_handlers() -> handlers_types.Handlers {
-  handlers_types.Handlers(
+fn test_handlers() -> handlers.Handlers {
+  handlers.Handlers(
     core: core_handlers.CoreHandlers(
       new_token: fn(_) { "random" },
       system_time: timestamp.system_time,

@@ -1,13 +1,13 @@
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/handlers_types
+import glot_backend/effect/handlers
 import glot_backend/effect/job/job
 import glot_backend/effect/program_state
 import glot_backend/erlang
 
 pub fn run(
   effect: job.JobEffect(effect_model.Program(a)),
-  handlers: handlers_types.Handlers,
+  handlers: handlers.Handlers,
   state: program_state.State,
   continue: fn(effect_model.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),

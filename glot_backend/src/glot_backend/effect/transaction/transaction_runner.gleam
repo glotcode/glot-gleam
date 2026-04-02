@@ -4,8 +4,7 @@ import gleam/string
 import glot_backend/context
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/handlers_builder
-import glot_backend/effect/handlers_types
+import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
 import pog
@@ -17,7 +16,7 @@ pub fn run_in_transaction(
   pog.transaction(ctx.db, fn(tx) {
     let tx_context = context.Context(..ctx, db: tx)
     let tx_handlers =
-      handlers_builder.from_context(tx_context, fn(programs) {
+      handlers.from_context(tx_context, fn(programs) {
         run_in_transaction(tx_context, programs)
       })
     case execute_programs(tx_handlers, sub_effects) {
@@ -29,7 +28,7 @@ pub fn run_in_transaction(
 }
 
 fn execute_programs(
-  handlers: handlers_types.Handlers,
+  handlers: handlers.Handlers,
   programs: List(effect_model.Program(Nil)),
 ) -> #(Result(Nil, error.Error), program_state.State) {
   case programs {

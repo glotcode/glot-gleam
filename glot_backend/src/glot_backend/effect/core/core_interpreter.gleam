@@ -1,14 +1,14 @@
 import glot_backend/effect/core/core
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
-import glot_backend/effect/handlers_types
+import glot_backend/effect/handlers
 import glot_backend/effect/program_state
 import glot_backend/erlang
 import glot_backend/log
 
 pub fn run(
   effect: core.CoreEffect(effect_model.Program(a)),
-  handlers: handlers_types.Handlers,
+  handlers: handlers.Handlers,
   state: program_state.State,
   continue: fn(effect_model.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
