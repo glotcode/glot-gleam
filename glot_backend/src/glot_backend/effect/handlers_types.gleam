@@ -1,17 +1,17 @@
-import glot_backend/effect/auth/auth_handlers_type
-import glot_backend/effect/core/core_handlers_type
-import glot_backend/effect/docker_run/docker_run_handlers_type
-import glot_backend/effect/job/job_handlers_type
-import glot_backend/effect/snippet/snippet_handlers_type
-import glot_backend/effect/transaction/transaction_handlers_type
+import glot_backend/effect/auth/auth_handlers
+import glot_backend/effect/core/core_handlers
+import glot_backend/effect/docker_run/docker_run_handlers
+import glot_backend/effect/job/job_handlers
+import glot_backend/effect/snippet/snippet_handlers
+import glot_backend/effect/transaction/transaction_handlers
 
 pub type Handlers {
   Handlers(
-    core: core_handlers_type.CoreHandlers,
-    job: job_handlers_type.JobHandlers,
-    auth: auth_handlers_type.AuthHandlers,
-    snippet: snippet_handlers_type.SnippetHandlers,
-    docker_run: docker_run_handlers_type.DockerRunHandlers,
-    transaction: transaction_handlers_type.TransactionHandlers,
+    core: core_handlers.CoreHandlers,
+    job: job_handlers.JobHandlers,
+    auth: auth_handlers.AuthHandlers,
+    snippet: snippet_handlers.SnippetHandlers,
+    docker_run: docker_run_handlers.DockerRunHandlers,
+    transaction: transaction_handlers.TransactionHandlers,
   )
 }

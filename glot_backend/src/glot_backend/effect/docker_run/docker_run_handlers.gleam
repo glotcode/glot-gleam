@@ -8,6 +8,13 @@ import glot_backend/effect/error
 import glot_backend/http_client
 import glot_core/run
 
+pub type DockerRunHandlers {
+  DockerRunHandlers(
+    post_run_request: fn(context.Config, run.RunRequest) ->
+      Result(run.RunResult, error.RunRequestError),
+  )
+}
+
 pub fn post_run_request(
   cfg: context.Config,
   request: run.RunRequest,

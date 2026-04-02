@@ -2,20 +2,20 @@ import gleam/option
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/api_action
-import glot_backend/effect/auth/auth_handlers_type
+import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/core/core
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/core/core_handlers_type
-import glot_backend/effect/docker_run/docker_run_handlers_type
+import glot_backend/effect/core/core_handlers
+import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
 import glot_backend/effect/handlers_types
 import glot_backend/effect/interpreter
-import glot_backend/effect/job/job_handlers_type
+import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/program_state
-import glot_backend/effect/snippet/snippet_handlers_type
-import glot_backend/effect/transaction/transaction_handlers_type
+import glot_backend/effect/snippet/snippet_handlers
+import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/job
 import glot_backend/log
 import glot_core/rate_limit
@@ -100,7 +100,7 @@ pub fn measures_effects_in_error_test() {
 
 fn test_handlers() -> handlers_types.Handlers {
   handlers_types.Handlers(
-    core: core_handlers_type.CoreHandlers(
+    core: core_handlers.CoreHandlers(
       new_token: fn(_) { "random" },
       system_time: timestamp.system_time,
       uuid_v7: fn() { uuid.nil },
@@ -123,7 +123,7 @@ fn test_handlers() -> handlers_types.Handlers {
       },
       insert_user_action: fn(_, _, _, _, _, _) { Ok(Nil) },
     ),
-    job: job_handlers_type.JobHandlers(
+    job: job_handlers.JobHandlers(
       get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
         Ok(option.None)
       },
@@ -131,7 +131,7 @@ fn test_handlers() -> handlers_types.Handlers {
       mark_job_done: fn(_, _) { Ok(Nil) },
       reschedule_job: fn(_, _, _, _) { Ok(Nil) },
     ),
-    auth: auth_handlers_type.AuthHandlers(
+    auth: auth_handlers.AuthHandlers(
       get_user_by_email: fn(_) { Ok(option.None) },
       list_login_tokens_by_user: fn(_, _) { Ok([]) },
       get_session_by_token: fn(_) { Ok(option.None) },
@@ -140,15 +140,15 @@ fn test_handlers() -> handlers_types.Handlers {
       insert_login_token: fn(_, _, _, _, _) { Ok(Nil) },
       update_login_token: fn(_, _, _, _, _) { Ok(Nil) },
     ),
-    snippet: snippet_handlers_type.SnippetHandlers(
+    snippet: snippet_handlers.SnippetHandlers(
       insert_snippet: fn(_, _, _, _, _) { Ok(Nil) },
     ),
-    docker_run: docker_run_handlers_type.DockerRunHandlers(
+    docker_run: docker_run_handlers.DockerRunHandlers(
       post_run_request: fn(_, _) {
         Error(error.InternalRunRequestError("unused in test"))
       },
     ),
-    transaction: transaction_handlers_type.TransactionHandlers(
+    transaction: transaction_handlers.TransactionHandlers(
       run_in_transaction: fn(_) { #(Ok(Nil), program_state.new_state()) },
     ),
   )

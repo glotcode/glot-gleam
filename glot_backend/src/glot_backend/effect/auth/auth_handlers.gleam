@@ -13,6 +13,40 @@ import glot_core/uuid_helpers
 import pog
 import youid/uuid.{type Uuid}
 
+pub type AuthHandlers {
+  AuthHandlers(
+    get_user_by_email: fn(email.Email) ->
+      Result(option.Option(user.User), error.DbQueryError),
+    list_login_tokens_by_user: fn(Uuid, Int) ->
+      Result(List(auth_core.LoginToken), error.DbQueryError),
+    get_session_by_token: fn(String) ->
+      Result(option.Option(auth_core.Session), error.DbQueryError),
+    insert_user: fn(Uuid, String, Timestamp) -> Result(Nil, error.DbCommandError),
+    insert_session: fn(
+      Uuid,
+      Uuid,
+      String,
+      option.Option(String),
+      option.Option(String),
+      Timestamp,
+    ) -> Result(Nil, error.DbCommandError),
+    insert_login_token: fn(
+      Uuid,
+      Uuid,
+      String,
+      Timestamp,
+      option.Option(Timestamp),
+    ) -> Result(Nil, error.DbCommandError),
+    update_login_token: fn(
+      Uuid,
+      String,
+      Timestamp,
+      option.Option(Timestamp),
+      Uuid,
+    ) -> Result(Nil, error.DbCommandError),
+  )
+}
+
 pub fn get_user_by_email(
   ctx: context.Context,
   user_email: email.Email,

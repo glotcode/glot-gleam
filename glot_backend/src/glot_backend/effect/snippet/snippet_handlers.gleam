@@ -10,6 +10,18 @@ import glot_core/snippet as snippet_type
 import pog
 import youid/uuid
 
+pub type SnippetHandlers {
+  SnippetHandlers(
+    insert_snippet: fn(
+      uuid.Uuid,
+      uuid.Uuid,
+      snippet_type.Snippet,
+      Timestamp,
+      Timestamp,
+    ) -> Result(Nil, error.DbCommandError),
+  )
+}
+
 pub fn insert_snippet(
   db: pog.Connection,
   id: uuid.Uuid,

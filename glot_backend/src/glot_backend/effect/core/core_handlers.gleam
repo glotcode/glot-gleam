@@ -15,6 +15,36 @@ import glot_core/uuid_helpers
 import pog
 import youid/uuid.{type Uuid}
 
+pub type CoreHandlers {
+  CoreHandlers(
+    new_token: fn(Int) -> String,
+    system_time: fn() -> Timestamp,
+    uuid_v7: fn() -> Uuid,
+    send_email: fn(email_message.EmailMessage) ->
+      Result(Nil, error.SendEmailError),
+    count_user_actions_by_ip: fn(
+      List(rate_limit.Window),
+      option.Option(String),
+      api_action.ApiAction,
+    ) ->
+      Result(List(rate_limit.WindowCount), error.DbQueryError),
+    count_user_actions_by_user: fn(
+      List(rate_limit.Window),
+      option.Option(Uuid),
+      api_action.ApiAction,
+    ) ->
+      Result(List(rate_limit.WindowCount), error.DbQueryError),
+    insert_user_action: fn(
+      Uuid,
+      Uuid,
+      api_action.ApiAction,
+      option.Option(String),
+      option.Option(Uuid),
+      Timestamp,
+    ) -> Result(Nil, error.DbCommandError),
+  )
+}
+
 pub fn new_token(length: Int) -> String {
   crypto_helpers.new_token(length)
 }
