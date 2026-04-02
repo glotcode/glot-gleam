@@ -85,43 +85,5 @@ pub fn run(
         ),
       )
     }
-    core.CountUserActions(filter:, next:) -> {
-      let started_at = erlang.perf_counter_ns()
-      let result = handlers.core.count_user_actions(filter)
-      case result {
-        Ok(value) ->
-          continue(
-            next(value),
-            program_state.add_effect_measurement(
-              state,
-              effect_trace.CoreEffectName(core.CountUserActionsEffectName),
-              effect_trace.DbReadEffectCategory,
-              started_at,
-            ),
-          )
-        Error(error) -> #(
-          Error(error.QueryError(error)),
-          program_state.add_effect_measurement(
-            state,
-            effect_trace.CoreEffectName(core.CountUserActionsEffectName),
-            effect_trace.DbReadEffectCategory,
-            started_at,
-          ),
-        )
-      }
-    }
-    core.InsertUserAction(user_action: user_action, next: next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let result = handlers.core.insert_user_action(user_action)
-      continue(
-        next(result),
-        program_state.add_effect_measurement(
-          state,
-          effect_trace.CoreEffectName(core.InsertUserActionEffectName),
-          effect_trace.DbWriteEffectCategory,
-          started_at,
-        ),
-      )
-    }
   }
 }

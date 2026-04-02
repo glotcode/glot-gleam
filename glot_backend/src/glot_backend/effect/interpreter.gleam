@@ -11,6 +11,7 @@ import glot_backend/effect/handlers
 import glot_backend/effect/job/job_interpreter
 import glot_backend/effect/program_state
 import glot_backend/effect/snippet/snippet_interpreter
+import glot_backend/effect/user_action/user_action_interpreter
 import glot_backend/erlang
 import pog
 
@@ -57,6 +58,8 @@ fn run_with_state(
           snippet_interpreter.run(effect, handlers, state, continue)
         program_types.DockerRunEffect(effect) ->
           docker_run_interpreter.run(effect, handlers, state, continue)
+        program_types.UserActionEffect(effect) ->
+          user_action_interpreter.run(effect, handlers, state, continue)
         program_types.TransactionEffect(run) -> {
           let started_at = erlang.perf_counter_ns()
           case maybe_db {

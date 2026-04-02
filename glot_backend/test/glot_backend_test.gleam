@@ -16,6 +16,7 @@ import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/snippet/snippet_handlers
+import glot_backend/effect/user_action/user_action_handlers
 import glot_backend/job
 import glot_backend/log
 import youid/uuid
@@ -112,10 +113,6 @@ fn test_handlers() -> handlers.Handlers {
       send_email: fn(_) {
         Error(error.InternalSendEmailError("unused in test"))
       },
-      count_user_actions: fn(_) {
-        Ok([])
-      },
-      insert_user_action: fn(_) { Ok(Nil) },
     ),
     job: job_handlers.JobHandlers(
       get_next_job: fn(_: timestamp.Timestamp, _: job.Status) {
@@ -140,6 +137,10 @@ fn test_handlers() -> handlers.Handlers {
       run_code: fn(_, _) {
         Error(error.InternalRunRequestError("unused in test"))
       },
+    ),
+    user_action: user_action_handlers.UserActionHandlers(
+      count_user_actions: fn(_) { Ok([]) },
+      create_user_action: fn(_) { Ok(Nil) },
     ),
   )
 }

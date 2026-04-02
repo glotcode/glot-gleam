@@ -9,6 +9,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/job/job
 import glot_backend/effect/snippet/snippet
+import glot_backend/effect/user_action/user_action
 
 pub fn succeed(value: a) -> program_types.Program(a) {
   program_types.Pure(value)
@@ -88,6 +89,8 @@ fn map_effect(
       program_types.SnippetEffect(snippet.map(effect, f))
     program_types.DockerRunEffect(effect) ->
       program_types.DockerRunEffect(docker_run.map(effect, f))
+    program_types.UserActionEffect(effect) ->
+      program_types.UserActionEffect(user_action.map(effect, f))
     program_types.TransactionEffect(run) ->
       program_types.TransactionEffect(fn(db, ctx) {
         let #(value, state) = run(db, ctx)

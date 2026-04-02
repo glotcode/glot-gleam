@@ -7,6 +7,7 @@ import glot_backend/effect/core/core_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
+import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action.{type ApiAction}
 import glot_core/rate_limit
@@ -42,7 +43,7 @@ pub fn enforce(
     error.ClientInfoError(error.MissingUserIdAndIpError),
   ))
 
-  use counts <- program.and_then(core_effect.db_count_user_actions(filter))
+  use counts <- program.and_then(user_action_effect.count_user_actions(filter))
   use _ <- program.and_then(
     check_rate_limit(action_rate_limits, counts)
     |> program.from_result(),
@@ -50,7 +51,7 @@ pub fn enforce(
   use id <- program.and_then(core_effect.uuid_v7())
 
   program.succeed(
-    core_effect.insert_user_action(user_action.UserAction(
+    user_action_effect.create_user_action(user_action.UserAction(
       id: id,
       request_id: ctx.request_id,
       action: action,

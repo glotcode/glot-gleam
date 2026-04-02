@@ -5,6 +5,7 @@ import glot_backend/effect/core/core
 import glot_backend/effect/docker_run/docker_run
 import glot_backend/effect/job/job
 import glot_backend/effect/snippet/snippet
+import glot_backend/effect/user_action/user_action
 
 pub type EffectName {
   CoreEffectName(core.EffectName)
@@ -12,6 +13,7 @@ pub type EffectName {
   AuthEffectName(auth.EffectName)
   SnippetEffectName(snippet.EffectName)
   DockerRunEffectName(docker_run.EffectName)
+  UserActionEffectName(user_action.EffectName)
   RunInTransactionEffectName(List(EffectMeasurement))
 }
 
@@ -22,6 +24,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     AuthEffectName(name) -> auth.effect_name_to_string(name)
     SnippetEffectName(name) -> snippet.effect_name_to_string(name)
     DockerRunEffectName(name) -> docker_run.effect_name_to_string(name)
+    UserActionEffectName(name) -> user_action.effect_name_to_string(name)
     RunInTransactionEffectName(_) -> "run"
   }
 }
@@ -33,6 +36,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     AuthEffectName(_) -> "auth"
     SnippetEffectName(_) -> "snippet"
     DockerRunEffectName(_) -> "docker_run"
+    UserActionEffectName(_) -> "user_action"
     RunInTransactionEffectName(_) -> "transaction"
   }
 }
