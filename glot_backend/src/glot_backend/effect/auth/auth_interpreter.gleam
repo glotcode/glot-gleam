@@ -91,92 +91,48 @@ pub fn run(
         )
       }
     }
-    auth.InsertUser(id:, email:, created_at:, next:) -> {
+    auth.CreateUser(user: user, next: next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.insert_user(id, email, created_at)
+      let result = handlers.auth.create_user(user)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.AuthEffectName(auth.InsertUserEffectName),
+          effect_trace.AuthEffectName(auth.CreateUserEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
     }
-    auth.InsertSession(
-      id: id,
-      user_id: user_id,
-      token: token,
-      ip: ip,
-      user_agent: user_agent,
-      created_at: created_at,
-      next: next,
-    ) -> {
+    auth.CreateSession(session: session, next: next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.auth.insert_session(
-          id,
-          user_id,
-          token,
-          ip,
-          user_agent,
-          created_at,
-        )
+      let result = handlers.auth.create_session(session)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.AuthEffectName(auth.InsertSessionEffectName),
+          effect_trace.AuthEffectName(auth.CreateSessionEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
     }
-    auth.InsertLoginToken(
-      id: id,
-      user_id: user_id,
-      token: token,
-      created_at: created_at,
-      used_at: used_at,
-      next: next,
-    ) -> {
+    auth.CreateLoginToken(login_token: login_token, next: next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.auth.insert_login_token(
-          id,
-          user_id,
-          token,
-          created_at,
-          used_at,
-        )
+      let result = handlers.auth.create_login_token(login_token)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.AuthEffectName(auth.InsertLoginTokenEffectName),
+          effect_trace.AuthEffectName(auth.CreateLoginTokenEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
     }
-    auth.UpdateLoginToken(
-      user_id: user_id,
-      token: token,
-      created_at: created_at,
-      used_at: used_at,
-      id: id,
-      next: next,
-    ) -> {
+    auth.UpdateLoginToken(login_token: login_token, next: next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.auth.update_login_token(
-          user_id,
-          token,
-          created_at,
-          used_at,
-          id,
-        )
+      let result = handlers.auth.update_login_token(login_token)
       continue(
         next(result),
         program_state.add_effect_measurement(

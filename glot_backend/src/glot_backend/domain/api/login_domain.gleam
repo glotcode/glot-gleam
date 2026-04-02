@@ -7,12 +7,13 @@ import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/program
+import glot_backend/effect/program_types
 import glot_backend/effect/transaction_effect
 import glot_backend/log
 import glot_core/auth
+import glot_core/session
 import glot_core/user
 
 pub fn login(
@@ -39,7 +40,9 @@ pub fn login(
     action: api_action.LoginAction,
   ))
 
-  use maybe_user <- program.and_then(auth_effect.db_get_user_by_email(request.email))
+  use maybe_user <- program.and_then(auth_effect.db_get_user_by_email(
+    request.email,
+  ))
   use user <- program.and_then(
     program.from_result(user_from_option(maybe_user)),
   )
@@ -48,7 +51,7 @@ pub fn login(
     core_effect.info(log.singleton(log.uuid("user_id", user.id))),
   )
 
-  use tokens <- program.and_then(auth_effect.db_list_login_tokens_by_user(
+  use tokens <- program.and_then(auth_effect.list_login_tokens_by_user(
     user.id,
     10,
   ))
@@ -66,21 +69,18 @@ pub fn login(
 
   use _ <- program.and_then(
     transaction_effect.run_all([
-      auth_effect.update_login_token(
-        user_id: user.id,
-        token: matching_token.token,
-        created_at: matching_token.created_at,
-        used_at: option.Some(ctx.timestamp),
-        id: matching_token.id,
-      ),
-      auth_effect.insert_session(
+      auth_effect.update_login_token(auth.mark_login_token_as_used(
+        matching_token,
+        ctx.timestamp,
+      )),
+      auth_effect.create_session(session.Session(
         id: session_id,
         user_id: user.id,
         token: session_token,
         ip: ctx.client_info.ip,
         user_agent: ctx.client_info.user_agent,
         created_at: ctx.timestamp,
-      ),
+      )),
       user_action_cmd,
     ]),
   )

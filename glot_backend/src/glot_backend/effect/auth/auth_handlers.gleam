@@ -2,12 +2,12 @@ import gleam/option
 import gleam/regexp.{type Regexp}
 import gleam/result
 import gleam/string
-import gleam/time/timestamp.{type Timestamp}
 import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
 import glot_core/auth as auth_core
 import glot_core/email
+import glot_core/session as session_core
 import glot_core/user
 import glot_core/uuid_helpers
 import pog
@@ -20,30 +20,11 @@ pub type AuthHandlers {
     list_login_tokens_by_user: fn(Uuid, Int) ->
       Result(List(auth_core.LoginToken), error.DbQueryError),
     get_session_by_token: fn(Regexp, String) ->
-      Result(option.Option(auth_core.Session), error.DbQueryError),
-    insert_user: fn(Uuid, String, Timestamp) -> Result(Nil, error.DbCommandError),
-    insert_session: fn(
-      Uuid,
-      Uuid,
-      String,
-      option.Option(String),
-      option.Option(String),
-      Timestamp,
-    ) -> Result(Nil, error.DbCommandError),
-    insert_login_token: fn(
-      Uuid,
-      Uuid,
-      String,
-      Timestamp,
-      option.Option(Timestamp),
-    ) -> Result(Nil, error.DbCommandError),
-    update_login_token: fn(
-      Uuid,
-      String,
-      Timestamp,
-      option.Option(Timestamp),
-      Uuid,
-    ) -> Result(Nil, error.DbCommandError),
+      Result(option.Option(session_core.HydratedSession), error.DbQueryError),
+    create_user: fn(user.User) -> Result(Nil, error.DbCommandError),
+    create_session: fn(session_core.Session) -> Result(Nil, error.DbCommandError),
+    create_login_token: fn(auth_core.LoginToken) -> Result(Nil, error.DbCommandError),
+    update_login_token: fn(auth_core.LoginToken) -> Result(Nil, error.DbCommandError),
   )
 }
 
@@ -54,15 +35,15 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
     get_session_by_token: fn(is_email, token) {
       get_session_by_token(db, is_email, token)
     },
-    insert_user: fn(id, email, created_at) { insert_user(db, id, email, created_at) },
-    insert_session: fn(id, user_id, token, ip, user_agent, created_at) {
-      insert_session(db, id, user_id, token, ip, user_agent, created_at)
+    create_user: fn(user) { create_user(db, user) },
+    create_session: fn(session) {
+      create_session(db, session)
     },
-    insert_login_token: fn(id, user_id, token, created_at, used_at) {
-      insert_login_token(db, id, user_id, token, created_at, used_at)
+    create_login_token: fn(login_token) {
+      create_login_token(db, login_token)
     },
-    update_login_token: fn(user_id, token, created_at, used_at, id) {
-      update_login_token(db, user_id, token, created_at, used_at, id)
+    update_login_token: fn(login_token) {
+      update_login_token(db, login_token)
     },
   )
 }
@@ -97,73 +78,66 @@ pub fn get_session_by_token(
   db: pog.Connection,
   is_email: Regexp,
   token: String,
-) -> Result(option.Option(auth_core.Session), error.DbQueryError) {
+) -> Result(option.Option(session_core.HydratedSession), error.DbQueryError) {
   db_helpers.query(db, sql.get_session_by_token(token), fn(err) {
     error.DbQueryError(string.inspect(err))
   })
   |> result.try(fn(returned) { session_from_rows(is_email, returned.rows) })
 }
 
-pub fn insert_user(
+pub fn create_user(
   db: pog.Connection,
-  id: Uuid,
-  email: String,
-  created_at: Timestamp,
+  user: user.User,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
-    sql.insert_user(uuid.to_bit_array(id), email, created_at),
-    to_error,
-  )
-  |> result.map(fn(_) { Nil })
-}
-
-pub fn insert_login_token(
-  db: pog.Connection,
-  id: Uuid,
-  user_id: Uuid,
-  token: String,
-  created_at: Timestamp,
-  used_at: option.Option(Timestamp),
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
-
-  db_helpers.execute(
-    db,
-    sql.insert_login_token(
-      id: uuid.to_bit_array(id),
-      user_id: uuid.to_bit_array(user_id),
-      token: token,
-      created_at: created_at,
-      used_at: used_at,
+    sql.insert_user(
+      uuid.to_bit_array(user.id),
+      email.to_string(user.email),
+      user.created_at,
     ),
     to_error,
   )
   |> result.map(fn(_) { Nil })
 }
 
-pub fn insert_session(
+pub fn create_login_token(
   db: pog.Connection,
-  id: Uuid,
-  user_id: Uuid,
-  token: String,
-  ip: option.Option(String),
-  user_agent: option.Option(String),
-  created_at: Timestamp,
+  login_token: auth_core.LoginToken,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.insert_login_token(
+      id: uuid.to_bit_array(login_token.id),
+      user_id: uuid.to_bit_array(login_token.user_id),
+      token: login_token.token,
+      created_at: login_token.created_at,
+      used_at: login_token.used_at,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn create_session(
+  db: pog.Connection,
+  session: session_core.Session,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
     sql.insert_session(
-      id: uuid.to_bit_array(id),
-      user_id: uuid.to_bit_array(user_id),
-      token: token,
-      ip: ip,
-      user_agent: user_agent,
-      created_at: created_at,
+      id: uuid.to_bit_array(session.id),
+      user_id: uuid.to_bit_array(session.user_id),
+      token: session.token,
+      ip: session.ip,
+      user_agent: session.user_agent,
+      created_at: session.created_at,
     ),
     to_error,
   )
@@ -172,22 +146,18 @@ pub fn insert_session(
 
 pub fn update_login_token(
   db: pog.Connection,
-  user_id: Uuid,
-  token: String,
-  created_at: Timestamp,
-  used_at: option.Option(Timestamp),
-  id: Uuid,
+  login_token: auth_core.LoginToken,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
     sql.update_login_token(
-      user_id: uuid.to_bit_array(user_id),
-      token: token,
-      created_at: created_at,
-      used_at: used_at,
-      id: uuid.to_bit_array(id),
+      user_id: uuid.to_bit_array(login_token.user_id),
+      token: login_token.token,
+      created_at: login_token.created_at,
+      used_at: login_token.used_at,
+      id: uuid.to_bit_array(login_token.id),
     ),
     to_error,
   )
@@ -251,7 +221,7 @@ fn login_token_from_row(
 fn session_from_rows(
   is_email: Regexp,
   rows: List(sql.GetSessionByToken),
-) -> Result(option.Option(auth_core.Session), error.DbQueryError) {
+) -> Result(option.Option(session_core.HydratedSession), error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> session_from_row(is_email, first) |> result.map(option.Some)
@@ -262,10 +232,10 @@ fn session_from_rows(
 fn session_from_row(
   is_email: Regexp,
   row: sql.GetSessionByToken,
-) -> Result(auth_core.Session, error.DbQueryError) {
+) -> Result(session_core.HydratedSession, error.DbQueryError) {
   case email.from_string(is_email, row.user_email) {
     option.Some(valid_email) ->
-      Ok(auth_core.Session(
+      Ok(session_core.HydratedSession(
         id: uuid_helpers.from_bit_array(row.id),
         user: user.User(
           id: uuid_helpers.from_bit_array(row.user_id),

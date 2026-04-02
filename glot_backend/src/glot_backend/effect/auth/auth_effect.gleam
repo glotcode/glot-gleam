@@ -1,10 +1,10 @@
 import gleam/option
-import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/auth/auth
-import glot_backend/effect/program_types
 import glot_backend/effect/error
+import glot_backend/effect/program_types
 import glot_core/auth as auth_core
 import glot_core/email
+import glot_core/session
 import glot_core/user
 import youid/uuid.{type Uuid}
 
@@ -12,94 +12,74 @@ pub fn db_get_user_by_email(
   email email: email.Email,
 ) -> program_types.Program(option.Option(user.User)) {
   program_types.Impure(
-    program_types.AuthEffect(auth.GetUserByEmail(email:, next: program_types.Pure)),
+    program_types.AuthEffect(auth.GetUserByEmail(
+      email:,
+      next: program_types.Pure,
+    )),
   )
 }
 
-pub fn db_list_login_tokens_by_user(
+pub fn list_login_tokens_by_user(
   user_id user_id: Uuid,
   limit limit: Int,
 ) -> program_types.Program(List(auth_core.LoginToken)) {
-  program_types.Impure(program_types.AuthEffect(auth.ListLoginTokensByUser(
-    user_id: user_id,
-    limit: limit,
-    next: program_types.Pure,
-  )))
+  program_types.Impure(
+    program_types.AuthEffect(auth.ListLoginTokensByUser(
+      user_id: user_id,
+      limit: limit,
+      next: program_types.Pure,
+    )),
+  )
 }
 
 pub fn db_get_session_by_token(
   token token: String,
-) -> program_types.Program(option.Option(auth_core.Session)) {
+) -> program_types.Program(option.Option(session.HydratedSession)) {
   program_types.Impure(
-    program_types.AuthEffect(
-      auth.GetSessionByToken(token: token, next: program_types.Pure),
-    ),
+    program_types.AuthEffect(auth.GetSessionByToken(
+      token: token,
+      next: program_types.Pure,
+    )),
   )
 }
 
-pub fn insert_user(
-  id id: Uuid,
-  email email: String,
-  created_at created_at: Timestamp,
-) -> program_types.Program(Nil) {
+pub fn create_user(user user: user.User) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.AuthEffect(
-      auth.InsertUser(id:, email:, created_at:, next: command_next),
-    ),
+    program_types.AuthEffect(auth.CreateUser(user: user, next: command_next)),
   )
 }
 
-pub fn insert_session(
-  id id: Uuid,
-  user_id user_id: Uuid,
-  token token: String,
-  ip ip: option.Option(String),
-  user_agent user_agent: option.Option(String),
-  created_at created_at: Timestamp,
+pub fn create_session(
+  session session: session.Session,
 ) -> program_types.Program(Nil) {
-  program_types.Impure(program_types.AuthEffect(auth.InsertSession(
-    id: id,
-    user_id: user_id,
-    token: token,
-    ip: ip,
-    user_agent: user_agent,
-    created_at: created_at,
-    next: command_next,
-  )))
+  program_types.Impure(
+    program_types.AuthEffect(auth.CreateSession(
+      session: session,
+      next: command_next,
+    )),
+  )
 }
 
-pub fn insert_login_token(
-  id id: Uuid,
-  user_id user_id: Uuid,
-  token token: String,
-  created_at created_at: Timestamp,
-  used_at used_at: option.Option(Timestamp),
+pub fn create_login_token(
+  login_token login_token: auth_core.LoginToken,
 ) -> program_types.Program(Nil) {
-  program_types.Impure(program_types.AuthEffect(auth.InsertLoginToken(
-    id: id,
-    user_id: user_id,
-    token: token,
-    created_at: created_at,
-    used_at: used_at,
-    next: command_next,
-  )))
+  program_types.Impure(
+    program_types.AuthEffect(auth.CreateLoginToken(
+      login_token: login_token,
+      next: command_next,
+    )),
+  )
 }
 
 pub fn update_login_token(
-  user_id user_id: Uuid,
-  token token: String,
-  created_at created_at: Timestamp,
-  used_at used_at: option.Option(Timestamp),
-  id id: Uuid,
+  login_token login_token: auth_core.LoginToken,
 ) -> program_types.Program(Nil) {
-  program_types.Impure(program_types.AuthEffect(auth.UpdateLoginToken(
-    user_id: user_id,
-    token: token,
-    created_at: created_at,
-    used_at: used_at,
-    id: id,
-    next: command_next,
-  )))
+  program_types.Impure(
+    program_types.AuthEffect(auth.UpdateLoginToken(
+      login_token: login_token,
+      next: command_next,
+    )),
+  )
 }
 
 fn command_next(

@@ -1,8 +1,8 @@
 import gleam/option
-import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_core/auth
 import glot_core/email
+import glot_core/session
 import glot_core/user
 import youid/uuid.{type Uuid}
 
@@ -15,37 +15,22 @@ pub type AuthEffect(next) {
   )
   GetSessionByToken(
     token: String,
-    next: fn(option.Option(auth.Session)) -> next,
+    next: fn(option.Option(session.HydratedSession)) -> next,
   )
-  InsertUser(
-    id: Uuid,
-    email: String,
-    created_at: Timestamp,
+  CreateUser(
+    user: user.User,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
-  InsertSession(
-    id: Uuid,
-    user_id: Uuid,
-    token: String,
-    ip: option.Option(String),
-    user_agent: option.Option(String),
-    created_at: Timestamp,
+  CreateSession(
+    session: session.Session,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
-  InsertLoginToken(
-    id: Uuid,
-    user_id: Uuid,
-    token: String,
-    created_at: Timestamp,
-    used_at: option.Option(Timestamp),
+  CreateLoginToken(
+    login_token: auth.LoginToken,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   UpdateLoginToken(
-    user_id: Uuid,
-    token: String,
-    created_at: Timestamp,
-    used_at: option.Option(Timestamp),
-    id: Uuid,
+    login_token: auth.LoginToken,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
 }
@@ -60,56 +45,21 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       })
     GetSessionByToken(token:, next:) ->
       GetSessionByToken(token: token, next: fn(value) { f(next(value)) })
-    InsertUser(id:, email:, created_at:, next:) ->
-      InsertUser(id:, email:, created_at:, next: fn(value) { f(next(value)) })
-    InsertSession(
-      id: id,
-      user_id: user_id,
-      token: token,
-      ip: ip,
-      user_agent: user_agent,
-      created_at: created_at,
-      next: next,
-    ) ->
-      InsertSession(
-        id: id,
-        user_id: user_id,
-        token: token,
-        ip: ip,
-        user_agent: user_agent,
-        created_at: created_at,
+    CreateUser(user: user, next: next) ->
+      CreateUser(user: user, next: fn(value) { f(next(value)) })
+    CreateSession(session: session, next: next) ->
+      CreateSession(
+        session: session,
         next: fn(value) { f(next(value)) },
       )
-    InsertLoginToken(
-      id: id,
-      user_id: user_id,
-      token: token,
-      created_at: created_at,
-      used_at: used_at,
-      next: next,
-    ) ->
-      InsertLoginToken(
-        id: id,
-        user_id: user_id,
-        token: token,
-        created_at: created_at,
-        used_at: used_at,
+    CreateLoginToken(login_token: login_token, next: next) ->
+      CreateLoginToken(
+        login_token: login_token,
         next: fn(value) { f(next(value)) },
       )
-    UpdateLoginToken(
-      user_id: user_id,
-      token: token,
-      created_at: created_at,
-      used_at: used_at,
-      id: id,
-      next: next,
-    ) ->
+    UpdateLoginToken(login_token: login_token, next: next) ->
       UpdateLoginToken(
-        user_id: user_id,
-        token: token,
-        created_at: created_at,
-        used_at: used_at,
-        id: id,
+        login_token: login_token,
         next: fn(value) { f(next(value)) },
       )
   }
@@ -119,9 +69,9 @@ pub type EffectName {
   GetUserByEmailEffectName
   ListLoginTokensByUserEffectName
   GetSessionByTokenEffectName
-  InsertUserEffectName
-  InsertSessionEffectName
-  InsertLoginTokenEffectName
+  CreateUserEffectName
+  CreateSessionEffectName
+  CreateLoginTokenEffectName
   UpdateLoginTokenEffectName
 }
 
@@ -130,9 +80,9 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     GetUserByEmailEffectName -> "get_user_by_email"
     ListLoginTokensByUserEffectName -> "list_login_tokens_by_user"
     GetSessionByTokenEffectName -> "get_session_by_token"
-    InsertUserEffectName -> "insert_user"
-    InsertSessionEffectName -> "insert_session"
-    InsertLoginTokenEffectName -> "insert_login_token"
+    CreateUserEffectName -> "create_user"
+    CreateSessionEffectName -> "create_session"
+    CreateLoginTokenEffectName -> "create_login_token"
     UpdateLoginTokenEffectName -> "update_login_token"
   }
 }

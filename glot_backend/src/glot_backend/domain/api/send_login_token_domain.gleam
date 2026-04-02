@@ -56,14 +56,13 @@ pub fn send_login_token(
 
   let email_msg = email_message.login_token_message(request.email, token)
   let send_email_job = job.send_email_job(job_id, ctx.timestamp, email_msg)
-  let insert_token_cmd =
-    auth_effect.insert_login_token(
-      id: login_token_id,
-      user_id: user.id,
-      token: token,
-      created_at: ctx.timestamp,
-      used_at: option.None,
-    )
+  let insert_token_cmd = auth_effect.create_login_token(auth.LoginToken(
+    id: login_token_id,
+    user_id: user.id,
+    token: token,
+    created_at: ctx.timestamp,
+    used_at: option.None,
+  ))
 
   transaction_effect.run_all(
     [
@@ -94,12 +93,7 @@ fn find_or_create_user(
       let new_user =
         user.User(id: user_id, email: user_email, created_at: ctx.timestamp)
 
-      let insert_user_cmd =
-        auth_effect.insert_user(
-          id: new_user.id,
-          email: email.to_string(new_user.email),
-          created_at: new_user.created_at,
-        )
+      let insert_user_cmd = auth_effect.create_user(new_user)
 
       program.succeed(#(new_user, option.Some(insert_user_cmd)))
     }

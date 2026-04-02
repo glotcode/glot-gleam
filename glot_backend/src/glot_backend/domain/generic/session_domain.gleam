@@ -6,11 +6,11 @@ import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/program
-import glot_core/auth
+import glot_core/session
 
 pub fn get_session(
   ctx: context.Context,
-) -> program_types.Program(Option(auth.Session)) {
+) -> program_types.Program(Option(session.HydratedSession)) {
   use session <- program.and_then(case ctx.client_info.session_token {
     option.Some(session_token) ->
       auth_effect.db_get_session_by_token(session_token)
@@ -22,7 +22,9 @@ pub fn get_session(
   |> program.succeed()
 }
 
-pub fn require_session(ctx: context.Context) -> program_types.Program(auth.Session) {
+pub fn require_session(
+  ctx: context.Context,
+) -> program_types.Program(session.HydratedSession) {
   use session <- program.and_then(case ctx.client_info.session_token {
     option.Some(session_token) ->
       auth_effect.db_get_session_by_token(session_token)
@@ -37,8 +39,8 @@ pub fn require_session(ctx: context.Context) -> program_types.Program(auth.Sessi
 
 fn validate_session(
   ctx: context.Context,
-  session: Option(auth.Session),
-) -> Result(auth.Session, error.SessionError) {
+  session: Option(session.HydratedSession),
+) -> Result(session.HydratedSession, error.SessionError) {
   case session {
     option.Some(session) ->
       case
