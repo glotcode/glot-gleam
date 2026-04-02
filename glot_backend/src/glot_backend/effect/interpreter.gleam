@@ -7,15 +7,17 @@ import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/job/job_interpreter
 import glot_backend/effect/program_state
+import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_interpreter
-import glot_backend/effect/transaction/transaction_interpreter
+import glot_backend/erlang
 
 pub fn run(
   effect: effect_model.Program(a),
   handlers: handlers.Handlers,
+  runtime: runtime.Runtime,
 ) -> #(Result(a, error.Error), program_state.State) {
   let #(result, state) =
-    run_with_state(effect, handlers, program_state.new_state())
+    run_with_state(effect, handlers, runtime, program_state.new_state())
   #(
     result,
     program_state.State(
@@ -28,10 +30,11 @@ pub fn run(
 fn run_with_state(
   effect: effect_model.Program(a),
   handlers: handlers.Handlers,
+  runtime: runtime.Runtime,
   state: program_state.State,
 ) -> #(Result(a, error.Error), program_state.State) {
   let continue = fn(next_effect, next_state) {
-    run_with_state(next_effect, handlers, next_state)
+    run_with_state(next_effect, handlers, runtime, next_state)
   }
 
   case effect {
@@ -49,14 +52,22 @@ fn run_with_state(
           snippet_interpreter.run(effect, handlers, state, continue)
         effect_model.DockerRunEffect(effect) ->
           docker_run_interpreter.run(effect, handlers, state, continue)
-        effect_model.TransactionEffect(sub_effects, next) ->
-          transaction_interpreter.run(
-            sub_effects,
-            next,
-            handlers,
-            state,
-            continue,
+        effect_model.TransactionEffect(sub_effects, next) -> {
+          let started_at = erlang.perf_counter_ns()
+          let #(transaction_result, transaction_state) =
+            runtime.run_in_transaction(sub_effects)
+          continue(
+            next(transaction_result),
+            program_state.add_effect_measurement(
+              state,
+              effect_model.RunInTransactionEffectName(
+                transaction_state.effect_measurements,
+              ),
+              effect_model.DbWriteEffectCategory,
+              started_at,
+            ),
           )
+        }
       }
   }
 }

@@ -7,19 +7,22 @@ import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
+import glot_backend/effect/runtime
 import pog
 
-pub fn run_in_transaction(
+pub fn from_context(ctx: context.Context) -> runtime.Runtime {
+  runtime.from_runner(fn(programs) { run_in_transaction(ctx, programs) })
+}
+
+fn run_in_transaction(
   ctx: context.Context,
   sub_effects: List(effect_model.Program(Nil)),
 ) -> #(Result(Nil, error.DbTransactionError), program_state.State) {
   pog.transaction(ctx.db, fn(tx) {
     let tx_context = context.Context(..ctx, db: tx)
-    let tx_handlers =
-      handlers.from_context(tx_context, fn(programs) {
-        run_in_transaction(tx_context, programs)
-      })
-    case execute_programs(tx_handlers, sub_effects) {
+    let tx_handlers = handlers.from_context(tx_context)
+    let tx_runtime = from_context(tx_context)
+    case execute_programs(tx_handlers, tx_runtime, sub_effects) {
       #(Ok(_), state) -> Ok(state)
       #(Error(err), state) -> Error(#(err, state))
     }
@@ -29,15 +32,17 @@ pub fn run_in_transaction(
 
 fn execute_programs(
   handlers: handlers.Handlers,
+  runtime: runtime.Runtime,
   programs: List(effect_model.Program(Nil)),
 ) -> #(Result(Nil, error.Error), program_state.State) {
   case programs {
     [] -> #(Ok(Nil), program_state.new_state())
     [program, ..rest] -> {
-      let #(result, state) = interpreter.run(program, handlers)
+      let #(result, state) = interpreter.run(program, handlers, runtime)
       case result {
         Ok(_) -> {
-          let #(rest_result, rest_state) = execute_programs(handlers, rest)
+          let #(rest_result, rest_state) =
+            execute_programs(handlers, runtime, rest)
           #(rest_result, combine_states(state, rest_state))
         }
         Error(err) -> #(Error(err), state)

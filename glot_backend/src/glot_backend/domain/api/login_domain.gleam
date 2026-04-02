@@ -10,7 +10,7 @@ import glot_backend/effect/core/core_effect
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
 import glot_backend/effect/program
-import glot_backend/effect/transaction/transaction
+import glot_backend/effect/transaction_effect
 import glot_backend/log
 import glot_core/auth
 import glot_core/user
@@ -65,7 +65,7 @@ pub fn login(
   use session_token <- program.and_then(core_effect.new_token(32))
 
   use _ <- program.and_then(
-    transaction.run_in_transaction([
+    transaction_effect.run([
       auth_effect.update_login_token(
         user_id: user.id,
         token: matching_token.token,

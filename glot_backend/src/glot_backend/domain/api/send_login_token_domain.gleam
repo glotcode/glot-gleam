@@ -8,7 +8,7 @@ import glot_backend/effect/core/core_effect
 import glot_backend/effect/effect_model
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
-import glot_backend/effect/transaction/transaction
+import glot_backend/effect/transaction_effect
 import glot_backend/email_message
 import glot_backend/job
 import glot_backend/log
@@ -65,7 +65,7 @@ pub fn send_login_token(
       used_at: option.None,
     )
 
-  transaction.run_in_transaction(
+  transaction_effect.run(
     [
       maybe_insert_user_cmd,
       option.Some(insert_token_cmd),

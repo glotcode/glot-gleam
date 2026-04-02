@@ -14,8 +14,8 @@ import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/program_state
+import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_handlers
-import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/job
 import glot_backend/log
 import glot_core/rate_limit
@@ -35,13 +35,14 @@ pub fn hello_world_test() {
 
 pub fn measurement_aggregation_test() {
   let handlers = test_handlers()
+  let runtime = test_runtime()
   let measured_effect = {
     use _ <- program.and_then(core_effect.info(log.new()))
     use _ <- program.and_then(core_effect.info(log.new()))
     program.succeed("ok")
   }
 
-  let #(run_result, state) = interpreter.run(measured_effect, handlers)
+  let #(run_result, state) = interpreter.run(measured_effect, handlers, runtime)
 
   assert run_result == Ok("ok")
   let assert [
@@ -62,11 +63,12 @@ pub fn measurement_aggregation_test() {
 
 pub fn measures_effects_in_success_test() {
   let handlers = test_handlers()
+  let runtime = test_runtime()
   let measured_effect = {
     use _ <- program.and_then(core_effect.new_token(5))
     program.succeed("ok")
   }
-  let #(run_result, state) = interpreter.run(measured_effect, handlers)
+  let #(run_result, state) = interpreter.run(measured_effect, handlers, runtime)
 
   assert run_result == Ok("ok")
   let assert [
@@ -81,11 +83,12 @@ pub fn measures_effects_in_success_test() {
 
 pub fn measures_effects_in_error_test() {
   let handlers = test_handlers()
+  let runtime = test_runtime()
   let failing_effect = {
     use _ <- program.and_then(core_effect.new_token(5))
     program.fail(error.EmailInvalidError("bad"))
   }
-  let #(run_result, state) = interpreter.run(failing_effect, handlers)
+  let #(run_result, state) = interpreter.run(failing_effect, handlers, runtime)
 
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
@@ -148,8 +151,9 @@ fn test_handlers() -> handlers.Handlers {
         Error(error.InternalRunRequestError("unused in test"))
       },
     ),
-    transaction: transaction_handlers.TransactionHandlers(
-      run_in_transaction: fn(_) { #(Ok(Nil), program_state.new_state()) },
-    ),
   )
+}
+
+fn test_runtime() -> runtime.Runtime {
+  runtime.from_runner(fn(_) { #(Ok(Nil), program_state.new_state()) })
 }

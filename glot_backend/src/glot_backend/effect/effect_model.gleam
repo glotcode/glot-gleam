@@ -41,7 +41,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     AuthEffectName(name) -> auth.effect_name_to_string(name)
     SnippetEffectName(name) -> snippet.effect_name_to_string(name)
     DockerRunEffectName(name) -> docker_run.effect_name_to_string(name)
-    RunInTransactionEffectName(_) -> "run_in_transaction"
+    RunInTransactionEffectName(_) -> "run"
   }
 }
 

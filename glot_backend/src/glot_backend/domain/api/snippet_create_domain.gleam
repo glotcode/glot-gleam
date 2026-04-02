@@ -8,7 +8,7 @@ import glot_backend/effect/core/core_effect
 import glot_backend/effect/effect_model
 import glot_backend/effect/program
 import glot_backend/effect/snippet/snippet_effect
-import glot_backend/effect/transaction/transaction
+import glot_backend/effect/transaction_effect
 import glot_backend/log
 import glot_core/snippet
 
@@ -40,7 +40,7 @@ pub fn snippet_create(
 
   use snippet_id <- program.and_then(core_effect.uuid_v7())
   use _ <- program.and_then(
-    transaction.run_in_transaction([
+    transaction_effect.run([
       snippet_effect.insert(
         id: snippet_id,
         user_id: session.user.id,

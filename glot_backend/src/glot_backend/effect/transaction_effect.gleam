@@ -1,7 +1,7 @@
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
 
-pub fn run_in_transaction(
+pub fn run(
   sub_effects: List(effect_model.Program(Nil)),
 ) -> effect_model.Program(Nil) {
   effect_model.Impure(

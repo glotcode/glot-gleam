@@ -13,7 +13,7 @@ import glot_backend/effect/effect_model
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
-import glot_backend/effect/transaction/transaction_runner
+import glot_backend/effect/program_runtime
 import glot_backend/email_message
 import glot_backend/erlang
 import glot_backend/job
@@ -81,11 +81,9 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 
 fn run_once(state: State) -> Bool {
   let ctx = context_from_state(state)
-  let handlers =
-    handlers.from_context(ctx, fn(programs) {
-      transaction_runner.run_in_transaction(ctx, programs)
-    })
-  let #(result, _) = process_next_job(ctx) |> interpreter.run(handlers)
+  let handlers = handlers.from_context(ctx)
+  let runtime = program_runtime.from_context(ctx)
+  let #(result, _) = process_next_job(ctx) |> interpreter.run(handlers, runtime)
 
   case result {
     Ok(processed_job) -> processed_job

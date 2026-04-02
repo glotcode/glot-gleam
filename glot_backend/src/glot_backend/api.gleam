@@ -19,7 +19,7 @@ import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
 import glot_backend/effect/program_state
-import glot_backend/effect/transaction/transaction_runner
+import glot_backend/effect/program_runtime
 import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
@@ -32,14 +32,12 @@ pub fn handle_request(
   req: wisp.Request,
 ) -> wisp.Response {
   use api_request <- require_api_request(req)
-  let handlers =
-    handlers.from_context(ctx, fn(programs) {
-      transaction_runner.run_in_transaction(ctx, programs)
-    })
+  let handlers = handlers.from_context(ctx)
+  let runtime = program_runtime.from_context(ctx)
 
   let #(api_result, state) =
     handle_api_request(ctx, api_request)
-    |> interpreter.run(handlers)
+    |> interpreter.run(handlers, runtime)
 
   insert_log_entry(ctx, log_worker_subject, state, api_request, api_result)
   result_to_response(ctx, req, api_result)
@@ -185,10 +183,7 @@ fn save_log_entry(
   api_request: ApiRequest,
   error: option.Option(error.Error),
 ) -> log_worker.LogEntry {
-  let handlers =
-    handlers.from_context(ctx, fn(programs) {
-      transaction_runner.run_in_transaction(ctx, programs)
-    })
+  let handlers = handlers.from_context(ctx)
   let id = handlers.core.uuid_v7()
   let duration_ns = erlang.perf_counter_ns() - ctx.started_at
 
