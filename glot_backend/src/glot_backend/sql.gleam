@@ -42,29 +42,9 @@ pub type GetNextJob {
   )
 }
 
-pub fn get_next_job(
-  running_status running_status: String,
-  now now: Option(Timestamp),
-  pending_status pending_status: String,
-) {
+pub fn get_next_job(pending_status pending_status: String, now now: Timestamp) {
   let sql =
-    "WITH candidate AS (
-  SELECT id
-  FROM jobs
-  WHERE jobs.status = $3
-    AND run_at <= $2
-    AND started_at IS NULL
-  ORDER BY run_at ASC, created_at ASC
-  LIMIT 1
-  FOR UPDATE SKIP LOCKED
-)
-UPDATE jobs
-SET status = $1,
-    attempts = attempts + 1,
-    started_at = $2,
-    updated_at = $2
-WHERE id IN (SELECT id FROM candidate)
-RETURNING
+    "SELECT
   id,
   job_type,
   payload,
@@ -77,14 +57,17 @@ RETURNING
   completed_at,
   last_error,
   created_at,
-  updated_at"
+  updated_at
+FROM jobs
+WHERE jobs.status = $1
+  AND run_at <= $2
+  AND started_at IS NULL
+ORDER BY run_at ASC, created_at ASC
+LIMIT 1
+FOR UPDATE SKIP LOCKED"
   #(
     sql,
-    [
-      dev.ParamString(running_status),
-      dev.ParamNullable(option.map(now, fn(v) { dev.ParamTimestamp(v) })),
-      dev.ParamString(pending_status),
-    ],
+    [dev.ParamString(pending_status), dev.ParamTimestamp(now)],
     get_next_job_decoder(),
   )
 }

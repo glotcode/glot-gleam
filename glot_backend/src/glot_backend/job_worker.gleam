@@ -17,6 +17,7 @@ import glot_backend/email_message
 import glot_backend/erlang
 import glot_backend/job
 import glot_backend/effect/handlers
+import glot_backend/effect/transaction_effect
 import pog
 import wisp
 import youid/uuid
@@ -113,17 +114,30 @@ fn context_from_state(state: State) -> context.Context {
 
 fn process_next_job(ctx: context.Context) -> program_types.Program(Bool) {
   use now <- program.and_then(core_effect.system_time())
-  use maybe_job <- program.and_then(job_effect.db_get_next_job(
-    now,
-    job.Pending,
-    job.Running,
-  ))
+  use maybe_job <- program.and_then(claim_next_job(now))
 
   case maybe_job {
     option.None -> program.succeed(False)
     option.Some(next_job) ->
       process_job(ctx, next_job) |> program.map(fn(_) { True })
   }
+}
+
+fn claim_next_job(
+  now: timestamp.Timestamp,
+) -> program_types.Program(option.Option(job.Job)) {
+  transaction_effect.run({
+    use maybe_job <- program.and_then(job_effect.db_get_next_job(now, job.Pending))
+
+    case maybe_job {
+      option.None -> program.succeed(option.None)
+      option.Some(next_job) -> {
+        let started_job = job.start(next_job, now)
+        use _ <- program.and_then(job_effect.update(started_job))
+        program.succeed(option.Some(started_job))
+      }
+    }
+  })
 }
 
 fn process_job(

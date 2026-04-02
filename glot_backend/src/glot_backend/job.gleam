@@ -109,6 +109,16 @@ pub fn done(job: Job, now: Timestamp) -> Job {
   )
 }
 
+pub fn start(job: Job, now: Timestamp) -> Job {
+  Job(
+    ..job,
+    status: Running,
+    attempts: job.attempts + 1,
+    started_at: option.Some(now),
+    updated_at: now,
+  )
+}
+
 pub fn reschedule(
   job: Job,
   run_at: Timestamp,

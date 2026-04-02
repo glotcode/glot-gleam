@@ -131,7 +131,7 @@ fn test_handlers() -> handlers.Handlers {
       insert_user_action: fn(_, _, _, _, _, _) { Ok(Nil) },
     ),
     job: job_handlers.JobHandlers(
-      get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
+      get_next_job: fn(_: timestamp.Timestamp, _: job.Status) {
         Ok(option.None)
       },
       insert_job: fn(_) { Ok(Nil) },

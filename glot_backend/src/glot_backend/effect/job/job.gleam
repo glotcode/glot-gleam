@@ -7,7 +7,6 @@ pub type JobEffect(next) {
   GetNextJob(
     now: Timestamp,
     pending_status: job_type.Status,
-    running_status: job_type.Status,
     next: fn(option.Option(job_type.Job)) -> next,
   )
   InsertJob(
@@ -22,11 +21,10 @@ pub type JobEffect(next) {
 
 pub fn map(effect: JobEffect(a), f: fn(a) -> b) -> JobEffect(b) {
   case effect {
-    GetNextJob(now:, pending_status:, running_status:, next:) ->
+    GetNextJob(now:, pending_status:, next:) ->
       GetNextJob(
         now: now,
         pending_status: pending_status,
-        running_status: running_status,
         next: fn(value) { f(next(value)) },
       )
     InsertJob(job, next) -> InsertJob(job, next: fn(value) { f(next(value)) })

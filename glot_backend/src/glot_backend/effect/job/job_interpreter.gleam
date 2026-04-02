@@ -14,9 +14,9 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    job.GetNextJob(now:, pending_status:, running_status:, next:) -> {
+    job.GetNextJob(now:, pending_status:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.job.get_next_job(now, pending_status, running_status)
+      let result = handlers.job.get_next_job(now, pending_status)
       case result {
         Ok(value) ->
           continue(

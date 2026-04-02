@@ -12,7 +12,7 @@ import youid/uuid
 
 pub type JobHandlers {
   JobHandlers(
-    get_next_job: fn(Timestamp, job.Status, job.Status) ->
+    get_next_job: fn(Timestamp, job.Status) ->
       Result(option.Option(job.Job), error.DbQueryError),
     insert_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
     update_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
@@ -21,8 +21,8 @@ pub type JobHandlers {
 
 pub fn new(db: pog.Connection) -> JobHandlers {
   JobHandlers(
-    get_next_job: fn(now, pending_status, running_status) {
-      get_next_job(db, now, pending_status, running_status)
+    get_next_job: fn(now, pending_status) {
+      get_next_job(db, now, pending_status)
     },
     insert_job: fn(job) { insert_job(db, job) },
     update_job: fn(job) { update_job(db, job) },
@@ -33,15 +33,13 @@ pub fn get_next_job(
   db: pog.Connection,
   now: Timestamp,
   pending_status: job.Status,
-  running_status: job.Status,
 ) -> Result(option.Option(job.Job), error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
       sql.get_next_job(
-        job.status_to_string(running_status),
-        option.Some(now),
         job.status_to_string(pending_status),
+        now,
       ),
       fn(err) { error.DbQueryError(string.inspect(err)) },
     ),
