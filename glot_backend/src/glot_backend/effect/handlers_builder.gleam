@@ -8,6 +8,8 @@ import glot_backend/effect/docker_run/docker_run_handlers_type
 import glot_backend/effect/error
 import glot_backend/effect/effect_model
 import glot_backend/effect/handlers_types
+import glot_backend/effect/job/job_handlers
+import glot_backend/effect/job/job_handlers_type
 import glot_backend/effect/program_state
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/snippet/snippet_handlers_type
@@ -24,16 +26,12 @@ pub fn from_context(
       system_time: core_handlers.system_time,
       uuid_v7: fn() { core_handlers.uuid_v7(ctx) },
       send_email: core_handlers.send_email,
-      get_next_job: fn(now, pending_status, running_status) {
-        core_handlers.get_next_job(ctx, now, pending_status, running_status)
-      },
       count_user_actions_by_ip: fn(windows, ip, action) {
         core_handlers.count_user_actions_by_ip(ctx, ip, action, windows)
       },
       count_user_actions_by_user: fn(windows, user_id, action) {
         core_handlers.count_user_actions_by_user(ctx, user_id, action, windows)
       },
-      insert_job: fn(job) { core_handlers.insert_job(ctx.db, job) },
       insert_user_action: fn(id, request_id, action, ip, user_id, created_at) {
         core_handlers.insert_user_action(
           ctx.db,
@@ -45,11 +43,17 @@ pub fn from_context(
           created_at,
         )
       },
+    ),
+    job: job_handlers_type.JobHandlers(
+      get_next_job: fn(now, pending_status, running_status) {
+        job_handlers.get_next_job(ctx, now, pending_status, running_status)
+      },
+      insert_job: fn(job) { job_handlers.insert_job(ctx.db, job) },
       mark_job_done: fn(id, completed_at) {
-        core_handlers.mark_job_done(ctx.db, id, completed_at)
+        job_handlers.mark_job_done(ctx.db, id, completed_at)
       },
       reschedule_job: fn(id, run_at, last_error, updated_at) {
-        core_handlers.reschedule_job(ctx.db, id, run_at, last_error, updated_at)
+        job_handlers.reschedule_job(ctx.db, id, run_at, last_error, updated_at)
       },
     ),
     auth: auth_handlers_type.AuthHandlers(

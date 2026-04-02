@@ -82,32 +82,6 @@ pub fn run(
         ),
       )
     }
-    core.GetNextJob(now:, pending_status:, running_status:, next:) -> {
-      let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.core.get_next_job(now, pending_status, running_status)
-      case result {
-        Ok(value) ->
-          continue(
-            next(value),
-            program_state.add_effect_measurement(
-              state,
-              effect_model.CoreEffectName(core.GetNextJobEffectName),
-              effect_model.DbReadEffectCategory,
-              started_at,
-            ),
-          )
-        Error(error) -> #(
-          Error(error.QueryError(error)),
-          program_state.add_effect_measurement(
-            state,
-            effect_model.CoreEffectName(core.GetNextJobEffectName),
-            effect_model.DbReadEffectCategory,
-            started_at,
-          ),
-        )
-      }
-    }
     core.CountUserActionsByIp(windows:, ip:, action:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.core.count_user_actions_by_ip(windows, ip, action)
@@ -159,19 +133,6 @@ pub fn run(
         )
       }
     }
-    core.InsertJob(job, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let result = handlers.core.insert_job(job)
-      continue(
-        next(result),
-        program_state.add_effect_measurement(
-          state,
-          effect_model.CoreEffectName(core.InsertJobEffectName),
-          effect_model.DbWriteEffectCategory,
-          started_at,
-        ),
-      )
-    }
     core.InsertUserAction(
       id: id,
       request_id: request_id,
@@ -196,33 +157,6 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_model.CoreEffectName(core.InsertUserActionEffectName),
-          effect_model.DbWriteEffectCategory,
-          started_at,
-        ),
-      )
-    }
-    core.MarkJobDone(id, completed_at, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let result = handlers.core.mark_job_done(id, completed_at)
-      continue(
-        next(result),
-        program_state.add_effect_measurement(
-          state,
-          effect_model.CoreEffectName(core.MarkJobDoneEffectName),
-          effect_model.DbWriteEffectCategory,
-          started_at,
-        ),
-      )
-    }
-    core.RescheduleJob(id, run_at, last_error, updated_at, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.core.reschedule_job(id, run_at, last_error, updated_at)
-      continue(
-        next(result),
-        program_state.add_effect_measurement(
-          state,
-          effect_model.CoreEffectName(core.RescheduleJobEffectName),
           effect_model.DbWriteEffectCategory,
           started_at,
         ),

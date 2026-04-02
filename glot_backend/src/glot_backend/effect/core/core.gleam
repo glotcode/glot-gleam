@@ -3,7 +3,6 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/effect/error
 import glot_backend/email_message
-import glot_backend/job
 import glot_backend/log
 import glot_core/rate_limit
 import youid/uuid.{type Uuid}
@@ -17,12 +16,6 @@ pub type CoreEffect(next) {
     email_message.EmailMessage,
     fn(Result(Nil, error.SendEmailError)) -> next,
   )
-  GetNextJob(
-    now: Timestamp,
-    pending_status: job.Status,
-    running_status: job.Status,
-    next: fn(option.Option(job.Job)) -> next,
-  )
   CountUserActionsByIp(
     windows: List(rate_limit.Window),
     ip: option.Option(String),
@@ -35,7 +28,6 @@ pub type CoreEffect(next) {
     action: ApiAction,
     next: fn(List(rate_limit.WindowCount)) -> next,
   )
-  InsertJob(job.Job, next: fn(Result(Nil, error.DbCommandError)) -> next)
   InsertUserAction(
     id: Uuid,
     request_id: Uuid,
@@ -43,18 +35,6 @@ pub type CoreEffect(next) {
     ip: option.Option(String),
     user_id: option.Option(Uuid),
     created_at: Timestamp,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
-  )
-  MarkJobDone(
-    id: Uuid,
-    completed_at: Timestamp,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
-  )
-  RescheduleJob(
-    id: Uuid,
-    run_at: Timestamp,
-    last_error: option.Option(String),
-    updated_at: Timestamp,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
 }
@@ -67,13 +47,6 @@ pub fn map(effect: CoreEffect(a), f: fn(a) -> b) -> CoreEffect(b) {
     Log(level, fields, next) -> Log(level, fields, f(next))
     AttemptSendEmail(message, next) ->
       AttemptSendEmail(message, fn(value) { f(next(value)) })
-    GetNextJob(now:, pending_status:, running_status:, next:) ->
-      GetNextJob(
-        now: now,
-        pending_status: pending_status,
-        running_status: running_status,
-        next: fn(value) { f(next(value)) },
-      )
     CountUserActionsByIp(windows:, ip:, action:, next:) ->
       CountUserActionsByIp(
         windows: windows,
@@ -88,7 +61,6 @@ pub fn map(effect: CoreEffect(a), f: fn(a) -> b) -> CoreEffect(b) {
         action: action,
         next: fn(value) { f(next(value)) },
       )
-    InsertJob(job, next) -> InsertJob(job, next: fn(value) { f(next(value)) })
     InsertUserAction(
       id: id,
       request_id: request_id,
@@ -107,12 +79,6 @@ pub fn map(effect: CoreEffect(a), f: fn(a) -> b) -> CoreEffect(b) {
         created_at: created_at,
         next: fn(value) { f(next(value)) },
       )
-    MarkJobDone(id, completed_at, next) ->
-      MarkJobDone(id, completed_at, next: fn(value) { f(next(value)) })
-    RescheduleJob(id, run_at, last_error, updated_at, next) ->
-      RescheduleJob(id, run_at, last_error, updated_at, next: fn(value) {
-        f(next(value))
-      })
   }
 }
 
@@ -122,13 +88,9 @@ pub type EffectName {
   UuidV7EffectName
   LogEffectName
   AttemptSendEmailEffectName
-  GetNextJobEffectName
   CountUserActionsByIpEffectName
   CountUserActionsByUserEffectName
-  InsertJobEffectName
   InsertUserActionEffectName
-  MarkJobDoneEffectName
-  RescheduleJobEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
@@ -138,12 +100,8 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     UuidV7EffectName -> "uuid_v7"
     LogEffectName -> "log"
     AttemptSendEmailEffectName -> "attempt_send_email"
-    GetNextJobEffectName -> "get_next_job"
     CountUserActionsByIpEffectName -> "count_user_actions_by_ip"
     CountUserActionsByUserEffectName -> "count_user_actions_by_user"
-    InsertJobEffectName -> "insert_job"
     InsertUserActionEffectName -> "insert_user_action"
-    MarkJobDoneEffectName -> "mark_job_done"
-    RescheduleJobEffectName -> "reschedule_job"
   }
 }

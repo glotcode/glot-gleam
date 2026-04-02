@@ -6,6 +6,7 @@ import glot_backend/effect/core/core
 import glot_backend/effect/docker_run/docker_run
 import glot_backend/effect/effect_model
 import glot_backend/effect/error
+import glot_backend/effect/job/job
 import glot_backend/effect/snippet/snippet
 
 pub fn succeed(value: a) -> effect_model.Program(a) {
@@ -68,6 +69,8 @@ fn map_effect(
   case effect {
     effect_model.CoreEffect(effect) ->
       effect_model.CoreEffect(core.map(effect, f))
+    effect_model.JobEffect(effect) ->
+      effect_model.JobEffect(job.map(effect, f))
     effect_model.AuthEffect(effect) ->
       effect_model.AuthEffect(auth.map(effect, f))
     effect_model.SnippetEffect(effect) ->

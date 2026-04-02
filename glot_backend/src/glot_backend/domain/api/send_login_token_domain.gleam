@@ -6,6 +6,7 @@ import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/core/core_effect
 import glot_backend/effect/effect_model
+import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/transaction/transaction
 import glot_backend/email_message
@@ -68,7 +69,7 @@ pub fn send_login_token(
     [
       maybe_insert_user_cmd,
       option.Some(insert_token_cmd),
-      option.Some(core_effect.insert_job(send_email_job)),
+      option.Some(job_effect.insert(send_email_job)),
       option.Some(user_action_cmd),
     ]
     |> option.values,

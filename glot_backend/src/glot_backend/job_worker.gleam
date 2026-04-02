@@ -10,6 +10,7 @@ import glot_backend/context
 import glot_backend/effect/error
 import glot_backend/effect/core/core_effect
 import glot_backend/effect/effect_model
+import glot_backend/effect/job/job_effect
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
 import glot_backend/email_message
@@ -110,7 +111,7 @@ fn context_from_state(state: State) -> context.Context {
 
 fn process_next_job(ctx: context.Context) -> effect_model.Program(Bool) {
   use now <- program.and_then(core_effect.system_time())
-  use maybe_job <- program.and_then(core_effect.db_get_next_job(
+  use maybe_job <- program.and_then(job_effect.db_get_next_job(
     now,
     job.Pending,
     job.Running,
@@ -150,9 +151,9 @@ fn process_send_email_job(
       use now <- program.and_then(core_effect.system_time())
 
       case send_result {
-        Ok(_) -> core_effect.mark_job_done(id, now)
+        Ok(_) -> job_effect.mark_done(id, now)
         Error(err) ->
-          core_effect.reschedule_job(
+          job_effect.reschedule(
             id: id,
             run_at: add_seconds(now, backoff_seconds(attempts)),
             last_error: option.Some(send_email_error_to_string(err)),
@@ -162,7 +163,7 @@ fn process_send_email_job(
     }
     Error(errors) -> {
       use now <- program.and_then(core_effect.system_time())
-      core_effect.reschedule_job(
+      job_effect.reschedule(
         id: id,
         run_at: add_seconds(now, backoff_seconds(attempts)),
         last_error: option.Some("decode_error:" <> string.inspect(errors)),

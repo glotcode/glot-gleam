@@ -4,6 +4,7 @@ import glot_backend/effect/auth/auth
 import glot_backend/effect/core/core
 import glot_backend/effect/docker_run/docker_run
 import glot_backend/effect/error
+import glot_backend/effect/job/job
 import glot_backend/effect/snippet/snippet
 
 pub type Program(a) {
@@ -14,6 +15,7 @@ pub type Program(a) {
 
 pub type Effect(next) {
   CoreEffect(core.CoreEffect(next))
+  JobEffect(job.JobEffect(next))
   AuthEffect(auth.AuthEffect(next))
   SnippetEffect(snippet.SnippetEffect(next))
   DockerRunEffect(docker_run.DockerRunEffect(next))
@@ -25,6 +27,7 @@ pub type Effect(next) {
 
 pub type EffectName {
   CoreEffectName(core.EffectName)
+  JobEffectName(job.EffectName)
   AuthEffectName(auth.EffectName)
   SnippetEffectName(snippet.EffectName)
   DockerRunEffectName(docker_run.EffectName)
@@ -34,6 +37,7 @@ pub type EffectName {
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
   case effect_name {
     CoreEffectName(name) -> core.effect_name_to_string(name)
+    JobEffectName(name) -> job.effect_name_to_string(name)
     AuthEffectName(name) -> auth.effect_name_to_string(name)
     SnippetEffectName(name) -> snippet.effect_name_to_string(name)
     DockerRunEffectName(name) -> docker_run.effect_name_to_string(name)
@@ -44,6 +48,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
 pub fn effect_name_to_family(effect_name: EffectName) -> String {
   case effect_name {
     CoreEffectName(_) -> "core"
+    JobEffectName(_) -> "job"
     AuthEffectName(_) -> "auth"
     SnippetEffectName(_) -> "snippet"
     DockerRunEffectName(_) -> "docker_run"

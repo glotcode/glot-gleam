@@ -11,6 +11,7 @@ import glot_backend/effect/effect_model
 import glot_backend/effect/error
 import glot_backend/effect/handlers_types
 import glot_backend/effect/interpreter
+import glot_backend/effect/job/job_handlers_type
 import glot_backend/effect/program
 import glot_backend/effect/program_state
 import glot_backend/effect/snippet/snippet_handlers_type
@@ -106,9 +107,6 @@ fn test_handlers() -> handlers_types.Handlers {
       send_email: fn(_) {
         Error(error.InternalSendEmailError("unused in test"))
       },
-      get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
-        Ok(option.None)
-      },
       count_user_actions_by_ip: fn(
         _: List(rate_limit.Window),
         _: option.Option(String),
@@ -123,8 +121,13 @@ fn test_handlers() -> handlers_types.Handlers {
       ) {
         Ok([])
       },
-      insert_job: fn(_) { Ok(Nil) },
       insert_user_action: fn(_, _, _, _, _, _) { Ok(Nil) },
+    ),
+    job: job_handlers_type.JobHandlers(
+      get_next_job: fn(_: timestamp.Timestamp, _: job.Status, _: job.Status) {
+        Ok(option.None)
+      },
+      insert_job: fn(_) { Ok(Nil) },
       mark_job_done: fn(_, _) { Ok(Nil) },
       reschedule_job: fn(_, _, _, _) { Ok(Nil) },
     ),
