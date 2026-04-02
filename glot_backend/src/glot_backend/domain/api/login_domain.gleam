@@ -7,7 +7,7 @@ import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/transaction_effect
@@ -18,7 +18,7 @@ import glot_core/user
 pub fn login(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> effect_model.Program(String) {
+) -> program_types.Program(String) {
   use request <- program.and_then(program.decode_json(
     json_body,
     auth.login_request_decoder(ctx.regexes.is_email),

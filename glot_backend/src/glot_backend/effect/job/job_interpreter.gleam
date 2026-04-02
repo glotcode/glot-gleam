@@ -1,4 +1,5 @@
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
+import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/job/job
@@ -6,10 +7,10 @@ import glot_backend/effect/program_state
 import glot_backend/erlang
 
 pub fn run(
-  effect: job.JobEffect(effect_model.Program(a)),
+  effect: job.JobEffect(program_types.Program(a)),
   handlers: handlers.Handlers,
   state: program_state.State,
-  continue: fn(effect_model.Program(a), program_state.State) ->
+  continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
@@ -22,8 +23,8 @@ pub fn run(
             next(value),
             program_state.add_effect_measurement(
               state,
-              effect_model.JobEffectName(job.GetNextJobEffectName),
-              effect_model.DbReadEffectCategory,
+              effect_trace.JobEffectName(job.GetNextJobEffectName),
+              effect_trace.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -31,8 +32,8 @@ pub fn run(
           Error(error.QueryError(error)),
           program_state.add_effect_measurement(
             state,
-            effect_model.JobEffectName(job.GetNextJobEffectName),
-            effect_model.DbReadEffectCategory,
+            effect_trace.JobEffectName(job.GetNextJobEffectName),
+            effect_trace.DbReadEffectCategory,
             started_at,
           ),
         )
@@ -45,8 +46,8 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_model.JobEffectName(job.InsertJobEffectName),
-          effect_model.DbWriteEffectCategory,
+          effect_trace.JobEffectName(job.InsertJobEffectName),
+          effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -58,8 +59,8 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_model.JobEffectName(job.MarkJobDoneEffectName),
-          effect_model.DbWriteEffectCategory,
+          effect_trace.JobEffectName(job.MarkJobDoneEffectName),
+          effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -71,8 +72,8 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_model.JobEffectName(job.RescheduleJobEffectName),
-          effect_model.DbWriteEffectCategory,
+          effect_trace.JobEffectName(job.RescheduleJobEffectName),
+          effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )

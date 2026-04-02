@@ -3,14 +3,14 @@ import gleam/result
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/effect/auth/auth_effect
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_core/auth
 
 pub fn get_session(
   ctx: context.Context,
-) -> effect_model.Program(Option(auth.Session)) {
+) -> program_types.Program(Option(auth.Session)) {
   use session <- program.and_then(case ctx.client_info.session_token {
     option.Some(session_token) ->
       auth_effect.db_get_session_by_token(session_token)
@@ -22,7 +22,7 @@ pub fn get_session(
   |> program.succeed()
 }
 
-pub fn require_session(ctx: context.Context) -> effect_model.Program(auth.Session) {
+pub fn require_session(ctx: context.Context) -> program_types.Program(auth.Session) {
   use session <- program.and_then(case ctx.client_info.session_token {
     option.Some(session_token) ->
       auth_effect.db_get_session_by_token(session_token)

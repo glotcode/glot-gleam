@@ -13,7 +13,8 @@ import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
+import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
@@ -46,7 +47,7 @@ pub fn handle_request(
 fn handle_api_request(
   ctx: context.Context,
   api_request: ApiRequest,
-) -> effect_model.Program(ApiResult) {
+) -> program_types.Program(ApiResult) {
   case api_request.action {
     api_action.RunAction ->
       run_domain.run(ctx, api_request.data)
@@ -209,7 +210,7 @@ fn save_log_entry(
       |> option.map(json.to_string),
     effects: state.effect_measurements
       |> non_empty_list
-      |> option.map(effect_model.encode_effect_measurements)
+      |> option.map(effect_trace.encode_effect_measurements)
       |> option.map(json.to_string),
   )
 }

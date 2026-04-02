@@ -2,7 +2,7 @@ import gleam/dict
 import gleam/list
 import gleam/string
 import glot_backend/context
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
@@ -16,7 +16,7 @@ pub fn from_context(ctx: context.Context) -> runtime.Runtime {
 
 fn run_in_transaction(
   ctx: context.Context,
-  sub_effects: List(effect_model.Program(Nil)),
+  sub_effects: List(program_types.Program(Nil)),
 ) -> #(Result(Nil, error.DbTransactionError), program_state.State) {
   pog.transaction(ctx.db, fn(tx) {
     let tx_context = context.Context(..ctx, db: tx)
@@ -33,7 +33,7 @@ fn run_in_transaction(
 fn execute_programs(
   handlers: handlers.Handlers,
   runtime: runtime.Runtime,
-  programs: List(effect_model.Program(Nil)),
+  programs: List(program_types.Program(Nil)),
 ) -> #(Result(Nil, error.Error), program_state.State) {
   case programs {
     [] -> #(Ok(Nil), program_state.new_state())

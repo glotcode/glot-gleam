@@ -7,7 +7,7 @@ import glot_backend/effect/core/core
 import glot_backend/effect/core/core_effect
 import glot_backend/effect/core/core_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
-import glot_backend/effect/effect_model
+import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
@@ -46,13 +46,13 @@ pub fn measurement_aggregation_test() {
 
   assert run_result == Ok("ok")
   let assert [
-    effect_model.EffectMeasurement(
-      name: effect_model.CoreEffectName(core.LogEffectName),
+    effect_trace.EffectMeasurement(
+      name: effect_trace.CoreEffectName(core.LogEffectName),
       duration_ns: first,
       ..,
     ),
-    effect_model.EffectMeasurement(
-      name: effect_model.CoreEffectName(core.LogEffectName),
+    effect_trace.EffectMeasurement(
+      name: effect_trace.CoreEffectName(core.LogEffectName),
       duration_ns: second,
       ..,
     ),
@@ -72,8 +72,8 @@ pub fn measures_effects_in_success_test() {
 
   assert run_result == Ok("ok")
   let assert [
-    effect_model.EffectMeasurement(
-      name: effect_model.CoreEffectName(core.NewTokenEffectName),
+    effect_trace.EffectMeasurement(
+      name: effect_trace.CoreEffectName(core.NewTokenEffectName),
       duration_ns: duration_ms,
       ..,
     ),
@@ -92,8 +92,8 @@ pub fn measures_effects_in_error_test() {
 
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
-    effect_model.EffectMeasurement(
-      name: effect_model.CoreEffectName(core.NewTokenEffectName),
+    effect_trace.EffectMeasurement(
+      name: effect_trace.CoreEffectName(core.NewTokenEffectName),
       duration_ns: duration_ms,
       ..,
     ),

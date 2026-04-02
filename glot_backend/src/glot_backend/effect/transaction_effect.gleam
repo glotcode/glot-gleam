@@ -1,14 +1,14 @@
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/error
 
 pub fn run(
-  sub_effects: List(effect_model.Program(Nil)),
-) -> effect_model.Program(Nil) {
-  effect_model.Impure(
-    effect_model.TransactionEffect(sub_effects, fn(transaction_result) {
+  sub_effects: List(program_types.Program(Nil)),
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.TransactionEffect(sub_effects, fn(transaction_result) {
       case transaction_result {
-        Ok(_) -> effect_model.Pure(Nil)
-        Error(err) -> effect_model.Fail(error.TransactionError(err))
+        Ok(_) -> program_types.Pure(Nil)
+        Error(err) -> program_types.Fail(error.TransactionError(err))
       }
     }),
   )

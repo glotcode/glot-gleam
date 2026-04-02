@@ -4,7 +4,7 @@ import gleam/option.{type Option}
 import glot_backend/api_action.{type ApiAction}
 import glot_backend/context
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/log
@@ -15,7 +15,7 @@ pub fn enforce(
   ctx ctx: context.Context,
   user_id user_id: Option(Uuid),
   action action: ApiAction,
-) -> effect_model.Program(effect_model.Program(Nil)) {
+) -> program_types.Program(program_types.Program(Nil)) {
   let action_rate_limits = lookup_rate_limits(ctx.config.rate_limits, action)
 
   use _ <- program.and_then(program.when(

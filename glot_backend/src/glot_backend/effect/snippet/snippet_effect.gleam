@@ -1,5 +1,5 @@
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/snippet/snippet
 import glot_core/snippet as snippet_type
@@ -11,8 +11,8 @@ pub fn insert(
   snippet snippet: snippet_type.Snippet,
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
-) -> effect_model.Program(Nil) {
-  effect_model.Impure(effect_model.SnippetEffect(snippet.InsertSnippet(
+) -> program_types.Program(Nil) {
+  program_types.Impure(program_types.SnippetEffect(snippet.InsertSnippet(
     id: id,
     user_id: user_id,
     snippet: snippet,
@@ -24,9 +24,9 @@ pub fn insert(
 
 fn command_next(
   result: Result(Nil, error.DbCommandError),
-) -> effect_model.Program(Nil) {
+) -> program_types.Program(Nil) {
   case result {
-    Ok(_) -> effect_model.Pure(Nil)
-    Error(err) -> effect_model.Fail(error.CommandError(err))
+    Ok(_) -> program_types.Pure(Nil)
+    Error(err) -> program_types.Fail(error.CommandError(err))
   }
 }

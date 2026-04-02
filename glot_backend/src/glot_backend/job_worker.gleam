@@ -9,7 +9,7 @@ import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/effect/error
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
@@ -111,7 +111,7 @@ fn context_from_state(state: State) -> context.Context {
   )
 }
 
-fn process_next_job(ctx: context.Context) -> effect_model.Program(Bool) {
+fn process_next_job(ctx: context.Context) -> program_types.Program(Bool) {
   use now <- program.and_then(core_effect.system_time())
   use maybe_job <- program.and_then(job_effect.db_get_next_job(
     now,
@@ -129,7 +129,7 @@ fn process_next_job(ctx: context.Context) -> effect_model.Program(Bool) {
 fn process_job(
   ctx: context.Context,
   next_job: job.Job,
-) -> effect_model.Program(Nil) {
+) -> program_types.Program(Nil) {
   case next_job {
     job.Job(
       id: id,
@@ -146,7 +146,7 @@ fn process_send_email_job(
   id: Uuid,
   payload: String,
   attempts: Int,
-) -> effect_model.Program(Nil) {
+) -> program_types.Program(Nil) {
   case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
       use send_result <- program.and_then(core_effect.attempt_send_email(message))

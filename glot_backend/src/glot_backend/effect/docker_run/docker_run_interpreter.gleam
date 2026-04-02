@@ -1,15 +1,16 @@
 import glot_backend/effect/docker_run/docker_run
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
+import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/program_state
 import glot_backend/erlang
 
 pub fn run(
-  effect: docker_run.DockerRunEffect(effect_model.Program(a)),
+  effect: docker_run.DockerRunEffect(program_types.Program(a)),
   handlers: handlers.Handlers,
   state: program_state.State,
-  continue: fn(effect_model.Program(a), program_state.State) ->
+  continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
@@ -20,10 +21,10 @@ pub fn run(
         next(run_result),
         program_state.add_effect_measurement(
           state,
-          effect_model.DockerRunEffectName(
+          effect_trace.DockerRunEffectName(
             docker_run.AttemptPostRunRequestEffectName,
           ),
-          effect_model.DockerRunEffectCategory,
+          effect_trace.DockerRunEffectCategory,
           started_at,
         ),
       )

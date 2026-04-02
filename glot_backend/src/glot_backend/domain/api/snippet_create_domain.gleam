@@ -5,7 +5,7 @@ import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/domain/generic/session_domain
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/program
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction_effect
@@ -15,7 +15,7 @@ import glot_core/snippet
 pub fn snippet_create(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> effect_model.Program(Nil) {
+) -> program_types.Program(Nil) {
   use session <- program.and_then(session_domain.require_session(ctx))
 
   use request <- program.and_then(program.decode_json(

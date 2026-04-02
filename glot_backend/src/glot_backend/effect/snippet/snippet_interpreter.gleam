@@ -1,4 +1,5 @@
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
+import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/program_state
@@ -6,10 +7,10 @@ import glot_backend/effect/snippet/snippet
 import glot_backend/erlang
 
 pub fn run(
-  effect: snippet.SnippetEffect(effect_model.Program(a)),
+  effect: snippet.SnippetEffect(program_types.Program(a)),
   handlers: handlers.Handlers,
   state: program_state.State,
-  continue: fn(effect_model.Program(a), program_state.State) ->
+  continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
@@ -34,8 +35,8 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_model.SnippetEffectName(snippet.InsertSnippetEffectName),
-          effect_model.DbWriteEffectCategory,
+          effect_trace.SnippetEffectName(snippet.InsertSnippetEffectName),
+          effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )

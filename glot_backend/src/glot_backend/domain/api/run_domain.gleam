@@ -6,7 +6,7 @@ import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/domain/generic/session_domain
 import glot_backend/effect/core/core_effect
 import glot_backend/effect/docker_run/docker_run_effect
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
 import glot_backend/effect/program
 import glot_backend/log
 import glot_core/run
@@ -14,7 +14,7 @@ import glot_core/run
 pub fn run(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> effect_model.Program(run.RunResult) {
+) -> program_types.Program(run.RunResult) {
   use request <- program.and_then(program.decode_json(
     json_body,
     run.run_request_decoder(),

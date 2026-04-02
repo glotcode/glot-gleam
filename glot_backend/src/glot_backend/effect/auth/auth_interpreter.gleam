@@ -1,15 +1,16 @@
 import glot_backend/effect/auth/auth
-import glot_backend/effect/effect_model
+import glot_backend/effect/program_types
+import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/program_state
 import glot_backend/erlang
 
 pub fn run(
-  effect: auth.AuthEffect(effect_model.Program(a)),
+  effect: auth.AuthEffect(program_types.Program(a)),
   handlers: handlers.Handlers,
   state: program_state.State,
-  continue: fn(effect_model.Program(a), program_state.State) ->
+  continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
@@ -22,8 +23,8 @@ pub fn run(
             next(value),
             program_state.add_effect_measurement(
               state,
-              effect_model.AuthEffectName(auth.GetUserByEmailEffectName),
-              effect_model.DbReadEffectCategory,
+              effect_trace.AuthEffectName(auth.GetUserByEmailEffectName),
+              effect_trace.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -31,8 +32,8 @@ pub fn run(
           Error(error.QueryError(error)),
           program_state.add_effect_measurement(
             state,
-            effect_model.AuthEffectName(auth.GetUserByEmailEffectName),
-            effect_model.DbReadEffectCategory,
+            effect_trace.AuthEffectName(auth.GetUserByEmailEffectName),
+            effect_trace.DbReadEffectCategory,
             started_at,
           ),
         )
@@ -47,8 +48,8 @@ pub fn run(
             next(value),
             program_state.add_effect_measurement(
               state,
-              effect_model.AuthEffectName(auth.ListLoginTokensByUserEffectName),
-              effect_model.DbReadEffectCategory,
+              effect_trace.AuthEffectName(auth.ListLoginTokensByUserEffectName),
+              effect_trace.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -56,8 +57,8 @@ pub fn run(
           Error(error.QueryError(error)),
           program_state.add_effect_measurement(
             state,
-            effect_model.AuthEffectName(auth.ListLoginTokensByUserEffectName),
-            effect_model.DbReadEffectCategory,
+            effect_trace.AuthEffectName(auth.ListLoginTokensByUserEffectName),
+            effect_trace.DbReadEffectCategory,
             started_at,
           ),
         )
@@ -72,8 +73,8 @@ pub fn run(
             next(value),
             program_state.add_effect_measurement(
               state,
-              effect_model.AuthEffectName(auth.GetSessionByTokenEffectName),
-              effect_model.DbReadEffectCategory,
+              effect_trace.AuthEffectName(auth.GetSessionByTokenEffectName),
+              effect_trace.DbReadEffectCategory,
               started_at,
             ),
           )
@@ -81,8 +82,8 @@ pub fn run(
           Error(error.QueryError(error)),
           program_state.add_effect_measurement(
             state,
-            effect_model.AuthEffectName(auth.GetSessionByTokenEffectName),
-            effect_model.DbReadEffectCategory,
+            effect_trace.AuthEffectName(auth.GetSessionByTokenEffectName),
+            effect_trace.DbReadEffectCategory,
             started_at,
           ),
         )
@@ -95,8 +96,8 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_model.AuthEffectName(auth.InsertUserEffectName),
-          effect_model.DbWriteEffectCategory,
+          effect_trace.AuthEffectName(auth.InsertUserEffectName),
+          effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -124,8 +125,8 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_model.AuthEffectName(auth.InsertSessionEffectName),
-          effect_model.DbWriteEffectCategory,
+          effect_trace.AuthEffectName(auth.InsertSessionEffectName),
+          effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -151,8 +152,8 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_model.AuthEffectName(auth.InsertLoginTokenEffectName),
-          effect_model.DbWriteEffectCategory,
+          effect_trace.AuthEffectName(auth.InsertLoginTokenEffectName),
+          effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
@@ -178,8 +179,8 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_model.AuthEffectName(auth.UpdateLoginTokenEffectName),
-          effect_model.DbWriteEffectCategory,
+          effect_trace.AuthEffectName(auth.UpdateLoginTokenEffectName),
+          effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
