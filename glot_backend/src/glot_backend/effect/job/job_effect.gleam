@@ -4,7 +4,6 @@ import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/job/job
 import glot_backend/job as job_type
-import youid/uuid.{type Uuid}
 
 pub fn db_get_next_job(
   now: Timestamp,
@@ -21,35 +20,15 @@ pub fn db_get_next_job(
   )
 }
 
-pub fn insert(job job_value: job_type.Job) -> program_types.Program(Nil) {
+pub fn insert(job j: job_type.Job) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.JobEffect(job.InsertJob(job_value, command_next)),
+    program_types.JobEffect(job.InsertJob(j, command_next)),
   )
 }
 
-pub fn mark_done(
-  id id: Uuid,
-  completed_at completed_at: Timestamp,
-) -> program_types.Program(Nil) {
+pub fn update(job j: job_type.Job) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.JobEffect(job.MarkJobDone(id, completed_at, command_next)),
-  )
-}
-
-pub fn reschedule(
-  id id: Uuid,
-  run_at run_at: Timestamp,
-  last_error last_error: option.Option(String),
-  updated_at updated_at: Timestamp,
-) -> program_types.Program(Nil) {
-  program_types.Impure(
-    program_types.JobEffect(job.RescheduleJob(
-      id: id,
-      run_at: run_at,
-      last_error: last_error,
-      updated_at: updated_at,
-      next: command_next,
-    )),
+    program_types.JobEffect(job.UpdateJob(j, command_next)),
   )
 }
 

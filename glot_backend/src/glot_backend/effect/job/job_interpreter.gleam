@@ -52,27 +52,14 @@ pub fn run(
         ),
       )
     }
-    job.MarkJobDone(id, completed_at, next) -> {
+    job.UpdateJob(job, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.job.mark_job_done(id, completed_at)
+      let result = handlers.job.update_job(job)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.JobEffectName(job.MarkJobDoneEffectName),
-          effect_trace.DbWriteEffectCategory,
-          started_at,
-        ),
-      )
-    }
-    job.RescheduleJob(id, run_at, last_error, updated_at, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let result = handlers.job.reschedule_job(id, run_at, last_error, updated_at)
-      continue(
-        next(result),
-        program_state.add_effect_measurement(
-          state,
-          effect_trace.JobEffectName(job.RescheduleJobEffectName),
+          effect_trace.JobEffectName(job.UpdateJobEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

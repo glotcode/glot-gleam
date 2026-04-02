@@ -445,22 +445,6 @@ pub fn insert_snippet(
   ])
 }
 
-pub fn mark_job_done(
-  id id: BitArray,
-  completed_at completed_at: Option(Timestamp),
-) {
-  let sql =
-    "UPDATE jobs
-SET status = 'done',
-    completed_at = $2,
-    updated_at = $2
-WHERE id = $1"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
-  ])
-}
-
 pub type ListLoginTokensByUser {
   ListLoginTokensByUser(
     id: BitArray,
@@ -508,6 +492,53 @@ pub fn insert_user(
     dev.ParamBitArray(id),
     dev.ParamString(email),
     dev.ParamTimestamp(created_at),
+  ])
+}
+
+pub fn update_job(
+  id id: BitArray,
+  job_type job_type: String,
+  payload payload: String,
+  status status: String,
+  attempts attempts: Int,
+  max_attempts max_attempts: Int,
+  timeout_seconds timeout_seconds: Int,
+  run_at run_at: Timestamp,
+  started_at started_at: Option(Timestamp),
+  completed_at completed_at: Option(Timestamp),
+  last_error last_error: Option(String),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "UPDATE jobs
+SET job_type = $2,
+    payload = $3,
+    status = $4,
+    attempts = $5,
+    max_attempts = $6,
+    timeout_seconds = $7,
+    run_at = $8,
+    started_at = $9,
+    completed_at = $10,
+    last_error = $11,
+    created_at = $12,
+    updated_at = $13
+WHERE id = $1"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(job_type),
+    dev.ParamString(payload),
+    dev.ParamString(status),
+    dev.ParamInt(attempts),
+    dev.ParamInt(max_attempts),
+    dev.ParamInt(timeout_seconds),
+    dev.ParamTimestamp(run_at),
+    dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
   ])
 }
 
@@ -623,29 +654,6 @@ pub fn insert_session(
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
-  ])
-}
-
-pub fn reschedule_job(
-  id id: BitArray,
-  run_at run_at: Timestamp,
-  last_error last_error: Option(String),
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "UPDATE jobs
-SET status = CASE WHEN attempts >= max_attempts THEN 'failed' ELSE 'pending' END,
-    run_at = $2,
-    started_at = NULL,
-    completed_at = NULL,
-    last_error = $3,
-    updated_at = $4
-WHERE id = $1"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamTimestamp(run_at),
-    dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
-    dev.ParamTimestamp(updated_at),
   ])
 }
 

@@ -98,3 +98,35 @@ pub fn send_email_job(
       |> json.to_string,
   )
 }
+
+pub fn done(job: Job, now: Timestamp) -> Job {
+  Job(
+    ..job,
+    status: Done,
+    completed_at: option.Some(now),
+    last_error: option.None,
+    updated_at: now,
+  )
+}
+
+pub fn reschedule(
+  job: Job,
+  run_at: Timestamp,
+  last_error: Option(String),
+  updated_at: Timestamp,
+) -> Job {
+  let status = case job.attempts >= job.max_attempts {
+    True -> Failed
+    False -> Pending
+  }
+
+  Job(
+    ..job,
+    status: status,
+    run_at: run_at,
+    started_at: option.None,
+    completed_at: option.None,
+    last_error: last_error,
+    updated_at: updated_at,
+  )
+}

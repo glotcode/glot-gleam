@@ -131,8 +131,7 @@ fn test_handlers() -> handlers.Handlers {
         Ok(option.None)
       },
       insert_job: fn(_) { Ok(Nil) },
-      mark_job_done: fn(_, _) { Ok(Nil) },
-      reschedule_job: fn(_, _, _, _) { Ok(Nil) },
+      update_job: fn(_) { Ok(Nil) },
     ),
     auth: auth_handlers.AuthHandlers(
       get_user_by_email: fn(_) { Ok(option.None) },

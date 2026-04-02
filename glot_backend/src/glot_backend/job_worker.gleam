@@ -20,7 +20,7 @@ import glot_backend/job
 import glot_backend/effect/handlers
 import pog
 import wisp
-import youid/uuid.{type Uuid}
+import youid/uuid
 
 const idle_poll_ms = 1000
 
@@ -132,20 +132,17 @@ fn process_job(
 ) -> program_types.Program(Nil) {
   case next_job {
     job.Job(
-      id: id,
       job_type: job.SendEmailJob,
       payload: payload,
-      attempts: attempts,
       ..,
-    ) -> process_send_email_job(ctx, id, payload, attempts)
+    ) -> process_send_email_job(ctx, next_job, payload)
   }
 }
 
 fn process_send_email_job(
   ctx: context.Context,
-  id: Uuid,
+  j: job.Job,
   payload: String,
-  attempts: Int,
 ) -> program_types.Program(Nil) {
   case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
@@ -153,24 +150,26 @@ fn process_send_email_job(
       use now <- program.and_then(core_effect.system_time())
 
       case send_result {
-        Ok(_) -> job_effect.mark_done(id, now)
+        Ok(_) -> job.done(j, now) |> job_effect.update
         Error(err) ->
-          job_effect.reschedule(
-            id: id,
-            run_at: add_seconds(now, backoff_seconds(attempts)),
-            last_error: option.Some(send_email_error_to_string(err)),
-            updated_at: now,
+          job.reschedule(
+            j,
+            add_seconds(now, backoff_seconds(j.attempts)),
+            option.Some(send_email_error_to_string(err)),
+            now,
           )
+          |> job_effect.update
       }
     }
     Error(errors) -> {
       use now <- program.and_then(core_effect.system_time())
-      job_effect.reschedule(
-        id: id,
-        run_at: add_seconds(now, backoff_seconds(attempts)),
-        last_error: option.Some("decode_error:" <> string.inspect(errors)),
-        updated_at: now,
+      job.reschedule(
+        j,
+        add_seconds(now, backoff_seconds(j.attempts)),
+        option.Some("decode_error:" <> string.inspect(errors)),
+        now,
       )
+      |> job_effect.update
     }
   }
 }

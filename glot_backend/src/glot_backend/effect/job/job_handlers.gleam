@@ -9,20 +9,14 @@ import glot_backend/job
 import glot_backend/sql
 import glot_core/uuid_helpers
 import pog
-import youid/uuid.{type Uuid}
+import youid/uuid
 
 pub type JobHandlers {
   JobHandlers(
     get_next_job: fn(Timestamp, job.Status, job.Status) ->
       Result(option.Option(job.Job), error.DbQueryError),
     insert_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
-    mark_job_done: fn(Uuid, Timestamp) -> Result(Nil, error.DbCommandError),
-    reschedule_job: fn(
-      Uuid,
-      Timestamp,
-      option.Option(String),
-      Timestamp,
-    ) -> Result(Nil, error.DbCommandError),
+    update_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
   )
 }
 
@@ -32,10 +26,7 @@ pub fn from_context(ctx: context.Context) -> JobHandlers {
       get_next_job(ctx, now, pending_status, running_status)
     },
     insert_job: fn(job) { insert_job(ctx.db, job) },
-    mark_job_done: fn(id, completed_at) { mark_job_done(ctx.db, id, completed_at) },
-    reschedule_job: fn(id, run_at, last_error, updated_at) {
-      reschedule_job(ctx.db, id, run_at, last_error, updated_at)
-    },
+    update_job: fn(job) { update_job(ctx.db, job) },
   )
 }
 
@@ -66,59 +57,55 @@ pub fn get_next_job(
 
 pub fn insert_job(
   db: pog.Connection,
-  job_value: job.Job,
+  j: job.Job,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
     sql.insert_job(
-      id: uuid.to_bit_array(job_value.id),
-      job_type: job.job_type_to_string(job_value.job_type),
-      payload: job_value.payload,
-      status: job.status_to_string(job_value.status),
-      attempts: job_value.attempts,
-      max_attempts: job_value.max_attempts,
-      timeout_seconds: job_value.timeout_seconds,
-      run_at: job_value.run_at,
-      started_at: job_value.started_at,
-      completed_at: job_value.completed_at,
-      last_error: job_value.last_error,
-      created_at: job_value.created_at,
-      updated_at: job_value.updated_at,
+      id: uuid.to_bit_array(j.id),
+      job_type: job.job_type_to_string(j.job_type),
+      payload: j.payload,
+      status: job.status_to_string(j.status),
+      attempts: j.attempts,
+      max_attempts: j.max_attempts,
+      timeout_seconds: j.timeout_seconds,
+      run_at: j.run_at,
+      started_at: j.started_at,
+      completed_at: j.completed_at,
+      last_error: j.last_error,
+      created_at: j.created_at,
+      updated_at: j.updated_at,
     ),
     to_error,
   )
   |> result.map(fn(_) { Nil })
 }
 
-pub fn mark_job_done(
+pub fn update_job(
   db: pog.Connection,
-  id: Uuid,
-  completed_at: Timestamp,
+  j: job.Job,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
-    sql.mark_job_done(uuid.to_bit_array(id), option.Some(completed_at)),
-    to_error,
-  )
-  |> result.map(fn(_) { Nil })
-}
-
-pub fn reschedule_job(
-  db: pog.Connection,
-  id: Uuid,
-  run_at: Timestamp,
-  last_error: option.Option(String),
-  updated_at: Timestamp,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
-
-  db_helpers.execute(
-    db,
-    sql.reschedule_job(uuid.to_bit_array(id), run_at, last_error, updated_at),
+    sql.update_job(
+      id: uuid.to_bit_array(j.id),
+      job_type: job.job_type_to_string(j.job_type),
+      payload: j.payload,
+      status: job.status_to_string(j.status),
+      attempts: j.attempts,
+      max_attempts: j.max_attempts,
+      timeout_seconds: j.timeout_seconds,
+      run_at: j.run_at,
+      started_at: j.started_at,
+      completed_at: j.completed_at,
+      last_error: j.last_error,
+      created_at: j.created_at,
+      updated_at: j.updated_at,
+    ),
     to_error,
   )
   |> result.map(fn(_) { Nil })
