@@ -39,14 +39,14 @@ pub fn run(
         )
       }
     }
-    job.InsertJob(job, next) -> {
+    job.CreateJob(job, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.job.insert_job(job)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.JobEffectName(job.InsertJobEffectName),
+          effect_trace.JobEffectName(job.CreateJobEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

@@ -7,17 +7,17 @@ import gleam/otp/supervision
 import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
-import glot_backend/effect/error
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/program_types
-import glot_backend/effect/job/job_effect
+import glot_backend/effect/error
+import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
+import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
+import glot_backend/effect/program_types
+import glot_backend/effect/transaction_effect
 import glot_backend/email_message
 import glot_backend/erlang
 import glot_backend/job
-import glot_backend/effect/handlers
-import glot_backend/effect/transaction_effect
 import pog
 import wisp
 import youid/uuid
@@ -127,13 +127,13 @@ fn claim_next_job(
   now: timestamp.Timestamp,
 ) -> program_types.Program(option.Option(job.Job)) {
   transaction_effect.run({
-    use maybe_job <- program.and_then(job_effect.db_get_next_job(now, job.Pending))
+    use maybe_job <- program.and_then(job_effect.get_next_job(now, job.Pending))
 
     case maybe_job {
       option.None -> program.succeed(option.None)
       option.Some(next_job) -> {
         let started_job = job.start(next_job, now)
-        use _ <- program.and_then(job_effect.update(started_job))
+        use _ <- program.and_then(job_effect.update_job(started_job))
         program.succeed(option.Some(started_job))
       }
     }
@@ -145,11 +145,8 @@ fn process_job(
   next_job: job.Job,
 ) -> program_types.Program(Nil) {
   case next_job {
-    job.Job(
-      job_type: job.SendEmailJob,
-      payload: payload,
-      ..,
-    ) -> process_send_email_job(ctx, next_job, payload)
+    job.Job(job_type: job.SendEmailJob, payload: payload, ..) ->
+      process_send_email_job(ctx, next_job, payload)
   }
 }
 
@@ -164,7 +161,7 @@ fn process_send_email_job(
       use now <- program.and_then(core_effect.system_time())
 
       case send_result {
-        Ok(_) -> job.done(j, now) |> job_effect.update
+        Ok(_) -> job.done(j, now) |> job_effect.update_job
         Error(err) ->
           job.reschedule(
             j,
@@ -172,7 +169,7 @@ fn process_send_email_job(
             option.Some(send_email_error_to_string(err)),
             now,
           )
-          |> job_effect.update
+          |> job_effect.update_job
       }
     }
     Error(errors) -> {
@@ -183,7 +180,7 @@ fn process_send_email_job(
         option.Some("decode_error:" <> string.inspect(errors)),
         now,
       )
-      |> job_effect.update
+      |> job_effect.update_job
     }
   }
 }

@@ -5,9 +5,9 @@ import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/core/core_effect
-import glot_backend/effect/program_types
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
+import glot_backend/effect/program_types
 import glot_backend/effect/transaction_effect
 import glot_backend/email_message
 import glot_backend/job
@@ -69,7 +69,7 @@ pub fn send_login_token(
     [
       maybe_insert_user_cmd,
       option.Some(insert_token_cmd),
-      option.Some(job_effect.insert(send_email_job)),
+      option.Some(job_effect.create_job(send_email_job)),
       option.Some(user_action_cmd),
     ]
     |> option.values,
@@ -82,11 +82,12 @@ fn find_or_create_user(
 ) -> program_types.Program(
   #(user.User, option.Option(program_types.Program(Nil))),
 ) {
-  use maybe_user <- program.and_then(auth_effect.db_get_user_by_email(user_email))
+  use maybe_user <- program.and_then(auth_effect.db_get_user_by_email(
+    user_email,
+  ))
 
   case maybe_user {
-    option.Some(existing_user) ->
-      program.succeed(#(existing_user, option.None))
+    option.Some(existing_user) -> program.succeed(#(existing_user, option.None))
     option.None -> {
       use user_id <- program.and_then(core_effect.uuid_v7())
 

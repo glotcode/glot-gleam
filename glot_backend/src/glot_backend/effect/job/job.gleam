@@ -9,7 +9,7 @@ pub type JobEffect(next) {
     pending_status: job_type.Status,
     next: fn(option.Option(job_type.Job)) -> next,
   )
-  InsertJob(
+  CreateJob(
     job_type.Job,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
@@ -27,21 +27,21 @@ pub fn map(effect: JobEffect(a), f: fn(a) -> b) -> JobEffect(b) {
         pending_status: pending_status,
         next: fn(value) { f(next(value)) },
       )
-    InsertJob(job, next) -> InsertJob(job, next: fn(value) { f(next(value)) })
+    CreateJob(job, next) -> CreateJob(job, next: fn(value) { f(next(value)) })
     UpdateJob(job, next) -> UpdateJob(job, next: fn(value) { f(next(value)) })
   }
 }
 
 pub type EffectName {
   GetNextJobEffectName
-  InsertJobEffectName
+  CreateJobEffectName
   UpdateJobEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetNextJobEffectName -> "get_next_job"
-    InsertJobEffectName -> "insert_job"
+    CreateJobEffectName -> "create_job"
     UpdateJobEffectName -> "update_job"
   }
 }
