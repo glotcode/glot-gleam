@@ -4,7 +4,7 @@ import glot_core/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/domain/generic/session_domain
-import glot_backend/effect/core/core_effect
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/program_types
 import glot_backend/effect/program
 import glot_backend/effect/snippet/snippet_effect
@@ -24,7 +24,7 @@ pub fn snippet_create(
   ))
 
   use _ <- program.and_then(
-    core_effect.info(
+    basic_effect.info(
       log.from_list([
         log.uuid("session_id", session.id),
         log.uuid("user_id", session.user.id),
@@ -38,7 +38,7 @@ pub fn snippet_create(
     action: api_action.SnippetCreateAction,
   ))
 
-  use snippet_id <- program.and_then(core_effect.uuid_v7())
+  use snippet_id <- program.and_then(basic_effect.uuid_v7())
   use _ <- program.and_then(
     transaction_effect.run_all([
       snippet_effect.insert(
@@ -52,7 +52,7 @@ pub fn snippet_create(
     ]),
   )
   use _ <- program.and_then(
-    core_effect.info(log.singleton(log.uuid("snippet_id", snippet_id))),
+    basic_effect.info(log.singleton(log.uuid("snippet_id", snippet_id))),
   )
 
   program.succeed(Nil)

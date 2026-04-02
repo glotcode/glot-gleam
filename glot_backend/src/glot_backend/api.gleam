@@ -12,7 +12,7 @@ import glot_backend/domain/api/login_domain
 import glot_backend/domain/api/run_domain
 import glot_backend/domain/api/send_login_token_domain
 import glot_backend/domain/api/snippet_create_domain
-import glot_backend/effect/core/core_handlers
+import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
@@ -185,7 +185,7 @@ fn save_log_entry(
   api_request: ApiRequest,
   error: option.Option(error.Error),
 ) -> log_worker.LogEntry {
-  let id = core_handlers.uuid_v7(ctx.timestamp)
+  let id = basic_handlers.uuid_v7(ctx.timestamp)
   let duration_ns = erlang.perf_counter_ns() - ctx.started_at
 
   log_worker.LogEntry(

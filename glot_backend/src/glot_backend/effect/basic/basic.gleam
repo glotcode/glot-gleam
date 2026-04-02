@@ -4,7 +4,7 @@ import glot_backend/email_message
 import glot_backend/log
 import youid/uuid.{type Uuid}
 
-pub type CoreEffect(next) {
+pub type BasicEffect(next) {
   NewToken(Int, fn(String) -> next)
   SystemTime(fn(Timestamp) -> next)
   UuidV7(fn(Uuid) -> next)
@@ -15,7 +15,7 @@ pub type CoreEffect(next) {
   )
 }
 
-pub fn map(effect: CoreEffect(a), f: fn(a) -> b) -> CoreEffect(b) {
+pub fn map(effect: BasicEffect(a), f: fn(a) -> b) -> BasicEffect(b) {
   case effect {
     NewToken(length, next) -> NewToken(length, fn(value) { f(next(value)) })
     SystemTime(next) -> SystemTime(fn(value) { f(next(value)) })

@@ -6,7 +6,7 @@ import glot_core/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
-import glot_backend/effect/core/core_effect
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -26,7 +26,7 @@ pub fn login(
   ))
 
   use _ <- program.and_then(
-    core_effect.info(
+    basic_effect.info(
       log.from_list([
         log.email("email", request.email),
         log.string("token", request.token),
@@ -48,7 +48,7 @@ pub fn login(
   )
 
   use _ <- program.and_then(
-    core_effect.info(log.singleton(log.uuid("user_id", user.id))),
+    basic_effect.info(log.singleton(log.uuid("user_id", user.id))),
   )
 
   use tokens <- program.and_then(auth_effect.list_login_tokens_by_user(
@@ -64,8 +64,8 @@ pub fn login(
     )),
   )
 
-  use session_id <- program.and_then(core_effect.uuid_v7())
-  use session_token <- program.and_then(core_effect.new_token(32))
+  use session_id <- program.and_then(basic_effect.uuid_v7())
+  use session_token <- program.and_then(basic_effect.new_token(32))
 
   use _ <- program.and_then(
     transaction_effect.run_all([
@@ -85,7 +85,7 @@ pub fn login(
     ]),
   )
   use _ <- program.and_then(
-    core_effect.info(log.singleton(log.uuid("session_id", session_id))),
+    basic_effect.info(log.singleton(log.uuid("session_id", session_id))),
   )
 
   program.succeed(session_token)

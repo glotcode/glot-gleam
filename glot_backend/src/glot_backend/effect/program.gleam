@@ -3,11 +3,11 @@ import gleam/dynamic/decode
 import gleam/option
 import gleam/result
 import glot_backend/effect/auth/auth
-import glot_backend/effect/core/core
+import glot_backend/effect/basic/basic
 import glot_backend/effect/docker_run/docker_run
-import glot_backend/effect/program_types
 import glot_backend/effect/error
 import glot_backend/effect/job/job
+import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet
 import glot_backend/effect/user_action/user_action
 
@@ -79,8 +79,8 @@ fn map_effect(
   f: fn(a) -> b,
 ) -> program_types.Effect(b) {
   case effect {
-    program_types.CoreEffect(effect) ->
-      program_types.CoreEffect(core.map(effect, f))
+    program_types.BasicEffect(effect) ->
+      program_types.BasicEffect(basic.map(effect, f))
     program_types.JobEffect(effect) ->
       program_types.JobEffect(job.map(effect, f))
     program_types.AuthEffect(effect) ->

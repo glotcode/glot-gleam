@@ -2,13 +2,13 @@ import gleam/list
 import gleam/option
 import glot_backend/context
 import glot_backend/effect/auth/auth_interpreter
-import glot_backend/effect/core/core_interpreter
+import glot_backend/effect/basic/basic_interpreter
 import glot_backend/effect/docker_run/docker_run_interpreter
-import glot_backend/effect/program_types
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/job/job_interpreter
+import glot_backend/effect/program_types
 import glot_backend/effect/program_state
 import glot_backend/effect/snippet/snippet_interpreter
 import glot_backend/effect/user_action/user_action_interpreter
@@ -48,8 +48,8 @@ fn run_with_state(
     program_types.Fail(error) -> #(Error(error), state)
     program_types.Impure(effect) ->
       case effect {
-        program_types.CoreEffect(effect) ->
-          core_interpreter.run(effect, ctx, handlers, state, continue)
+        program_types.BasicEffect(effect) ->
+          basic_interpreter.run(effect, ctx, handlers, state, continue)
         program_types.JobEffect(effect) ->
           job_interpreter.run(effect, handlers, state, continue)
         program_types.AuthEffect(effect) ->

@@ -1,15 +1,15 @@
 import glot_backend/context
-import glot_backend/effect/core/core
-import glot_backend/effect/program_types
+import glot_backend/effect/basic/basic
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
+import glot_backend/effect/program_types
 import glot_backend/effect/program_state
 import glot_backend/erlang
 import glot_backend/log
 
 pub fn run(
-  effect: core.CoreEffect(program_types.Program(a)),
+  effect: basic.BasicEffect(program_types.Program(a)),
   ctx: context.Context,
   handlers: handlers.Handlers,
   state: program_state.State,
@@ -17,46 +17,46 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    core.NewToken(length, next) -> {
+    basic.NewToken(length, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.core.new_token(length)
+      let value = handlers.basic.new_token(length)
       continue(
         next(value),
         program_state.add_effect_measurement(
           state,
-          effect_trace.CoreEffectName(core.NewTokenEffectName),
+          effect_trace.BasicEffectName(basic.NewTokenEffectName),
           effect_trace.UtilEffectCategory,
           started_at,
         ),
       )
     }
-    core.SystemTime(next) -> {
+    basic.SystemTime(next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.core.system_time()
+      let value = handlers.basic.system_time()
       continue(
         next(value),
         program_state.add_effect_measurement(
           state,
-          effect_trace.CoreEffectName(core.SystemTimeEffectName),
+          effect_trace.BasicEffectName(basic.SystemTimeEffectName),
           effect_trace.UtilEffectCategory,
           started_at,
         ),
       )
     }
-    core.UuidV7(next) -> {
+    basic.UuidV7(next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.core.uuid_v7(ctx.timestamp)
+      let value = handlers.basic.uuid_v7(ctx.timestamp)
       continue(
         next(value),
         program_state.add_effect_measurement(
           state,
-          effect_trace.CoreEffectName(core.UuidV7EffectName),
+          effect_trace.BasicEffectName(basic.UuidV7EffectName),
           effect_trace.UtilEffectCategory,
           started_at,
         ),
       )
     }
-    core.Log(level, fields, next) -> {
+    basic.Log(level, fields, next) -> {
       let started_at = erlang.perf_counter_ns()
       let state = case level {
         log.Info -> program_state.add_info_fields(state, fields)
@@ -66,20 +66,20 @@ pub fn run(
         next,
         program_state.add_effect_measurement(
           state,
-          effect_trace.CoreEffectName(core.LogEffectName),
+          effect_trace.BasicEffectName(basic.LogEffectName),
           effect_trace.LogEffectCategory,
           started_at,
         ),
       )
     }
-    core.SendEmail(message, next) -> {
+    basic.SendEmail(message, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let send_result = handlers.core.send_email(message)
+      let send_result = handlers.basic.send_email(message)
       continue(
         next(send_result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.CoreEffectName(core.SendEmailEffectName),
+          effect_trace.BasicEffectName(basic.SendEmailEffectName),
           effect_trace.EmailEffectCategory,
           started_at,
         ),

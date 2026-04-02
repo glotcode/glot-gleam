@@ -5,9 +5,9 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
 import glot_backend/effect/auth/auth_handlers
-import glot_backend/effect/core/core
-import glot_backend/effect/core/core_effect
-import glot_backend/effect/core/core_handlers
+import glot_backend/effect/basic/basic
+import glot_backend/effect/basic/basic_effect
+import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -37,8 +37,8 @@ pub fn measurement_aggregation_test() {
   let handlers = test_handlers()
   let ctx = test_context()
   let measured_effect = {
-    use _ <- program.and_then(core_effect.info(log.new()))
-    use _ <- program.and_then(core_effect.info(log.new()))
+    use _ <- program.and_then(basic_effect.info(log.new()))
+    use _ <- program.and_then(basic_effect.info(log.new()))
     program.succeed("ok")
   }
 
@@ -48,12 +48,12 @@ pub fn measurement_aggregation_test() {
   assert run_result == Ok("ok")
   let assert [
     effect_trace.EffectMeasurement(
-      name: effect_trace.CoreEffectName(core.LogEffectName),
+      name: effect_trace.BasicEffectName(basic.LogEffectName),
       duration_ns: first,
       ..,
     ),
     effect_trace.EffectMeasurement(
-      name: effect_trace.CoreEffectName(core.LogEffectName),
+      name: effect_trace.BasicEffectName(basic.LogEffectName),
       duration_ns: second,
       ..,
     ),
@@ -66,7 +66,7 @@ pub fn measures_effects_in_success_test() {
   let handlers = test_handlers()
   let ctx = test_context()
   let measured_effect = {
-    use _ <- program.and_then(core_effect.new_token(5))
+    use _ <- program.and_then(basic_effect.new_token(5))
     program.succeed("ok")
   }
   let #(run_result, state) =
@@ -75,7 +75,7 @@ pub fn measures_effects_in_success_test() {
   assert run_result == Ok("ok")
   let assert [
     effect_trace.EffectMeasurement(
-      name: effect_trace.CoreEffectName(core.NewTokenEffectName),
+      name: effect_trace.BasicEffectName(basic.NewTokenEffectName),
       duration_ns: duration_ms,
       ..,
     ),
@@ -87,7 +87,7 @@ pub fn measures_effects_in_error_test() {
   let handlers = test_handlers()
   let ctx = test_context()
   let failing_effect = {
-    use _ <- program.and_then(core_effect.new_token(5))
+    use _ <- program.and_then(basic_effect.new_token(5))
     program.fail(error.EmailInvalidError("bad"))
   }
   let #(run_result, state) =
@@ -96,7 +96,7 @@ pub fn measures_effects_in_error_test() {
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
     effect_trace.EffectMeasurement(
-      name: effect_trace.CoreEffectName(core.NewTokenEffectName),
+      name: effect_trace.BasicEffectName(basic.NewTokenEffectName),
       duration_ns: duration_ms,
       ..,
     ),
@@ -106,7 +106,7 @@ pub fn measures_effects_in_error_test() {
 
 fn test_handlers() -> handlers.Handlers {
   handlers.Handlers(
-    core: core_handlers.CoreHandlers(
+    basic: basic_handlers.BasicHandlers(
       new_token: fn(_) { "random" },
       system_time: timestamp.system_time,
       uuid_v7: fn(_) { uuid.nil },

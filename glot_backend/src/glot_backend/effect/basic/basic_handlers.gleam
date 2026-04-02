@@ -5,8 +5,8 @@ import glot_backend/email_message
 import glot_core/uuid_helpers
 import youid/uuid.{type Uuid}
 
-pub type CoreHandlers {
-  CoreHandlers(
+pub type BasicHandlers {
+  BasicHandlers(
     new_token: fn(Int) -> String,
     system_time: fn() -> Timestamp,
     uuid_v7: fn(Timestamp) -> Uuid,
@@ -15,8 +15,8 @@ pub type CoreHandlers {
   )
 }
 
-pub fn new() -> CoreHandlers {
-  CoreHandlers(
+pub fn new() -> BasicHandlers {
+  BasicHandlers(
     new_token: new_token,
     system_time: system_time,
     uuid_v7: uuid_v7,

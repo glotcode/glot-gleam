@@ -7,7 +7,7 @@ import gleam/otp/supervision
 import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
-import glot_backend/effect/core/core_effect
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
@@ -113,7 +113,7 @@ fn context_from_state(state: State) -> context.Context {
 }
 
 fn process_next_job(ctx: context.Context) -> program_types.Program(Bool) {
-  use now <- program.and_then(core_effect.system_time())
+  use now <- program.and_then(basic_effect.system_time())
   use maybe_job <- program.and_then(claim_next_job(now))
 
   case maybe_job {
@@ -157,8 +157,8 @@ fn process_send_email_job(
 ) -> program_types.Program(Nil) {
   case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
-      use send_result <- program.and_then(core_effect.send_email(message))
-      use now <- program.and_then(core_effect.system_time())
+      use send_result <- program.and_then(basic_effect.send_email(message))
+      use now <- program.and_then(basic_effect.system_time())
 
       case send_result {
         Ok(_) -> job.done(j, now) |> job_effect.update_job
@@ -173,7 +173,7 @@ fn process_send_email_job(
       }
     }
     Error(errors) -> {
-      use now <- program.and_then(core_effect.system_time())
+      use now <- program.and_then(basic_effect.system_time())
       job.reschedule(
         j,
         add_seconds(now, backoff_seconds(j.attempts)),

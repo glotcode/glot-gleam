@@ -1,14 +1,14 @@
 import gleam/json
 import gleam/list
 import glot_backend/effect/auth/auth
-import glot_backend/effect/core/core
+import glot_backend/effect/basic/basic
 import glot_backend/effect/docker_run/docker_run
 import glot_backend/effect/job/job
 import glot_backend/effect/snippet/snippet
 import glot_backend/effect/user_action/user_action
 
 pub type EffectName {
-  CoreEffectName(core.EffectName)
+  BasicEffectName(basic.EffectName)
   JobEffectName(job.EffectName)
   AuthEffectName(auth.EffectName)
   SnippetEffectName(snippet.EffectName)
@@ -19,7 +19,7 @@ pub type EffectName {
 
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
   case effect_name {
-    CoreEffectName(name) -> core.effect_name_to_string(name)
+    BasicEffectName(name) -> basic.effect_name_to_string(name)
     JobEffectName(name) -> job.effect_name_to_string(name)
     AuthEffectName(name) -> auth.effect_name_to_string(name)
     SnippetEffectName(name) -> snippet.effect_name_to_string(name)
@@ -31,7 +31,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
 
 pub fn effect_name_to_family(effect_name: EffectName) -> String {
   case effect_name {
-    CoreEffectName(_) -> "core"
+    BasicEffectName(_) -> "basic"
     JobEffectName(_) -> "job"
     AuthEffectName(_) -> "auth"
     SnippetEffectName(_) -> "snippet"

@@ -4,7 +4,7 @@ import glot_core/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
-import glot_backend/effect/core/core_effect
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -26,7 +26,7 @@ pub fn send_login_token(
   ))
 
   use _ <- program.and_then(
-    core_effect.info(log.singleton(log.email("email", request.email))),
+    basic_effect.info(log.singleton(log.email("email", request.email))),
   )
 
   use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
@@ -39,12 +39,12 @@ pub fn send_login_token(
     ctx,
     request.email,
   ))
-  use token <- program.and_then(core_effect.new_token(10))
-  use login_token_id <- program.and_then(core_effect.uuid_v7())
-  use job_id <- program.and_then(core_effect.uuid_v7())
+  use token <- program.and_then(basic_effect.new_token(10))
+  use login_token_id <- program.and_then(basic_effect.uuid_v7())
+  use job_id <- program.and_then(basic_effect.uuid_v7())
 
   use _ <- program.and_then(
-    core_effect.info(
+    basic_effect.info(
       log.from_list([
         log.string("token", token),
         log.uuid("user_id", user.id),
@@ -88,7 +88,7 @@ fn find_or_create_user(
   case maybe_user {
     option.Some(existing_user) -> program.succeed(#(existing_user, option.None))
     option.None -> {
-      use user_id <- program.and_then(core_effect.uuid_v7())
+      use user_id <- program.and_then(basic_effect.uuid_v7())
 
       let new_user =
         user.User(id: user_id, email: user_email, created_at: ctx.timestamp)

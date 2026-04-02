@@ -3,7 +3,7 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
-import glot_backend/effect/core/core_effect
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -23,7 +23,7 @@ pub fn enforce(
 
   use _ <- program.and_then(program.when(
     list.is_empty(action_rate_limits),
-    core_effect.warn(
+    basic_effect.warn(
       log.singleton(
         log.object("rate_limit", [
           log.string("message", "No rate limits configured for this action"),
@@ -48,7 +48,7 @@ pub fn enforce(
     check_rate_limit(action_rate_limits, counts)
     |> program.from_result(),
   )
-  use id <- program.and_then(core_effect.uuid_v7())
+  use id <- program.and_then(basic_effect.uuid_v7())
 
   program.succeed(
     user_action_effect.create_user_action(user_action.UserAction(

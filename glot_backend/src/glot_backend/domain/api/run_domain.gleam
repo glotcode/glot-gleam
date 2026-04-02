@@ -4,7 +4,7 @@ import glot_core/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/domain/generic/session_domain
-import glot_backend/effect/core/core_effect
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/docker_run/docker_run_effect
 import glot_backend/effect/program_types
 import glot_backend/effect/program
@@ -33,7 +33,7 @@ pub fn run(
   use _ <- program.and_then(user_action_cmd)
 
   use _ <- program.and_then(
-    core_effect.info(
+    basic_effect.info(
       log.from_list([
         log.string("image", request.image),
         log.optional_uuid("session_id", maybe_session_id),
