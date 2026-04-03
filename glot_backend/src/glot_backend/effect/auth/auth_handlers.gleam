@@ -6,10 +6,10 @@ import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
 import glot_core/auth/login_token_model
+import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
-import glot_core/session as session_core
 import pog
 import youid/uuid.{type Uuid}
 
@@ -20,9 +20,9 @@ pub type AuthHandlers {
     list_login_tokens_by_user: fn(Uuid, Int) ->
       Result(List(login_token_model.LoginToken), error.DbQueryError),
     get_session_by_token: fn(Regexp, String) ->
-      Result(option.Option(session_core.HydratedSession), error.DbQueryError),
+      Result(option.Option(session_model.HydratedSession), error.DbQueryError),
     create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
-    create_session: fn(session_core.Session) -> Result(Nil, error.DbCommandError),
+    create_session: fn(session_model.Session) -> Result(Nil, error.DbCommandError),
     create_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
     update_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
   )
@@ -78,7 +78,7 @@ pub fn get_session_by_token(
   db: pog.Connection,
   is_email: Regexp,
   token: String,
-) -> Result(option.Option(session_core.HydratedSession), error.DbQueryError) {
+) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
   db_helpers.query(db, sql.get_session_by_token(token), fn(err) {
     error.DbQueryError(string.inspect(err))
   })
@@ -125,7 +125,7 @@ pub fn create_login_token(
 
 pub fn create_session(
   db: pog.Connection,
-  session: session_core.Session,
+  session: session_model.Session,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
@@ -221,7 +221,7 @@ fn login_token_from_row(
 fn session_from_rows(
   is_email: Regexp,
   rows: List(sql.GetSessionByToken),
-) -> Result(option.Option(session_core.HydratedSession), error.DbQueryError) {
+) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> session_from_row(is_email, first) |> result.map(option.Some)
@@ -232,10 +232,10 @@ fn session_from_rows(
 fn session_from_row(
   is_email: Regexp,
   row: sql.GetSessionByToken,
-) -> Result(session_core.HydratedSession, error.DbQueryError) {
+) -> Result(session_model.HydratedSession, error.DbQueryError) {
   case email_address_model.from_string(is_email, row.user_email) {
     option.Some(valid_email) ->
-      Ok(session_core.HydratedSession(
+      Ok(session_model.HydratedSession(
         id: uuid_helpers.from_bit_array(row.id),
         user: user_model.User(
           id: uuid_helpers.from_bit_array(row.user_id),

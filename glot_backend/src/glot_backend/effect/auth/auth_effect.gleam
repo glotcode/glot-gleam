@@ -3,9 +3,9 @@ import glot_backend/effect/auth/auth
 import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_core/auth/login_token_model
+import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
-import glot_core/session
 import youid/uuid.{type Uuid}
 
 pub fn db_get_user_by_email(
@@ -34,7 +34,7 @@ pub fn list_login_tokens_by_user(
 
 pub fn db_get_session_by_token(
   token token: String,
-) -> program_types.Program(option.Option(session.HydratedSession)) {
+) -> program_types.Program(option.Option(session_model.HydratedSession)) {
   program_types.Impure(
     program_types.AuthEffect(auth.GetSessionByToken(
       token: token,
@@ -50,7 +50,7 @@ pub fn create_user(user user: user_model.User) -> program_types.Program(Nil) {
 }
 
 pub fn create_session(
-  session session: session.Session,
+  session session: session_model.Session,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.AuthEffect(auth.CreateSession(

@@ -14,8 +14,8 @@ import glot_backend/log
 import glot_core/api_action
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_model
+import glot_core/auth/session_model
 import glot_core/auth/user_model
-import glot_core/session
 
 pub fn login(
   ctx: context.Context,
@@ -74,7 +74,7 @@ pub fn login(
         matching_token,
         ctx.timestamp,
       )),
-      auth_effect.create_session(session.Session(
+      auth_effect.create_session(session_model.Session(
         id: session_id,
         user_id: user.id,
         token: session_token,

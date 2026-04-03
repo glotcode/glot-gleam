@@ -1,9 +1,9 @@
 import gleam/option
 import glot_backend/effect/error
 import glot_core/auth/login_token_model
+import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
-import glot_core/session
 import youid/uuid.{type Uuid}
 
 pub type AuthEffect(next) {
@@ -18,14 +18,14 @@ pub type AuthEffect(next) {
   )
   GetSessionByToken(
     token: String,
-    next: fn(option.Option(session.HydratedSession)) -> next,
+    next: fn(option.Option(session_model.HydratedSession)) -> next,
   )
   CreateUser(
     user: user_model.User,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   CreateSession(
-    session: session.Session,
+    session: session_model.Session,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   CreateLoginToken(

@@ -6,25 +6,25 @@ import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
-import glot_core/session
+import glot_core/auth/session_model
 
 pub fn get_session(
   ctx: context.Context,
-) -> program_types.Program(Option(session.HydratedSession)) {
+) -> program_types.Program(Option(session_model.HydratedSession)) {
   get_validated_session(ctx)
   |> program.map(option.from_result)
 }
 
 pub fn require_session(
   ctx: context.Context,
-) -> program_types.Program(session.HydratedSession) {
+) -> program_types.Program(session_model.HydratedSession) {
   get_validated_session(ctx)
   |> program.and_then(program.from_result)
 }
 
 fn get_validated_session(
   ctx: context.Context,
-) -> program_types.Program(Result(session.HydratedSession, error.Error)) {
+) -> program_types.Program(Result(session_model.HydratedSession, error.Error)) {
   use session_result <- program.and_then(case ctx.client_info.session_token {
     option.Some(token) ->
       auth_effect.db_get_session_by_token(token)
@@ -42,9 +42,9 @@ fn get_validated_session(
 }
 
 fn validate_session(
-  session: session.HydratedSession,
+  session: session_model.HydratedSession,
   ctx: context.Context,
-) -> Result(session.HydratedSession, error.Error) {
+) -> Result(session_model.HydratedSession, error.Error) {
   let expired =
     is_expired(
       session.created_at,
