@@ -1,8 +1,8 @@
 import gleam/dynamic
 import gleam/option
 import glot_backend/context
-import glot_backend/domain/generic/rate_limit_domain
-import glot_backend/domain/generic/session_domain
+import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -12,7 +12,7 @@ import glot_backend/log
 import glot_core/api_action
 import glot_core/snippet
 
-pub fn snippet_create(
+pub fn create_snippet(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
 ) -> program_types.Program(Nil) {
@@ -35,7 +35,7 @@ pub fn snippet_create(
   use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     user_id: option.Some(session.user.id),
-    action: api_action.SnippetCreateAction,
+    action: api_action.CreateSnippetAction,
   ))
 
   use snippet_id <- program.and_then(basic_effect.uuid_v7())

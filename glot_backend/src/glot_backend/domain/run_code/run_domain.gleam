@@ -1,14 +1,14 @@
 import gleam/dynamic
 import gleam/option
-import glot_core/api_action
 import glot_backend/context
-import glot_backend/domain/generic/rate_limit_domain
-import glot_backend/domain/generic/session_domain
+import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/docker_run/docker_run_effect
-import glot_backend/effect/program_types
 import glot_backend/effect/program
+import glot_backend/effect/program_types
 import glot_backend/log
+import glot_core/api_action
 import glot_core/run
 
 pub fn run(

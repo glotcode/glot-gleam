@@ -8,10 +8,10 @@ import gleam/json
 import gleam/option
 import gleam/string
 import glot_backend/context
-import glot_backend/domain/api/login_domain
-import glot_backend/domain/api/run_domain
-import glot_backend/domain/api/send_login_token_domain
-import glot_backend/domain/api/snippet_create_domain
+import glot_backend/domain/auth/login_domain
+import glot_backend/domain/auth/send_login_token_domain
+import glot_backend/domain/run_code/run_domain
+import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -53,8 +53,8 @@ fn handle_api_request(
     api_action.RunAction ->
       run_domain.run(ctx, api_request.data)
       |> program.map(RunResultResponse)
-    api_action.SnippetCreateAction ->
-      snippet_create_domain.snippet_create(ctx, api_request.data)
+    api_action.CreateSnippetAction ->
+      create_snippet_domain.create_snippet(ctx, api_request.data)
       |> program.map(fn(_) { NoContentResponse })
     api_action.SendLoginTokenAction ->
       send_login_token_domain.send_login_token(ctx, api_request.data)

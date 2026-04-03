@@ -143,8 +143,8 @@ fn rate_limits_config_from_dict(
     ),
     #(api_action.LoginAction, lookup_rate_limits(values, "LOGIN")),
     #(
-      api_action.SnippetCreateAction,
-      lookup_rate_limits(values, "SNIPPET_CREATE"),
+      api_action.CreateSnippetAction,
+      lookup_rate_limits(values, "CREATE_SNIPPET"),
     ),
     #(api_action.RunAction, lookup_rate_limits(values, "RUN")),
   ])

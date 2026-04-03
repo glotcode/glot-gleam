@@ -2,9 +2,8 @@ import gleam/dynamic
 import gleam/list
 import gleam/option
 import gleam/time/timestamp
-import glot_core/api_action
 import glot_backend/context
-import glot_backend/domain/generic/rate_limit_domain
+import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -12,6 +11,7 @@ import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction_effect
 import glot_backend/log
+import glot_core/api_action
 import glot_core/auth
 import glot_core/session
 import glot_core/user

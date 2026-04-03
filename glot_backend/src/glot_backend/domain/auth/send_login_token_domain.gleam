@@ -1,7 +1,7 @@
 import gleam/dynamic
 import gleam/option
 import glot_backend/context
-import glot_backend/domain/generic/rate_limit_domain
+import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/job/job_effect
