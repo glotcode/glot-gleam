@@ -8,7 +8,7 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import youid/uuid.{type Uuid}
 
-pub fn db_get_user_by_email(
+pub fn get_user_by_email(
   email email: email_address_model.EmailAddress,
 ) -> program_types.Program(option.Option(user_model.User)) {
   program_types.Impure(
@@ -32,7 +32,7 @@ pub fn list_login_tokens_by_user(
   )
 }
 
-pub fn db_get_session_by_token(
+pub fn get_session_by_token(
   token token: String,
 ) -> program_types.Program(option.Option(session_model.HydratedSession)) {
   program_types.Impure(

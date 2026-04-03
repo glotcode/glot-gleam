@@ -83,7 +83,7 @@ fn find_or_create_user(
 ) -> program_types.Program(
   #(user_model.User, option.Option(program_types.Program(Nil))),
 ) {
-  use maybe_user <- program.and_then(auth_effect.db_get_user_by_email(
+  use maybe_user <- program.and_then(auth_effect.get_user_by_email(
     user_email,
   ))
 

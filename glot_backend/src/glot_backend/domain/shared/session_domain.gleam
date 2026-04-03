@@ -27,7 +27,7 @@ fn get_validated_session(
 ) -> program_types.Program(Result(session_model.HydratedSession, error.Error)) {
   use session_result <- program.and_then(case ctx.client_info.session_token {
     option.Some(token) ->
-      auth_effect.db_get_session_by_token(token)
+      auth_effect.get_session_by_token(token)
       |> program.map(option.to_result(
         _,
         error.SessionError(error.SessionNotFoundError),

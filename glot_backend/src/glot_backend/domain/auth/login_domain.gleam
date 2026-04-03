@@ -41,7 +41,7 @@ pub fn login(
     action: api_action.LoginAction,
   ))
 
-  use maybe_user <- program.and_then(auth_effect.db_get_user_by_email(
+  use maybe_user <- program.and_then(auth_effect.get_user_by_email(
     request.email,
   ))
   use user <- program.and_then(
