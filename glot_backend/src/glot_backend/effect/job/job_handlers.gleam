@@ -14,7 +14,7 @@ pub type JobHandlers {
   JobHandlers(
     get_next_job: fn(Timestamp, job.Status) ->
       Result(option.Option(job.Job), error.DbQueryError),
-    insert_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
+    create_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
     update_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
   )
 }
@@ -24,7 +24,7 @@ pub fn new(db: pog.Connection) -> JobHandlers {
     get_next_job: fn(now, pending_status) {
       get_next_job(db, now, pending_status)
     },
-    insert_job: fn(job) { insert_job(db, job) },
+    create_job: fn(job) { create_job(db, job) },
     update_job: fn(job) { update_job(db, job) },
   )
 }
@@ -37,10 +37,7 @@ pub fn get_next_job(
   use returned <- result.try(
     db_helpers.query(
       db,
-      sql.get_next_job(
-        job.status_to_string(pending_status),
-        now,
-      ),
+      sql.get_next_job(job.status_to_string(pending_status), now),
       fn(err) { error.DbQueryError(string.inspect(err)) },
     ),
   )
@@ -52,7 +49,7 @@ pub fn get_next_job(
   }
 }
 
-pub fn insert_job(
+pub fn create_job(
   db: pog.Connection,
   j: job.Job,
 ) -> Result(Nil, error.DbCommandError) {

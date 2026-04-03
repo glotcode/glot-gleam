@@ -118,7 +118,7 @@ fn test_handlers() -> handlers.Handlers {
       get_next_job: fn(_: timestamp.Timestamp, _: job.Status) {
         Ok(option.None)
       },
-      insert_job: fn(_) { Ok(Nil) },
+      create_job: fn(_) { Ok(Nil) },
       update_job: fn(_) { Ok(Nil) },
     ),
     auth: auth_handlers.AuthHandlers(
@@ -130,14 +130,10 @@ fn test_handlers() -> handlers.Handlers {
       create_login_token: fn(_) { Ok(Nil) },
       update_login_token: fn(_) { Ok(Nil) },
     ),
-    snippet: snippet_handlers.SnippetHandlers(
-      create_snippet: fn(_) { Ok(Nil) },
-    ),
-    docker_run: docker_run_handlers.DockerRunHandlers(
-      run_code: fn(_, _) {
-        Error(error.InternalRunRequestError("unused in test"))
-      },
-    ),
+    snippet: snippet_handlers.SnippetHandlers(create_snippet: fn(_) { Ok(Nil) }),
+    docker_run: docker_run_handlers.DockerRunHandlers(run_code: fn(_, _) {
+      Error(error.InternalRunRequestError("unused in test"))
+    }),
     user_action: user_action_handlers.UserActionHandlers(
       count_user_actions: fn(_) { Ok([]) },
       create_user_action: fn(_) { Ok(Nil) },
@@ -166,8 +162,8 @@ fn test_context() -> context.Context {
       ),
       auth: context.AuthConfig(
         login_token_max_age: 900,
-        session_token_max_age: 86400,
-        session_cookie_max_age: 86400,
+        session_token_max_age: 86_400,
+        session_cookie_max_age: 86_400,
       ),
       rate_limits: dict.new(),
     ),

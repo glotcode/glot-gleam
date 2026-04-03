@@ -1,6 +1,5 @@
 import gleam/dynamic
 import gleam/option
-import glot_core/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
@@ -12,6 +11,7 @@ import glot_backend/effect/transaction_effect
 import glot_backend/email_message
 import glot_backend/job
 import glot_backend/log
+import glot_core/api_action
 import glot_core/auth
 import glot_core/email
 import glot_core/user
@@ -35,7 +35,7 @@ pub fn send_login_token(
     action: api_action.SendLoginTokenAction,
   ))
 
-  use #(user, maybe_insert_user_cmd) <- program.and_then(find_or_create_user(
+  use #(user, maybe_create_user_effect) <- program.and_then(find_or_create_user(
     ctx,
     request.email,
   ))
@@ -48,7 +48,7 @@ pub fn send_login_token(
       log.from_list([
         log.string("token", token),
         log.uuid("user_id", user.id),
-        log.bool("is_new_user", option.is_some(maybe_insert_user_cmd)),
+        log.bool("is_new_user", option.is_some(maybe_create_user_effect)),
         log.uuid("job_id", job_id),
       ]),
     ),
@@ -56,18 +56,19 @@ pub fn send_login_token(
 
   let email_msg = email_message.login_token_message(request.email, token)
   let send_email_job = job.send_email_job(job_id, ctx.timestamp, email_msg)
-  let insert_token_cmd = auth_effect.create_login_token(auth.LoginToken(
-    id: login_token_id,
-    user_id: user.id,
-    token: token,
-    created_at: ctx.timestamp,
-    used_at: option.None,
-  ))
+  let create_token_effect =
+    auth_effect.create_login_token(auth.LoginToken(
+      id: login_token_id,
+      user_id: user.id,
+      token: token,
+      created_at: ctx.timestamp,
+      used_at: option.None,
+    ))
 
   transaction_effect.run_all(
     [
-      maybe_insert_user_cmd,
-      option.Some(insert_token_cmd),
+      maybe_create_user_effect,
+      option.Some(create_token_effect),
       option.Some(job_effect.create_job(send_email_job)),
       option.Some(user_action_cmd),
     ]
@@ -93,9 +94,9 @@ fn find_or_create_user(
       let new_user =
         user.User(id: user_id, email: user_email, created_at: ctx.timestamp)
 
-      let insert_user_cmd = auth_effect.create_user(new_user)
+      let create_user_effect = auth_effect.create_user(new_user)
 
-      program.succeed(#(new_user, option.Some(insert_user_cmd)))
+      program.succeed(#(new_user, option.Some(create_user_effect)))
     }
   }
 }

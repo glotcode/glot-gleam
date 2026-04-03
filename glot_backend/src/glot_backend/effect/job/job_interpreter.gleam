@@ -1,9 +1,9 @@
-import glot_backend/effect/program_types
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/job/job
 import glot_backend/effect/program_state
+import glot_backend/effect/program_types
 import glot_backend/erlang
 
 pub fn run(
@@ -41,7 +41,7 @@ pub fn run(
     }
     job.CreateJob(job, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.job.insert_job(job)
+      let result = handlers.job.create_job(job)
       continue(
         next(result),
         program_state.add_effect_measurement(
