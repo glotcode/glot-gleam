@@ -8,9 +8,9 @@ import glot_backend/effect/error
 import glot_backend/sql
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import glot_core/helpers/uuid_helpers
 import glot_core/language
 import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet}
-import glot_core/uuid_helpers
 import pog
 import youid/uuid
 

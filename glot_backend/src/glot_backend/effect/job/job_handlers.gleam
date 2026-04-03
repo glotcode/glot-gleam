@@ -6,7 +6,7 @@ import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/job
 import glot_backend/sql
-import glot_core/uuid_helpers
+import glot_core/helpers/uuid_helpers
 import pog
 import youid/uuid
 

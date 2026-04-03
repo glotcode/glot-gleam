@@ -2,10 +2,10 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/user_dto
+import glot_core/helpers/timestamp_helpers
+import glot_core/helpers/uuid_helpers
 import glot_core/language
 import glot_core/snippet/snippet_model
-import glot_core/timestamp_helpers
-import glot_core/uuid_helpers
 import youid/uuid.{type Uuid}
 
 pub type GetSnippetRequest {

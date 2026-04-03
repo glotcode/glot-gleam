@@ -2,7 +2,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_backend/crypto_helpers
 import glot_backend/effect/error
 import glot_core/email/email_model
-import glot_core/uuid_helpers
+import glot_core/helpers/uuid_helpers
 import youid/uuid.{type Uuid}
 
 pub type BasicHandlers {

@@ -3,7 +3,7 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
-import glot_core/timestamp_helpers
+import glot_core/helpers/timestamp_helpers
 
 pub type TimeUnit {
   Day

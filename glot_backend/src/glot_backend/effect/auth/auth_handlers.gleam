@@ -8,8 +8,8 @@ import glot_backend/sql
 import glot_core/auth/login_token_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import glot_core/helpers/uuid_helpers
 import glot_core/session as session_core
-import glot_core/uuid_helpers
 import pog
 import youid/uuid.{type Uuid}
 
