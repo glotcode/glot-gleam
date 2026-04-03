@@ -1,9 +1,7 @@
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
 import glot_backend/effect/basic/basic
 import glot_backend/effect/program_types
 import glot_backend/log
-import glot_core/email/email_model
 import youid/uuid.{type Uuid}
 
 pub fn new_token(length: Int) -> program_types.Program(String) {
@@ -35,13 +33,5 @@ pub fn warn(fields: log.Fields) -> program_types.Program(Nil) {
     program_types.BasicEffect(
       basic.Log(log.Warn, fields, program_types.Pure(Nil)),
     ),
-  )
-}
-
-pub fn send_email(
-  message: email_model.Email,
-) -> program_types.Program(Result(Nil, error.SendEmailError)) {
-  program_types.Impure(
-    program_types.BasicEffect(basic.SendEmail(message, program_types.Pure)),
   )
 }

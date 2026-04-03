@@ -8,6 +8,7 @@ import gleam/string
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/effect/basic/basic_effect
+import glot_backend/effect/email/email_effect
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
@@ -157,7 +158,7 @@ fn process_send_email_job(
 ) -> program_types.Program(Nil) {
   case json.parse(payload, email_model.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
-      use send_result <- program.and_then(basic_effect.send_email(message))
+      use send_result <- program.and_then(email_effect.send_email(message))
       use now <- program.and_then(basic_effect.system_time())
 
       case send_result {

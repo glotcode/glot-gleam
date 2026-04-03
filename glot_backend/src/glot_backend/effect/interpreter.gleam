@@ -4,6 +4,7 @@ import glot_backend/context
 import glot_backend/effect/auth/auth_interpreter
 import glot_backend/effect/basic/basic_interpreter
 import glot_backend/effect/docker_run/docker_run_interpreter
+import glot_backend/effect/email/email_interpreter
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
@@ -50,6 +51,8 @@ fn run_with_state(
       case effect {
         program_types.BasicEffect(effect) ->
           basic_interpreter.run(effect, ctx, handlers, state, continue)
+        program_types.EmailEffect(effect) ->
+          email_interpreter.run(effect, ctx, handlers, state, continue)
         program_types.JobEffect(effect) ->
           job_interpreter.run(effect, handlers, state, continue)
         program_types.AuthEffect(effect) ->

@@ -2,6 +2,7 @@ import glot_backend/context
 import glot_backend/effect/auth/auth
 import glot_backend/effect/basic/basic
 import glot_backend/effect/docker_run/docker_run
+import glot_backend/effect/email/email
 import glot_backend/effect/error
 import glot_backend/effect/job/job
 import glot_backend/effect/program_state
@@ -17,6 +18,7 @@ pub type Program(a) {
 
 pub type Effect(next) {
   BasicEffect(basic.BasicEffect(next))
+  EmailEffect(email.EmailEffect(next))
   JobEffect(job.JobEffect(next))
   AuthEffect(auth.AuthEffect(next))
   SnippetEffect(snippet.SnippetEffect(next))

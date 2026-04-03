@@ -5,6 +5,7 @@ import gleam/result
 import glot_backend/effect/auth/auth
 import glot_backend/effect/basic/basic
 import glot_backend/effect/docker_run/docker_run
+import glot_backend/effect/email/email
 import glot_backend/effect/error
 import glot_backend/effect/job/job
 import glot_backend/effect/program_types
@@ -88,6 +89,8 @@ fn map_effect(
   case effect {
     program_types.BasicEffect(effect) ->
       program_types.BasicEffect(basic.map(effect, f))
+    program_types.EmailEffect(effect) ->
+      program_types.EmailEffect(email.map(effect, f))
     program_types.JobEffect(effect) ->
       program_types.JobEffect(job.map(effect, f))
     program_types.AuthEffect(effect) ->

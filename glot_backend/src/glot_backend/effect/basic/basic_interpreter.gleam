@@ -72,18 +72,5 @@ pub fn run(
         ),
       )
     }
-    basic.SendEmail(message, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let send_result = handlers.basic.send_email(message)
-      continue(
-        next(send_result),
-        program_state.add_effect_measurement(
-          state,
-          effect_trace.BasicEffectName(basic.SendEmailEffectName),
-          effect_trace.EmailEffectCategory,
-          started_at,
-        ),
-      )
-    }
   }
 }

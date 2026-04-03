@@ -55,8 +55,8 @@ pub fn send_login_token(
     ),
   )
 
-  let email_msg = email_model.login_token_email(request.email, token)
-  let send_email_job = job.send_email_job(job_id, ctx.timestamp, email_msg)
+  let email_message = email_model.login_token_email(request.email, token)
+  let send_email_job = job.send_email_job(job_id, ctx.timestamp, email_message)
   let create_token_effect =
     auth_effect.create_login_token(login_token_model.LoginToken(
       id: login_token_id,

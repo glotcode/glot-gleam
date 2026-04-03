@@ -1,7 +1,5 @@
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
 import glot_backend/log
-import glot_core/email/email_model
 import youid/uuid.{type Uuid}
 
 pub type BasicEffect(next) {
@@ -9,10 +7,6 @@ pub type BasicEffect(next) {
   SystemTime(fn(Timestamp) -> next)
   UuidV7(fn(Uuid) -> next)
   Log(log.Level, log.Fields, next)
-  SendEmail(
-    email_model.Email,
-    fn(Result(Nil, error.SendEmailError)) -> next,
-  )
 }
 
 pub fn map(effect: BasicEffect(a), f: fn(a) -> b) -> BasicEffect(b) {
@@ -21,8 +15,6 @@ pub fn map(effect: BasicEffect(a), f: fn(a) -> b) -> BasicEffect(b) {
     SystemTime(next) -> SystemTime(fn(value) { f(next(value)) })
     UuidV7(next) -> UuidV7(fn(value) { f(next(value)) })
     Log(level, fields, next) -> Log(level, fields, f(next))
-    SendEmail(message, next) ->
-      SendEmail(message, fn(value) { f(next(value)) })
   }
 }
 
@@ -31,7 +23,6 @@ pub type EffectName {
   SystemTimeEffectName
   UuidV7EffectName
   LogEffectName
-  SendEmailEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
@@ -40,6 +31,5 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     SystemTimeEffectName -> "system_time"
     UuidV7EffectName -> "uuid_v7"
     LogEffectName -> "log"
-    SendEmailEffectName -> "send_email"
   }
 }

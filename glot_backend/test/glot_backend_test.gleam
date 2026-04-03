@@ -10,6 +10,7 @@ import glot_backend/effect/basic/basic
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
+import glot_backend/effect/email/email_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
@@ -177,10 +178,10 @@ fn test_handlers() -> handlers.Handlers {
       new_token: fn(_) { "random" },
       system_time: timestamp.system_time,
       uuid_v7: fn(_) { uuid.nil },
-      send_email: fn(_) {
-        Error(error.InternalSendEmailError("unused in test"))
-      },
     ),
+    email: email_handlers.EmailHandlers(send_email: fn(_) {
+      Error(error.InternalSendEmailError("unused in test"))
+    }),
     job: job_handlers.JobHandlers(
       get_next_job: fn(_: timestamp.Timestamp, _: job.Status) {
         Ok(option.None)
