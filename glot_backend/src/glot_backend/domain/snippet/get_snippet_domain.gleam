@@ -10,6 +10,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/auth/user_dto
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 
@@ -65,7 +66,7 @@ pub fn get_snippet(
 
   program.succeed(snippet_dto.SnippetResponse(
     id: snippet.id,
-    user: snippet.user,
+    user: user_dto.from_user(snippet.user),
     data: snippet_dto.SnippetData(
       title: snippet.title,
       language: snippet.language,

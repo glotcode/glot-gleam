@@ -2,8 +2,8 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/auth/user_model
 import glot_core/language
-import glot_core/user
 import youid/uuid.{type Uuid}
 
 pub type Snippet {
@@ -24,7 +24,7 @@ pub type Snippet {
 pub type HydratedSnippet {
   HydratedSnippet(
     id: Uuid,
-    user: user.User,
+    user: user_model.User,
     title: String,
     language: language.Language,
     visibility: Visibility,

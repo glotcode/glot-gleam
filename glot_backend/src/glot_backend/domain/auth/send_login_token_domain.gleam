@@ -11,10 +11,11 @@ import glot_backend/effect/transaction_effect
 import glot_backend/job
 import glot_backend/log
 import glot_core/api_action
-import glot_core/auth
+import glot_core/auth/login_token_dto
+import glot_core/auth/login_token_model
+import glot_core/auth/user_model
 import glot_core/email/email_model
 import glot_core/email/email_address_model
-import glot_core/user
 
 pub fn send_login_token(
   ctx: context.Context,
@@ -22,7 +23,7 @@ pub fn send_login_token(
 ) -> program_types.Program(Nil) {
   use request <- program.and_then(program.decode_json(
     json_body,
-    auth.login_token_request_decoder(ctx.regexes.is_email),
+    login_token_dto.decoder(ctx.regexes.is_email),
   ))
 
   use _ <- program.and_then(
@@ -57,7 +58,7 @@ pub fn send_login_token(
   let email_msg = email_model.login_token_email(request.email, token)
   let send_email_job = job.send_email_job(job_id, ctx.timestamp, email_msg)
   let create_token_effect =
-    auth_effect.create_login_token(auth.LoginToken(
+    auth_effect.create_login_token(login_token_model.LoginToken(
       id: login_token_id,
       user_id: user.id,
       token: token,
@@ -80,7 +81,7 @@ fn find_or_create_user(
   ctx: context.Context,
   user_email: email_address_model.EmailAddress,
 ) -> program_types.Program(
-  #(user.User, option.Option(program_types.Program(Nil))),
+  #(user_model.User, option.Option(program_types.Program(Nil))),
 ) {
   use maybe_user <- program.and_then(auth_effect.db_get_user_by_email(
     user_email,
@@ -92,7 +93,11 @@ fn find_or_create_user(
       use user_id <- program.and_then(basic_effect.uuid_v7())
 
       let new_user =
-        user.User(id: user_id, email: user_email, created_at: ctx.timestamp)
+        user_model.User(
+          id: user_id,
+          email: user_email,
+          created_at: ctx.timestamp,
+        )
 
       let create_user_effect = auth_effect.create_user(new_user)
 

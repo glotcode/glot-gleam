@@ -5,10 +5,10 @@ import gleam/string
 import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
-import glot_core/auth as auth_core
+import glot_core/auth/login_token_model
+import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/session as session_core
-import glot_core/user
 import glot_core/uuid_helpers
 import pog
 import youid/uuid.{type Uuid}
@@ -16,15 +16,15 @@ import youid/uuid.{type Uuid}
 pub type AuthHandlers {
   AuthHandlers(
     get_user_by_email: fn(Regexp, email_address_model.EmailAddress) ->
-      Result(option.Option(user.User), error.DbQueryError),
+      Result(option.Option(user_model.User), error.DbQueryError),
     list_login_tokens_by_user: fn(Uuid, Int) ->
-      Result(List(auth_core.LoginToken), error.DbQueryError),
+      Result(List(login_token_model.LoginToken), error.DbQueryError),
     get_session_by_token: fn(Regexp, String) ->
       Result(option.Option(session_core.HydratedSession), error.DbQueryError),
-    create_user: fn(user.User) -> Result(Nil, error.DbCommandError),
+    create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
     create_session: fn(session_core.Session) -> Result(Nil, error.DbCommandError),
-    create_login_token: fn(auth_core.LoginToken) -> Result(Nil, error.DbCommandError),
-    update_login_token: fn(auth_core.LoginToken) -> Result(Nil, error.DbCommandError),
+    create_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
+    update_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
   )
 }
 
@@ -52,7 +52,7 @@ pub fn get_user_by_email(
   db: pog.Connection,
   is_email: Regexp,
   user_email: email_address_model.EmailAddress,
-) -> Result(option.Option(user.User), error.DbQueryError) {
+) -> Result(option.Option(user_model.User), error.DbQueryError) {
   db_helpers.query(
     db,
     sql.get_user_by_email(email_address_model.to_string(user_email)),
@@ -65,7 +65,7 @@ pub fn list_login_tokens_by_user(
   db: pog.Connection,
   user_id: Uuid,
   limit: Int,
-) -> Result(List(auth_core.LoginToken), error.DbQueryError) {
+) -> Result(List(login_token_model.LoginToken), error.DbQueryError) {
   db_helpers.query(
     db,
     sql.list_login_tokens_by_user(uuid.to_bit_array(user_id), limit),
@@ -87,7 +87,7 @@ pub fn get_session_by_token(
 
 pub fn create_user(
   db: pog.Connection,
-  user: user.User,
+  user: user_model.User,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
@@ -105,7 +105,7 @@ pub fn create_user(
 
 pub fn create_login_token(
   db: pog.Connection,
-  login_token: auth_core.LoginToken,
+  login_token: login_token_model.LoginToken,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
@@ -146,7 +146,7 @@ pub fn create_session(
 
 pub fn update_login_token(
   db: pog.Connection,
-  login_token: auth_core.LoginToken,
+  login_token: login_token_model.LoginToken,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
@@ -167,7 +167,7 @@ pub fn update_login_token(
 fn user_from_rows(
   is_email: Regexp,
   rows: List(sql.GetUserByEmail),
-) -> Result(option.Option(user.User), error.DbQueryError) {
+) -> Result(option.Option(user_model.User), error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> user_from_row(is_email, first) |> result.map(option.Some)
@@ -178,10 +178,10 @@ fn user_from_rows(
 fn user_from_row(
   is_email: Regexp,
   row: sql.GetUserByEmail,
-) -> Result(user.User, error.DbQueryError) {
+) -> Result(user_model.User, error.DbQueryError) {
   case email_address_model.from_string(is_email, row.email) {
     option.Some(valid_email) ->
-      Ok(user.User(
+      Ok(user_model.User(
         id: uuid_helpers.from_bit_array(row.id),
         email: valid_email,
         created_at: row.created_at,
@@ -195,7 +195,7 @@ fn user_from_row(
 
 fn login_tokens_from_rows(
   rows: List(sql.ListLoginTokensByUser),
-) -> Result(List(auth_core.LoginToken), error.DbQueryError) {
+) -> Result(List(login_token_model.LoginToken), error.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -208,8 +208,8 @@ fn login_tokens_from_rows(
 
 fn login_token_from_row(
   row: sql.ListLoginTokensByUser,
-) -> Result(auth_core.LoginToken, error.DbQueryError) {
-  Ok(auth_core.LoginToken(
+) -> Result(login_token_model.LoginToken, error.DbQueryError) {
+  Ok(login_token_model.LoginToken(
     id: uuid_helpers.from_bit_array(row.id),
     user_id: uuid_helpers.from_bit_array(row.user_id),
     token: row.token,
@@ -237,7 +237,7 @@ fn session_from_row(
     option.Some(valid_email) ->
       Ok(session_core.HydratedSession(
         id: uuid_helpers.from_bit_array(row.id),
-        user: user.User(
+        user: user_model.User(
           id: uuid_helpers.from_bit_array(row.user_id),
           email: valid_email,
           created_at: row.user_created_at,

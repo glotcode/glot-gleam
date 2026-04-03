@@ -1,27 +1,27 @@
 import gleam/option
 import glot_backend/effect/error
-import glot_core/auth
+import glot_core/auth/login_token_model
+import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/session
-import glot_core/user
 import youid/uuid.{type Uuid}
 
 pub type AuthEffect(next) {
   GetUserByEmail(
     email: email_address_model.EmailAddress,
-    next: fn(option.Option(user.User)) -> next,
+    next: fn(option.Option(user_model.User)) -> next,
   )
   ListLoginTokensByUser(
     user_id: Uuid,
     limit: Int,
-    next: fn(List(auth.LoginToken)) -> next,
+    next: fn(List(login_token_model.LoginToken)) -> next,
   )
   GetSessionByToken(
     token: String,
     next: fn(option.Option(session.HydratedSession)) -> next,
   )
   CreateUser(
-    user: user.User,
+    user: user_model.User,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   CreateSession(
@@ -29,11 +29,11 @@ pub type AuthEffect(next) {
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   CreateLoginToken(
-    login_token: auth.LoginToken,
+    login_token: login_token_model.LoginToken,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   UpdateLoginToken(
-    login_token: auth.LoginToken,
+    login_token: login_token_model.LoginToken,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
 }

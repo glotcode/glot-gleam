@@ -2,15 +2,15 @@ import gleam/option
 import glot_backend/effect/auth/auth
 import glot_backend/effect/error
 import glot_backend/effect/program_types
-import glot_core/auth as auth_core
+import glot_core/auth/login_token_model
+import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/session
-import glot_core/user
 import youid/uuid.{type Uuid}
 
 pub fn db_get_user_by_email(
   email email: email_address_model.EmailAddress,
-) -> program_types.Program(option.Option(user.User)) {
+) -> program_types.Program(option.Option(user_model.User)) {
   program_types.Impure(
     program_types.AuthEffect(auth.GetUserByEmail(
       email:,
@@ -22,7 +22,7 @@ pub fn db_get_user_by_email(
 pub fn list_login_tokens_by_user(
   user_id user_id: Uuid,
   limit limit: Int,
-) -> program_types.Program(List(auth_core.LoginToken)) {
+) -> program_types.Program(List(login_token_model.LoginToken)) {
   program_types.Impure(
     program_types.AuthEffect(auth.ListLoginTokensByUser(
       user_id: user_id,
@@ -43,7 +43,7 @@ pub fn db_get_session_by_token(
   )
 }
 
-pub fn create_user(user user: user.User) -> program_types.Program(Nil) {
+pub fn create_user(user user: user_model.User) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.AuthEffect(auth.CreateUser(user: user, next: command_next)),
   )
@@ -61,7 +61,7 @@ pub fn create_session(
 }
 
 pub fn create_login_token(
-  login_token login_token: auth_core.LoginToken,
+  login_token login_token: login_token_model.LoginToken,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.AuthEffect(auth.CreateLoginToken(
@@ -72,7 +72,7 @@ pub fn create_login_token(
 }
 
 pub fn update_login_token(
-  login_token login_token: auth_core.LoginToken,
+  login_token login_token: login_token_model.LoginToken,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.AuthEffect(auth.UpdateLoginToken(

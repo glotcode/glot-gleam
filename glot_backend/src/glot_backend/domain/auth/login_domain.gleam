@@ -12,9 +12,10 @@ import glot_backend/effect/program_types
 import glot_backend/effect/transaction_effect
 import glot_backend/log
 import glot_core/api_action
-import glot_core/auth
+import glot_core/auth/login_dto
+import glot_core/auth/login_token_model
+import glot_core/auth/user_model
 import glot_core/session
-import glot_core/user
 
 pub fn login(
   ctx: context.Context,
@@ -22,7 +23,7 @@ pub fn login(
 ) -> program_types.Program(String) {
   use request <- program.and_then(program.decode_json(
     json_body,
-    auth.login_request_decoder(ctx.regexes.is_email),
+    login_dto.decoder(ctx.regexes.is_email),
   ))
 
   use _ <- program.and_then(
@@ -69,7 +70,7 @@ pub fn login(
 
   use _ <- program.and_then(
     transaction_effect.run_all([
-      auth_effect.update_login_token(auth.mark_login_token_as_used(
+      auth_effect.update_login_token(login_token_model.mark_as_used(
         matching_token,
         ctx.timestamp,
       )),
@@ -92,8 +93,8 @@ pub fn login(
 }
 
 fn user_from_option(
-  maybe_user: option.Option(user.User),
-) -> Result(user.User, error.Error) {
+  maybe_user: option.Option(user_model.User),
+) -> Result(user_model.User, error.Error) {
   case maybe_user {
     option.Some(user) -> Ok(user)
     option.None -> Error(error.LoginError(error.InvalidTokenError))
@@ -101,11 +102,11 @@ fn user_from_option(
 }
 
 fn find_valid_token(
-  tokens: List(auth.LoginToken),
+  tokens: List(login_token_model.LoginToken),
   submitted_token: String,
   now: timestamp.Timestamp,
   max_age: Int,
-) -> Result(auth.LoginToken, error.Error) {
+) -> Result(login_token_model.LoginToken, error.Error) {
   case list.find(tokens, fn(token) { token.token == submitted_token }) {
     Error(_) -> Error(error.LoginError(error.InvalidTokenError))
     Ok(token) ->

@@ -1,10 +1,10 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/auth/user_dto
 import glot_core/language
 import glot_core/snippet/snippet_model
 import glot_core/timestamp_helpers
-import glot_core/user
 import glot_core/uuid_helpers
 import youid/uuid.{type Uuid}
 
@@ -48,8 +48,7 @@ pub fn update_decoder() -> decode.Decoder(UpdateSnippetRequest) {
 pub type SnippetResponse {
   SnippetResponse(
     id: Uuid,
-    // TODO: use user_dto.User
-    user: user.User,
+    user: user_dto.UserResponse,
     data: SnippetData,
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -59,7 +58,7 @@ pub type SnippetResponse {
 pub fn encode_response(response: SnippetResponse) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(response.id))),
-    #("user", user.encode(response.user)),
+    #("user", user_dto.encode(response.user)),
     #("userId", json.string(uuid.to_string(response.user.id))),
     #("title", json.string(response.data.title)),
     #("language", language.encode(response.data.language)),
