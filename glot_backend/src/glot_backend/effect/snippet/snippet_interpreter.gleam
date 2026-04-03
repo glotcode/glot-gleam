@@ -12,8 +12,21 @@ pub fn run(
   state: program_state.State,
   continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
-) -> #(Result(a, error.Error), program_state.State) {
+  ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
+    snippet.GetSnippetById(id, next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.snippet.get_snippet_by_id(id)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.SnippetEffectName(snippet.GetSnippetByIdEffectName),
+          effect_trace.DbReadEffectCategory,
+          started_at,
+        ),
+      )
+    }
     snippet.CreateSnippet(snippet_value, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.create_snippet(snippet_value)

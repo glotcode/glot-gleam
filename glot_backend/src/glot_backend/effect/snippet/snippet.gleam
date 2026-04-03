@@ -1,7 +1,12 @@
+import gleam/option
 import glot_backend/effect/error
 import glot_core/snippet.{type Snippet}
 
 pub type SnippetEffect(next) {
+  GetSnippetById(
+    id: BitArray,
+    next: fn(Result(option.Option(Snippet), error.DbQueryError)) -> next,
+  )
   CreateSnippet(
     snippet: Snippet,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
@@ -14,6 +19,8 @@ pub type SnippetEffect(next) {
 
 pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
   case effect {
+    GetSnippetById(id, next) ->
+      GetSnippetById(id, next: fn(value) { f(next(value)) })
     CreateSnippet(snippet, next) ->
       CreateSnippet(snippet, next: fn(value) { f(next(value)) })
     UpdateSnippet(snippet, next) ->
@@ -22,12 +29,14 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
 }
 
 pub type EffectName {
+  GetSnippetByIdEffectName
   CreateSnippetEffectName
   UpdateSnippetEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
+    GetSnippetByIdEffectName -> "get_snippet_by_id"
     CreateSnippetEffectName -> "create_snippet"
     UpdateSnippetEffectName -> "update_snippet"
   }

@@ -12,6 +12,7 @@ import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/run_code/run_domain
 import glot_backend/domain/snippet/create_snippet_domain
+import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
@@ -26,6 +27,7 @@ import glot_backend/log
 import glot_backend/log_worker
 import glot_core/api_action.{type ApiAction}
 import glot_core/run
+import glot_core/snippet
 import pog
 import wisp
 
@@ -54,6 +56,9 @@ fn handle_api_request(
     api_action.RunAction ->
       run_domain.run(ctx, api_request.data)
       |> program.map(RunResultResponse)
+    api_action.GetSnippetAction ->
+      get_snippet_domain.get_snippet(ctx, api_request.data)
+      |> program.map(SnippetResponse)
     api_action.CreateSnippetAction ->
       create_snippet_domain.create_snippet(ctx, api_request.data)
       |> program.map(fn(_) { NoContentResponse })
@@ -107,6 +112,7 @@ fn require_api_request(
 
 type ApiResult {
   RunResultResponse(run.RunResult)
+  SnippetResponse(snippet.SnippetResponse)
   LoginResponse(session_token: String)
   NoContentResponse
 }
@@ -120,6 +126,7 @@ fn api_result_to_response(
     RunResultResponse(run_result) -> {
       success_response(run.encode_run_result(run_result))
     }
+    SnippetResponse(response) -> success_response(snippet.encode_response(response))
     LoginResponse(session_token) -> {
       success_response(json.null())
       |> wisp.set_cookie(

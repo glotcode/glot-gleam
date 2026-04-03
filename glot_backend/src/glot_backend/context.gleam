@@ -138,6 +138,10 @@ fn rate_limits_config_from_dict(
 ) -> RateLimitsConfig {
   dict.from_list([
     #(
+      api_action.GetSnippetAction,
+      lookup_rate_limits(values, "GET_SNIPPET"),
+    ),
+    #(
       api_action.SendLoginTokenAction,
       lookup_rate_limits(values, "SEND_LOGIN_TOKEN"),
     ),

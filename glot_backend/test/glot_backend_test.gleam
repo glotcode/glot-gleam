@@ -131,6 +131,7 @@ fn test_handlers() -> handlers.Handlers {
       update_login_token: fn(_) { Ok(Nil) },
     ),
     snippet: snippet_handlers.SnippetHandlers(
+      get_snippet_by_id: fn(_) { Ok(option.None) },
       create_snippet: fn(_) { Ok(Nil) },
       update_snippet: fn(_) { Ok(Nil) },
     ),
