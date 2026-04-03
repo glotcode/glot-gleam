@@ -1,29 +1,29 @@
 import gleam/dynamic/decode
-import gleam/option.{type Option}
 import gleam/json
+import gleam/option.{type Option}
 import gleam/regexp
-import glot_core/email
+import glot_core/email/email_address_model
 
-pub type EmailMessage {
-  EmailMessage(
-    to: email.Email,
+pub type Email {
+  Email(
+    to: email_address_model.EmailAddress,
     subject: String,
     text_body: String,
     html_body: Option(String),
   )
 }
 
-pub fn recipient_string(message: EmailMessage) -> String {
+pub fn recipient_string(message: Email) -> String {
   case message {
-    EmailMessage(to:, ..) -> email.to_string(to)
+    Email(to:, ..) -> email_address_model.to_string(to)
   }
 }
 
-pub fn encode_message(message: EmailMessage) -> json.Json {
+pub fn encode(message: Email) -> json.Json {
   case message {
-    EmailMessage(to:, subject:, text_body:, html_body:) ->
+    Email(to:, subject:, text_body:, html_body:) ->
       json.object([
-        #("to", email.encode(to)),
+        #("to", email_address_model.encode(to)),
         #("subject", json.string(subject)),
         #("text_body", json.string(text_body)),
         #(
@@ -37,16 +37,19 @@ pub fn encode_message(message: EmailMessage) -> json.Json {
   }
 }
 
-pub fn decoder(is_email: regexp.Regexp) -> decode.Decoder(EmailMessage) {
-  use to <- decode.field("to", email.decoder(is_email))
+pub fn decoder(is_email: regexp.Regexp) -> decode.Decoder(Email) {
+  use to <- decode.field("to", email_address_model.decoder(is_email))
   use subject <- decode.field("subject", decode.string)
   use text_body <- decode.field("text_body", decode.string)
   use html_body <- decode.field("html_body", decode.optional(decode.string))
-  decode.success(EmailMessage(to:, subject:, text_body:, html_body:))
+  decode.success(Email(to:, subject:, text_body:, html_body:))
 }
 
-pub fn login_token_message(to: email.Email, token: String) -> EmailMessage {
-  EmailMessage(
+pub fn login_token_email(
+  to: email_address_model.EmailAddress,
+  token: String,
+) -> Email {
+  Email(
     to: to,
     subject: "Your login token",
     text_body: "Your login token is: " <> token,

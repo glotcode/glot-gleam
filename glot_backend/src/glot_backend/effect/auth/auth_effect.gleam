@@ -3,13 +3,13 @@ import glot_backend/effect/auth/auth
 import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_core/auth as auth_core
-import glot_core/email
+import glot_core/email/email_address_model
 import glot_core/session
 import glot_core/user
 import youid/uuid.{type Uuid}
 
 pub fn db_get_user_by_email(
-  email email: email.Email,
+  email email: email_address_model.EmailAddress,
 ) -> program_types.Program(option.Option(user.User)) {
   program_types.Impure(
     program_types.AuthEffect(auth.GetUserByEmail(

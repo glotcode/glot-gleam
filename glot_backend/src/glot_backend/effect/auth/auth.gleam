@@ -1,13 +1,16 @@
 import gleam/option
 import glot_backend/effect/error
 import glot_core/auth
-import glot_core/email
+import glot_core/email/email_address_model
 import glot_core/session
 import glot_core/user
 import youid/uuid.{type Uuid}
 
 pub type AuthEffect(next) {
-  GetUserByEmail(email: email.Email, next: fn(option.Option(user.User)) -> next)
+  GetUserByEmail(
+    email: email_address_model.EmailAddress,
+    next: fn(option.Option(user.User)) -> next,
+  )
   ListLoginTokensByUser(
     user_id: Uuid,
     limit: Int,

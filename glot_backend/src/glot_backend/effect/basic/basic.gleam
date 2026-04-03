@@ -1,7 +1,7 @@
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
-import glot_backend/email_message
 import glot_backend/log
+import glot_core/email/email_model
 import youid/uuid.{type Uuid}
 
 pub type BasicEffect(next) {
@@ -10,7 +10,7 @@ pub type BasicEffect(next) {
   UuidV7(fn(Uuid) -> next)
   Log(log.Level, log.Fields, next)
   SendEmail(
-    email_message.EmailMessage,
+    email_model.Email,
     fn(Result(Nil, error.SendEmailError)) -> next,
   )
 }

@@ -6,7 +6,7 @@ import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
 import glot_core/auth as auth_core
-import glot_core/email
+import glot_core/email/email_address_model
 import glot_core/session as session_core
 import glot_core/user
 import glot_core/uuid_helpers
@@ -15,7 +15,7 @@ import youid/uuid.{type Uuid}
 
 pub type AuthHandlers {
   AuthHandlers(
-    get_user_by_email: fn(Regexp, email.Email) ->
+    get_user_by_email: fn(Regexp, email_address_model.EmailAddress) ->
       Result(option.Option(user.User), error.DbQueryError),
     list_login_tokens_by_user: fn(Uuid, Int) ->
       Result(List(auth_core.LoginToken), error.DbQueryError),
@@ -51,11 +51,11 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
 pub fn get_user_by_email(
   db: pog.Connection,
   is_email: Regexp,
-  user_email: email.Email,
+  user_email: email_address_model.EmailAddress,
 ) -> Result(option.Option(user.User), error.DbQueryError) {
   db_helpers.query(
     db,
-    sql.get_user_by_email(email.to_string(user_email)),
+    sql.get_user_by_email(email_address_model.to_string(user_email)),
     fn(err) { error.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { user_from_rows(is_email, returned.rows) })
@@ -95,7 +95,7 @@ pub fn create_user(
     db,
     sql.insert_user(
       uuid.to_bit_array(user.id),
-      email.to_string(user.email),
+      email_address_model.to_string(user.email),
       user.created_at,
     ),
     to_error,
@@ -179,7 +179,7 @@ fn user_from_row(
   is_email: Regexp,
   row: sql.GetUserByEmail,
 ) -> Result(user.User, error.DbQueryError) {
-  case email.from_string(is_email, row.email) {
+  case email_address_model.from_string(is_email, row.email) {
     option.Some(valid_email) ->
       Ok(user.User(
         id: uuid_helpers.from_bit_array(row.id),
@@ -233,7 +233,7 @@ fn session_from_row(
   is_email: Regexp,
   row: sql.GetSessionByToken,
 ) -> Result(session_core.HydratedSession, error.DbQueryError) {
-  case email.from_string(is_email, row.user_email) {
+  case email_address_model.from_string(is_email, row.user_email) {
     option.Some(valid_email) ->
       Ok(session_core.HydratedSession(
         id: uuid_helpers.from_bit_array(row.id),

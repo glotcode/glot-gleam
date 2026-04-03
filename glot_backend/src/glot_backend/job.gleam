@@ -1,7 +1,7 @@
 import gleam/json
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/email_message
+import glot_core/email/email_model
 import youid/uuid.{type Uuid}
 
 pub type JobType {
@@ -87,14 +87,14 @@ fn new(id: Uuid, job_type: JobType, now: Timestamp, payload: String) -> Job {
 pub fn send_email_job(
   id: Uuid,
   now: Timestamp,
-  email: email_message.EmailMessage,
+  email: email_model.Email,
 ) -> Job {
   new(
     id,
     SendEmailJob,
     now,
     email
-      |> email_message.encode_message
+      |> email_model.encode
       |> json.to_string,
   )
 }

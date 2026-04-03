@@ -15,7 +15,7 @@ import glot_backend/context
 import glot_backend/erlang
 import glot_backend/job_worker
 import glot_backend/log_worker
-import glot_core/email
+import glot_core/email/email_address_model
 import lustre/attribute
 import lustre/element
 import lustre/element/html
@@ -54,7 +54,7 @@ pub fn main() {
   let postgres_pool_name = process.new_name("postgres_pool")
   let postgres_cfg = postgres_config(cfg, postgres_pool_name)
   let db = pog.named_connection(postgres_pool_name)
-  let assert Ok(is_email) = regexp.from_string(email.pattern)
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
   let regexes = context.Regexes(is_email)
   let log_worker_name = process.new_name("log_worker")
   let log_worker_subject = process.named_subject(log_worker_name)

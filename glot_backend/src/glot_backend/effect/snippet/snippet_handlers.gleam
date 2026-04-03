@@ -6,7 +6,7 @@ import gleam/string
 import glot_backend/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
-import glot_core/email
+import glot_core/email/email_address_model
 import glot_core/language
 import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet}
 import glot_core/user
@@ -113,7 +113,7 @@ fn get_snippet_from_row(
     id: uuid_helpers.from_bit_array(row.id),
     user: user.User(
       id: uuid_helpers.from_bit_array(row.user_id),
-      email: email.Email(row.user_email),
+      email: email_address_model.EmailAddress(row.user_email),
       created_at: row.user_created_at,
     ),
     title: row.title,

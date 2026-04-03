@@ -15,9 +15,9 @@ import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction_effect
-import glot_backend/email_message
 import glot_backend/erlang
 import glot_backend/job
+import glot_core/email/email_model
 import pog
 import wisp
 import youid/uuid
@@ -155,7 +155,7 @@ fn process_send_email_job(
   j: job.Job,
   payload: String,
 ) -> program_types.Program(Nil) {
-  case json.parse(payload, email_message.decoder(ctx.regexes.is_email)) {
+  case json.parse(payload, email_model.decoder(ctx.regexes.is_email)) {
     Ok(message) -> {
       use send_result <- program.and_then(basic_effect.send_email(message))
       use now <- program.and_then(basic_effect.system_time())

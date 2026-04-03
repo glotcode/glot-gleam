@@ -3,7 +3,7 @@ import gleam/json
 import gleam/option.{type Option}
 import gleam/regexp
 import gleam/time/timestamp.{type Timestamp}
-import glot_core/email
+import glot_core/email/email_address_model
 import youid/uuid.{type Uuid}
 
 pub type LoginToken {
@@ -24,29 +24,29 @@ pub fn mark_login_token_as_used(
 }
 
 pub type LoginTokenRequest {
-  LoginTokenRequest(email: email.Email)
+  LoginTokenRequest(email: email_address_model.EmailAddress)
 }
 
 pub fn encode_login_token_request(req: LoginTokenRequest) -> json.Json {
   json.object([
-    #("email", email.encode(req.email)),
+    #("email", email_address_model.encode(req.email)),
   ])
 }
 
 pub fn login_token_request_decoder(
   is_email: regexp.Regexp,
 ) -> decode.Decoder(LoginTokenRequest) {
-  use email <- decode.field("email", email.decoder(is_email))
+  use email <- decode.field("email", email_address_model.decoder(is_email))
   decode.success(LoginTokenRequest(email: email))
 }
 
 pub type LoginRequest {
-  LoginRequest(email: email.Email, token: String)
+  LoginRequest(email: email_address_model.EmailAddress, token: String)
 }
 
 pub fn encode_login_request(req: LoginRequest) -> json.Json {
   json.object([
-    #("email", email.encode(req.email)),
+    #("email", email_address_model.encode(req.email)),
     #("token", json.string(req.token)),
   ])
 }
@@ -54,7 +54,7 @@ pub fn encode_login_request(req: LoginRequest) -> json.Json {
 pub fn login_request_decoder(
   is_email: regexp.Regexp,
 ) -> decode.Decoder(LoginRequest) {
-  use email <- decode.field("email", email.decoder(is_email))
+  use email <- decode.field("email", email_address_model.decoder(is_email))
   use token <- decode.field("token", decode.string)
   decode.success(LoginRequest(email: email, token: token))
 }

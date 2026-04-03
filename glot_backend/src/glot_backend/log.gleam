@@ -2,7 +2,7 @@ import gleam/dict.{type Dict}
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
-import glot_core/email
+import glot_core/email/email_address_model
 import youid/uuid
 
 pub type Fields =
@@ -48,8 +48,11 @@ pub fn optional_uuid(key: String, value: Option(uuid.Uuid)) -> #(String, Value) 
   }
 }
 
-pub fn email(key: String, value: email.Email) -> #(String, Value) {
-  #(key, String(email.to_string(value)))
+pub fn email(
+  key: String,
+  value: email_address_model.EmailAddress,
+) -> #(String, Value) {
+  #(key, String(email_address_model.to_string(value)))
 }
 
 pub fn encode_fields(fields: Fields) -> json.Json {
