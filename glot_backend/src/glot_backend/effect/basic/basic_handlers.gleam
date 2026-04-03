@@ -1,5 +1,5 @@
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/crypto_helpers
+import glot_backend/helpers/crypto_helpers
 import glot_backend/effect/error
 import glot_core/email/email_model
 import glot_core/helpers/uuid_helpers

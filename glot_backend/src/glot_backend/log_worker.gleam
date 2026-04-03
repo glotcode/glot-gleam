@@ -4,7 +4,7 @@ import gleam/otp/actor
 import gleam/otp/supervision
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/db_helpers
+import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import pog
 import wisp

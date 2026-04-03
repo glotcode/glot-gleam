@@ -1,7 +1,7 @@
 import gleam/list
 import gleam/string
 import gleeunit
-import glot_backend/crypto_helpers
+import glot_backend/helpers/crypto_helpers
 
 const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
 

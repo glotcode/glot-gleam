@@ -2,7 +2,7 @@ import gleam/option
 import gleam/regexp.{type Regexp}
 import gleam/result
 import gleam/string
-import glot_backend/db_helpers
+import glot_backend/helpers/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
 import glot_core/auth/login_token_model

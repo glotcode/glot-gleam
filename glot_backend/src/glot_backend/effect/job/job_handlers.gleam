@@ -2,7 +2,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/db_helpers
+import glot_backend/helpers/db_helpers
 import glot_backend/effect/error
 import glot_backend/job
 import glot_backend/sql
