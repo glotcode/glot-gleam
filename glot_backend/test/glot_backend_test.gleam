@@ -4,6 +4,7 @@ import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
+import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/basic/basic
 import glot_backend/effect/basic/basic_effect
@@ -102,6 +103,72 @@ pub fn measures_effects_in_error_test() {
     ),
   ] = state.effect_measurements
   assert duration_ms >= 0
+}
+
+pub fn get_session_without_token_returns_none_test() {
+  let handlers = test_handlers()
+  let ctx = test_context()
+
+  let #(run_result, _) =
+    interpreter.run(session_domain.get_session(ctx), handlers, option.None, ctx)
+
+  assert run_result == Ok(option.None)
+}
+
+pub fn get_session_with_missing_db_session_returns_none_test() {
+  let handlers = test_handlers()
+  let ctx =
+    context.Context(
+      ..test_context(),
+      client_info: context.ClientInfo(
+        session_token: option.Some("missing-session-token"),
+        ip: option.None,
+        user_agent: option.None,
+      ),
+    )
+
+  let #(run_result, _) =
+    interpreter.run(session_domain.get_session(ctx), handlers, option.None, ctx)
+
+  assert run_result == Ok(option.None)
+}
+
+pub fn require_session_without_token_returns_missing_token_error_test() {
+  let handlers = test_handlers()
+  let ctx = test_context()
+
+  let #(run_result, _) =
+    interpreter.run(
+      session_domain.require_session(ctx),
+      handlers,
+      option.None,
+      ctx,
+    )
+
+  assert run_result == Error(error.SessionError(error.MissingSessionTokenError))
+}
+
+pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
+  let handlers = test_handlers()
+  let ctx =
+    context.Context(
+      ..test_context(),
+      client_info: context.ClientInfo(
+        session_token: option.Some("missing-session-token"),
+        ip: option.None,
+        user_agent: option.None,
+      ),
+    )
+
+  let #(run_result, _) =
+    interpreter.run(
+      session_domain.require_session(ctx),
+      handlers,
+      option.None,
+      ctx,
+    )
+
+  assert run_result == Error(error.SessionError(error.SessionNotFoundError))
 }
 
 fn test_handlers() -> handlers.Handlers {
