@@ -131,7 +131,7 @@ fn test_handlers() -> handlers.Handlers {
       update_login_token: fn(_) { Ok(Nil) },
     ),
     snippet: snippet_handlers.SnippetHandlers(
-      insert_snippet: fn(_, _, _, _, _) { Ok(Nil) },
+      create_snippet: fn(_) { Ok(Nil) },
     ),
     docker_run: docker_run_handlers.DockerRunHandlers(
       run_code: fn(_, _) {

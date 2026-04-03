@@ -1,15 +1,15 @@
 import gleam/dynamic
 import gleam/option
-import glot_core/api_action
 import glot_backend/context
 import glot_backend/domain/generic/rate_limit_domain
 import glot_backend/domain/generic/session_domain
 import glot_backend/effect/basic/basic_effect
-import glot_backend/effect/program_types
 import glot_backend/effect/program
+import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction_effect
 import glot_backend/log
+import glot_core/api_action
 import glot_core/snippet
 
 pub fn snippet_create(
@@ -20,7 +20,7 @@ pub fn snippet_create(
 
   use request <- program.and_then(program.decode_json(
     json_body,
-    snippet.decoder(),
+    snippet.data_decoder(),
   ))
 
   use _ <- program.and_then(
@@ -39,15 +39,17 @@ pub fn snippet_create(
   ))
 
   use snippet_id <- program.and_then(basic_effect.uuid_v7())
+  let new_snippet =
+    snippet.Snippet(
+      id: snippet_id,
+      user_id: session.user.id,
+      data: request,
+      created_at: ctx.timestamp,
+      updated_at: ctx.timestamp,
+    )
   use _ <- program.and_then(
     transaction_effect.run_all([
-      snippet_effect.insert(
-        id: snippet_id,
-        user_id: session.user.id,
-        snippet: request,
-        created_at: ctx.timestamp,
-        updated_at: ctx.timestamp,
-      ),
+      snippet_effect.create(new_snippet),
       user_action_cmd,
     ]),
   )
