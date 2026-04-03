@@ -5,6 +5,7 @@ pub type ApiAction {
   GetSnippetAction
   CreateSnippetAction
   UpdateSnippetAction
+  DeleteSnippetAction
   SendLoginTokenAction
   LoginAction
 }
@@ -16,6 +17,7 @@ pub fn decoder() -> decode.Decoder(ApiAction) {
     "GetSnippet" -> decode.success(GetSnippetAction)
     "CreateSnippet" -> decode.success(CreateSnippetAction)
     "UpdateSnippet" -> decode.success(UpdateSnippetAction)
+    "DeleteSnippet" -> decode.success(DeleteSnippetAction)
     "SendLoginToken" -> decode.success(SendLoginTokenAction)
     "Login" -> decode.success(LoginAction)
     _ -> decode.failure(RunAction, "ApiAction")
@@ -28,6 +30,7 @@ pub fn to_string(action: ApiAction) -> String {
     GetSnippetAction -> "GetSnippet"
     CreateSnippetAction -> "CreateSnippet"
     UpdateSnippetAction -> "UpdateSnippet"
+    DeleteSnippetAction -> "DeleteSnippet"
     SendLoginTokenAction -> "SendLoginToken"
     LoginAction -> "Login"
   }
@@ -39,6 +42,7 @@ pub fn to_db_string(action: ApiAction) -> String {
     GetSnippetAction -> "get_snippet_action"
     CreateSnippetAction -> "create_snippet_action"
     UpdateSnippetAction -> "update_snippet_action"
+    DeleteSnippetAction -> "delete_snippet_action"
     SendLoginTokenAction -> "send_login_token_action"
     LoginAction -> "login_action"
   }

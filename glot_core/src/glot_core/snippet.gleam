@@ -45,13 +45,13 @@ pub fn data_decoder() -> decode.Decoder(SnippetData) {
   ))
 }
 
-pub type GetSnippetRequest {
-  GetSnippetRequest(id: Uuid)
+pub type SnippetIdRequest {
+  SnippetIdRequest(id: Uuid)
 }
 
-pub fn get_decoder() -> decode.Decoder(GetSnippetRequest) {
+pub fn id_request_decoder() -> decode.Decoder(SnippetIdRequest) {
   use id <- decode.field("id", uuid_helpers.decoder())
-  decode.success(GetSnippetRequest(id: id))
+  decode.success(SnippetIdRequest(id: id))
 }
 
 pub type UpdateSnippetRequest {

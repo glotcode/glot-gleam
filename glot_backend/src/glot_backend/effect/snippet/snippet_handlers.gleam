@@ -16,6 +16,7 @@ pub type SnippetHandlers {
   SnippetHandlers(
     get_snippet_by_id: fn(BitArray) ->
       Result(option.Option(Snippet), error.DbQueryError),
+    delete_snippet: fn(BitArray) -> Result(Nil, error.DbCommandError),
     create_snippet: fn(Snippet) -> Result(Nil, error.DbCommandError),
     update_snippet: fn(Snippet) -> Result(Nil, error.DbCommandError),
   )
@@ -24,6 +25,7 @@ pub type SnippetHandlers {
 pub fn new(db: pog.Connection) -> SnippetHandlers {
   SnippetHandlers(
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
+    delete_snippet: fn(id) { delete_snippet(db, id) },
     create_snippet: fn(snippet) { create_snippet(db, snippet) },
     update_snippet: fn(snippet) { update_snippet(db, snippet) },
   )
@@ -71,6 +73,20 @@ pub fn create_snippet(
       created_at: snippet.created_at,
       updated_at: snippet.updated_at,
     ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_snippet(
+  db: pog.Connection,
+  id: BitArray,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_snippet(id),
     to_error,
   )
   |> result.map(fn(_) { Nil })

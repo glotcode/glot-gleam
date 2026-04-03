@@ -18,7 +18,7 @@ pub fn get_snippet(
 ) -> program_types.Program(snippet.SnippetResponse) {
   use request <- program.and_then(program.decode_json(
     json_body,
-    snippet.get_decoder(),
+    snippet.id_request_decoder(),
   ))
 
   use maybe_session <- program.and_then(session_domain.get_session(ctx))

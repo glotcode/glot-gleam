@@ -154,6 +154,10 @@ fn rate_limits_config_from_dict(
       api_action.UpdateSnippetAction,
       lookup_rate_limits(values, "UPDATE_SNIPPET"),
     ),
+    #(
+      api_action.DeleteSnippetAction,
+      lookup_rate_limits(values, "DELETE_SNIPPET"),
+    ),
     #(api_action.RunAction, lookup_rate_limits(values, "RUN")),
   ])
 }

@@ -12,6 +12,7 @@ import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/run_code/run_domain
 import glot_backend/domain/snippet/create_snippet_domain
+import glot_backend/domain/snippet/delete_snippet_domain
 import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/effect/basic/basic_handlers
@@ -64,6 +65,9 @@ fn handle_api_request(
       |> program.map(fn(_) { NoContentResponse })
     api_action.UpdateSnippetAction ->
       update_snippet_domain.update_snippet(ctx, api_request.data)
+      |> program.map(fn(_) { NoContentResponse })
+    api_action.DeleteSnippetAction ->
+      delete_snippet_domain.delete_snippet(ctx, api_request.data)
       |> program.map(fn(_) { NoContentResponse })
     api_action.SendLoginTokenAction ->
       send_login_token_domain.send_login_token(ctx, api_request.data)
