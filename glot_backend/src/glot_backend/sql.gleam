@@ -333,12 +333,13 @@ pub fn update_snippet(
   visibility visibility: String,
   stdin stdin: String,
   run_command run_command: String,
+  files files: String,
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
   id id: BitArray,
 ) {
   let sql =
-    "UPDATE snippets SET user_id = $1, language = $2, title = $3, visibility = $4, stdin = $5, run_command = $6, created_at = $7, updated_at = $8 WHERE id = $9"
+    "UPDATE snippets SET user_id = $1, language = $2, title = $3, visibility = $4, stdin = $5, run_command = $6, files = $7, created_at = $8, updated_at = $9 WHERE id = $10"
   #(sql, [
     dev.ParamBitArray(user_id),
     dev.ParamString(language),
@@ -346,6 +347,7 @@ pub fn update_snippet(
     dev.ParamString(visibility),
     dev.ParamString(stdin),
     dev.ParamString(run_command),
+    dev.ParamString(files),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
     dev.ParamBitArray(id),

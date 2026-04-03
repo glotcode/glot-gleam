@@ -130,7 +130,10 @@ fn test_handlers() -> handlers.Handlers {
       create_login_token: fn(_) { Ok(Nil) },
       update_login_token: fn(_) { Ok(Nil) },
     ),
-    snippet: snippet_handlers.SnippetHandlers(create_snippet: fn(_) { Ok(Nil) }),
+    snippet: snippet_handlers.SnippetHandlers(
+      create_snippet: fn(_) { Ok(Nil) },
+      update_snippet: fn(_) { Ok(Nil) },
+    ),
     docker_run: docker_run_handlers.DockerRunHandlers(run_code: fn(_, _) {
       Error(error.InternalRunRequestError("unused in test"))
     }),

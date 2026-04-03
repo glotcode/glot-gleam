@@ -27,5 +27,18 @@ pub fn run(
         ),
       )
     }
+    snippet.UpdateSnippet(snippet_value, next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.snippet.update_snippet(snippet_value)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.SnippetEffectName(snippet.UpdateSnippetEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
   }
 }

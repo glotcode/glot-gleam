@@ -20,3 +20,12 @@ fn command_next(
     Error(err) -> program_types.Fail(error.CommandError(err))
   }
 }
+
+pub fn update(snippet snippet: Snippet) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.SnippetEffect(snippet.UpdateSnippet(
+      snippet: snippet,
+      next: command_next,
+    )),
+  )
+}
