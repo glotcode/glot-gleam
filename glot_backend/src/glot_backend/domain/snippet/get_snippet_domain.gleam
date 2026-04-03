@@ -10,7 +10,6 @@ import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/log
 import glot_core/api_action
-import glot_core/auth/user_dto
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 
@@ -64,18 +63,5 @@ pub fn get_snippet(
 
   use _ <- program.and_then(user_action_cmd)
 
-  program.succeed(snippet_dto.SnippetResponse(
-    id: snippet.id,
-    user: user_dto.from_user(snippet.user),
-    data: snippet_dto.SnippetData(
-      title: snippet.title,
-      language: snippet.language,
-      visibility: snippet.visibility,
-      stdin: snippet.stdin,
-      run_command: snippet.run_command,
-      files: snippet.files,
-    ),
-    created_at: snippet.created_at,
-    updated_at: snippet.updated_at,
-  ))
+  program.succeed(snippet_dto.from_snippet(snippet))
 }

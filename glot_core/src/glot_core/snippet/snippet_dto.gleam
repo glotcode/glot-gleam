@@ -55,6 +55,25 @@ pub type SnippetResponse {
   )
 }
 
+pub fn from_snippet(
+  snippet: snippet_model.HydratedSnippet,
+) -> SnippetResponse {
+  SnippetResponse(
+    id: snippet.id,
+    user: user_dto.from_user(snippet.user),
+    data: SnippetData(
+      title: snippet.title,
+      language: snippet.language,
+      visibility: snippet.visibility,
+      stdin: snippet.stdin,
+      run_command: snippet.run_command,
+      files: snippet.files,
+    ),
+    created_at: snippet.created_at,
+    updated_at: snippet.updated_at,
+  )
+}
+
 pub fn encode_response(response: SnippetResponse) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(response.id))),
