@@ -4,3 +4,4 @@
 erl_crash.dump
 improvements.txt
 program_dsl_reference.gleam
+legacy_queries.sql

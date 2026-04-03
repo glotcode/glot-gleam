@@ -2,7 +2,7 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{type Option}
 import glot_core/language
-import glot_core/snippet
+import glot_core/snippet/snippet_model
 
 pub type RunRequest {
   RunRequest(image: String, payload: RunRequestPayload)
@@ -11,7 +11,7 @@ pub type RunRequest {
 pub type RunRequestPayload {
   RunRequestPayload(
     run_instructions: language.RunInstructions,
-    files: List(snippet.File),
+    files: List(snippet_model.File),
     stdin: Option(String),
   )
 }
@@ -44,7 +44,7 @@ pub fn encode_run_request_payload(payload: RunRequestPayload) -> json.Json {
       "runInstructions",
       language.encode_run_instructions(payload.run_instructions),
     ),
-    #("files", json.array(payload.files, snippet.encode_file)),
+    #("files", json.array(payload.files, snippet_model.encode_file)),
     #("stdin", case payload.stdin {
       option.Some(s) -> json.string(s)
       option.None -> json.null()
@@ -63,7 +63,7 @@ pub fn run_request_payload_decoder() -> decode.Decoder(RunRequestPayload) {
     "runInstructions",
     language.run_instructions_decoder(),
   )
-  use files <- decode.field("files", decode.list(snippet.file_decoder()))
+  use files <- decode.field("files", decode.list(snippet_model.file_decoder()))
   use stdin <- decode.field("stdin", decode.optional(decode.string))
 
   decode.success(RunRequestPayload(

@@ -10,15 +10,16 @@ import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/log
 import glot_core/api_action
-import glot_core/snippet
+import glot_core/snippet/snippet_dto
+import glot_core/snippet/snippet_model
 
 pub fn get_snippet(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
-) -> program_types.Program(snippet.SnippetResponse) {
+) -> program_types.Program(snippet_dto.SnippetResponse) {
   use request <- program.and_then(program.decode_json(
     json_body,
-    snippet.id_request_decoder(),
+    snippet_dto.get_decoder(),
   ))
 
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
@@ -46,14 +47,14 @@ pub fn get_snippet(
     |> program.require(error.QueryError(error.DbQueryError("Snippet not found"))),
   )
 
-  let is_owner = maybe_user_id == option.Some(snippet.user_id)
+  let is_owner = maybe_user_id == option.Some(snippet.user.id)
 
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
         log.string(
           "visibility",
-          snippet.visibility_to_string(snippet.data.visibility),
+          snippet_model.visibility_to_string(snippet.visibility),
         ),
         log.bool("is_owner", is_owner),
       ]),
@@ -62,5 +63,18 @@ pub fn get_snippet(
 
   use _ <- program.and_then(user_action_cmd)
 
-  program.succeed(snippet.SnippetResponse(snippet: snippet, is_owner: is_owner))
+  program.succeed(snippet_dto.SnippetResponse(
+    id: snippet.id,
+    user: snippet.user,
+    data: snippet_dto.SnippetData(
+      title: snippet.title,
+      language: snippet.language,
+      visibility: snippet.visibility,
+      stdin: snippet.stdin,
+      run_command: snippet.run_command,
+      files: snippet.files,
+    ),
+    created_at: snippet.created_at,
+    updated_at: snippet.updated_at,
+  ))
 }

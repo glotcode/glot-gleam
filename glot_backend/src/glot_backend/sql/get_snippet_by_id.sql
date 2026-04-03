@@ -1,2 +1,17 @@
 -- name: GetSnippetById :one
-SELECT id, user_id, language, title, visibility, stdin, run_command, files, created_at, updated_at FROM snippets WHERE id = $1;
+SELECT
+  snippets.id,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_command,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.email AS user_email,
+  users.created_at AS user_created_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE snippets.id = $1;

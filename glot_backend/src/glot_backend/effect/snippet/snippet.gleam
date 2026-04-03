@@ -1,11 +1,11 @@
 import gleam/option
 import glot_backend/effect/error
-import glot_core/snippet.{type Snippet}
+import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet}
 
 pub type SnippetEffect(next) {
   GetSnippetById(
     id: BitArray,
-    next: fn(Result(option.Option(Snippet), error.DbQueryError)) -> next,
+    next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
   )
   DeleteSnippet(
     id: BitArray,

@@ -2,10 +2,12 @@ import gleam/option
 import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet
-import glot_core/snippet.{type Snippet} as _
+import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet}
 import youid/uuid
 
-pub fn get_by_id(id: uuid.Uuid) -> program_types.Program(option.Option(Snippet)) {
+pub fn get_by_id(
+  id: uuid.Uuid,
+) -> program_types.Program(option.Option(HydratedSnippet)) {
   program_types.Impure(
     program_types.SnippetEffect(snippet.GetSnippetById(
       id: uuid.to_bit_array(id),
@@ -24,8 +26,8 @@ pub fn create(snippet snippet: Snippet) -> program_types.Program(Nil) {
 }
 
 fn query_next(
-  result: Result(option.Option(Snippet), error.DbQueryError),
-) -> program_types.Program(option.Option(Snippet)) {
+  result: Result(option.Option(HydratedSnippet), error.DbQueryError),
+) -> program_types.Program(option.Option(HydratedSnippet)) {
   case result {
     Ok(value) -> program_types.Pure(value)
     Error(err) -> program_types.Fail(error.QueryError(err))

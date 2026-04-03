@@ -283,7 +283,6 @@ pub fn count_user_actions_by_ip_decoder() -> decode.Decoder(
 pub type GetSnippetById {
   GetSnippetById(
     id: BitArray,
-    user_id: BitArray,
     language: String,
     title: String,
     visibility: String,
@@ -292,29 +291,48 @@ pub type GetSnippetById {
     files: String,
     created_at: Timestamp,
     updated_at: Timestamp,
+    user_id: BitArray,
+    user_email: String,
+    user_created_at: Timestamp,
   )
 }
 
 pub fn get_snippet_by_id(id id: BitArray) {
   let sql =
-    "SELECT id, user_id, language, title, visibility, stdin, run_command, files, created_at, updated_at FROM snippets WHERE id = $1"
+    "SELECT
+  snippets.id,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_command,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.email AS user_email,
+  users.created_at AS user_created_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE snippets.id = $1"
   #(sql, [dev.ParamBitArray(id)], get_snippet_by_id_decoder())
 }
 
 pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   use id <- decode.field(0, decode.bit_array)
-  use user_id <- decode.field(1, decode.bit_array)
-  use language <- decode.field(2, decode.string)
-  use title <- decode.field(3, decode.string)
-  use visibility <- decode.field(4, decode.string)
-  use stdin <- decode.field(5, decode.string)
-  use run_command <- decode.field(6, decode.string)
-  use files <- decode.field(7, decode.string)
-  use created_at <- decode.field(8, dev.datetime_decoder())
-  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use language <- decode.field(1, decode.string)
+  use title <- decode.field(2, decode.string)
+  use visibility <- decode.field(3, decode.string)
+  use stdin <- decode.field(4, decode.string)
+  use run_command <- decode.field(5, decode.string)
+  use files <- decode.field(6, decode.string)
+  use created_at <- decode.field(7, dev.datetime_decoder())
+  use updated_at <- decode.field(8, dev.datetime_decoder())
+  use user_id <- decode.field(9, decode.bit_array)
+  use user_email <- decode.field(10, decode.string)
+  use user_created_at <- decode.field(11, dev.datetime_decoder())
   decode.success(GetSnippetById(
     id:,
-    user_id:,
     language:,
     title:,
     visibility:,
@@ -323,6 +341,9 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
     files:,
     created_at:,
     updated_at:,
+    user_id:,
+    user_email:,
+    user_created_at:,
   ))
 }
 

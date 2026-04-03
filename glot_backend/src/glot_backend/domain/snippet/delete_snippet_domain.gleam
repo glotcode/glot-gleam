@@ -12,7 +12,7 @@ import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction_effect
 import glot_backend/log
 import glot_core/api_action
-import glot_core/snippet
+import glot_core/snippet/snippet_dto
 
 pub fn delete_snippet(
   ctx: context.Context,
@@ -22,7 +22,7 @@ pub fn delete_snippet(
 
   use request <- program.and_then(program.decode_json(
     json_body,
-    snippet.id_request_decoder(),
+    snippet_dto.delete_decoder(),
   ))
 
   use _ <- program.and_then(
@@ -48,7 +48,7 @@ pub fn delete_snippet(
 
   use _ <- program.and_then(authorization_domain.require_owner(
     session.user.id,
-    existing_snippet.user_id,
+    existing_snippet.user.id,
   ))
 
   use _ <- program.and_then(

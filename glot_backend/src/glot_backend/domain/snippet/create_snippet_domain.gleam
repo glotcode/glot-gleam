@@ -10,7 +10,8 @@ import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction_effect
 import glot_backend/log
 import glot_core/api_action
-import glot_core/snippet
+import glot_core/snippet/snippet_dto
+import glot_core/snippet/snippet_model
 
 pub fn create_snippet(
   ctx: context.Context,
@@ -20,7 +21,7 @@ pub fn create_snippet(
 
   use request <- program.and_then(program.decode_json(
     json_body,
-    snippet.data_decoder(),
+    snippet_dto.data_decoder(),
   ))
 
   use _ <- program.and_then(
@@ -40,10 +41,15 @@ pub fn create_snippet(
 
   use snippet_id <- program.and_then(basic_effect.uuid_v7())
   let new_snippet =
-    snippet.Snippet(
+    snippet_model.Snippet(
       id: snippet_id,
       user_id: session.user.id,
-      data: request,
+      title: request.title,
+      language: request.language,
+      visibility: request.visibility,
+      stdin: request.stdin,
+      run_command: request.run_command,
+      files: request.files,
       created_at: ctx.timestamp,
       updated_at: ctx.timestamp,
     )

@@ -12,7 +12,8 @@ import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction_effect
 import glot_backend/log
 import glot_core/api_action
-import glot_core/snippet
+import glot_core/snippet/snippet_dto
+import glot_core/snippet/snippet_model
 
 pub fn update_snippet(
   ctx: context.Context,
@@ -22,7 +23,7 @@ pub fn update_snippet(
 
   use request <- program.and_then(program.decode_json(
     json_body,
-    snippet.update_decoder(),
+    snippet_dto.update_decoder(),
   ))
 
   use _ <- program.and_then(
@@ -48,13 +49,20 @@ pub fn update_snippet(
 
   use _ <- program.and_then(authorization_domain.require_owner(
     session.user.id,
-    existing_snippet.user_id,
+    existing_snippet.user.id,
   ))
 
   let updated_snippet =
-    snippet.Snippet(
-      ..existing_snippet,
-      data: request.data,
+    snippet_model.Snippet(
+      id: existing_snippet.id,
+      user_id: existing_snippet.user.id,
+      title: request.data.title,
+      language: request.data.language,
+      visibility: request.data.visibility,
+      stdin: request.data.stdin,
+      run_command: request.data.run_command,
+      files: request.data.files,
+      created_at: existing_snippet.created_at,
       updated_at: ctx.timestamp,
     )
 
