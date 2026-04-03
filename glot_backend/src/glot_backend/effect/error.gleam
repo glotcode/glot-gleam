@@ -39,6 +39,10 @@ pub type ClientInfoError {
   MissingUserIdAndIpError
 }
 
+pub type AuthorizationError {
+  NotOwnerError
+}
+
 pub type Error {
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
@@ -51,4 +55,5 @@ pub type Error {
   SendEmailError(SendEmailError)
   SessionError(SessionError)
   ClientInfoError(ClientInfoError)
+  AuthorizationError(AuthorizationError)
 }

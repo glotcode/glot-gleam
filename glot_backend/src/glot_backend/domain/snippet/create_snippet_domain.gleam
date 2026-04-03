@@ -38,15 +38,12 @@ pub fn create_snippet(
     action: api_action.CreateSnippetAction,
   ))
 
-  // TODO: get existing snippet and check permissions
-
   use snippet_id <- program.and_then(basic_effect.uuid_v7())
   let new_snippet =
     snippet.Snippet(
       id: snippet_id,
       user_id: session.user.id,
       data: request,
-      // TODO: use created_at from existing snippet
       created_at: ctx.timestamp,
       updated_at: ctx.timestamp,
     )

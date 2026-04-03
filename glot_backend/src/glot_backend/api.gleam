@@ -271,6 +271,8 @@ fn effect_error_to_message(err: error.Error) -> String {
       "session_error:session_expired"
     error.ClientInfoError(error.MissingUserIdAndIpError) ->
       "client_info_error:missing_user_id_and_ip"
+    error.AuthorizationError(error.NotOwnerError) ->
+      "authorization_error:not_owner"
     error.RunError(error.PublicRunRequestError(message: message)) ->
       "run_error_public:" <> message
     error.RunError(error.InternalRunRequestError(message: message)) ->
@@ -369,6 +371,13 @@ fn error_to_response(error: error.Error) -> wisp.Response {
         error.MissingUserIdAndIpError -> {
           wisp.log_error("Client info error: missing user_id and ip")
           error_response("client_info_error", "Missing user_id and ip")
+        }
+      }
+    error.AuthorizationError(authorization_error) ->
+      case authorization_error {
+        error.NotOwnerError -> {
+          wisp.log_error("Authorization error: not owner")
+          error_response("authorization_error", "Not authorized")
         }
       }
     error.RunError(run_request_error) ->

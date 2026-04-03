@@ -43,12 +43,7 @@ pub fn get_snippet(
 
   use snippet <- program.and_then(
     snippet_effect.get_by_id(request.id)
-    |> program.and_then(fn(snippet) {
-      program.from_option(
-        snippet,
-        error.QueryError(error.DbQueryError("Snippet not found")),
-      )
-    }),
+    |> program.require(error.QueryError(error.DbQueryError("Snippet not found"))),
   )
 
   let is_owner = maybe_user_id == option.Some(snippet.user_id)

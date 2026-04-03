@@ -55,6 +55,13 @@ pub fn from_option(
   }
 }
 
+pub fn require(
+  value: program_types.Program(option.Option(a)),
+  err: error.Error,
+) -> program_types.Program(a) {
+  and_then(value, fn(value) { from_option(value, err) })
+}
+
 pub fn decode_json(
   json_body: dynamic.Dynamic,
   decoder: decode.Decoder(a),

@@ -1,9 +1,11 @@
 import gleam/dynamic
 import gleam/option
 import glot_backend/context
+import glot_backend/domain/shared/authorization_domain
 import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
+import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
@@ -39,14 +41,23 @@ pub fn update_snippet(
     action: api_action.UpdateSnippetAction,
   ))
 
+  use existing_snippet <- program.and_then(
+    snippet_effect.get_by_id(request.id)
+    |> program.require(error.QueryError(error.DbQueryError("Snippet not found"))),
+  )
+
+  use _ <- program.and_then(authorization_domain.require_owner(
+    session.user.id,
+    existing_snippet.user_id,
+  ))
+
   let updated_snippet =
     snippet.Snippet(
-      id: request.id,
-      user_id: session.user.id,
+      ..existing_snippet,
       data: request.data,
-      created_at: ctx.timestamp,
       updated_at: ctx.timestamp,
     )
+
   use _ <- program.and_then(
     transaction_effect.run_all([
       snippet_effect.update(updated_snippet),
