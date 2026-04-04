@@ -1,12 +1,13 @@
 import gleam/list
-import gleam/option
 import gleam/string
 import glot_backend/context
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
+import glot_backend/effect/handlers
 import glot_backend/effect/program_types
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
+import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/transaction/transaction
 import glot_backend/erlang
 import pog
@@ -61,45 +62,43 @@ fn run_in_transaction(
     program_state.State,
   ) -> #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.DbTransactionError), program_state.State) {
-  case runtime.connection {
-    option.Some(connection) ->
-      pog.transaction(connection, fn(tx) {
-        let transaction_runtime = runtime.with_connection(runtime, tx)
-        case
-          run_program(
-            program,
-            transaction_runtime,
-            ctx,
-            program_state.new_state(),
-          )
-        {
-          #(Ok(value), state) -> Ok(#(value, reverse_effect_measurements(state)))
-          #(Error(err), state) ->
-            Error(#(err, reverse_effect_measurements(state)))
-        }
-      })
-      |> collapse_transaction_result
-    option.None ->
-      #(
-        Error(error.DbTransactionError("Missing transaction db")),
+  transaction_handlers.run(runtime.handlers.transaction, fn(tx) {
+    let transaction_runtime =
+      runtime.from_handlers(handlers.new(tx))
+
+    case
+      run_program(
+        program,
+        transaction_runtime,
+        ctx,
         program_state.new_state(),
       )
-  }
+    {
+      #(Ok(value), state) -> Ok(#(value, reverse_effect_measurements(state)))
+      #(Error(err), state) ->
+        Error(#(err, reverse_effect_measurements(state)))
+    }
+  })
+  |> collapse_transaction_result
 }
 
 fn collapse_transaction_result(
   result: Result(
     #(a, program_state.State),
-    pog.TransactionError(#(error.Error, program_state.State)),
+    transaction_handlers.RunError(#(error.Error, program_state.State)),
   ),
 ) -> #(Result(a, error.DbTransactionError), program_state.State) {
   case result {
     Ok(#(value, state)) -> #(Ok(value), state)
-    Error(pog.TransactionRolledBack(#(err, state))) -> #(
+    Error(transaction_handlers.MissingConnection) -> #(
+      Error(error.DbTransactionError("Missing transaction db")),
+      program_state.new_state(),
+    )
+    Error(transaction_handlers.TransactionError(pog.TransactionRolledBack(#(err, state)))) -> #(
       Error(error.DbTransactionError(string.inspect(err))),
       state,
     )
-    Error(err) -> #(
+    Error(transaction_handlers.TransactionError(err)) -> #(
       Error(error.DbTransactionError(string.inspect(err))),
       program_state.new_state(),
     )

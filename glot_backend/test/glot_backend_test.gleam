@@ -19,6 +19,7 @@ import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_handlers
+import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
 import glot_backend/log
 import glot_core/job/job_model
@@ -222,6 +223,7 @@ fn test_handlers() -> handlers.Handlers {
       count_user_actions: fn(_) { Ok([]) },
       create_user_action: fn(_) { Ok(Nil) },
     ),
+    transaction: transaction_handlers.none(),
   )
 }
 

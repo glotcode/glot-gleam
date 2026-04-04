@@ -4,6 +4,7 @@ import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/email/email_handlers
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/snippet/snippet_handlers
+import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
 import pog
 
@@ -16,6 +17,7 @@ pub type Handlers {
     snippet: snippet_handlers.SnippetHandlers,
     docker_run: docker_run_handlers.DockerRunHandlers,
     user_action: user_action_handlers.UserActionHandlers,
+    transaction: transaction_handlers.TransactionHandlers,
   )
 }
 
@@ -28,5 +30,6 @@ pub fn new(db: pog.Connection) -> Handlers {
     snippet: snippet_handlers.new(db),
     docker_run: docker_run_handlers.new(),
     user_action: user_action_handlers.new(db),
+    transaction: transaction_handlers.new(db),
   )
 }
