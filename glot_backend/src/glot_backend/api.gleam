@@ -245,45 +245,9 @@ fn non_empty_list(l: List(a)) -> option.Option(List(a)) {
   }
 }
 
-fn effect_error_to_message(err: error.Error) -> String {
-  case err {
-    error.DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
-    error.EmailInvalidError(message) -> "email_invalid:" <> message
-    error.TooManyRequestsError(count, _) ->
-      "too_many_requests:" <> int.to_string(count)
-    error.QueryError(error.DbQueryError(message: message)) ->
-      "query_error:" <> message
-    error.CommandError(error.DbCommandError(message: message)) ->
-      "command_error:" <> message
-    error.TransactionError(error.DbTransactionError(message: message)) ->
-      "transaction_error:" <> message
-    error.LoginError(error.InvalidTokenError) -> "login_error:invalid_token"
-    error.LoginError(error.TokenUsedError) -> "login_error:token_used"
-    error.LoginError(error.TokenExpiredError) -> "login_error:token_expired"
-    error.SendEmailError(error.PublicSendEmailError(message: message)) ->
-      "send_email_public:" <> message
-    error.SendEmailError(error.InternalSendEmailError(message: message)) ->
-      "send_email_internal:" <> message
-    error.SessionError(error.MissingSessionTokenError) ->
-      "session_error:missing_session_token"
-    error.SessionError(error.SessionNotFoundError) ->
-      "session_error:session_not_found"
-    error.SessionError(error.SessionExpiredError) ->
-      "session_error:session_expired"
-    error.ClientInfoError(error.MissingUserIdAndIpError) ->
-      "client_info_error:missing_user_id_and_ip"
-    error.AuthorizationError(error.NotOwnerError) ->
-      "authorization_error:not_owner"
-    error.RunError(error.PublicRunRequestError(message: message)) ->
-      "run_error_public:" <> message
-    error.RunError(error.InternalRunRequestError(message: message)) ->
-      "run_error_internal:" <> message
-  }
-}
-
 fn error_to_json(err: error.Error) -> json.Json {
   json.object([
-    #("message", json.string(effect_error_to_message(err))),
+    #("message", json.string(error.to_string(err))),
   ])
 }
 

@@ -84,11 +84,7 @@ fn new(id: Uuid, job_type: JobType, now: Timestamp, payload: String) -> Job {
   )
 }
 
-pub fn send_email_job(
-  id: Uuid,
-  now: Timestamp,
-  email: email_model.Email,
-) -> Job {
+pub fn send_email_job(id: Uuid, now: Timestamp, email: email_model.Email) -> Job {
   new(
     id,
     SendEmailJob,
@@ -139,4 +135,9 @@ pub fn reschedule(
     last_error: last_error,
     updated_at: updated_at,
   )
+}
+
+pub type Outcome {
+  NoJobs
+  JobProcessed
 }

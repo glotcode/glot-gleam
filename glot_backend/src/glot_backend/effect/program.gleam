@@ -39,6 +39,17 @@ pub fn map(
   and_then(effect, fn(value) { succeed(f(value)) })
 }
 
+pub fn to_result(
+  effect: program_types.Program(a),
+) -> program_types.Program(Result(a, error.Error)) {
+  case effect {
+    program_types.Pure(value) -> succeed(Ok(value))
+    program_types.Fail(err) -> succeed(Error(err))
+    program_types.Impure(inner) ->
+      program_types.Impure(map_effect(inner, to_result))
+  }
+}
+
 pub fn from_result(value: Result(a, error.Error)) -> program_types.Program(a) {
   case value {
     Ok(v) -> program_types.Pure(v)

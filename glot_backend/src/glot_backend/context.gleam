@@ -137,10 +137,7 @@ fn rate_limits_config_from_dict(
   values: Dict(String, String),
 ) -> RateLimitsConfig {
   dict.from_list([
-    #(
-      api_action.GetSnippetAction,
-      lookup_rate_limits(values, "GET_SNIPPET"),
-    ),
+    #(api_action.GetSnippetAction, lookup_rate_limits(values, "GET_SNIPPET")),
     #(
       api_action.SendLoginTokenAction,
       lookup_rate_limits(values, "SEND_LOGIN_TOKEN"),
@@ -220,5 +217,13 @@ pub type ClientInfo {
     session_token: Option(String),
     ip: Option(String),
     user_agent: Option(String),
+  )
+}
+
+pub fn empty_client_info() -> ClientInfo {
+  ClientInfo(
+    session_token: option.None,
+    ip: option.None,
+    user_agent: option.None,
   )
 }
