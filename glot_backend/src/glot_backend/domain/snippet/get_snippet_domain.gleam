@@ -15,13 +15,8 @@ import glot_core/snippet/snippet_model
 
 pub fn get_snippet(
   ctx: context.Context,
-  json_body: dynamic.Dynamic,
+  request: snippet_dto.GetSnippetRequest,
 ) -> program_types.Program(snippet_dto.SnippetResponse) {
-  use request <- program.and_then(program.decode_dynamic(
-    json_body,
-    snippet_dto.get_decoder(),
-  ))
-
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
   let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
   let maybe_user_id = option.map(maybe_session, fn(s) { s.user.id })
@@ -64,4 +59,10 @@ pub fn get_snippet(
   use _ <- program.and_then(user_action_cmd)
 
   program.succeed(snippet_dto.from_snippet(snippet))
+}
+
+pub fn request_from_dynamic(
+  data: dynamic.Dynamic,
+) -> program_types.Program(snippet_dto.GetSnippetRequest) {
+  program.decode_dynamic(data, snippet_dto.get_decoder())
 }

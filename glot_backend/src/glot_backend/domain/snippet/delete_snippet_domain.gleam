@@ -16,14 +16,9 @@ import glot_core/snippet/snippet_dto
 
 pub fn delete_snippet(
   ctx: context.Context,
-  json_body: dynamic.Dynamic,
+  request: snippet_dto.DeleteSnippetRequest,
 ) -> program_types.Program(Nil) {
   use session <- program.and_then(session_domain.require_session(ctx))
-
-  use request <- program.and_then(program.decode_dynamic(
-    json_body,
-    snippet_dto.delete_decoder(),
-  ))
 
   use _ <- program.and_then(
     basic_effect.info(
@@ -59,4 +54,10 @@ pub fn delete_snippet(
   )
 
   program.succeed(Nil)
+}
+
+pub fn request_from_dynamic(
+  data: dynamic.Dynamic,
+) -> program_types.Program(snippet_dto.DeleteSnippetRequest) {
+  program.decode_dynamic(data, snippet_dto.delete_decoder())
 }

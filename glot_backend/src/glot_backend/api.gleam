@@ -54,27 +54,57 @@ fn handle_api_request(
   api_request: ApiRequest,
 ) -> program_types.Program(ApiResult) {
   case api_request.action {
-    api_action.RunAction ->
-      run_domain.run(ctx, api_request.data)
+    api_action.RunAction -> {
+      use request <- program.and_then(run_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      run_domain.run(ctx, request)
       |> program.map(RunResultResponse)
-    api_action.GetSnippetAction ->
-      get_snippet_domain.get_snippet(ctx, api_request.data)
+    }
+    api_action.GetSnippetAction -> {
+      use request <- program.and_then(get_snippet_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      get_snippet_domain.get_snippet(ctx, request)
       |> program.map(SnippetResponse)
-    api_action.CreateSnippetAction ->
-      create_snippet_domain.create_snippet(ctx, api_request.data)
+    }
+    api_action.CreateSnippetAction -> {
+      use request <- program.and_then(create_snippet_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      create_snippet_domain.create_snippet(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
-    api_action.UpdateSnippetAction ->
-      update_snippet_domain.update_snippet(ctx, api_request.data)
+    }
+    api_action.UpdateSnippetAction -> {
+      use request <- program.and_then(update_snippet_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      update_snippet_domain.update_snippet(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
-    api_action.DeleteSnippetAction ->
-      delete_snippet_domain.delete_snippet(ctx, api_request.data)
+    }
+    api_action.DeleteSnippetAction -> {
+      use request <- program.and_then(delete_snippet_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      delete_snippet_domain.delete_snippet(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
-    api_action.SendLoginTokenAction ->
-      send_login_token_domain.send_login_token(ctx, api_request.data)
+    }
+    api_action.SendLoginTokenAction -> {
+      use request <- program.and_then(send_login_token_domain.request_from_dynamic(
+        ctx,
+        api_request.data,
+      ))
+      send_login_token_domain.send_login_token(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
-    api_action.LoginAction ->
-      login_domain.login(ctx, api_request.data)
+    }
+    api_action.LoginAction -> {
+      use request <- program.and_then(login_domain.request_from_dynamic(
+        ctx,
+        api_request.data,
+      ))
+      login_domain.login(ctx, request)
       |> program.map(LoginResponse)
+    }
   }
 }
 

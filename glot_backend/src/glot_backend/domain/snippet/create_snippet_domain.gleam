@@ -15,14 +15,9 @@ import glot_core/snippet/snippet_model
 
 pub fn create_snippet(
   ctx: context.Context,
-  json_body: dynamic.Dynamic,
+  request: snippet_dto.CreateSnippetRequest,
 ) -> program_types.Program(Nil) {
   use session <- program.and_then(session_domain.require_session(ctx))
-
-  use request <- program.and_then(program.decode_dynamic(
-    json_body,
-    snippet_dto.data_decoder(),
-  ))
 
   use _ <- program.and_then(
     basic_effect.info(
@@ -44,12 +39,12 @@ pub fn create_snippet(
     snippet_model.Snippet(
       id: snippet_id,
       user_id: session.user.id,
-      title: request.title,
-      language: request.language,
-      visibility: request.visibility,
-      stdin: request.stdin,
-      run_command: request.run_command,
-      files: request.files,
+      title: request.data.title,
+      language: request.data.language,
+      visibility: request.data.visibility,
+      stdin: request.data.stdin,
+      run_command: request.data.run_command,
+      files: request.data.files,
       created_at: ctx.timestamp,
       updated_at: ctx.timestamp,
     )
@@ -64,4 +59,10 @@ pub fn create_snippet(
   )
 
   program.succeed(Nil)
+}
+
+pub fn request_from_dynamic(
+  data: dynamic.Dynamic,
+) -> program_types.Program(snippet_dto.CreateSnippetRequest) {
+  program.decode_dynamic(data, snippet_dto.create_decoder())
 }

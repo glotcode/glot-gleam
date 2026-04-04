@@ -19,13 +19,8 @@ import glot_core/auth/user_model
 
 pub fn login(
   ctx: context.Context,
-  json_body: dynamic.Dynamic,
+  request: login_dto.LoginRequest,
 ) -> program_types.Program(String) {
-  use request <- program.and_then(program.decode_dynamic(
-    json_body,
-    login_dto.decoder(ctx.regexes.is_email),
-  ))
-
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
@@ -90,6 +85,13 @@ pub fn login(
   )
 
   program.succeed(session_token)
+}
+
+pub fn request_from_dynamic(
+  ctx: context.Context,
+  data: dynamic.Dynamic,
+) -> program_types.Program(login_dto.LoginRequest) {
+  program.decode_dynamic(data, login_dto.decoder(ctx.regexes.is_email))
 }
 
 fn user_from_option(

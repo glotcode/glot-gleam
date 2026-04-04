@@ -13,13 +13,8 @@ import glot_core/run
 
 pub fn run(
   ctx: context.Context,
-  json_body: dynamic.Dynamic,
+  request: run.RunRequest,
 ) -> program_types.Program(run.RunResult) {
-  use request <- program.and_then(program.decode_dynamic(
-    json_body,
-    run.run_request_decoder(),
-  ))
-
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
   let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
 
@@ -42,4 +37,10 @@ pub fn run(
   )
 
   program.succeed(result)
+}
+
+pub fn request_from_dynamic(
+  data: dynamic.Dynamic,
+) -> program_types.Program(run.RunRequest) {
+  program.decode_dynamic(data, run.run_request_decoder())
 }

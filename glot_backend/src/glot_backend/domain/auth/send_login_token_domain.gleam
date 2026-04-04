@@ -19,13 +19,8 @@ import glot_core/job/job_model
 
 pub fn send_login_token(
   ctx: context.Context,
-  json_body: dynamic.Dynamic,
+  request: login_token_dto.LoginTokenRequest,
 ) -> program_types.Program(Nil) {
-  use request <- program.and_then(program.decode_dynamic(
-    json_body,
-    login_token_dto.decoder(ctx.regexes.is_email),
-  ))
-
   use _ <- program.and_then(
     basic_effect.info(log.singleton(log.email("email", request.email))),
   )
@@ -76,6 +71,13 @@ pub fn send_login_token(
     ]
     |> option.values,
   )
+}
+
+pub fn request_from_dynamic(
+  ctx: context.Context,
+  data: dynamic.Dynamic,
+) -> program_types.Program(login_token_dto.LoginTokenRequest) {
+  program.decode_dynamic(data, login_token_dto.decoder(ctx.regexes.is_email))
 }
 
 fn find_or_create_user(

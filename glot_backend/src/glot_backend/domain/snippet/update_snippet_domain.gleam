@@ -17,14 +17,9 @@ import glot_core/snippet/snippet_model
 
 pub fn update_snippet(
   ctx: context.Context,
-  json_body: dynamic.Dynamic,
+  request: snippet_dto.UpdateSnippetRequest,
 ) -> program_types.Program(Nil) {
   use session <- program.and_then(session_domain.require_session(ctx))
-
-  use request <- program.and_then(program.decode_dynamic(
-    json_body,
-    snippet_dto.update_decoder(),
-  ))
 
   use _ <- program.and_then(
     basic_effect.info(
@@ -74,4 +69,10 @@ pub fn update_snippet(
   )
 
   program.succeed(Nil)
+}
+
+pub fn request_from_dynamic(
+  data: dynamic.Dynamic,
+) -> program_types.Program(snippet_dto.UpdateSnippetRequest) {
+  program.decode_dynamic(data, snippet_dto.update_decoder())
 }
