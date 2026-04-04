@@ -70,14 +70,14 @@ fn handle_api_request(
         create_snippet_domain.request_from_dynamic(api_request.data),
       )
       create_snippet_domain.create_snippet(ctx, request)
-      |> program.map(fn(_) { NoContentResponse })
+      |> program.map(SnippetResponse)
     }
     api_action.UpdateSnippetAction -> {
       use request <- program.and_then(
         update_snippet_domain.request_from_dynamic(api_request.data),
       )
       update_snippet_domain.update_snippet(ctx, request)
-      |> program.map(fn(_) { NoContentResponse })
+      |> program.map(SnippetResponse)
     }
     api_action.DeleteSnippetAction -> {
       use request <- program.and_then(

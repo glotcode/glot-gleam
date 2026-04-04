@@ -16,7 +16,7 @@ import glot_core/snippet/snippet_model
 pub fn create_snippet(
   ctx: context.Context,
   request: snippet_dto.CreateSnippetRequest,
-) -> program_types.Program(Nil) {
+) -> program_types.Program(snippet_dto.SnippetResponse) {
   use session <- program.and_then(session_domain.require_session(ctx))
 
   use _ <- program.and_then(
@@ -59,7 +59,22 @@ pub fn create_snippet(
     basic_effect.info(log.singleton(log.uuid("snippet_id", snippet_id))),
   )
 
-  program.succeed(Nil)
+  program.succeed(
+    snippet_model.HydratedSnippet(
+      id: new_snippet.id,
+      slug: new_snippet.slug,
+      user: session.user,
+      title: new_snippet.title,
+      language: new_snippet.language,
+      visibility: new_snippet.visibility,
+      stdin: new_snippet.stdin,
+      run_command: new_snippet.run_command,
+      files: new_snippet.files,
+      created_at: new_snippet.created_at,
+      updated_at: new_snippet.updated_at,
+    )
+    |> snippet_dto.from_snippet,
+  )
 }
 
 pub fn request_from_dynamic(

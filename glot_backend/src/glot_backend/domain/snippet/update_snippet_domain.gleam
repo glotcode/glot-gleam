@@ -18,7 +18,7 @@ import glot_core/snippet/snippet_model
 pub fn update_snippet(
   ctx: context.Context,
   request: snippet_dto.UpdateSnippetRequest,
-) -> program_types.Program(Nil) {
+) -> program_types.Program(snippet_dto.SnippetResponse) {
   use session <- program.and_then(session_domain.require_session(ctx))
 
   use _ <- program.and_then(
@@ -69,7 +69,22 @@ pub fn update_snippet(
     ]),
   )
 
-  program.succeed(Nil)
+  program.succeed(
+    snippet_model.HydratedSnippet(
+      id: updated_snippet.id,
+      slug: updated_snippet.slug,
+      user: existing_snippet.user,
+      title: updated_snippet.title,
+      language: updated_snippet.language,
+      visibility: updated_snippet.visibility,
+      stdin: updated_snippet.stdin,
+      run_command: updated_snippet.run_command,
+      files: updated_snippet.files,
+      created_at: updated_snippet.created_at,
+      updated_at: updated_snippet.updated_at,
+    )
+    |> snippet_dto.from_snippet,
+  )
 }
 
 pub fn request_from_dynamic(
