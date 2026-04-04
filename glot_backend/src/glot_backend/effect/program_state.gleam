@@ -9,6 +9,7 @@ pub type State {
     effect_measurements: List(effect_trace.EffectMeasurement),
     info_fields: log.Fields,
     warning_fields: log.Fields,
+    debug_fields: log.Fields,
   )
 }
 
@@ -17,6 +18,7 @@ pub fn new_state() -> State {
     effect_measurements: [],
     info_fields: log.new(),
     warning_fields: log.new(),
+    debug_fields: log.new(),
   )
 }
 
@@ -26,6 +28,10 @@ pub fn add_info_fields(state: State, fields: log.Fields) -> State {
 
 pub fn add_warning_fields(state: State, fields: log.Fields) -> State {
   State(..state, warning_fields: dict.merge(state.warning_fields, fields))
+}
+
+pub fn add_debug_fields(state: State, fields: log.Fields) -> State {
+  State(..state, debug_fields: dict.merge(state.debug_fields, fields))
 }
 
 pub fn add_effect_measurement(

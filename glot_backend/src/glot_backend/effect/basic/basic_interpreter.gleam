@@ -3,8 +3,8 @@ import glot_backend/effect/basic/basic
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
-import glot_backend/effect/program_types
 import glot_backend/effect/program_state
+import glot_backend/effect/program_types
 import glot_backend/erlang
 import glot_backend/log
 
@@ -57,20 +57,51 @@ pub fn run(
       )
     }
     basic.Log(level, fields, next) -> {
-      let started_at = erlang.perf_counter_ns()
-      let state = case level {
-        log.Info -> program_state.add_info_fields(state, fields)
-        log.Warn -> program_state.add_warning_fields(state, fields)
+      case level {
+        log.Info -> {
+          let started_at = erlang.perf_counter_ns()
+          let state = program_state.add_info_fields(state, fields)
+          continue(
+            next,
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.BasicEffectName(basic.LogEffectName),
+              effect_trace.LogEffectCategory,
+              started_at,
+            ),
+          )
+        }
+        log.Warn -> {
+          let started_at = erlang.perf_counter_ns()
+          let state = program_state.add_warning_fields(state, fields)
+          continue(
+            next,
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.BasicEffectName(basic.LogEffectName),
+              effect_trace.LogEffectCategory,
+              started_at,
+            ),
+          )
+        }
+        log.Debug ->
+          case ctx.config.debug {
+            True -> {
+              let started_at = erlang.perf_counter_ns()
+              let state = program_state.add_debug_fields(state, fields)
+              continue(
+                next,
+                program_state.add_effect_measurement(
+                  state,
+                  effect_trace.BasicEffectName(basic.LogEffectName),
+                  effect_trace.LogEffectCategory,
+                  started_at,
+                ),
+              )
+            }
+            False -> continue(next, state)
+          }
       }
-      continue(
-        next,
-        program_state.add_effect_measurement(
-          state,
-          effect_trace.BasicEffectName(basic.LogEffectName),
-          effect_trace.LogEffectCategory,
-          started_at,
-        ),
-      )
     }
   }
 }

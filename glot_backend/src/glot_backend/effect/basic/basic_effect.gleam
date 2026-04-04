@@ -17,21 +17,37 @@ pub fn system_time() -> program_types.Program(Timestamp) {
 }
 
 pub fn uuid_v7() -> program_types.Program(Uuid) {
-  program_types.Impure(program_types.BasicEffect(basic.UuidV7(program_types.Pure)))
+  program_types.Impure(
+    program_types.BasicEffect(basic.UuidV7(program_types.Pure)),
+  )
 }
 
 pub fn info(fields: log.Fields) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.BasicEffect(
-      basic.Log(log.Info, fields, program_types.Pure(Nil)),
-    ),
+    program_types.BasicEffect(basic.Log(
+      log.Info,
+      fields,
+      program_types.Pure(Nil),
+    )),
   )
 }
 
 pub fn warn(fields: log.Fields) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.BasicEffect(
-      basic.Log(log.Warn, fields, program_types.Pure(Nil)),
-    ),
+    program_types.BasicEffect(basic.Log(
+      log.Warn,
+      fields,
+      program_types.Pure(Nil),
+    )),
+  )
+}
+
+pub fn debug(fields: log.Fields) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.BasicEffect(basic.Log(
+      log.Debug,
+      fields,
+      program_types.Pure(Nil),
+    )),
   )
 }

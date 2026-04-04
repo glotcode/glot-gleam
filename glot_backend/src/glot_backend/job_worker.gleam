@@ -136,8 +136,7 @@ fn prepare_log_entry(
     duration_ns: duration_ns,
     info: state.info_fields,
     warnings: state.warning_fields,
-    debug: log.new(),
-    // TODO: state.debug_fields,
+    debug: state.debug_fields,
     error: error,
     effects: state.effect_measurements,
   )

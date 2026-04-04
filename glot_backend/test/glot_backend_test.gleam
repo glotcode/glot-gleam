@@ -10,8 +10,8 @@ import glot_backend/effect/basic/basic
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
-import glot_backend/effect/email/email_handlers
 import glot_backend/effect/effect_trace
+import glot_backend/effect/email/email_handlers
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
@@ -104,6 +104,24 @@ pub fn measures_effects_in_error_test() {
     ),
   ] = state.effect_measurements
   assert duration_ms >= 0
+}
+
+pub fn suppressed_debug_log_is_not_stored_or_measured_test() {
+  let handlers = test_handlers()
+  let ctx = test_context()
+  let measured_effect = {
+    use _ <- program.and_then(
+      basic_effect.debug(log.from_list([log.string("debug_key", "debug_value")])),
+    )
+    program.succeed("ok")
+  }
+
+  let #(run_result, state) =
+    interpreter.run(measured_effect, handlers, option.None, ctx)
+
+  assert run_result == Ok("ok")
+  assert state.debug_fields == log.new()
+  assert state.effect_measurements == []
 }
 
 pub fn get_session_without_token_returns_none_test() {
@@ -219,6 +237,7 @@ fn test_context() -> context.Context {
 
   context.Context(
     config: context.Config(
+      debug: False,
       encryption_key: "test",
       static_base_path: "/tmp",
       postgres: context.PostgresConfig(

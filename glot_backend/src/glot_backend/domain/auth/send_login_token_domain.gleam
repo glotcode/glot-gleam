@@ -13,8 +13,8 @@ import glot_core/api_action
 import glot_core/auth/login_token_dto
 import glot_core/auth/login_token_model
 import glot_core/auth/user_model
-import glot_core/email/email_model
 import glot_core/email/email_address_model
+import glot_core/email/email_model
 import glot_core/job/job_model
 
 pub fn send_login_token(
@@ -91,9 +91,7 @@ fn find_or_create_user(
 ) -> program_types.Program(
   #(user_model.User, option.Option(program_types.Program(Nil))),
 ) {
-  use maybe_user <- program.and_then(auth_effect.get_user_by_email(
-    user_email,
-  ))
+  use maybe_user <- program.and_then(auth_effect.get_user_by_email(user_email))
 
   case maybe_user {
     option.Some(existing_user) -> program.succeed(#(existing_user, option.None))

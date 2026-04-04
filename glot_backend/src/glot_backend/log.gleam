@@ -11,6 +11,7 @@ pub type Fields =
 pub type Level {
   Info
   Warn
+  Debug
 }
 
 pub fn new() -> Fields {

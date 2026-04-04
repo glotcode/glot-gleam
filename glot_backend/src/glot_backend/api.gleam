@@ -251,8 +251,10 @@ fn prepare_log_entry(
       |> dict_helpers.non_empty_dict
       |> option.map(log.encode_fields)
       |> option.map(json.to_string),
-    // TODO: implement debug
-    debug: option.None,
+    debug: state.debug_fields
+      |> dict_helpers.non_empty_dict
+      |> option.map(log.encode_fields)
+      |> option.map(json.to_string),
     error: error
       |> option.map(encode_error)
       |> option.map(json.to_string),
