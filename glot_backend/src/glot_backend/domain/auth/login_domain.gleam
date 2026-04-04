@@ -9,7 +9,7 @@ import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
-import glot_backend/effect/transaction_effect
+import glot_backend/effect/transaction/transaction_effect
 import glot_backend/log
 import glot_core/api_action
 import glot_core/auth/login_dto

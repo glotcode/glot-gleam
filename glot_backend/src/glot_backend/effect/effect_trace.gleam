@@ -6,6 +6,7 @@ import glot_backend/effect/docker_run/docker_run
 import glot_backend/effect/email/email
 import glot_backend/effect/job/job
 import glot_backend/effect/snippet/snippet
+import glot_backend/effect/transaction/transaction
 import glot_backend/effect/user_action/user_action
 
 pub type EffectName {
@@ -16,7 +17,7 @@ pub type EffectName {
   SnippetEffectName(snippet.EffectName)
   DockerRunEffectName(docker_run.EffectName)
   UserActionEffectName(user_action.EffectName)
-  RunInTransactionEffectName(List(EffectMeasurement))
+  TransactionEffectName(transaction.EffectName, List(EffectMeasurement))
 }
 
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
@@ -28,7 +29,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     SnippetEffectName(name) -> snippet.effect_name_to_string(name)
     DockerRunEffectName(name) -> docker_run.effect_name_to_string(name)
     UserActionEffectName(name) -> user_action.effect_name_to_string(name)
-    RunInTransactionEffectName(_) -> "run"
+    TransactionEffectName(name, _) -> transaction.effect_name_to_string(name)
   }
 }
 
@@ -41,7 +42,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     SnippetEffectName(_) -> "snippet"
     DockerRunEffectName(_) -> "docker_run"
     UserActionEffectName(_) -> "user_action"
-    RunInTransactionEffectName(_) -> "transaction"
+    TransactionEffectName(_, _) -> "transaction"
   }
 }
 
@@ -100,7 +101,7 @@ pub fn encode_effect_measurement(
   let duration_ns = effect_measurement.duration_ns
   let effect_category = effect_category_to_string(effect_measurement.category)
   case effect_name {
-    RunInTransactionEffectName(sub_effects) ->
+    TransactionEffectName(_, sub_effects) ->
       json.object([
         #("category", json.string(effect_category)),
         #("family", json.string(effect_name_to_family(effect_name))),

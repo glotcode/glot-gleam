@@ -17,6 +17,7 @@ import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
+import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/user_action/user_action_handlers
 import glot_backend/log
@@ -36,7 +37,7 @@ pub fn hello_world_test() {
 }
 
 pub fn measurement_aggregation_test() {
-  let handlers = test_handlers()
+  let effect_runtime = test_runtime()
   let ctx = test_context()
   let measured_effect = {
     use _ <- program.and_then(basic_effect.info(log.new()))
@@ -45,7 +46,7 @@ pub fn measurement_aggregation_test() {
   }
 
   let #(run_result, state) =
-    interpreter.run(measured_effect, handlers, option.None, ctx)
+    interpreter.run(measured_effect, effect_runtime, ctx)
 
   assert run_result == Ok("ok")
   let assert [
@@ -65,14 +66,14 @@ pub fn measurement_aggregation_test() {
 }
 
 pub fn measures_effects_in_success_test() {
-  let handlers = test_handlers()
+  let effect_runtime = test_runtime()
   let ctx = test_context()
   let measured_effect = {
     use _ <- program.and_then(basic_effect.new_token(5))
     program.succeed("ok")
   }
   let #(run_result, state) =
-    interpreter.run(measured_effect, handlers, option.None, ctx)
+    interpreter.run(measured_effect, effect_runtime, ctx)
 
   assert run_result == Ok("ok")
   let assert [
@@ -86,14 +87,14 @@ pub fn measures_effects_in_success_test() {
 }
 
 pub fn measures_effects_in_error_test() {
-  let handlers = test_handlers()
+  let effect_runtime = test_runtime()
   let ctx = test_context()
   let failing_effect = {
     use _ <- program.and_then(basic_effect.new_token(5))
     program.fail(error.EmailInvalidError("bad"))
   }
   let #(run_result, state) =
-    interpreter.run(failing_effect, handlers, option.None, ctx)
+    interpreter.run(failing_effect, effect_runtime, ctx)
 
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
@@ -107,7 +108,7 @@ pub fn measures_effects_in_error_test() {
 }
 
 pub fn suppressed_debug_log_is_not_stored_or_measured_test() {
-  let handlers = test_handlers()
+  let effect_runtime = test_runtime()
   let ctx = test_context()
   let measured_effect = {
     use _ <- program.and_then(
@@ -117,7 +118,7 @@ pub fn suppressed_debug_log_is_not_stored_or_measured_test() {
   }
 
   let #(run_result, state) =
-    interpreter.run(measured_effect, handlers, option.None, ctx)
+    interpreter.run(measured_effect, effect_runtime, ctx)
 
   assert run_result == Ok("ok")
   assert state.debug_fields == log.new()
@@ -125,17 +126,17 @@ pub fn suppressed_debug_log_is_not_stored_or_measured_test() {
 }
 
 pub fn get_session_without_token_returns_none_test() {
-  let handlers = test_handlers()
+  let effect_runtime = test_runtime()
   let ctx = test_context()
 
   let #(run_result, _) =
-    interpreter.run(session_domain.get_session(ctx), handlers, option.None, ctx)
+    interpreter.run(session_domain.get_session(ctx), effect_runtime, ctx)
 
   assert run_result == Ok(option.None)
 }
 
 pub fn get_session_with_missing_db_session_returns_none_test() {
-  let handlers = test_handlers()
+  let effect_runtime = test_runtime()
   let ctx =
     context.Context(
       ..test_context(),
@@ -147,28 +148,23 @@ pub fn get_session_with_missing_db_session_returns_none_test() {
     )
 
   let #(run_result, _) =
-    interpreter.run(session_domain.get_session(ctx), handlers, option.None, ctx)
+    interpreter.run(session_domain.get_session(ctx), effect_runtime, ctx)
 
   assert run_result == Ok(option.None)
 }
 
 pub fn require_session_without_token_returns_missing_token_error_test() {
-  let handlers = test_handlers()
+  let effect_runtime = test_runtime()
   let ctx = test_context()
 
   let #(run_result, _) =
-    interpreter.run(
-      session_domain.require_session(ctx),
-      handlers,
-      option.None,
-      ctx,
-    )
+    interpreter.run(session_domain.require_session(ctx), effect_runtime, ctx)
 
   assert run_result == Error(error.SessionError(error.MissingSessionTokenError))
 }
 
 pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
-  let handlers = test_handlers()
+  let effect_runtime = test_runtime()
   let ctx =
     context.Context(
       ..test_context(),
@@ -180,12 +176,7 @@ pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
     )
 
   let #(run_result, _) =
-    interpreter.run(
-      session_domain.require_session(ctx),
-      handlers,
-      option.None,
-      ctx,
-    )
+    interpreter.run(session_domain.require_session(ctx), effect_runtime, ctx)
 
   assert run_result == Error(error.SessionError(error.SessionNotFoundError))
 }
@@ -232,6 +223,10 @@ fn test_handlers() -> handlers.Handlers {
       create_user_action: fn(_) { Ok(Nil) },
     ),
   )
+}
+
+fn test_runtime() -> runtime.Runtime {
+  runtime.from_handlers(test_handlers())
 }
 
 fn test_context() -> context.Context {

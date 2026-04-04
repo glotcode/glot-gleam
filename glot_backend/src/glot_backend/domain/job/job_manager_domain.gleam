@@ -8,7 +8,7 @@ import glot_backend/effect/error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
-import glot_backend/effect/transaction_effect
+import glot_backend/effect/transaction/transaction_effect
 import glot_core/job/job_model
 
 const base_backoff_seconds = 5

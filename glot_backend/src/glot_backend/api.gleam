@@ -16,11 +16,11 @@ import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/error
-import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
+import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/log_worker
 import glot_core/api_action.{type ApiAction}
@@ -36,11 +36,11 @@ pub fn handle_request(
   req: wisp.Request,
 ) -> wisp.Response {
   use api_request <- require_api_request(req)
-  let handlers = handlers.new(db)
+  let effect_runtime = runtime.new(db)
 
   let #(api_result, state) =
     handle_api_request(ctx, api_request)
-    |> interpreter.run(handlers, option.Some(db), ctx)
+    |> interpreter.run(effect_runtime, ctx)
 
   insert_log_entry(ctx, log_worker_subject, state, api_request, api_result)
   result_to_response(ctx, req, api_result)

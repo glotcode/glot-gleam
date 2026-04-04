@@ -10,9 +10,9 @@ import glot_backend/domain/job/job_manager_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
-import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
+import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/helpers/db_helpers
 import glot_backend/log
@@ -77,12 +77,12 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 }
 
 fn run_once(state: State) -> job_model.Outcome {
-  let handlers = handlers.new(state.db)
+  let effect_runtime = runtime.new(state.db)
   let ctx = context_from_state(state, option.None)
 
   let #(result, _) =
     job_manager_domain.claim_next_job(ctx)
-    |> interpreter.run(handlers, option.Some(state.db), ctx)
+    |> interpreter.run(effect_runtime, ctx)
 
   case result {
     Ok(maybe_job) -> {
@@ -102,11 +102,11 @@ fn run_once(state: State) -> job_model.Outcome {
 }
 
 fn process_job(state: State, job: job_model.Job) -> Nil {
-  let handlers = handlers.new(state.db)
+  let effect_runtime = runtime.new(state.db)
   let ctx = context_from_state(state, job.request_id)
   let #(result, program_state) =
     job_manager_domain.process_job(ctx, job)
-    |> interpreter.run(handlers, option.Some(state.db), ctx)
+    |> interpreter.run(effect_runtime, ctx)
 
   let log_entry = prepare_log_entry(ctx, program_state, job, result)
   insert_job_log(state.db, log_entry)
