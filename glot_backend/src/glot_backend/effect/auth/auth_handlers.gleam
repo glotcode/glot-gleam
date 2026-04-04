@@ -94,9 +94,12 @@ pub fn create_user(
   db_helpers.execute(
     db,
     sql.insert_user(
-      uuid.to_bit_array(user.id),
-      email_address_model.to_string(user.email),
-      user.created_at,
+      id: uuid.to_bit_array(user.id),
+      email: email_address_model.to_string(user.email),
+      username: user.username,
+      first_login_at: user.first_login_at,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
     ),
     to_error,
   )
@@ -184,7 +187,10 @@ fn user_from_row(
       Ok(user_model.User(
         id: uuid_helpers.from_bit_array(row.id),
         email: valid_email,
+        username: row.username,
+        first_login_at: row.first_login_at,
         created_at: row.created_at,
+        updated_at: row.updated_at,
       ))
     option.None ->
       Error(error.DbQueryError(
@@ -240,7 +246,10 @@ fn session_from_row(
         user: user_model.User(
           id: uuid_helpers.from_bit_array(row.user_id),
           email: valid_email,
+          username: row.user_username,
+          first_login_at: row.user_first_login_at,
           created_at: row.user_created_at,
+          updated_at: row.user_updated_at,
         ),
         token: row.token,
         ip: row.ip,

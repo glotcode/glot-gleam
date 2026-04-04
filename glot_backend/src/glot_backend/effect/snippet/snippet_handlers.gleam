@@ -136,7 +136,10 @@ fn get_snippet_from_row(
     user: user_model.User(
       id: uuid_helpers.from_bit_array(row.user_id),
       email: email_address_model.EmailAddress(row.user_email),
+      username: row.user_username,
+      first_login_at: row.user_first_login_at,
       created_at: row.user_created_at,
+      updated_at: row.user_updated_at,
     ),
     title: row.title,
     language: language,
@@ -179,7 +182,10 @@ fn get_snippet_from_slug_row(
     user: user_model.User(
       id: uuid_helpers.from_bit_array(row.user_id),
       email: email_address_model.EmailAddress(row.user_email),
+      username: row.user_username,
+      first_login_at: row.user_first_login_at,
       created_at: row.user_created_at,
+      updated_at: row.user_updated_at,
     ),
     title: row.title,
     language: language,

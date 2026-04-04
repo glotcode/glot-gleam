@@ -102,7 +102,10 @@ fn find_or_create_user(
         user_model.User(
           id: user_id,
           email: user_email,
+          username: option.None,
+          first_login_at: option.None,
           created_at: ctx.timestamp,
+          updated_at: ctx.timestamp,
         )
 
       let create_user_effect = auth_effect.create_user(new_user)

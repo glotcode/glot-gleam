@@ -179,35 +179,71 @@ pub fn delete_snippet(id id: BitArray) {
 }
 
 pub type GetUserByEmail {
-  GetUserByEmail(id: BitArray, email: String, created_at: Timestamp)
+  GetUserByEmail(
+    id: BitArray,
+    email: String,
+    username: Option(String),
+    first_login_at: Option(Timestamp),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
 }
 
 pub fn get_user_by_email(email email: String) {
-  let sql = "SELECT id, email, created_at FROM users WHERE email = $1"
+  let sql =
+    "SELECT id, email, username, first_login_at, created_at, updated_at FROM users WHERE email = $1"
   #(sql, [dev.ParamString(email)], get_user_by_email_decoder())
 }
 
 pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
   use id <- decode.field(0, decode.bit_array)
   use email <- decode.field(1, decode.string)
-  use created_at <- decode.field(2, dev.datetime_decoder())
-  decode.success(GetUserByEmail(id:, email:, created_at:))
+  use username <- decode.field(2, decode.optional(decode.string))
+  use first_login_at <- decode.field(3, decode.optional(dev.datetime_decoder()))
+  use created_at <- decode.field(4, dev.datetime_decoder())
+  use updated_at <- decode.field(5, dev.datetime_decoder())
+  decode.success(GetUserByEmail(
+    id:,
+    email:,
+    username:,
+    first_login_at:,
+    created_at:,
+    updated_at:,
+  ))
 }
 
 pub type GetUserById {
-  GetUserById(id: BitArray, email: String, created_at: Timestamp)
+  GetUserById(
+    id: BitArray,
+    email: String,
+    username: Option(String),
+    first_login_at: Option(Timestamp),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
 }
 
 pub fn get_user_by_id(id id: BitArray) {
-  let sql = "SELECT id, email, created_at FROM users WHERE id = $1"
+  let sql =
+    "SELECT id, email, username, first_login_at, created_at, updated_at FROM users WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)], get_user_by_id_decoder())
 }
 
 pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
   use id <- decode.field(0, decode.bit_array)
   use email <- decode.field(1, decode.string)
-  use created_at <- decode.field(2, dev.datetime_decoder())
-  decode.success(GetUserById(id:, email:, created_at:))
+  use username <- decode.field(2, decode.optional(decode.string))
+  use first_login_at <- decode.field(3, decode.optional(dev.datetime_decoder()))
+  use created_at <- decode.field(4, dev.datetime_decoder())
+  use updated_at <- decode.field(5, dev.datetime_decoder())
+  decode.success(GetUserById(
+    id:,
+    email:,
+    username:,
+    first_login_at:,
+    created_at:,
+    updated_at:,
+  ))
 }
 
 pub type CountUserActionsByIp {
@@ -268,7 +304,10 @@ pub type GetSnippetById {
     updated_at: Timestamp,
     user_id: BitArray,
     user_email: String,
+    user_username: Option(String),
+    user_first_login_at: Option(Timestamp),
     user_created_at: Timestamp,
+    user_updated_at: Timestamp,
   )
 }
 
@@ -287,7 +326,10 @@ pub fn get_snippet_by_id(id id: BitArray) {
   snippets.updated_at,
   users.id AS user_id,
   users.email AS user_email,
-  users.created_at AS user_created_at
+  users.username AS user_username,
+  users.first_login_at AS user_first_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
 FROM snippets
 INNER JOIN users ON users.id = snippets.user_id
 WHERE snippets.id = $1"
@@ -307,7 +349,13 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   use updated_at <- decode.field(9, dev.datetime_decoder())
   use user_id <- decode.field(10, decode.bit_array)
   use user_email <- decode.field(11, decode.string)
-  use user_created_at <- decode.field(12, dev.datetime_decoder())
+  use user_username <- decode.field(12, decode.optional(decode.string))
+  use user_first_login_at <- decode.field(
+    13,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use user_created_at <- decode.field(14, dev.datetime_decoder())
+  use user_updated_at <- decode.field(15, dev.datetime_decoder())
   decode.success(GetSnippetById(
     id:,
     slug:,
@@ -321,7 +369,10 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
     updated_at:,
     user_id:,
     user_email:,
+    user_username:,
+    user_first_login_at:,
     user_created_at:,
+    user_updated_at:,
   ))
 }
 
@@ -476,13 +527,22 @@ pub fn list_login_tokens_by_user_decoder() -> decode.Decoder(
 pub fn insert_user(
   id id: BitArray,
   email email: String,
+  username username: Option(String),
+  first_login_at first_login_at: Option(Timestamp),
   created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
 ) {
-  let sql = "INSERT INTO users (id, email, created_at) VALUES ($1, $2, $3)"
+  let sql =
+    "INSERT INTO users (id, email, username, first_login_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamString(email),
+    dev.ParamNullable(option.map(username, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(
+      option.map(first_login_at, fn(v) { dev.ParamTimestamp(v) }),
+    ),
     dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
   ])
 }
 
@@ -622,7 +682,10 @@ pub type GetSessionByToken {
     created_at: Timestamp,
     user_id: BitArray,
     user_email: String,
+    user_username: Option(String),
+    user_first_login_at: Option(Timestamp),
     user_created_at: Timestamp,
+    user_updated_at: Timestamp,
   )
 }
 
@@ -636,7 +699,10 @@ pub fn get_session_by_token(token token: String) {
   sessions.created_at,
   users.id AS user_id,
   users.email AS user_email,
-  users.created_at AS user_created_at
+  users.username AS user_username,
+  users.first_login_at AS user_first_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
 FROM sessions
 INNER JOIN users ON users.id = sessions.user_id
 WHERE sessions.token = $1"
@@ -651,7 +717,13 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
   use created_at <- decode.field(4, dev.datetime_decoder())
   use user_id <- decode.field(5, decode.bit_array)
   use user_email <- decode.field(6, decode.string)
-  use user_created_at <- decode.field(7, dev.datetime_decoder())
+  use user_username <- decode.field(7, decode.optional(decode.string))
+  use user_first_login_at <- decode.field(
+    8,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use user_created_at <- decode.field(9, dev.datetime_decoder())
+  use user_updated_at <- decode.field(10, dev.datetime_decoder())
   decode.success(GetSessionByToken(
     id:,
     token:,
@@ -660,7 +732,10 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
     created_at:,
     user_id:,
     user_email:,
+    user_username:,
+    user_first_login_at:,
     user_created_at:,
+    user_updated_at:,
   ))
 }
 
@@ -733,7 +808,10 @@ pub type GetSnippetBySlug {
     updated_at: Timestamp,
     user_id: BitArray,
     user_email: String,
+    user_username: Option(String),
+    user_first_login_at: Option(Timestamp),
     user_created_at: Timestamp,
+    user_updated_at: Timestamp,
   )
 }
 
@@ -752,7 +830,10 @@ pub fn get_snippet_by_slug(slug slug: String) {
   snippets.updated_at,
   users.id AS user_id,
   users.email AS user_email,
-  users.created_at AS user_created_at
+  users.username AS user_username,
+  users.first_login_at AS user_first_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
 FROM snippets
 INNER JOIN users ON users.id = snippets.user_id
 WHERE snippets.slug = $1"
@@ -772,7 +853,13 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
   use updated_at <- decode.field(9, dev.datetime_decoder())
   use user_id <- decode.field(10, decode.bit_array)
   use user_email <- decode.field(11, decode.string)
-  use user_created_at <- decode.field(12, dev.datetime_decoder())
+  use user_username <- decode.field(12, decode.optional(decode.string))
+  use user_first_login_at <- decode.field(
+    13,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use user_created_at <- decode.field(14, dev.datetime_decoder())
+  use user_updated_at <- decode.field(15, dev.datetime_decoder())
   decode.success(GetSnippetBySlug(
     id:,
     slug:,
@@ -786,7 +873,10 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
     updated_at:,
     user_id:,
     user_email:,
+    user_username:,
+    user_first_login_at:,
     user_created_at:,
+    user_updated_at:,
   ))
 }
 

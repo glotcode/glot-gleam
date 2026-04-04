@@ -12,7 +12,10 @@ SELECT
   snippets.updated_at,
   users.id AS user_id,
   users.email AS user_email,
-  users.created_at AS user_created_at
+  users.username AS user_username,
+  users.first_login_at AS user_first_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
 FROM snippets
 INNER JOIN users ON users.id = snippets.user_id
 WHERE snippets.id = $1;
