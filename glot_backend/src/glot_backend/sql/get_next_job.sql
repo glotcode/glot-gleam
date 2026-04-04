@@ -1,6 +1,7 @@
 -- name: GetNextJob :one
 SELECT
   id,
+  request_id,
   job_type,
   payload,
   status,

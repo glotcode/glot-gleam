@@ -1,5 +1,4 @@
 import gleam/bit_array
-import gleam/dict.{type Dict}
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/erlang/process
@@ -27,6 +26,8 @@ import glot_backend/erlang
 import glot_backend/log
 import glot_backend/log_worker
 import glot_core/api_action.{type ApiAction}
+import glot_core/helpers/dict_helpers
+import glot_core/helpers/list_helpers
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import pog
@@ -69,31 +70,30 @@ fn handle_api_request(
       |> program.map(SnippetResponse)
     }
     api_action.CreateSnippetAction -> {
-      use request <- program.and_then(create_snippet_domain.request_from_dynamic(
-        api_request.data,
-      ))
+      use request <- program.and_then(
+        create_snippet_domain.request_from_dynamic(api_request.data),
+      )
       create_snippet_domain.create_snippet(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     api_action.UpdateSnippetAction -> {
-      use request <- program.and_then(update_snippet_domain.request_from_dynamic(
-        api_request.data,
-      ))
+      use request <- program.and_then(
+        update_snippet_domain.request_from_dynamic(api_request.data),
+      )
       update_snippet_domain.update_snippet(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     api_action.DeleteSnippetAction -> {
-      use request <- program.and_then(delete_snippet_domain.request_from_dynamic(
-        api_request.data,
-      ))
+      use request <- program.and_then(
+        delete_snippet_domain.request_from_dynamic(api_request.data),
+      )
       delete_snippet_domain.delete_snippet(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     api_action.SendLoginTokenAction -> {
-      use request <- program.and_then(send_login_token_domain.request_from_dynamic(
-        ctx,
-        api_request.data,
-      ))
+      use request <- program.and_then(
+        send_login_token_domain.request_from_dynamic(ctx, api_request.data),
+      )
       send_login_token_domain.send_login_token(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
@@ -217,7 +217,7 @@ fn insert_log_entry(
     Ok(_) -> {
       process.send(
         log_worker_subject,
-        log_worker.Insert(save_log_entry(ctx, state, api_request, error)),
+        log_worker.Insert(prepare_log_entry(ctx, state, api_request, error)),
       )
       Nil
     }
@@ -225,7 +225,7 @@ fn insert_log_entry(
   }
 }
 
-fn save_log_entry(
+fn prepare_log_entry(
   ctx: context.Context,
   state: program_state.State,
   api_request: ApiRequest,
@@ -244,38 +244,26 @@ fn save_log_entry(
     ip: ctx.client_info.ip,
     user_agent: ctx.client_info.user_agent,
     info: state.info_fields
-      |> non_empty_dict
+      |> dict_helpers.non_empty_dict
       |> option.map(log.encode_fields)
       |> option.map(json.to_string),
     warnings: state.warning_fields
-      |> non_empty_dict
+      |> dict_helpers.non_empty_dict
       |> option.map(log.encode_fields)
       |> option.map(json.to_string),
+    // TODO: implement debug
+    debug: option.None,
     error: error
-      |> option.map(error_to_json)
+      |> option.map(encode_error)
       |> option.map(json.to_string),
     effects: state.effect_measurements
-      |> non_empty_list
+      |> list_helpers.non_empty_list
       |> option.map(effect_trace.encode_effect_measurements)
       |> option.map(json.to_string),
   )
 }
 
-fn non_empty_dict(d: Dict(k, v)) -> option.Option(Dict(k, v)) {
-  case dict.is_empty(d) {
-    True -> option.None
-    False -> option.Some(d)
-  }
-}
-
-fn non_empty_list(l: List(a)) -> option.Option(List(a)) {
-  case l {
-    [] -> option.None
-    _ -> option.Some(l)
-  }
-}
-
-fn error_to_json(err: error.Error) -> json.Json {
+fn encode_error(err: error.Error) -> json.Json {
   json.object([
     #("message", json.string(error.to_string(err))),
   ])

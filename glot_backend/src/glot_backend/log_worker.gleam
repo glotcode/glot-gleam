@@ -22,6 +22,7 @@ pub type LogEntry {
     user_agent: Option(String),
     info: Option(String),
     warnings: Option(String),
+    debug: Option(String),
     error: Option(String),
     effects: Option(String),
   )
@@ -68,6 +69,7 @@ fn insert_api_log(db: pog.Connection, entry: LogEntry) -> Nil {
       user_agent: entry.user_agent,
       info: entry.info,
       warnings: entry.warnings,
+      debug: entry.debug,
       error: entry.error,
       effects: entry.effects,
     )

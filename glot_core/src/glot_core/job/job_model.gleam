@@ -50,6 +50,7 @@ pub fn status_from_string(value: String) -> Result(Status, String) {
 pub type Job {
   Job(
     id: Uuid,
+    request_id: Option(Uuid),
     job_type: JobType,
     payload: String,
     status: Status,
@@ -65,10 +66,17 @@ pub type Job {
   )
 }
 
-fn new(id: Uuid, job_type: JobType, now: Timestamp, payload: String) -> Job {
+fn new(
+  id: Uuid,
+  request_id: Option(Uuid),
+  job_type: JobType,
+  now: Timestamp,
+  payload: String,
+) -> Job {
   // TODO: we could make JobType a union type and deserialize the payload here
   Job(
     id: id,
+    request_id: request_id,
     job_type: job_type,
     payload: payload,
     status: Pending,
@@ -84,9 +92,15 @@ fn new(id: Uuid, job_type: JobType, now: Timestamp, payload: String) -> Job {
   )
 }
 
-pub fn send_email_job(id: Uuid, now: Timestamp, email: email_model.Email) -> Job {
+pub fn send_email_job(
+  id: Uuid,
+  request_id: Option(Uuid),
+  now: Timestamp,
+  email: email_model.Email,
+) -> Job {
   new(
     id,
+    request_id,
     SendEmailJob,
     now,
     email

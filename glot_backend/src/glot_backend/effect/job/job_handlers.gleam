@@ -59,6 +59,7 @@ pub fn create_job(
     db,
     sql.insert_job(
       id: uuid.to_bit_array(j.id),
+      request_id: j.request_id |> option.map(uuid.to_bit_array),
       job_type: job_model.job_type_to_string(j.job_type),
       payload: j.payload,
       status: job_model.status_to_string(j.status),
@@ -87,6 +88,7 @@ pub fn update_job(
     db,
     sql.update_job(
       id: uuid.to_bit_array(j.id),
+      request_id: j.request_id |> option.map(uuid.to_bit_array),
       job_type: job_model.job_type_to_string(j.job_type),
       payload: j.payload,
       status: job_model.status_to_string(j.status),
@@ -119,6 +121,7 @@ fn get_job_from_row(
 
   Ok(job_model.Job(
     id: uuid_helpers.from_bit_array(row.id),
+    request_id: row.request_id |> option.map(uuid_helpers.from_bit_array),
     job_type: job_type,
     payload: row.payload,
     status: status,

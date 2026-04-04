@@ -27,6 +27,7 @@ pub fn insert_login_token(
 pub type GetNextJob {
   GetNextJob(
     id: BitArray,
+    request_id: Option(BitArray),
     job_type: String,
     payload: String,
     status: String,
@@ -46,6 +47,7 @@ pub fn get_next_job(pending_status pending_status: String, now now: Timestamp) {
   let sql =
     "SELECT
   id,
+  request_id,
   job_type,
   payload,
   status,
@@ -74,20 +76,22 @@ FOR UPDATE SKIP LOCKED"
 
 pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
   use id <- decode.field(0, decode.bit_array)
-  use job_type <- decode.field(1, decode.string)
-  use payload <- decode.field(2, decode.string)
-  use status <- decode.field(3, decode.string)
-  use attempts <- decode.field(4, decode.int)
-  use max_attempts <- decode.field(5, decode.int)
-  use timeout_seconds <- decode.field(6, decode.int)
-  use run_at <- decode.field(7, dev.datetime_decoder())
-  use started_at <- decode.field(8, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(9, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(10, decode.optional(decode.string))
-  use created_at <- decode.field(11, dev.datetime_decoder())
-  use updated_at <- decode.field(12, dev.datetime_decoder())
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use job_type <- decode.field(2, decode.string)
+  use payload <- decode.field(3, decode.string)
+  use status <- decode.field(4, decode.string)
+  use attempts <- decode.field(5, decode.int)
+  use max_attempts <- decode.field(6, decode.int)
+  use timeout_seconds <- decode.field(7, decode.int)
+  use run_at <- decode.field(8, dev.datetime_decoder())
+  use started_at <- decode.field(9, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(11, decode.optional(decode.string))
+  use created_at <- decode.field(12, dev.datetime_decoder())
+  use updated_at <- decode.field(13, dev.datetime_decoder())
   decode.success(GetNextJob(
     id:,
+    request_id:,
     job_type:,
     payload:,
     status:,
@@ -164,39 +168,6 @@ pub fn list_snippets_by_user_decoder() -> decode.Decoder(ListSnippetsByUser) {
     created_at:,
     updated_at:,
   ))
-}
-
-pub fn insert_api_log(
-  id id: BitArray,
-  request_id request_id: BitArray,
-  created_at created_at: Timestamp,
-  action action: String,
-  body_bytes body_bytes: Int,
-  duration_ns duration_ns: Int,
-  ip ip: Option(String),
-  user_agent user_agent: Option(String),
-  info info: Option(String),
-  warnings warnings: Option(String),
-  error error: Option(String),
-  effects effects: Option(String),
-) {
-  let sql =
-    "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, info, warnings, error, effects)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamBitArray(request_id),
-    dev.ParamTimestamp(created_at),
-    dev.ParamString(action),
-    dev.ParamInt(body_bytes),
-    dev.ParamInt(duration_ns),
-    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(info, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(warnings, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(effects, fn(v) { dev.ParamString(v) })),
-  ])
 }
 
 pub fn delete_snippet(id id: BitArray) {
@@ -377,6 +348,7 @@ pub fn update_snippet(
 
 pub fn insert_job(
   id id: BitArray,
+  request_id request_id: Option(BitArray),
   job_type job_type: String,
   payload payload: String,
   status status: String,
@@ -393,6 +365,7 @@ pub fn insert_job(
   let sql =
     "INSERT INTO jobs (
   id,
+  request_id,
   job_type,
   payload,
   status,
@@ -405,9 +378,10 @@ pub fn insert_job(
   last_error,
   created_at,
   updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"
   #(sql, [
     dev.ParamBitArray(id),
+    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
     dev.ParamString(job_type),
     dev.ParamString(payload),
     dev.ParamString(status),
@@ -503,6 +477,7 @@ pub fn insert_user(
 
 pub fn update_job(
   id id: BitArray,
+  request_id request_id: Option(BitArray),
   job_type job_type: String,
   payload payload: String,
   status status: String,
@@ -518,21 +493,23 @@ pub fn update_job(
 ) {
   let sql =
     "UPDATE jobs
-SET job_type = $2,
-    payload = $3,
-    status = $4,
-    attempts = $5,
-    max_attempts = $6,
-    timeout_seconds = $7,
-    run_at = $8,
-    started_at = $9,
-    completed_at = $10,
-    last_error = $11,
-    created_at = $12,
-    updated_at = $13
+SET request_id = $2,
+    job_type = $3,
+    payload = $4,
+    status = $5,
+    attempts = $6,
+    max_attempts = $7,
+    timeout_seconds = $8,
+    run_at = $9,
+    started_at = $10,
+    completed_at = $11,
+    last_error = $12,
+    created_at = $13,
+    updated_at = $14
 WHERE id = $1"
   #(sql, [
     dev.ParamBitArray(id),
+    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
     dev.ParamString(job_type),
     dev.ParamString(payload),
     dev.ParamString(status),
@@ -545,6 +522,39 @@ WHERE id = $1"
     dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn insert_job_log(
+  id id: BitArray,
+  request_id request_id: Option(BitArray),
+  job_id job_id: BitArray,
+  job_type job_type: String,
+  attempt attempt: Int,
+  created_at created_at: Timestamp,
+  duration_ns duration_ns: Int,
+  info info: Option(String),
+  warnings warnings: Option(String),
+  debug debug: Option(String),
+  error error: Option(String),
+  effects effects: Option(String),
+) {
+  let sql =
+    "INSERT INTO job_log (id, request_id, job_id, job_type, attempt, created_at, duration_ns, info, warnings, debug, error, effects)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamBitArray(job_id),
+    dev.ParamString(job_type),
+    dev.ParamInt(attempt),
+    dev.ParamTimestamp(created_at),
+    dev.ParamInt(duration_ns),
+    dev.ParamNullable(option.map(info, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(warnings, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(debug, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(effects, fn(v) { dev.ParamString(v) })),
   ])
 }
 
@@ -660,6 +670,41 @@ pub fn insert_session(
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
+  ])
+}
+
+pub fn insert_api_log(
+  id id: BitArray,
+  request_id request_id: BitArray,
+  created_at created_at: Timestamp,
+  action action: String,
+  body_bytes body_bytes: Int,
+  duration_ns duration_ns: Int,
+  ip ip: Option(String),
+  user_agent user_agent: Option(String),
+  info info: Option(String),
+  warnings warnings: Option(String),
+  debug debug: Option(String),
+  error error: Option(String),
+  effects effects: Option(String),
+) {
+  let sql =
+    "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, info, warnings, debug, error, effects)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamBitArray(request_id),
+    dev.ParamTimestamp(created_at),
+    dev.ParamString(action),
+    dev.ParamInt(body_bytes),
+    dev.ParamInt(duration_ns),
+    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(info, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(warnings, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(debug, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(effects, fn(v) { dev.ParamString(v) })),
   ])
 }
 

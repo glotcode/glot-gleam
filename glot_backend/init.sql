@@ -74,7 +74,7 @@ CREATE INDEX idx_user_actions_user_action_created_at
   ON user_actions (user_id, action, created_at)
   WHERE user_id IS NOT NULL;
 
--- LOG ENTRIES
+-- API LOG
 
 CREATE TABLE IF NOT EXISTS api_log (
   id UUID PRIMARY KEY,
@@ -87,16 +87,38 @@ CREATE TABLE IF NOT EXISTS api_log (
   user_agent TEXT NULL,
   info JSONB NULL,
   warnings JSONB NULL,
+  debug JSONB NULL,
   error JSONB NULL,
   effects JSONB NULL
 );
 
 CREATE INDEX idx_api_log_created_at ON api_log(created_at);
 
+-- JOB LOG
+
+CREATE TABLE IF NOT EXISTS job_log (
+  id UUID PRIMARY KEY,
+  request_id UUID NULL, -- Originating request id for logging correlation. Has a value if the job was enqueued during request processing.
+  job_id UUID NOT NULL,
+  job_type TEXT NOT NULL,
+  attempt INT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  duration_ns BIGINT NOT NULL,
+  info JSONB NULL,
+  warnings JSONB NULL,
+  debug JSONB NULL,
+  error JSONB NULL,
+  effects JSONB NULL
+);
+
+CREATE INDEX idx_job_log_created_at ON job_log(created_at);
+CREATE INDEX idx_job_log_job_id ON job_log(job_id);
+
 -- JOBS
 
 CREATE TABLE IF NOT EXISTS jobs (
   id UUID PRIMARY KEY, -- Job id.
+  request_id UUID NULL, -- Originating request id for logging correlation. Has a value if the job was enqueued during request processing.
   job_type TEXT NOT NULL, -- Handler discriminator.
   payload JSONB NOT NULL, -- Encoded job input.
   status TEXT NOT NULL, -- Job status.

@@ -15,28 +15,16 @@ const base_backoff_seconds = 5
 
 const max_backoff_seconds = 300
 
-pub fn process_next_job(
+pub fn process_job(
   ctx: context.Context,
-) -> program_types.Program(job_model.Outcome) {
-  use now <- program.and_then(basic_effect.system_time())
-  use maybe_job <- program.and_then(claim_next_job(now))
-
-  case maybe_job {
-    option.None -> program.succeed(job_model.NoJobs)
-    option.Some(job) -> {
-      use result <- program.and_then(
-        delegate_job(ctx, job) |> program.to_result(),
-      )
-      case result {
-        Ok(Nil) -> {
-          use _ <- program.and_then(complete_job(job))
-          program.succeed(job_model.JobProcessed)
-        }
-        Error(err) -> {
-          use _ <- program.and_then(reschedule_job(job, err))
-          program.fail(err)
-        }
-      }
+  job: job_model.Job,
+) -> program_types.Program(Nil) {
+  use result <- program.and_then(delegate_job(ctx, job) |> program.to_result())
+  case result {
+    Ok(Nil) -> complete_job(job)
+    Error(err) -> {
+      use _ <- program.and_then(reschedule_job(job, err))
+      program.fail(err)
     }
   }
 }
@@ -77,18 +65,19 @@ fn reschedule_job(
   job_effect.update_job(rescheduled_job)
 }
 
-fn claim_next_job(
-  now: timestamp.Timestamp,
+pub fn claim_next_job(
+  ctx: context.Context,
 ) -> program_types.Program(option.Option(job_model.Job)) {
   transaction_effect.run({
-    use maybe_job <- program.and_then(
-      job_effect.get_next_job(now, job_model.Pending),
-    )
+    use maybe_job <- program.and_then(job_effect.get_next_job(
+      ctx.timestamp,
+      job_model.Pending,
+    ))
 
     case maybe_job {
       option.None -> program.succeed(option.None)
       option.Some(next_job) -> {
-        let started_job = job_model.start(next_job, now)
+        let started_job = job_model.start(next_job, ctx.timestamp)
         use _ <- program.and_then(job_effect.update_job(started_job))
         program.succeed(option.Some(started_job))
       }
