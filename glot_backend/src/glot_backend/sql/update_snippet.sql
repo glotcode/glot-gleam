@@ -1,2 +1,2 @@
 -- name: UpdateSnippet :exec
-UPDATE snippets SET user_id = $1, language = $2, title = $3, visibility = $4, stdin = $5, run_command = $6, files = $7, created_at = $8, updated_at = $9 WHERE id = $10;
+UPDATE snippets SET slug = $1, user_id = $2, language = $3, title = $4, visibility = $5, stdin = $6, run_command = $7, files = $8, created_at = $9, updated_at = $10 WHERE id = $11;

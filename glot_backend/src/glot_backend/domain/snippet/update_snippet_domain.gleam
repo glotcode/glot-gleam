@@ -50,6 +50,7 @@ pub fn update_snippet(
   let updated_snippet =
     snippet_model.Snippet(
       id: existing_snippet.id,
+      slug: existing_snippet.slug,
       user_id: existing_snippet.user.id,
       title: request.data.title,
       language: request.data.language,

@@ -38,6 +38,7 @@ pub fn create_snippet(
   let new_snippet =
     snippet_model.Snippet(
       id: snippet_id,
+      slug: snippet_model.new_slug(ctx.timestamp),
       user_id: session.user.id,
       title: request.data.title,
       language: request.data.language,

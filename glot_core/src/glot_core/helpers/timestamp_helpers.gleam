@@ -18,6 +18,11 @@ pub fn decoder() -> decode.Decoder(Timestamp) {
   decode.success(timestamp.from_unix_seconds_and_nanoseconds(secs, nanos))
 }
 
+pub fn to_microseconds(ts: Timestamp) -> Int {
+  let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
+  seconds * 1_000_000 + nanos / 1_000
+}
+
 pub fn one_day_ago(now: Timestamp) -> Timestamp {
   let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(now)
   timestamp.from_unix_seconds_and_nanoseconds(seconds - 86_400, nanos)

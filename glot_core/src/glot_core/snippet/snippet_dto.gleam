@@ -48,6 +48,7 @@ pub fn update_decoder() -> decode.Decoder(UpdateSnippetRequest) {
 pub type SnippetResponse {
   SnippetResponse(
     id: Uuid,
+    slug: String,
     user: user_dto.UserResponse,
     data: SnippetData,
     created_at: Timestamp,
@@ -60,6 +61,7 @@ pub fn from_snippet(
 ) -> SnippetResponse {
   SnippetResponse(
     id: snippet.id,
+    slug: snippet.slug,
     user: user_dto.from_user(snippet.user),
     data: SnippetData(
       title: snippet.title,
@@ -77,6 +79,7 @@ pub fn from_snippet(
 pub fn encode_response(response: SnippetResponse) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(response.id))),
+    #("slug", json.string(response.slug)),
     #("user", user_dto.encode(response.user)),
     #("userId", json.string(uuid.to_string(response.user.id))),
     #("title", json.string(response.data.title)),

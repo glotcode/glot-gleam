@@ -1,6 +1,7 @@
 -- name: GetSnippetById :one
 SELECT
   snippets.id,
+  snippets.slug,
   snippets.language,
   snippets.title,
   snippets.visibility,

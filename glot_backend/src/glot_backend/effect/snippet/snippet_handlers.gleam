@@ -60,6 +60,7 @@ pub fn create_snippet(
     db,
     sql.insert_snippet(
       id: uuid.to_bit_array(snippet.id),
+      slug: snippet.slug,
       user_id: uuid.to_bit_array(snippet.user_id),
       language: language.to_string(snippet.language),
       title: snippet.title,
@@ -111,6 +112,7 @@ fn get_snippet_from_row(
 
   Ok(snippet_model.HydratedSnippet(
     id: uuid_helpers.from_bit_array(row.id),
+    slug: row.slug,
     user: user_model.User(
       id: uuid_helpers.from_bit_array(row.user_id),
       email: email_address_model.EmailAddress(row.user_email),
@@ -137,6 +139,7 @@ pub fn update_snippet(
     db,
     sql.update_snippet(
       id: uuid.to_bit_array(snippet.id),
+      slug: snippet.slug,
       user_id: uuid.to_bit_array(snippet.user_id),
       language: language.to_string(snippet.language),
       title: snippet.title,

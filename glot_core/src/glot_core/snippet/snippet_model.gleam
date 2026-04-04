@@ -1,14 +1,18 @@
 import gleam/dynamic/decode
+import gleam/int
 import gleam/json
 import gleam/option
+import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/user_model
+import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import youid/uuid.{type Uuid}
 
 pub type Snippet {
   Snippet(
     id: Uuid,
+    slug: String,
     user_id: Uuid,
     title: String,
     language: language.Language,
@@ -24,6 +28,7 @@ pub type Snippet {
 pub type HydratedSnippet {
   HydratedSnippet(
     id: Uuid,
+    slug: String,
     user: user_model.User,
     title: String,
     language: language.Language,
@@ -84,6 +89,13 @@ pub fn file_decoder() -> decode.Decoder(File) {
   use name <- decode.field("name", decode.string)
   use content <- decode.field("content", decode.string)
   decode.success(File(name: name, content: content))
+}
+
+pub fn new_slug(timestamp: Timestamp) -> String {
+  timestamp
+  |> timestamp_helpers.to_microseconds
+  |> int.to_base36
+  |> string.lowercase
 }
 
 pub fn default_file(lang: language.Language) -> File {

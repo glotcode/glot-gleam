@@ -38,6 +38,7 @@ CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 
 CREATE TABLE IF NOT EXISTS snippets (
   id UUID PRIMARY KEY,
+  slug TEXT NOT NULL UNIQUE,
   user_id UUID NOT NULL,
   language TEXT NOT NULL,
   title TEXT NOT NULL,

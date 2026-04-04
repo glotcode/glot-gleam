@@ -130,6 +130,7 @@ pub fn insert_user_action(
 pub type ListSnippetsByUser {
   ListSnippetsByUser(
     id: BitArray,
+    slug: String,
     user_id: BitArray,
     language: String,
     title: String,
@@ -143,22 +144,24 @@ pub type ListSnippetsByUser {
 
 pub fn list_snippets_by_user(user_id user_id: BitArray) {
   let sql =
-    "SELECT id, user_id, language, title, visibility, stdin, run_command, created_at, updated_at FROM snippets WHERE user_id = $1"
+    "SELECT id, slug, user_id, language, title, visibility, stdin, run_command, created_at, updated_at FROM snippets WHERE user_id = $1"
   #(sql, [dev.ParamBitArray(user_id)], list_snippets_by_user_decoder())
 }
 
 pub fn list_snippets_by_user_decoder() -> decode.Decoder(ListSnippetsByUser) {
   use id <- decode.field(0, decode.bit_array)
-  use user_id <- decode.field(1, decode.bit_array)
-  use language <- decode.field(2, decode.string)
-  use title <- decode.field(3, decode.string)
-  use visibility <- decode.field(4, decode.string)
-  use stdin <- decode.field(5, decode.string)
-  use run_command <- decode.field(6, decode.string)
-  use created_at <- decode.field(7, dev.datetime_decoder())
-  use updated_at <- decode.field(8, dev.datetime_decoder())
+  use slug <- decode.field(1, decode.string)
+  use user_id <- decode.field(2, decode.bit_array)
+  use language <- decode.field(3, decode.string)
+  use title <- decode.field(4, decode.string)
+  use visibility <- decode.field(5, decode.string)
+  use stdin <- decode.field(6, decode.string)
+  use run_command <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
   decode.success(ListSnippetsByUser(
     id:,
+    slug:,
     user_id:,
     language:,
     title:,
@@ -254,6 +257,7 @@ pub fn count_user_actions_by_ip_decoder() -> decode.Decoder(
 pub type GetSnippetById {
   GetSnippetById(
     id: BitArray,
+    slug: String,
     language: String,
     title: String,
     visibility: String,
@@ -272,6 +276,7 @@ pub fn get_snippet_by_id(id id: BitArray) {
   let sql =
     "SELECT
   snippets.id,
+  snippets.slug,
   snippets.language,
   snippets.title,
   snippets.visibility,
@@ -291,19 +296,21 @@ WHERE snippets.id = $1"
 
 pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   use id <- decode.field(0, decode.bit_array)
-  use language <- decode.field(1, decode.string)
-  use title <- decode.field(2, decode.string)
-  use visibility <- decode.field(3, decode.string)
-  use stdin <- decode.field(4, decode.string)
-  use run_command <- decode.field(5, decode.string)
-  use files <- decode.field(6, decode.string)
-  use created_at <- decode.field(7, dev.datetime_decoder())
-  use updated_at <- decode.field(8, dev.datetime_decoder())
-  use user_id <- decode.field(9, decode.bit_array)
-  use user_email <- decode.field(10, decode.string)
-  use user_created_at <- decode.field(11, dev.datetime_decoder())
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_command <- decode.field(6, decode.string)
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_email <- decode.field(11, decode.string)
+  use user_created_at <- decode.field(12, dev.datetime_decoder())
   decode.success(GetSnippetById(
     id:,
+    slug:,
     language:,
     title:,
     visibility:,
@@ -319,6 +326,7 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
 }
 
 pub fn update_snippet(
+  slug slug: String,
   user_id user_id: BitArray,
   language language: String,
   title title: String,
@@ -331,8 +339,9 @@ pub fn update_snippet(
   id id: BitArray,
 ) {
   let sql =
-    "UPDATE snippets SET user_id = $1, language = $2, title = $3, visibility = $4, stdin = $5, run_command = $6, files = $7, created_at = $8, updated_at = $9 WHERE id = $10"
+    "UPDATE snippets SET slug = $1, user_id = $2, language = $3, title = $4, visibility = $5, stdin = $6, run_command = $7, files = $8, created_at = $9, updated_at = $10 WHERE id = $11"
   #(sql, [
+    dev.ParamString(slug),
     dev.ParamBitArray(user_id),
     dev.ParamString(language),
     dev.ParamString(title),
@@ -399,6 +408,7 @@ pub fn insert_job(
 
 pub fn insert_snippet(
   id id: BitArray,
+  slug slug: String,
   user_id user_id: BitArray,
   language language: String,
   title title: String,
@@ -410,9 +420,10 @@ pub fn insert_snippet(
   updated_at updated_at: Timestamp,
 ) {
   let sql =
-    "INSERT INTO snippets (id, user_id, language, title, visibility, stdin, run_command, files, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+    "INSERT INTO snippets (id, slug, user_id, language, title, visibility, stdin, run_command, files, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
   #(sql, [
     dev.ParamBitArray(id),
+    dev.ParamString(slug),
     dev.ParamBitArray(user_id),
     dev.ParamString(language),
     dev.ParamString(title),
