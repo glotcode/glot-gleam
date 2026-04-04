@@ -212,6 +212,7 @@ fn test_handlers() -> handlers.Handlers {
       list_login_tokens_by_user: fn(_, _) { Ok([]) },
       get_session_by_token: fn(_, _) { Ok(option.None) },
       create_user: fn(_) { Ok(Nil) },
+      update_user: fn(_) { Ok(Nil) },
       create_session: fn(_) { Ok(Nil) },
       create_login_token: fn(_) { Ok(Nil) },
       update_login_token: fn(_) { Ok(Nil) },

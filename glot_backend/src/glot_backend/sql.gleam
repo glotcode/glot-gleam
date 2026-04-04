@@ -794,6 +794,35 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
   ])
 }
 
+pub fn update_user(
+  email email: String,
+  username username: Option(String),
+  first_login_at first_login_at: Option(Timestamp),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+  id id: BitArray,
+) {
+  let sql =
+    "UPDATE users
+SET
+  email = $1,
+  username = $2,
+  first_login_at = $3,
+  created_at = $4,
+  updated_at = $5
+WHERE id = $6"
+  #(sql, [
+    dev.ParamString(email),
+    dev.ParamNullable(option.map(username, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(
+      option.map(first_login_at, fn(v) { dev.ParamTimestamp(v) }),
+    ),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+    dev.ParamBitArray(id),
+  ])
+}
+
 pub type GetSnippetBySlug {
   GetSnippetBySlug(
     id: BitArray,

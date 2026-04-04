@@ -104,6 +104,19 @@ pub fn run(
         ),
       )
     }
+    auth.UpdateUser(user: user, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.update_user(user)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(auth.UpdateUserEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     auth.CreateSession(session: session, next: next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.auth.create_session(session)

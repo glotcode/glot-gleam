@@ -24,6 +24,10 @@ pub type AuthEffect(next) {
     user: user_model.User,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
+  UpdateUser(
+    user: user_model.User,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
   CreateSession(
     session: session_model.Session,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
@@ -50,6 +54,8 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       GetSessionByToken(token: token, next: fn(value) { f(next(value)) })
     CreateUser(user: user, next: next) ->
       CreateUser(user: user, next: fn(value) { f(next(value)) })
+    UpdateUser(user: user, next: next) ->
+      UpdateUser(user: user, next: fn(value) { f(next(value)) })
     CreateSession(session: session, next: next) ->
       CreateSession(
         session: session,
@@ -73,6 +79,7 @@ pub type EffectName {
   ListLoginTokensByUserEffectName
   GetSessionByTokenEffectName
   CreateUserEffectName
+  UpdateUserEffectName
   CreateSessionEffectName
   CreateLoginTokenEffectName
   UpdateLoginTokenEffectName
@@ -84,6 +91,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     ListLoginTokensByUserEffectName -> "list_login_tokens_by_user"
     GetSessionByTokenEffectName -> "get_session_by_token"
     CreateUserEffectName -> "create_user"
+    UpdateUserEffectName -> "update_user"
     CreateSessionEffectName -> "create_session"
     CreateLoginTokenEffectName -> "create_login_token"
     UpdateLoginTokenEffectName -> "update_login_token"

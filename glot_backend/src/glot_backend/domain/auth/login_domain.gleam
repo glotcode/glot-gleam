@@ -36,11 +36,9 @@ pub fn login(
     action: api_action.LoginAction,
   ))
 
-  use maybe_user <- program.and_then(auth_effect.get_user_by_email(
-    request.email,
-  ))
   use user <- program.and_then(
-    program.from_result(user_from_option(maybe_user)),
+    auth_effect.get_user_by_email(request.email)
+    |> program.require(error.LoginError(error.InvalidTokenError)),
   )
 
   use _ <- program.and_then(
@@ -63,6 +61,15 @@ pub fn login(
   use session_id <- program.and_then(basic_effect.uuid_v7())
   use session_token <- program.and_then(basic_effect.new_token(32))
 
+  let update_user_effect = case user.first_login_at {
+    option.None -> {
+      user
+      |> user_model.mark_first_login(ctx.timestamp)
+      |> auth_effect.update_user
+    }
+    option.Some(_) -> program.succeed(Nil)
+  }
+
   use _ <- program.and_then(
     transaction_effect.run_all([
       auth_effect.update_login_token(login_token_model.mark_as_used(
@@ -77,6 +84,7 @@ pub fn login(
         user_agent: ctx.client_info.user_agent,
         created_at: ctx.timestamp,
       )),
+      update_user_effect,
       user_action_cmd,
     ]),
   )
@@ -92,15 +100,6 @@ pub fn request_from_dynamic(
   data: dynamic.Dynamic,
 ) -> program_types.Program(login_dto.LoginRequest) {
   program.decode_dynamic(data, login_dto.decoder(ctx.regexes.is_email))
-}
-
-fn user_from_option(
-  maybe_user: option.Option(user_model.User),
-) -> Result(user_model.User, error.Error) {
-  case maybe_user {
-    option.Some(user) -> Ok(user)
-    option.None -> Error(error.LoginError(error.InvalidTokenError))
-  }
 }
 
 fn find_valid_token(

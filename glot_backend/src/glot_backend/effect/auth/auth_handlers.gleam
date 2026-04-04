@@ -22,6 +22,7 @@ pub type AuthHandlers {
     get_session_by_token: fn(Regexp, String) ->
       Result(option.Option(session_model.HydratedSession), error.DbQueryError),
     create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
+    update_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
     create_session: fn(session_model.Session) -> Result(Nil, error.DbCommandError),
     create_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
     update_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
@@ -36,6 +37,7 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
       get_session_by_token(db, is_email, token)
     },
     create_user: fn(user) { create_user(db, user) },
+    update_user: fn(user) { update_user(db, user) },
     create_session: fn(session) {
       create_session(db, session)
     },
@@ -100,6 +102,27 @@ pub fn create_user(
       first_login_at: user.first_login_at,
       created_at: user.created_at,
       updated_at: user.updated_at,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn update_user(
+  db: pog.Connection,
+  user: user_model.User,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.update_user(
+      email: email_address_model.to_string(user.email),
+      username: user.username,
+      first_login_at: user.first_login_at,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+      id: uuid.to_bit_array(user.id),
     ),
     to_error,
   )

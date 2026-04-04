@@ -49,6 +49,12 @@ pub fn create_user(user user: user_model.User) -> program_types.Program(Nil) {
   )
 }
 
+pub fn update_user(user user: user_model.User) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.AuthEffect(auth.UpdateUser(user: user, next: command_next)),
+  )
+}
+
 pub fn create_session(
   session session: session_model.Session,
 ) -> program_types.Program(Nil) {

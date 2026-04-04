@@ -13,3 +13,11 @@ pub type User {
     updated_at: Timestamp,
   )
 }
+
+pub fn mark_first_login(user: User, timestamp: Timestamp) -> User {
+  User(
+    ..user,
+    first_login_at: option.Some(timestamp),
+    updated_at: timestamp,
+  )
+}
