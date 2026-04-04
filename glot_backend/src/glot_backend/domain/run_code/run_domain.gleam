@@ -15,7 +15,7 @@ pub fn run(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
 ) -> program_types.Program(run.RunResult) {
-  use request <- program.and_then(program.decode_json(
+  use request <- program.and_then(program.decode_dynamic(
     json_body,
     run.run_request_decoder(),
   ))

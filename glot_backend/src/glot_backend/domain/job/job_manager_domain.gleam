@@ -25,7 +25,7 @@ pub fn process_next_job(
     option.None -> program.succeed(job.NoJobs)
     option.Some(job) -> {
       use result <- program.and_then(
-        process_job(ctx, job) |> program.to_result(),
+        delegate_job(ctx, job) |> program.to_result(),
       )
       case result {
         Ok(Nil) -> {
@@ -41,9 +41,18 @@ pub fn process_next_job(
   }
 }
 
-fn process_job(ctx: context.Context, job: job.Job) -> program_types.Program(Nil) {
+fn delegate_job(
+  ctx: context.Context,
+  job: job.Job,
+) -> program_types.Program(Nil) {
   case job.job_type {
-    job.SendEmailJob -> send_email_domain.send_email(ctx, job.payload)
+    job.SendEmailJob -> {
+      use email <- program.and_then(send_email_domain.email_from_json(
+        ctx,
+        job.payload,
+      ))
+      send_email_domain.send_email(ctx, email)
+    }
   }
 }
 

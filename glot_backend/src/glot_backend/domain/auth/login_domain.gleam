@@ -21,7 +21,7 @@ pub fn login(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
 ) -> program_types.Program(String) {
-  use request <- program.and_then(program.decode_json(
+  use request <- program.and_then(program.decode_dynamic(
     json_body,
     login_dto.decoder(ctx.regexes.is_email),
   ))

@@ -20,7 +20,7 @@ pub fn delete_snippet(
 ) -> program_types.Program(Nil) {
   use session <- program.and_then(session_domain.require_session(ctx))
 
-  use request <- program.and_then(program.decode_json(
+  use request <- program.and_then(program.decode_dynamic(
     json_body,
     snippet_dto.delete_decoder(),
   ))

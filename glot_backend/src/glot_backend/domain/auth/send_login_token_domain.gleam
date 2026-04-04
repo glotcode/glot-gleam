@@ -21,7 +21,7 @@ pub fn send_login_token(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
 ) -> program_types.Program(Nil) {
-  use request <- program.and_then(program.decode_json(
+  use request <- program.and_then(program.decode_dynamic(
     json_body,
     login_token_dto.decoder(ctx.regexes.is_email),
   ))

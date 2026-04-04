@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/int
+import gleam/json
 import gleam/string
 import glot_core/rate_limit.{type RateLimit}
 
@@ -46,6 +47,7 @@ pub type AuthorizationError {
 }
 
 pub type Error {
+  JsonParseError(json.DecodeError)
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
   TooManyRequestsError(count: Int, rate_limit: RateLimit)
@@ -62,6 +64,7 @@ pub type Error {
 
 pub fn to_string(err: Error) -> String {
   case err {
+    JsonParseError(error) -> "parse_error:" <> string.inspect(error)
     DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
     EmailInvalidError(message) -> "email_invalid:" <> message
     TooManyRequestsError(count, _) ->

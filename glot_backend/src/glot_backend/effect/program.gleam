@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/dynamic/decode
+import gleam/json
 import gleam/option
 import gleam/result
 import glot_backend/effect/auth/auth
@@ -74,11 +75,20 @@ pub fn require(
   and_then(value, fn(value) { from_option(value, err) })
 }
 
-pub fn decode_json(
-  json_body: dynamic.Dynamic,
+pub fn parse_json(
+  json_str: String,
   decoder: decode.Decoder(a),
 ) -> program_types.Program(a) {
-  decode.run(json_body, decoder)
+  json.parse(json_str, decoder)
+  |> result.map_error(error.JsonParseError)
+  |> from_result
+}
+
+pub fn decode_dynamic(
+  data: dynamic.Dynamic,
+  decoder: decode.Decoder(a),
+) -> program_types.Program(a) {
+  decode.run(data, decoder)
   |> result.map_error(error.DecodeError)
   |> from_result
 }

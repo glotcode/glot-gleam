@@ -264,6 +264,11 @@ fn result_to_response(
 
 fn error_to_response(error: error.Error) -> wisp.Response {
   case error {
+    error.JsonParseError(error) ->
+      error_response(
+        "json_parse_error",
+        "Decode error: " <> string.inspect(error),
+      )
     error.DecodeError(errors) ->
       error_response("decode_error", "Decode error: " <> string.inspect(errors))
     error.EmailInvalidError(message) -> {

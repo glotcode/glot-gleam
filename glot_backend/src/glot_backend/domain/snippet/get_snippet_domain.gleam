@@ -17,7 +17,7 @@ pub fn get_snippet(
   ctx: context.Context,
   json_body: dynamic.Dynamic,
 ) -> program_types.Program(snippet_dto.SnippetResponse) {
-  use request <- program.and_then(program.decode_json(
+  use request <- program.and_then(program.decode_dynamic(
     json_body,
     snippet_dto.get_decoder(),
   ))
