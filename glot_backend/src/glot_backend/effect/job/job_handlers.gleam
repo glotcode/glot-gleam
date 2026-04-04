@@ -2,20 +2,20 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/helpers/db_helpers
 import glot_backend/effect/error
-import glot_backend/job
+import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/helpers/uuid_helpers
+import glot_core/job/job_model
 import pog
 import youid/uuid
 
 pub type JobHandlers {
   JobHandlers(
-    get_next_job: fn(Timestamp, job.Status) ->
-      Result(option.Option(job.Job), error.DbQueryError),
-    create_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
-    update_job: fn(job.Job) -> Result(Nil, error.DbCommandError),
+    get_next_job: fn(Timestamp, job_model.Status) ->
+      Result(option.Option(job_model.Job), error.DbQueryError),
+    create_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
+    update_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
   )
 }
 
@@ -32,12 +32,12 @@ pub fn new(db: pog.Connection) -> JobHandlers {
 pub fn get_next_job(
   db: pog.Connection,
   now: Timestamp,
-  pending_status: job.Status,
-) -> Result(option.Option(job.Job), error.DbQueryError) {
+  pending_status: job_model.Status,
+) -> Result(option.Option(job_model.Job), error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
-      sql.get_next_job(job.status_to_string(pending_status), now),
+      sql.get_next_job(job_model.status_to_string(pending_status), now),
       fn(err) { error.DbQueryError(string.inspect(err)) },
     ),
   )
@@ -51,7 +51,7 @@ pub fn get_next_job(
 
 pub fn create_job(
   db: pog.Connection,
-  j: job.Job,
+  j: job_model.Job,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
@@ -59,9 +59,9 @@ pub fn create_job(
     db,
     sql.insert_job(
       id: uuid.to_bit_array(j.id),
-      job_type: job.job_type_to_string(j.job_type),
+      job_type: job_model.job_type_to_string(j.job_type),
       payload: j.payload,
-      status: job.status_to_string(j.status),
+      status: job_model.status_to_string(j.status),
       attempts: j.attempts,
       max_attempts: j.max_attempts,
       timeout_seconds: j.timeout_seconds,
@@ -79,7 +79,7 @@ pub fn create_job(
 
 pub fn update_job(
   db: pog.Connection,
-  j: job.Job,
+  j: job_model.Job,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
@@ -87,9 +87,9 @@ pub fn update_job(
     db,
     sql.update_job(
       id: uuid.to_bit_array(j.id),
-      job_type: job.job_type_to_string(j.job_type),
+      job_type: job_model.job_type_to_string(j.job_type),
       payload: j.payload,
-      status: job.status_to_string(j.status),
+      status: job_model.status_to_string(j.status),
       attempts: j.attempts,
       max_attempts: j.max_attempts,
       timeout_seconds: j.timeout_seconds,
@@ -105,17 +105,19 @@ pub fn update_job(
   |> result.map(fn(_) { Nil })
 }
 
-fn get_job_from_row(row: sql.GetNextJob) -> Result(job.Job, error.DbQueryError) {
+fn get_job_from_row(
+  row: sql.GetNextJob,
+) -> Result(job_model.Job, error.DbQueryError) {
   use status <- result.try(
-    job.status_from_string(row.status)
+    job_model.status_from_string(row.status)
     |> result.map_error(error.DbQueryError),
   )
   use job_type <- result.try(
-    job.job_type_from_string(row.job_type)
+    job_model.job_type_from_string(row.job_type)
     |> result.map_error(error.DbQueryError),
   )
 
-  Ok(job.Job(
+  Ok(job_model.Job(
     id: uuid_helpers.from_bit_array(row.id),
     job_type: job_type,
     payload: row.payload,

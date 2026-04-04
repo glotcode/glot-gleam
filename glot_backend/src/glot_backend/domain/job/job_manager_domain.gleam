@@ -9,7 +9,7 @@ import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction_effect
-import glot_backend/job
+import glot_core/job/job_model
 
 const base_backoff_seconds = 5
 
@@ -17,12 +17,12 @@ const max_backoff_seconds = 300
 
 pub fn process_next_job(
   ctx: context.Context,
-) -> program_types.Program(job.Outcome) {
+) -> program_types.Program(job_model.Outcome) {
   use now <- program.and_then(basic_effect.system_time())
   use maybe_job <- program.and_then(claim_next_job(now))
 
   case maybe_job {
-    option.None -> program.succeed(job.NoJobs)
+    option.None -> program.succeed(job_model.NoJobs)
     option.Some(job) -> {
       use result <- program.and_then(
         delegate_job(ctx, job) |> program.to_result(),
@@ -30,7 +30,7 @@ pub fn process_next_job(
       case result {
         Ok(Nil) -> {
           use _ <- program.and_then(complete_job(job))
-          program.succeed(job.JobProcessed)
+          program.succeed(job_model.JobProcessed)
         }
         Error(err) -> {
           use _ <- program.and_then(reschedule_job(job, err))
@@ -43,10 +43,10 @@ pub fn process_next_job(
 
 fn delegate_job(
   ctx: context.Context,
-  job: job.Job,
+  job: job_model.Job,
 ) -> program_types.Program(Nil) {
   case job.job_type {
-    job.SendEmailJob -> {
+    job_model.SendEmailJob -> {
       use email <- program.and_then(send_email_domain.email_from_json(
         ctx,
         job.payload,
@@ -56,16 +56,19 @@ fn delegate_job(
   }
 }
 
-fn complete_job(j: job.Job) -> program_types.Program(Nil) {
+fn complete_job(j: job_model.Job) -> program_types.Program(Nil) {
   use now <- program.and_then(basic_effect.system_time())
-  let completed_job = job.done(j, now)
+  let completed_job = job_model.done(j, now)
   job_effect.update_job(completed_job)
 }
 
-fn reschedule_job(j: job.Job, err: error.Error) -> program_types.Program(Nil) {
+fn reschedule_job(
+  j: job_model.Job,
+  err: error.Error,
+) -> program_types.Program(Nil) {
   use now <- program.and_then(basic_effect.system_time())
   let rescheduled_job =
-    job.reschedule(
+    job_model.reschedule(
       j,
       add_seconds(now, backoff_seconds(j.attempts)),
       option.Some(error.to_string(err)),
@@ -76,14 +79,16 @@ fn reschedule_job(j: job.Job, err: error.Error) -> program_types.Program(Nil) {
 
 fn claim_next_job(
   now: timestamp.Timestamp,
-) -> program_types.Program(option.Option(job.Job)) {
+) -> program_types.Program(option.Option(job_model.Job)) {
   transaction_effect.run({
-    use maybe_job <- program.and_then(job_effect.get_next_job(now, job.Pending))
+    use maybe_job <- program.and_then(
+      job_effect.get_next_job(now, job_model.Pending),
+    )
 
     case maybe_job {
       option.None -> program.succeed(option.None)
       option.Some(next_job) -> {
-        let started_job = job.start(next_job, now)
+        let started_job = job_model.start(next_job, now)
         use _ <- program.and_then(job_effect.update_job(started_job))
         program.succeed(option.Some(started_job))
       }

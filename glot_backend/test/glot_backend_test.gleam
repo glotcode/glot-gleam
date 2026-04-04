@@ -19,8 +19,8 @@ import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/user_action/user_action_handlers
-import glot_backend/job
 import glot_backend/log
+import glot_core/job/job_model
 import youid/uuid
 
 pub fn main() -> Nil {
@@ -183,7 +183,7 @@ fn test_handlers() -> handlers.Handlers {
       Error(error.InternalSendEmailError("unused in test"))
     }),
     job: job_handlers.JobHandlers(
-      get_next_job: fn(_: timestamp.Timestamp, _: job.Status) {
+      get_next_job: fn(_: timestamp.Timestamp, _: job_model.Status) {
         Ok(option.None)
       },
       create_job: fn(_) { Ok(Nil) },

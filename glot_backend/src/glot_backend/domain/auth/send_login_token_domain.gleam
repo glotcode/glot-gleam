@@ -8,7 +8,6 @@ import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction_effect
-import glot_backend/job
 import glot_backend/log
 import glot_core/api_action
 import glot_core/auth/login_token_dto
@@ -16,6 +15,7 @@ import glot_core/auth/login_token_model
 import glot_core/auth/user_model
 import glot_core/email/email_model
 import glot_core/email/email_address_model
+import glot_core/job/job_model
 
 pub fn send_login_token(
   ctx: context.Context,
@@ -56,7 +56,8 @@ pub fn send_login_token(
   )
 
   let email_message = email_model.login_token_email(request.email, token)
-  let send_email_job = job.send_email_job(job_id, ctx.timestamp, email_message)
+  let send_email_job =
+    job_model.send_email_job(job_id, ctx.timestamp, email_message)
   let create_token_effect =
     auth_effect.create_login_token(login_token_model.LoginToken(
       id: login_token_id,

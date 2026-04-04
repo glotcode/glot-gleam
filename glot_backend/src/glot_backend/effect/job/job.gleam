@@ -1,20 +1,20 @@
-import gleam/option
+import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
-import glot_backend/job as job_type
+import glot_core/job/job_model
 
 pub type JobEffect(next) {
   GetNextJob(
     now: Timestamp,
-    pending_status: job_type.Status,
-    next: fn(option.Option(job_type.Job)) -> next,
+    pending_status: job_model.Status,
+    next: fn(Option(job_model.Job)) -> next,
   )
   CreateJob(
-    job_type.Job,
+    job_model.Job,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   UpdateJob(
-    job_type.Job,
+    job_model.Job,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
 }

@@ -3,12 +3,12 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_backend/effect/job/job
 import glot_backend/effect/program_types
-import glot_backend/job as job_type
+import glot_core/job/job_model
 
 pub fn get_next_job(
   now: Timestamp,
-  pending_status: job_type.Status,
-) -> program_types.Program(option.Option(job_type.Job)) {
+  pending_status: job_model.Status,
+) -> program_types.Program(option.Option(job_model.Job)) {
   program_types.Impure(
     program_types.JobEffect(job.GetNextJob(
       now: now,
@@ -18,11 +18,11 @@ pub fn get_next_job(
   )
 }
 
-pub fn create_job(job j: job_type.Job) -> program_types.Program(Nil) {
+pub fn create_job(job j: job_model.Job) -> program_types.Program(Nil) {
   program_types.Impure(program_types.JobEffect(job.CreateJob(j, command_next)))
 }
 
-pub fn update_job(job j: job_type.Job) -> program_types.Program(Nil) {
+pub fn update_job(job j: job_model.Job) -> program_types.Program(Nil) {
   program_types.Impure(program_types.JobEffect(job.UpdateJob(j, command_next)))
 }
 

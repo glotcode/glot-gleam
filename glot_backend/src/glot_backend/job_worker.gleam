@@ -9,7 +9,7 @@ import glot_backend/domain/job/job_manager_domain
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/erlang
-import glot_backend/job
+import glot_core/job/job_model
 import pog
 import wisp
 import youid/uuid
@@ -56,8 +56,8 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
   case message {
     Tick -> {
       let delay = case run_once(state) {
-        job.NoJobs -> idle_poll_ms
-        job.JobProcessed -> 0
+        job_model.NoJobs -> idle_poll_ms
+        job_model.JobProcessed -> 0
       }
 
       let _ = process.send_after(state.subject, delay, Tick)
@@ -66,7 +66,7 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
   }
 }
 
-fn run_once(state: State) -> job.Outcome {
+fn run_once(state: State) -> job_model.Outcome {
   let ctx = context_from_state(state)
   let handlers = handlers.new(state.db)
   let #(result, _) =
@@ -78,7 +78,7 @@ fn run_once(state: State) -> job.Outcome {
     Ok(outcome) -> outcome
     Error(err) -> {
       wisp.log_error("Job worker failed: " <> string.inspect(err))
-      job.JobProcessed
+      job_model.JobProcessed
     }
   }
 }

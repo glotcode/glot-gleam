@@ -6,7 +6,7 @@ import glot_backend/effect/program_types
 import glot_core/email/email_model
 
 pub fn send_email(
-  ctx: context.Context,
+  _ctx: context.Context,
   email: email_model.Email,
 ) -> program_types.Program(Nil) {
   use send_result <- program.and_then(email_effect.send_email(email))
