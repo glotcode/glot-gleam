@@ -2,8 +2,8 @@ import gleam/json
 import gleam/option
 import gleam/result
 import gleam/string
-import glot_backend/helpers/db_helpers
 import glot_backend/effect/error
+import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/api_action
 import glot_core/rate_limit
@@ -15,18 +15,15 @@ pub type UserActionHandlers {
   UserActionHandlers(
     count_user_actions: fn(user_action.UserActionFilter) ->
       Result(List(rate_limit.WindowCount), error.DbQueryError),
-    create_user_action: fn(user_action.UserAction) -> Result(Nil, error.DbCommandError),
+    create_user_action: fn(user_action.UserAction) ->
+      Result(Nil, error.DbCommandError),
   )
 }
 
 pub fn new(db: pog.Connection) -> UserActionHandlers {
   UserActionHandlers(
-    count_user_actions: fn(filter) {
-      count_user_actions(db, filter)
-    },
-    create_user_action: fn(user_action) {
-      create_user_action(db, user_action)
-    },
+    count_user_actions: fn(filter) { count_user_actions(db, filter) },
+    create_user_action: fn(user_action) { create_user_action(db, user_action) },
   )
 }
 
@@ -40,7 +37,7 @@ pub fn count_user_actions(
         db,
         sql.count_user_actions_by_ip(
           ip: option.Some(ip),
-          action: api_action.to_db_string(filter.action),
+          action: api_action.to_string(filter.action),
           windows: json.array(filter.windows, of: rate_limit.encode_window)
             |> json.to_string(),
         ),
@@ -52,7 +49,7 @@ pub fn count_user_actions(
         db,
         sql.count_user_actions_by_user(
           user_id: option.Some(uuid.to_bit_array(user_id)),
-          action: api_action.to_db_string(filter.action),
+          action: api_action.to_string(filter.action),
           windows: json.array(filter.windows, of: rate_limit.encode_window)
             |> json.to_string(),
         ),
@@ -73,7 +70,7 @@ pub fn create_user_action(
     sql.insert_user_action(
       id: uuid.to_bit_array(user_action.id),
       request_id: uuid.to_bit_array(user_action.request_id),
-      action: api_action.to_db_string(user_action.action),
+      action: api_action.to_string(user_action.action),
       ip: user_action.ip,
       user_id: option.map(user_action.user_id, uuid.to_bit_array),
       created_at: user_action.created_at,
@@ -117,8 +114,6 @@ fn window_count_from_row(
     option.Some(parsed_unit) ->
       Ok(rate_limit.WindowCount(unit: parsed_unit, count: count))
     option.None ->
-      Error(error.DbQueryError(
-        "Invalid time unit in rate limit row: " <> unit,
-      ))
+      Error(error.DbQueryError("Invalid time unit in rate limit row: " <> unit))
   }
 }

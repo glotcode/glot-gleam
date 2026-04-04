@@ -15,7 +15,6 @@ import glot_backend/domain/snippet/delete_snippet_domain
 import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/effect/basic/basic_handlers
-import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
@@ -23,11 +22,8 @@ import glot_backend/effect/program
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/erlang
-import glot_backend/log
 import glot_backend/log_worker
 import glot_core/api_action.{type ApiAction}
-import glot_core/helpers/dict_helpers
-import glot_core/helpers/list_helpers
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import pog
@@ -230,45 +226,25 @@ fn prepare_log_entry(
   state: program_state.State,
   api_request: ApiRequest,
   error: option.Option(error.Error),
-) -> log_worker.LogEntry {
+) -> log_worker.ApiLogEntry {
   let id = basic_handlers.uuid_v7(ctx.timestamp)
   let duration_ns = erlang.perf_counter_ns() - ctx.started_at
 
-  log_worker.LogEntry(
+  log_worker.ApiLogEntry(
     id: id,
     request_id: ctx.request_id,
     created_at: ctx.timestamp,
-    action: api_action.to_string(api_request.action),
+    action: api_request.action,
     body_bytes: api_request.bytes,
     duration_ns: duration_ns,
     ip: ctx.client_info.ip,
     user_agent: ctx.client_info.user_agent,
-    info: state.info_fields
-      |> dict_helpers.non_empty_dict
-      |> option.map(log.encode_fields)
-      |> option.map(json.to_string),
-    warnings: state.warning_fields
-      |> dict_helpers.non_empty_dict
-      |> option.map(log.encode_fields)
-      |> option.map(json.to_string),
-    debug: state.debug_fields
-      |> dict_helpers.non_empty_dict
-      |> option.map(log.encode_fields)
-      |> option.map(json.to_string),
-    error: error
-      |> option.map(encode_error)
-      |> option.map(json.to_string),
-    effects: state.effect_measurements
-      |> list_helpers.non_empty_list
-      |> option.map(effect_trace.encode_effect_measurements)
-      |> option.map(json.to_string),
+    info: state.info_fields,
+    warnings: state.warning_fields,
+    debug: state.debug_fields,
+    error: error,
+    effects: state.effect_measurements,
   )
-}
-
-fn encode_error(err: error.Error) -> json.Json {
-  json.object([
-    #("message", json.string(error.to_string(err))),
-  ])
 }
 
 fn result_to_response(
