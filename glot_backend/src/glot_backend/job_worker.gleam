@@ -78,13 +78,13 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 
 fn run_once(state: State) -> job_model.Outcome {
   let handlers = handlers.new(state.db)
-  let claim_ctx = context_from_state(state, option.None)
+  let ctx = context_from_state(state, option.None)
 
-  let #(claim_result, _) =
-    job_manager_domain.claim_next_job(claim_ctx)
-    |> interpreter.run(handlers, option.Some(state.db), claim_ctx)
+  let #(result, _) =
+    job_manager_domain.claim_next_job(ctx)
+    |> interpreter.run(handlers, option.Some(state.db), ctx)
 
-  case claim_result {
+  case result {
     Ok(maybe_job) -> {
       case maybe_job {
         option.Some(job) -> {

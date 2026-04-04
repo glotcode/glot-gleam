@@ -15,6 +15,26 @@ const base_backoff_seconds = 5
 
 const max_backoff_seconds = 300
 
+pub fn claim_next_job(
+  ctx: context.Context,
+) -> program_types.Program(option.Option(job_model.Job)) {
+  transaction_effect.run({
+    use maybe_job <- program.and_then(job_effect.get_next_job(
+      ctx.timestamp,
+      job_model.Pending,
+    ))
+
+    case maybe_job {
+      option.None -> program.succeed(option.None)
+      option.Some(next_job) -> {
+        let started_job = job_model.start(next_job, ctx.timestamp)
+        use _ <- program.and_then(job_effect.update_job(started_job))
+        program.succeed(option.Some(started_job))
+      }
+    }
+  })
+}
+
 pub fn process_job(
   ctx: context.Context,
   job: job_model.Job,
@@ -63,26 +83,6 @@ fn reschedule_job(
       now,
     )
   job_effect.update_job(rescheduled_job)
-}
-
-pub fn claim_next_job(
-  ctx: context.Context,
-) -> program_types.Program(option.Option(job_model.Job)) {
-  transaction_effect.run({
-    use maybe_job <- program.and_then(job_effect.get_next_job(
-      ctx.timestamp,
-      job_model.Pending,
-    ))
-
-    case maybe_job {
-      option.None -> program.succeed(option.None)
-      option.Some(next_job) -> {
-        let started_job = job_model.start(next_job, ctx.timestamp)
-        use _ <- program.and_then(job_effect.update_job(started_job))
-        program.succeed(option.Some(started_job))
-      }
-    }
-  })
 }
 
 fn backoff_seconds(attempts: Int) -> Int {

@@ -81,7 +81,7 @@ fn new(
     payload: payload,
     status: Pending,
     attempts: 0,
-    max_attempts: 3,
+    max_attempts: 5,
     timeout_seconds: 120,
     run_at: now,
     started_at: option.None,
