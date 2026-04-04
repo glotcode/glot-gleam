@@ -8,12 +8,12 @@ import glot_backend/effect/program_types
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
 import glot_backend/effect/transaction/transaction_handlers
-import glot_backend/effect/transaction/transaction
+import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/erlang
 import pog
 
 pub fn run(
-  effect: transaction.TransactionEffect(program_types.Program(a)),
+  effect: transaction_algebra.TransactionEffect(program_types.Program(a)),
   runtime: runtime.Runtime,
   ctx: context.Context,
   state: program_state.State,
@@ -27,7 +27,7 @@ pub fn run(
   ) -> #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    transaction.Run(program:) -> {
+    transaction_algebra.Run(program:) -> {
       let started_at = erlang.perf_counter_ns()
       let #(transaction_result, transaction_state) =
         run_in_transaction(runtime, ctx, program, run_program)
@@ -36,7 +36,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.TransactionEffectName(
-            transaction.RunEffectName,
+            transaction_algebra.RunEffectName,
             transaction_state.effect_measurements,
           ),
           effect_trace.DbWriteEffectCategory,

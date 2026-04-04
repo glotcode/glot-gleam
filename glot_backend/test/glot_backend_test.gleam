@@ -6,7 +6,7 @@ import gleeunit
 import glot_backend/context
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_handlers
-import glot_backend/effect/basic/basic
+import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
@@ -52,12 +52,12 @@ pub fn measurement_aggregation_test() {
   assert run_result == Ok("ok")
   let assert [
     effect_trace.EffectMeasurement(
-      name: effect_trace.BasicEffectName(basic.LogEffectName),
+      name: effect_trace.BasicEffectName(basic_algebra.LogEffectName),
       duration_ns: first,
       ..,
     ),
     effect_trace.EffectMeasurement(
-      name: effect_trace.BasicEffectName(basic.LogEffectName),
+      name: effect_trace.BasicEffectName(basic_algebra.LogEffectName),
       duration_ns: second,
       ..,
     ),
@@ -79,7 +79,7 @@ pub fn measures_effects_in_success_test() {
   assert run_result == Ok("ok")
   let assert [
     effect_trace.EffectMeasurement(
-      name: effect_trace.BasicEffectName(basic.NewTokenEffectName),
+      name: effect_trace.BasicEffectName(basic_algebra.NewTokenEffectName),
       duration_ns: duration_ms,
       ..,
     ),
@@ -100,7 +100,7 @@ pub fn measures_effects_in_error_test() {
   assert run_result == Error(error.EmailInvalidError("bad"))
   let assert [
     effect_trace.EffectMeasurement(
-      name: effect_trace.BasicEffectName(basic.NewTokenEffectName),
+      name: effect_trace.BasicEffectName(basic_algebra.NewTokenEffectName),
       duration_ns: duration_ms,
       ..,
     ),

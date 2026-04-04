@@ -3,16 +3,16 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/option
 import gleam/result
-import glot_backend/effect/auth/auth
-import glot_backend/effect/basic/basic
-import glot_backend/effect/docker_run/docker_run
-import glot_backend/effect/email/email
+import glot_backend/effect/auth/auth_algebra
+import glot_backend/effect/basic/basic_algebra
+import glot_backend/effect/docker_run/docker_run_algebra
+import glot_backend/effect/email/email_algebra
 import glot_backend/effect/error
-import glot_backend/effect/job/job
+import glot_backend/effect/job/job_algebra
 import glot_backend/effect/program_types
-import glot_backend/effect/snippet/snippet
-import glot_backend/effect/transaction/transaction
-import glot_backend/effect/user_action/user_action
+import glot_backend/effect/snippet/snippet_algebra
+import glot_backend/effect/transaction/transaction_algebra
+import glot_backend/effect/user_action/user_action_algebra
 
 pub fn succeed(value: a) -> program_types.Program(a) {
   program_types.Pure(value)
@@ -110,20 +110,20 @@ fn map_effect(
 ) -> program_types.Effect(b) {
   case effect {
     program_types.BasicEffect(effect) ->
-      program_types.BasicEffect(basic.map(effect, f))
+      program_types.BasicEffect(basic_algebra.map(effect, f))
     program_types.EmailEffect(effect) ->
-      program_types.EmailEffect(email.map(effect, f))
+      program_types.EmailEffect(email_algebra.map(effect, f))
     program_types.JobEffect(effect) ->
-      program_types.JobEffect(job.map(effect, f))
+      program_types.JobEffect(job_algebra.map(effect, f))
     program_types.AuthEffect(effect) ->
-      program_types.AuthEffect(auth.map(effect, f))
+      program_types.AuthEffect(auth_algebra.map(effect, f))
     program_types.SnippetEffect(effect) ->
-      program_types.SnippetEffect(snippet.map(effect, f))
+      program_types.SnippetEffect(snippet_algebra.map(effect, f))
     program_types.DockerRunEffect(effect) ->
-      program_types.DockerRunEffect(docker_run.map(effect, f))
+      program_types.DockerRunEffect(docker_run_algebra.map(effect, f))
     program_types.UserActionEffect(effect) ->
-      program_types.UserActionEffect(user_action.map(effect, f))
+      program_types.UserActionEffect(user_action_algebra.map(effect, f))
     program_types.TransactionEffect(effect) ->
-      program_types.TransactionEffect(transaction.map(effect, f))
+      program_types.TransactionEffect(transaction_algebra.map(effect, f))
   }
 }

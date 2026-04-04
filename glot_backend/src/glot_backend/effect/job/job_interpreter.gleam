@@ -1,20 +1,20 @@
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
-import glot_backend/effect/job/job
+import glot_backend/effect/job/job_algebra
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/erlang
 
 pub fn run(
-  effect: job.JobEffect(program_types.Program(a)),
+  effect: job_algebra.JobEffect(program_types.Program(a)),
   handlers: handlers.Handlers,
   state: program_state.State,
   continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    job.GetNextJob(now:, pending_status:, next:) -> {
+    job_algebra.GetNextJob(now:, pending_status:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.job.get_next_job(now, pending_status)
       case result {
@@ -23,7 +23,7 @@ pub fn run(
             next(value),
             program_state.add_effect_measurement(
               state,
-              effect_trace.JobEffectName(job.GetNextJobEffectName),
+              effect_trace.JobEffectName(job_algebra.GetNextJobEffectName),
               effect_trace.DbReadEffectCategory,
               started_at,
             ),
@@ -32,34 +32,34 @@ pub fn run(
           Error(error.QueryError(error)),
           program_state.add_effect_measurement(
             state,
-            effect_trace.JobEffectName(job.GetNextJobEffectName),
+            effect_trace.JobEffectName(job_algebra.GetNextJobEffectName),
             effect_trace.DbReadEffectCategory,
             started_at,
           ),
         )
       }
     }
-    job.CreateJob(job, next) -> {
+    job_algebra.CreateJob(job, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.job.create_job(job)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.JobEffectName(job.CreateJobEffectName),
+          effect_trace.JobEffectName(job_algebra.CreateJobEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
     }
-    job.UpdateJob(job, next) -> {
+    job_algebra.UpdateJob(job, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.job.update_job(job)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.JobEffectName(job.UpdateJobEffectName),
+          effect_trace.JobEffectName(job_algebra.UpdateJobEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

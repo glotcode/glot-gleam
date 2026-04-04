@@ -1,35 +1,35 @@
 import gleam/json
 import gleam/list
-import glot_backend/effect/auth/auth
-import glot_backend/effect/basic/basic
-import glot_backend/effect/docker_run/docker_run
-import glot_backend/effect/email/email
-import glot_backend/effect/job/job
-import glot_backend/effect/snippet/snippet
-import glot_backend/effect/transaction/transaction
-import glot_backend/effect/user_action/user_action
+import glot_backend/effect/auth/auth_algebra
+import glot_backend/effect/basic/basic_algebra
+import glot_backend/effect/docker_run/docker_run_algebra
+import glot_backend/effect/email/email_algebra
+import glot_backend/effect/job/job_algebra
+import glot_backend/effect/snippet/snippet_algebra
+import glot_backend/effect/transaction/transaction_algebra
+import glot_backend/effect/user_action/user_action_algebra
 
 pub type EffectName {
-  BasicEffectName(basic.EffectName)
-  EmailEffectName(email.EffectName)
-  JobEffectName(job.EffectName)
-  AuthEffectName(auth.EffectName)
-  SnippetEffectName(snippet.EffectName)
-  DockerRunEffectName(docker_run.EffectName)
-  UserActionEffectName(user_action.EffectName)
-  TransactionEffectName(transaction.EffectName, List(EffectMeasurement))
+  BasicEffectName(basic_algebra.EffectName)
+  EmailEffectName(email_algebra.EffectName)
+  JobEffectName(job_algebra.EffectName)
+  AuthEffectName(auth_algebra.EffectName)
+  SnippetEffectName(snippet_algebra.EffectName)
+  DockerRunEffectName(docker_run_algebra.EffectName)
+  UserActionEffectName(user_action_algebra.EffectName)
+  TransactionEffectName(transaction_algebra.EffectName, List(EffectMeasurement))
 }
 
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
   case effect_name {
-    BasicEffectName(name) -> basic.effect_name_to_string(name)
-    EmailEffectName(name) -> email.effect_name_to_string(name)
-    JobEffectName(name) -> job.effect_name_to_string(name)
-    AuthEffectName(name) -> auth.effect_name_to_string(name)
-    SnippetEffectName(name) -> snippet.effect_name_to_string(name)
-    DockerRunEffectName(name) -> docker_run.effect_name_to_string(name)
-    UserActionEffectName(name) -> user_action.effect_name_to_string(name)
-    TransactionEffectName(name, _) -> transaction.effect_name_to_string(name)
+    BasicEffectName(name) -> basic_algebra.effect_name_to_string(name)
+    EmailEffectName(name) -> email_algebra.effect_name_to_string(name)
+    JobEffectName(name) -> job_algebra.effect_name_to_string(name)
+    AuthEffectName(name) -> auth_algebra.effect_name_to_string(name)
+    SnippetEffectName(name) -> snippet_algebra.effect_name_to_string(name)
+    DockerRunEffectName(name) -> docker_run_algebra.effect_name_to_string(name)
+    UserActionEffectName(name) -> user_action_algebra.effect_name_to_string(name)
+    TransactionEffectName(name, _) -> transaction_algebra.effect_name_to_string(name)
   }
 }
 

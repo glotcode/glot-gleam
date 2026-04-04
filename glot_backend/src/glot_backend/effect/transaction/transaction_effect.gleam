@@ -1,10 +1,10 @@
 import gleam/list
 import glot_backend/effect/program
 import glot_backend/effect/program_types
-import glot_backend/effect/transaction/transaction
+import glot_backend/effect/transaction/transaction_algebra
 
 pub fn run(p: program_types.Program(a)) -> program_types.Program(a) {
-  program_types.Impure(program_types.TransactionEffect(transaction.Run(p)))
+  program_types.Impure(program_types.TransactionEffect(transaction_algebra.Run(p)))
 }
 
 pub fn run_all(

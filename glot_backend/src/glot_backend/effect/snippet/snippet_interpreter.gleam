@@ -3,77 +3,77 @@ import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/program_state
-import glot_backend/effect/snippet/snippet
+import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/erlang
 
 pub fn run(
-  effect: snippet.SnippetEffect(program_types.Program(a)),
+  effect: snippet_algebra.SnippetEffect(program_types.Program(a)),
   handlers: handlers.Handlers,
   state: program_state.State,
   continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
   ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    snippet.GetSnippetById(id, next) -> {
+    snippet_algebra.GetSnippetById(id, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.get_snippet_by_id(id)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet.GetSnippetByIdEffectName),
+          effect_trace.SnippetEffectName(snippet_algebra.GetSnippetByIdEffectName),
           effect_trace.DbReadEffectCategory,
           started_at,
         ),
       )
     }
-    snippet.GetSnippetBySlug(slug, next) -> {
+    snippet_algebra.GetSnippetBySlug(slug, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.get_snippet_by_slug(slug)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet.GetSnippetBySlugEffectName),
+          effect_trace.SnippetEffectName(snippet_algebra.GetSnippetBySlugEffectName),
           effect_trace.DbReadEffectCategory,
           started_at,
         ),
       )
     }
-    snippet.DeleteSnippet(id, next) -> {
+    snippet_algebra.DeleteSnippet(id, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.delete_snippet(id)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet.DeleteSnippetEffectName),
+          effect_trace.SnippetEffectName(snippet_algebra.DeleteSnippetEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
     }
-    snippet.CreateSnippet(snippet_value, next) -> {
+    snippet_algebra.CreateSnippet(snippet_value, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.create_snippet(snippet_value)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet.CreateSnippetEffectName),
+          effect_trace.SnippetEffectName(snippet_algebra.CreateSnippetEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
       )
     }
-    snippet.UpdateSnippet(snippet_value, next) -> {
+    snippet_algebra.UpdateSnippet(snippet_value, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.update_snippet(snippet_value)
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet.UpdateSnippetEffectName),
+          effect_trace.SnippetEffectName(snippet_algebra.UpdateSnippetEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
