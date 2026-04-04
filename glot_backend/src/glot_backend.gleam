@@ -136,7 +136,7 @@ fn get_header(req: wisp.Request, name: String) -> option.Option(String) {
 }
 
 fn get_client_ip(conn: mist.Connection) -> option.Option(String) {
-  case mist.get_client_info(conn) {
+  case mist.get_connection_info(conn) {
     Ok(client_info) ->
       option.Some(mist.ip_address_to_string(client_info.ip_address))
     Error(_) -> option.None
