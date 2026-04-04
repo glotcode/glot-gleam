@@ -25,9 +25,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(model: Model) -> Element(Msg) {
+pub fn view(_model: Model) -> Element(Msg) {
   html.div([], [
     html.h2([], [html.text("Home")]),
+    html.div([], [
+      html.a([route.href(route.Login)], [html.text("Login")]),
+    ]),
     html.a([route.href(route.NewSnippet("python"))], [
       html.text("Python"),
     ]),

@@ -3,6 +3,7 @@ import lustre/attribute.{type Attribute}
 
 pub type Route {
   Home
+  Login
   NewSnippet(language: String)
   NotFound(uri: Uri)
 }
@@ -10,9 +11,8 @@ pub type Route {
 pub fn from_uri(uri: Uri) -> Route {
   case uri.path_segments(uri.path) {
     [] | [""] -> Home
-
+    ["auth", "login"] -> Login
     ["new", language] -> NewSnippet(language: language)
-
     _ -> NotFound(uri:)
   }
 }
@@ -20,6 +20,7 @@ pub fn from_uri(uri: Uri) -> Route {
 pub fn to_string(route: Route) -> String {
   case route {
     Home -> "/"
+    Login -> "/auth/login"
     NewSnippet(language) -> "/new/" <> language
     NotFound(_) -> ""
   }

@@ -1,4 +1,5 @@
 import gleam/dynamic/decode
+import gleam/json
 
 pub type ApiAction {
   RunAction
@@ -22,6 +23,10 @@ pub fn decoder() -> decode.Decoder(ApiAction) {
     "login" -> decode.success(LoginAction)
     _ -> decode.failure(RunAction, "ApiAction")
   }
+}
+
+pub fn encode(action: ApiAction) -> json.Json {
+  action |> to_string |> json.string
 }
 
 pub fn to_string(action: ApiAction) -> String {

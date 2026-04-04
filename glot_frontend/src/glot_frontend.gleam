@@ -1,5 +1,6 @@
 import glot_frontend/editor_page
 import glot_frontend/home_page
+import glot_frontend/login_page
 import glot_frontend/route
 import lustre
 import lustre/effect.{type Effect}
@@ -20,6 +21,7 @@ type Model {
 
 type PageModel {
   HomePageModel(home_page.Model)
+  LoginPage(login_page.Model)
   EditorPage(editor_page.Model)
   EmptyPageModel
 }
@@ -29,6 +31,11 @@ fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
     route.Home -> {
       let #(m, eff) = home_page.init()
       #(HomePageModel(m), effect.map(eff, HomePageMsg))
+    }
+
+    route.Login -> {
+      let #(m, eff) = login_page.init()
+      #(LoginPage(m), effect.map(eff, LoginPageMsg))
     }
 
     route.NewSnippet(language) -> {
@@ -67,6 +74,7 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
 type Msg {
   UserNavigatedTo(route: route.Route)
   HomePageMsg(home_page.Msg)
+  LoginPageMsg(login_page.Msg)
   EditorPageMsg(editor_page.Msg)
 }
 
@@ -77,6 +85,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         home_page.update(page_model, page_msg)
       let new_model = Model(..model, page_model: HomePageModel(new_page_model))
       #(new_model, effect.map(page_effect, HomePageMsg))
+    }
+
+    LoginPageMsg(page_msg), LoginPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        login_page.update(page_model, page_msg)
+      let new_model = Model(..model, page_model: LoginPage(new_page_model))
+      #(new_model, effect.map(page_effect, LoginPageMsg))
     }
 
     EditorPageMsg(page_msg), EditorPage(page_model) -> {
@@ -106,6 +121,11 @@ fn view(model: Model) -> Element(Msg) {
     HomePageModel(page_model) -> {
       let elem = home_page.view(page_model)
       element.map(elem, HomePageMsg)
+    }
+
+    LoginPage(page_model) -> {
+      let elem = login_page.view(page_model)
+      element.map(elem, LoginPageMsg)
     }
 
     EditorPage(page_model) -> {
