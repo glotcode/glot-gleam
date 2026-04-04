@@ -89,7 +89,12 @@ pub fn login(
     ]),
   )
   use _ <- program.and_then(
-    basic_effect.info(log.singleton(log.uuid("session_id", session_id))),
+    basic_effect.info(
+      log.from_list([
+        log.uuid("session_id", session_id),
+        log.bool("is_first_login", option.is_none(user.first_login_at)),
+      ]),
+    ),
   )
 
   program.succeed(session_token)
