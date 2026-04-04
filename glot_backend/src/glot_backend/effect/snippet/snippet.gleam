@@ -7,6 +7,10 @@ pub type SnippetEffect(next) {
     id: BitArray,
     next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
   )
+  GetSnippetBySlug(
+    slug: String,
+    next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+  )
   DeleteSnippet(
     id: BitArray,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
@@ -25,6 +29,8 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
   case effect {
     GetSnippetById(id, next) ->
       GetSnippetById(id, next: fn(value) { f(next(value)) })
+    GetSnippetBySlug(slug, next) ->
+      GetSnippetBySlug(slug, next: fn(value) { f(next(value)) })
     DeleteSnippet(id, next) ->
       DeleteSnippet(id, next: fn(value) { f(next(value)) })
     CreateSnippet(snippet, next) ->
@@ -36,6 +42,7 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
 
 pub type EffectName {
   GetSnippetByIdEffectName
+  GetSnippetBySlugEffectName
   DeleteSnippetEffectName
   CreateSnippetEffectName
   UpdateSnippetEffectName
@@ -44,6 +51,7 @@ pub type EffectName {
 pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetSnippetByIdEffectName -> "get_snippet_by_id"
+    GetSnippetBySlugEffectName -> "get_snippet_by_slug"
     DeleteSnippetEffectName -> "delete_snippet"
     CreateSnippetEffectName -> "create_snippet"
     UpdateSnippetEffectName -> "update_snippet"

@@ -3,27 +3,26 @@ import gleam/json
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/user_dto
 import glot_core/helpers/timestamp_helpers
-import glot_core/helpers/uuid_helpers
 import glot_core/language
 import glot_core/snippet/snippet_model
-import youid/uuid.{type Uuid}
+import youid/uuid
 
 pub type GetSnippetRequest {
-  GetSnippetRequest(id: Uuid)
+  GetSnippetRequest(slug: String)
 }
 
 pub fn get_decoder() -> decode.Decoder(GetSnippetRequest) {
-  use id <- decode.field("id", uuid_helpers.decoder())
-  decode.success(GetSnippetRequest(id: id))
+  use slug <- decode.field("slug", decode.string)
+  decode.success(GetSnippetRequest(slug: slug))
 }
 
 pub type DeleteSnippetRequest {
-  DeleteSnippetRequest(id: Uuid)
+  DeleteSnippetRequest(slug: String)
 }
 
 pub fn delete_decoder() -> decode.Decoder(DeleteSnippetRequest) {
-  use id <- decode.field("id", uuid_helpers.decoder())
-  decode.success(DeleteSnippetRequest(id: id))
+  use slug <- decode.field("slug", decode.string)
+  decode.success(DeleteSnippetRequest(slug: slug))
 }
 
 pub type CreateSnippetRequest {
@@ -36,18 +35,17 @@ pub fn create_decoder() -> decode.Decoder(CreateSnippetRequest) {
 }
 
 pub type UpdateSnippetRequest {
-  UpdateSnippetRequest(id: Uuid, data: SnippetData)
+  UpdateSnippetRequest(slug: String, data: SnippetData)
 }
 
 pub fn update_decoder() -> decode.Decoder(UpdateSnippetRequest) {
-  use id <- decode.field("id", uuid_helpers.decoder())
+  use slug <- decode.field("slug", decode.string)
   use data <- decode.field("data", data_decoder())
-  decode.success(UpdateSnippetRequest(id: id, data: data))
+  decode.success(UpdateSnippetRequest(slug: slug, data: data))
 }
 
 pub type SnippetResponse {
   SnippetResponse(
-    id: Uuid,
     slug: String,
     user: user_dto.UserResponse,
     data: SnippetData,
@@ -60,7 +58,6 @@ pub fn from_snippet(
   snippet: snippet_model.HydratedSnippet,
 ) -> SnippetResponse {
   SnippetResponse(
-    id: snippet.id,
     slug: snippet.slug,
     user: user_dto.from_user(snippet.user),
     data: SnippetData(
@@ -78,7 +75,6 @@ pub fn from_snippet(
 
 pub fn encode_response(response: SnippetResponse) -> json.Json {
   json.object([
-    #("id", json.string(uuid.to_string(response.id))),
     #("slug", json.string(response.slug)),
     #("user", user_dto.encode(response.user)),
     #("userId", json.string(uuid.to_string(response.user.id))),

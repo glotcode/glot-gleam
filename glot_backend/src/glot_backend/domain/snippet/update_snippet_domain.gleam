@@ -26,7 +26,7 @@ pub fn update_snippet(
       log.from_list([
         log.uuid("session_id", session.id),
         log.uuid("user_id", session.user.id),
-        log.uuid("snippet_id", request.id),
+        log.string("slug", request.slug),
       ]),
     ),
   )
@@ -38,7 +38,7 @@ pub fn update_snippet(
   ))
 
   use existing_snippet <- program.and_then(
-    snippet_effect.get_by_id(request.id)
+    snippet_effect.get_by_slug(request.slug)
     |> program.require(error.QueryError(error.DbQueryError("Snippet not found"))),
   )
 

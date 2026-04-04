@@ -24,7 +24,7 @@ pub fn get_snippet(
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
-        log.uuid("snippet_id", request.id),
+        log.string("slug", request.slug),
         log.optional_uuid("session_id", maybe_session_id),
         log.optional_uuid("user_id", maybe_user_id),
       ]),
@@ -38,7 +38,7 @@ pub fn get_snippet(
   ))
 
   use snippet <- program.and_then(
-    snippet_effect.get_by_id(request.id)
+    snippet_effect.get_by_slug(request.slug)
     |> program.require(error.QueryError(error.DbQueryError("Snippet not found"))),
   )
 

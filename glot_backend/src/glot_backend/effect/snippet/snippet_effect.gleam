@@ -16,6 +16,17 @@ pub fn get_by_id(
   )
 }
 
+pub fn get_by_slug(
+  slug: String,
+) -> program_types.Program(option.Option(HydratedSnippet)) {
+  program_types.Impure(
+    program_types.SnippetEffect(snippet.GetSnippetBySlug(
+      slug: slug,
+      next: query_next,
+    )),
+  )
+}
+
 pub fn create(snippet snippet: Snippet) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.SnippetEffect(snippet.CreateSnippet(

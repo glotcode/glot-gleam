@@ -719,6 +719,77 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
   ])
 }
 
+pub type GetSnippetBySlug {
+  GetSnippetBySlug(
+    id: BitArray,
+    slug: String,
+    language: String,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_command: String,
+    files: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    user_id: BitArray,
+    user_email: String,
+    user_created_at: Timestamp,
+  )
+}
+
+pub fn get_snippet_by_slug(slug slug: String) {
+  let sql =
+    "SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_command,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.email AS user_email,
+  users.created_at AS user_created_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE snippets.slug = $1"
+  #(sql, [dev.ParamString(slug)], get_snippet_by_slug_decoder())
+}
+
+pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
+  use id <- decode.field(0, decode.bit_array)
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_command <- decode.field(6, decode.string)
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_email <- decode.field(11, decode.string)
+  use user_created_at <- decode.field(12, dev.datetime_decoder())
+  decode.success(GetSnippetBySlug(
+    id:,
+    slug:,
+    language:,
+    title:,
+    visibility:,
+    stdin:,
+    run_command:,
+    files:,
+    created_at:,
+    updated_at:,
+    user_id:,
+    user_email:,
+    user_created_at:,
+  ))
+}
+
 pub fn update_login_token(
   user_id user_id: BitArray,
   token token: String,

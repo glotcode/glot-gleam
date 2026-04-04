@@ -25,7 +25,7 @@ pub fn delete_snippet(
       log.from_list([
         log.uuid("session_id", session.id),
         log.uuid("user_id", session.user.id),
-        log.uuid("snippet_id", request.id),
+        log.string("slug", request.slug),
       ]),
     ),
   )
@@ -37,7 +37,7 @@ pub fn delete_snippet(
   ))
 
   use existing_snippet <- program.and_then(
-    snippet_effect.get_by_id(request.id)
+    snippet_effect.get_by_slug(request.slug)
     |> program.require(error.QueryError(error.DbQueryError("Snippet not found"))),
   )
 
@@ -48,7 +48,7 @@ pub fn delete_snippet(
 
   use _ <- program.and_then(
     transaction_effect.run_all([
-      snippet_effect.delete(request.id),
+      snippet_effect.delete(existing_snippet.id),
       user_action_cmd,
     ]),
   )

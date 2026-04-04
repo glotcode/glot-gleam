@@ -218,6 +218,7 @@ fn test_handlers() -> handlers.Handlers {
     ),
     snippet: snippet_handlers.SnippetHandlers(
       get_snippet_by_id: fn(_) { Ok(option.None) },
+      get_snippet_by_slug: fn(_) { Ok(option.None) },
       delete_snippet: fn(_) { Ok(Nil) },
       create_snippet: fn(_) { Ok(Nil) },
       update_snippet: fn(_) { Ok(Nil) },

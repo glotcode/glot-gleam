@@ -27,6 +27,19 @@ pub fn run(
         ),
       )
     }
+    snippet.GetSnippetBySlug(slug, next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.snippet.get_snippet_by_slug(slug)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.SnippetEffectName(snippet.GetSnippetBySlugEffectName),
+          effect_trace.DbReadEffectCategory,
+          started_at,
+        ),
+      )
+    }
     snippet.DeleteSnippet(id, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.delete_snippet(id)
