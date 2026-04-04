@@ -1,41 +1,29 @@
 import gleam/dynamic/decode
 import gleam/json
-import gleam/regexp
-import gleam/time/timestamp.{type Timestamp}
+import gleam/option.{type Option}
 import glot_core/auth/user_model
-import glot_core/email/email_address_model
-import glot_core/helpers/timestamp_helpers
 import glot_core/helpers/uuid_helpers
 import youid/uuid.{type Uuid}
 
+// Note, don't expose email or other sensitive information here, this is meant for public API responses
 pub type UserResponse {
-  UserResponse(
-    id: Uuid,
-    email: email_address_model.EmailAddress,
-    created_at: Timestamp,
-  )
+  UserResponse(id: Uuid, username: Option(String))
 }
 
 pub fn encode(user: UserResponse) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(user.id))),
-    #("email", email_address_model.encode(user.email)),
-    #("createdAt", timestamp_helpers.encode(user.created_at)),
+    #("username", json.nullable(user.username, json.string)),
   ])
 }
 
 pub fn from_user(user: user_model.User) -> UserResponse {
-  UserResponse(
-    id: user.id,
-    email: user.email,
-    created_at: user.created_at,
-  )
+  UserResponse(id: user.id, username: user.username)
 }
 
-pub fn user_decoder(is_email: regexp.Regexp) -> decode.Decoder(UserResponse) {
+pub fn user_decoder() -> decode.Decoder(UserResponse) {
   use id <- decode.field("id", uuid_helpers.decoder())
-  use email <- decode.field("email", email_address_model.decoder(is_email))
-  use created_at <- decode.field("createdAt", timestamp_helpers.decoder())
+  use username <- decode.field("username", decode.optional(decode.string))
 
-  decode.success(UserResponse(id: id, email: email, created_at: created_at))
+  decode.success(UserResponse(id: id, username: username))
 }
