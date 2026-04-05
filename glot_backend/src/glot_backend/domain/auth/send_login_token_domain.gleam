@@ -42,7 +42,7 @@ pub fn send_login_token(
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
-        log.string("token", token),
+        log.uuid("login_token_id", login_token_id),
         log.uuid("user_id", user.id),
         log.bool("is_new_user", option.is_some(maybe_create_user_effect)),
         log.uuid("job_id", job_id),
