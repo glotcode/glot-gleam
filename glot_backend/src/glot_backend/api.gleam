@@ -2,10 +2,8 @@ import gleam/bit_array
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/erlang/process
-import gleam/float
 import gleam/int
 import gleam/json
-import gleam/list
 import gleam/option
 import gleam/string
 import glot_backend/context
@@ -26,6 +24,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/log_worker
+import glot_backend/server_timing
 import glot_core/api_action.{type ApiAction}
 import glot_core/run
 import glot_core/snippet/snippet_dto
@@ -189,50 +188,6 @@ fn api_result_to_response(
   }
 }
 
-fn prepare_server_timings(
-  ems: List(effect_trace.EffectMeasurement),
-  total_duration_ns: Int,
-) -> String {
-  let effects_duration_ns =
-    list.fold(ems, 0, fn(acc, em) { acc + em.duration_ns })
-  let domain_duration_ns = int.max(total_duration_ns - effects_duration_ns, 0)
-  "Pure;desc=\"Business Logic\";dur="
-  <> float.to_string(int.to_float(domain_duration_ns) /. 1_000_000.0)
-  <> ","
-  <> prepare_effect_timings(ems)
-}
-
-fn prepare_effect_timings(ems: List(effect_trace.EffectMeasurement)) -> String {
-  ems
-  |> list.map(prepare_effect_timing)
-  |> string.join(",")
-}
-
-fn prepare_effect_timing(em: effect_trace.EffectMeasurement) -> String {
-  case em.name {
-    effect_trace.TransactionEffectName(_, ems) -> {
-      let sub_duration = list.fold(ems, 0, fn(acc, e) { acc + e.duration_ns })
-      let tx_duration = em.duration_ns - sub_duration
-
-      "TxBegin,"
-      <> prepare_effect_timings(ems)
-      <> ",TxCommit;dur="
-      <> float.to_string(int.to_float(tx_duration) /. 1_000_000.0)
-    }
-
-    _ -> {
-      let duration_ms =
-        float.to_string(int.to_float(em.duration_ns) /. 1_000_000.0)
-      let name =
-        snake_to_pascal_case(effect_trace.effect_category_to_string(em.category))
-      let desc =
-        snake_to_pascal_case(effect_trace.effect_name_to_string(em.name))
-
-      name <> ";desc=\"" <> desc <> "\";dur=" <> duration_ms
-    }
-  }
-}
-
 fn success_response(data: json.Json) -> wisp.Response {
   wisp.json_response(
     json.to_string(json.object([#("ok", json.bool(True)), #("data", data)])),
@@ -325,10 +280,7 @@ fn result_to_response(
   case result {
     Ok(response) ->
       api_result_to_response(ctx, request, response)
-      |> wisp.set_header(
-        "Server-Timing",
-        prepare_server_timings(effects, total_duration_ns),
-      )
+      |> wisp.set_header("Server-Timing", server_timing.prepare(effects, total_duration_ns))
     Error(err) -> error_to_response(err)
   }
 }
@@ -433,18 +385,4 @@ fn error_to_response(error: error.Error) -> wisp.Response {
         }
       }
   }
-}
-
-pub fn snake_to_pascal_case(value: String) -> String {
-  value
-  |> string.split("_")
-  |> list.map(fn(segment) {
-    case string.slice(segment, at_index: 0, length: 1) {
-      "" -> ""
-      first ->
-        string.uppercase(first)
-        <> string.slice(segment, at_index: 1, length: string.length(segment))
-    }
-  })
-  |> string.join("")
 }
