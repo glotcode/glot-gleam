@@ -65,7 +65,7 @@ pub fn run(
             next,
             program_state.add_effect_measurement(
               state,
-              effect_trace.BasicEffectName(basic_algebra.LogEffectName),
+              effect_trace.BasicEffectName(basic_algebra.LogEffectName(level)),
               effect_trace.LogEffectCategory,
               started_at,
             ),
@@ -78,7 +78,7 @@ pub fn run(
             next,
             program_state.add_effect_measurement(
               state,
-              effect_trace.BasicEffectName(basic_algebra.LogEffectName),
+              effect_trace.BasicEffectName(basic_algebra.LogEffectName(level)),
               effect_trace.LogEffectCategory,
               started_at,
             ),
@@ -93,7 +93,9 @@ pub fn run(
                 next,
                 program_state.add_effect_measurement(
                   state,
-                  effect_trace.BasicEffectName(basic_algebra.LogEffectName),
+                  effect_trace.BasicEffectName(basic_algebra.LogEffectName(
+                    level,
+                  )),
                   effect_trace.LogEffectCategory,
                   started_at,
                 ),

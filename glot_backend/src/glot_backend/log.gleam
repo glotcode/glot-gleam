@@ -14,6 +14,14 @@ pub type Level {
   Debug
 }
 
+pub fn level_to_string(level: Level) -> String {
+  case level {
+    Info -> "info"
+    Warn -> "warn"
+    Debug -> "debug"
+  }
+}
+
 pub fn new() -> Fields {
   dict.new()
 }

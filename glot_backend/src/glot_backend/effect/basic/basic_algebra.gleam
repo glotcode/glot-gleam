@@ -22,7 +22,7 @@ pub type EffectName {
   NewTokenEffectName
   SystemTimeEffectName
   UuidV7EffectName
-  LogEffectName
+  LogEffectName(log.Level)
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
@@ -30,6 +30,6 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     NewTokenEffectName -> "new_token"
     SystemTimeEffectName -> "system_time"
     UuidV7EffectName -> "uuid_v7"
-    LogEffectName -> "log"
+    LogEffectName(level) -> log.level_to_string(level)
   }
 }

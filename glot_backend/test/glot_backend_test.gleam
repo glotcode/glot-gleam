@@ -52,12 +52,12 @@ pub fn measurement_aggregation_test() {
   assert run_result == Ok("ok")
   let assert [
     effect_trace.EffectMeasurement(
-      name: effect_trace.BasicEffectName(basic_algebra.LogEffectName),
+      name: effect_trace.BasicEffectName(basic_algebra.LogEffectName(log.Info)),
       duration_ns: first,
       ..,
     ),
     effect_trace.EffectMeasurement(
-      name: effect_trace.BasicEffectName(basic_algebra.LogEffectName),
+      name: effect_trace.BasicEffectName(basic_algebra.LogEffectName(log.Info)),
       duration_ns: second,
       ..,
     ),
@@ -113,7 +113,9 @@ pub fn suppressed_debug_log_is_not_stored_or_measured_test() {
   let ctx = test_context()
   let measured_effect = {
     use _ <- program.and_then(
-      basic_effect.debug(log.from_list([log.string("debug_key", "debug_value")])),
+      basic_effect.debug(
+        log.from_list([log.string("debug_key", "debug_value")]),
+      ),
     )
     program.succeed("ok")
   }

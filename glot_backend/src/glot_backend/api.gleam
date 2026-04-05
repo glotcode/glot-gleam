@@ -2,8 +2,10 @@ import gleam/bit_array
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/erlang/process
+import gleam/float
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/string
 import glot_backend/context
@@ -15,6 +17,7 @@ import glot_backend/domain/snippet/delete_snippet_domain
 import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/effect/basic/basic_handlers
+import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/interpreter
 import glot_backend/effect/program
@@ -42,8 +45,22 @@ pub fn handle_request(
     handle_api_request(ctx, api_request)
     |> interpreter.run(effect_runtime, ctx)
 
-  insert_log_entry(ctx, log_worker_subject, state, api_request, api_result)
-  result_to_response(ctx, req, api_result)
+  let total_duration_ns = erlang.perf_counter_ns() - ctx.started_at
+  insert_log_entry(
+    ctx,
+    log_worker_subject,
+    state,
+    api_request,
+    total_duration_ns,
+    api_result,
+  )
+  result_to_response(
+    ctx,
+    req,
+    state.effect_measurements,
+    total_duration_ns,
+    api_result,
+  )
 }
 
 fn handle_api_request(
@@ -172,6 +189,50 @@ fn api_result_to_response(
   }
 }
 
+fn prepare_server_timings(
+  ems: List(effect_trace.EffectMeasurement),
+  total_duration_ns: Int,
+) -> String {
+  let effects_duration_ns =
+    list.fold(ems, 0, fn(acc, em) { acc + em.duration_ns })
+  let domain_duration_ns = int.max(total_duration_ns - effects_duration_ns, 0)
+  "Pure;desc=\"Business Logic\";dur="
+  <> float.to_string(int.to_float(domain_duration_ns) /. 1_000_000.0)
+  <> ","
+  <> prepare_effect_timings(ems)
+}
+
+fn prepare_effect_timings(ems: List(effect_trace.EffectMeasurement)) -> String {
+  ems
+  |> list.map(prepare_effect_timing)
+  |> string.join(",")
+}
+
+fn prepare_effect_timing(em: effect_trace.EffectMeasurement) -> String {
+  case em.name {
+    effect_trace.TransactionEffectName(_, ems) -> {
+      let sub_duration = list.fold(ems, 0, fn(acc, e) { acc + e.duration_ns })
+      let tx_duration = em.duration_ns - sub_duration
+
+      "TxBegin,"
+      <> prepare_effect_timings(ems)
+      <> ",TxCommit;dur="
+      <> float.to_string(int.to_float(tx_duration) /. 1_000_000.0)
+    }
+
+    _ -> {
+      let duration_ms =
+        float.to_string(int.to_float(em.duration_ns) /. 1_000_000.0)
+      let name =
+        snake_to_pascal_case(effect_trace.effect_category_to_string(em.category))
+      let desc =
+        snake_to_pascal_case(effect_trace.effect_name_to_string(em.name))
+
+      name <> ";desc=\"" <> desc <> "\";dur=" <> duration_ms
+    }
+  }
+}
+
 fn success_response(data: json.Json) -> wisp.Response {
   wisp.json_response(
     json.to_string(json.object([#("ok", json.bool(True)), #("data", data)])),
@@ -202,6 +263,7 @@ fn insert_log_entry(
   log_worker_subject: process.Subject(log_worker.Message),
   state: program_state.State,
   api_request: ApiRequest,
+  total_duration_ns: Int,
   result: Result(ApiResult, error.Error),
 ) -> Nil {
   let error = case result {
@@ -213,7 +275,13 @@ fn insert_log_entry(
     Ok(_) -> {
       process.send(
         log_worker_subject,
-        log_worker.Insert(prepare_log_entry(ctx, state, api_request, error)),
+        log_worker.Insert(prepare_log_entry(
+          ctx,
+          state,
+          api_request,
+          total_duration_ns,
+          error,
+        )),
       )
       Nil
     }
@@ -225,10 +293,10 @@ fn prepare_log_entry(
   ctx: context.Context,
   state: program_state.State,
   api_request: ApiRequest,
+  total_duration_ns: Int,
   error: option.Option(error.Error),
 ) -> log_worker.ApiLogEntry {
   let id = basic_handlers.uuid_v7(ctx.timestamp)
-  let duration_ns = erlang.perf_counter_ns() - ctx.started_at
 
   log_worker.ApiLogEntry(
     id: id,
@@ -236,7 +304,7 @@ fn prepare_log_entry(
     created_at: ctx.timestamp,
     action: api_request.action,
     body_bytes: api_request.bytes,
-    duration_ns: duration_ns,
+    duration_ns: total_duration_ns,
     ip: ctx.client_info.ip,
     user_agent: ctx.client_info.user_agent,
     info: state.info_fields,
@@ -250,10 +318,17 @@ fn prepare_log_entry(
 fn result_to_response(
   ctx: context.Context,
   request: wisp.Request,
+  effects: List(effect_trace.EffectMeasurement),
+  total_duration_ns: Int,
   result: Result(ApiResult, error.Error),
 ) -> wisp.Response {
   case result {
-    Ok(response) -> api_result_to_response(ctx, request, response)
+    Ok(response) ->
+      api_result_to_response(ctx, request, response)
+      |> wisp.set_header(
+        "Server-Timing",
+        prepare_server_timings(effects, total_duration_ns),
+      )
     Error(err) -> error_to_response(err)
   }
 }
@@ -358,4 +433,18 @@ fn error_to_response(error: error.Error) -> wisp.Response {
         }
       }
   }
+}
+
+pub fn snake_to_pascal_case(value: String) -> String {
+  value
+  |> string.split("_")
+  |> list.map(fn(segment) {
+    case string.slice(segment, at_index: 0, length: 1) {
+      "" -> ""
+      first ->
+        string.uppercase(first)
+        <> string.slice(segment, at_index: 1, length: string.length(segment))
+    }
+  })
+  |> string.join("")
 }

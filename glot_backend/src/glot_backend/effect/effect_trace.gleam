@@ -28,8 +28,10 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     AuthEffectName(name) -> auth_algebra.effect_name_to_string(name)
     SnippetEffectName(name) -> snippet_algebra.effect_name_to_string(name)
     DockerRunEffectName(name) -> docker_run_algebra.effect_name_to_string(name)
-    UserActionEffectName(name) -> user_action_algebra.effect_name_to_string(name)
-    TransactionEffectName(name, _) -> transaction_algebra.effect_name_to_string(name)
+    UserActionEffectName(name) ->
+      user_action_algebra.effect_name_to_string(name)
+    TransactionEffectName(name, _) ->
+      transaction_algebra.effect_name_to_string(name)
   }
 }
 
