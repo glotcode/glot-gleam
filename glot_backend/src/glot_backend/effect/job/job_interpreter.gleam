@@ -3,14 +3,13 @@ import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/program_state
-import glot_backend/effect/program_types
 import glot_backend/erlang
 
 pub fn run(
-  effect: job_algebra.JobEffect(program_types.Program(a)),
+  effect: job_algebra.JobEffect(next_program),
   handlers: handlers.Handlers,
   state: program_state.State,
-  continue: fn(program_types.Program(a), program_state.State) ->
+  continue: fn(next_program, program_state.State) ->
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {

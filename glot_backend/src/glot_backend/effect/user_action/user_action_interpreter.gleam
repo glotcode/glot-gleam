@@ -2,15 +2,14 @@ import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/program_state
-import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_algebra
 import glot_backend/erlang
 
 pub fn run(
-  effect: user_action_algebra.UserActionEffect(program_types.Program(a)),
+  effect: user_action_algebra.UserActionEffect(next_program),
   handlers: handlers.Handlers,
   state: program_state.State,
-  continue: fn(program_types.Program(a), program_state.State) ->
+  continue: fn(next_program, program_state.State) ->
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
