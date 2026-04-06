@@ -1,4 +1,3 @@
-import gleam/http/response.{type Response}
 import gleam/option
 import gleam/regexp
 import glot_core/email/email_address_model
@@ -8,7 +7,6 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
-import rsvp
 
 pub type Model {
   Model(email: String, status: Status)
@@ -28,7 +26,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
 pub type Msg {
   EmailChanged(String)
   Submit
-  LoginTokenSent(Result(Response(String), rsvp.Error))
+  LoginTokenSent(api.ApiResponse(Nil))
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -55,8 +53,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     LoginTokenSent(result) -> {
       case result {
-        Ok(_) -> #(Model(..model, status: Success), effect.none())
-        _ -> {
+        api.ApiSuccess(_) -> #(Model(..model, status: Success), effect.none())
+        api.ApiFailure(error) -> {
+          #(Model(..model, status: Error(error.message)), effect.none())
+        }
+        api.HttpFailure(_) -> {
           #(
             Model(..model, status: Error("Could not send login email.")),
             effect.none(),
