@@ -9,6 +9,7 @@ pub type User {
     email: email_address_model.EmailAddress,
     username: Option(String),
     first_login_at: Option(Timestamp),
+    last_login_at: Option(Timestamp),
     created_at: Timestamp,
     updated_at: Timestamp,
   )
@@ -18,6 +19,11 @@ pub fn mark_first_login(user: User, timestamp: Timestamp) -> User {
   User(
     ..user,
     first_login_at: option.Some(timestamp),
+    last_login_at: option.Some(timestamp),
     updated_at: timestamp,
   )
+}
+
+pub fn mark_last_login(user: User, timestamp: Timestamp) -> User {
+  User(..user, last_login_at: option.Some(timestamp), updated_at: timestamp)
 }

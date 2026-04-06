@@ -10,7 +10,6 @@ import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
-import glot_backend/effect/transaction/transaction_program
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
@@ -63,13 +62,9 @@ pub fn login(
   use session_id <- program.and_then(basic_effect.uuid_v7())
   use session_token <- program.and_then(basic_effect.new_token(32))
 
-  let update_user_effect = case user.first_login_at {
-    option.None -> {
-      user
-      |> user_model.mark_first_login(ctx.timestamp)
-      |> auth_effect.update_user_tx
-    }
-    option.Some(_) -> transaction_program.succeed(Nil)
+  let updated_user = case user.first_login_at {
+    option.None -> user_model.mark_first_login(user, ctx.timestamp)
+    option.Some(_) -> user_model.mark_last_login(user, ctx.timestamp)
   }
 
   use _ <- program.and_then(
@@ -86,7 +81,7 @@ pub fn login(
         user_agent: ctx.client_info.user_agent,
         created_at: ctx.timestamp,
       )),
-      update_user_effect,
+      auth_effect.update_user_tx(updated_user),
       user_action_effect.create_user_action_tx(user_action),
     ]),
   )

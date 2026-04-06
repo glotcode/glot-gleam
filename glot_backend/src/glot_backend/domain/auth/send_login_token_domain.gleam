@@ -111,6 +111,7 @@ fn get_or_create_user(
           email: email,
           username: option.None,
           first_login_at: option.None,
+          last_login_at: option.None,
           created_at: ctx.timestamp,
           updated_at: ctx.timestamp,
         )

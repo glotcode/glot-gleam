@@ -9,6 +9,7 @@ SELECT
   users.email AS user_email,
   users.username AS user_username,
   users.first_login_at AS user_first_login_at,
+  users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at
 FROM sessions
