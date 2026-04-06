@@ -8,6 +8,7 @@ import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction/transaction_effect
+import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
 import glot_core/snippet/snippet_dto
@@ -28,7 +29,7 @@ pub fn create_snippet(
     ),
   )
 
-  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     user_id: option.Some(session.user.id),
     action: api_action.CreateSnippetAction,
@@ -51,8 +52,8 @@ pub fn create_snippet(
     )
   use _ <- program.and_then(
     transaction_effect.run_all([
-      snippet_effect.create(new_snippet),
-      user_action_cmd,
+      snippet_effect.create_tx(new_snippet),
+      user_action_effect.create_user_action_tx(user_action),
     ]),
   )
   use _ <- program.and_then(

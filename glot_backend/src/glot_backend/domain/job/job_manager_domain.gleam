@@ -9,6 +9,7 @@ import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
+import glot_backend/effect/transaction/transaction_program
 import glot_core/job/job_model
 
 const base_backoff_seconds = 5
@@ -19,17 +20,19 @@ pub fn claim_next_job(
   ctx: context.Context,
 ) -> program_types.Program(option.Option(job_model.Job)) {
   transaction_effect.run({
-    use maybe_job <- program.and_then(job_effect.get_next_job(
+    use maybe_job <- transaction_program.and_then(job_effect.get_next_job_tx(
       ctx.timestamp,
       job_model.Pending,
     ))
 
     case maybe_job {
-      option.None -> program.succeed(option.None)
+      option.None -> transaction_program.succeed(option.None)
       option.Some(next_job) -> {
         let started_job = job_model.start(next_job, ctx.timestamp)
-        use _ <- program.and_then(job_effect.update_job(started_job))
-        program.succeed(option.Some(started_job))
+        use _ <- transaction_program.and_then(job_effect.update_job_tx(
+          started_job,
+        ))
+        transaction_program.succeed(option.Some(started_job))
       }
     }
   })

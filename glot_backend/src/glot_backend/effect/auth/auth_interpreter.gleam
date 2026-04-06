@@ -1,10 +1,10 @@
 import glot_backend/context
 import glot_backend/effect/auth/auth_algebra
-import glot_backend/effect/program_types
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/program_state
+import glot_backend/effect/program_types
 import glot_backend/erlang
 
 pub fn run(
@@ -50,7 +50,9 @@ pub fn run(
             next(value),
             program_state.add_effect_measurement(
               state,
-              effect_trace.AuthEffectName(auth_algebra.ListLoginTokensByUserEffectName),
+              effect_trace.AuthEffectName(
+                auth_algebra.ListLoginTokensByUserEffectName,
+              ),
               effect_trace.DbReadEffectCategory,
               started_at,
             ),
@@ -59,7 +61,9 @@ pub fn run(
           Error(error.QueryError(error)),
           program_state.add_effect_measurement(
             state,
-            effect_trace.AuthEffectName(auth_algebra.ListLoginTokensByUserEffectName),
+            effect_trace.AuthEffectName(
+              auth_algebra.ListLoginTokensByUserEffectName,
+            ),
             effect_trace.DbReadEffectCategory,
             started_at,
           ),
@@ -68,14 +72,17 @@ pub fn run(
     }
     auth_algebra.GetSessionByToken(token:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.get_session_by_token(ctx.regexes.is_email, token)
+      let result =
+        handlers.auth.get_session_by_token(ctx.regexes.is_email, token)
       case result {
         Ok(value) ->
           continue(
             next(value),
             program_state.add_effect_measurement(
               state,
-              effect_trace.AuthEffectName(auth_algebra.GetSessionByTokenEffectName),
+              effect_trace.AuthEffectName(
+                auth_algebra.GetSessionByTokenEffectName,
+              ),
               effect_trace.DbReadEffectCategory,
               started_at,
             ),
@@ -84,7 +91,9 @@ pub fn run(
           Error(error.QueryError(error)),
           program_state.add_effect_measurement(
             state,
-            effect_trace.AuthEffectName(auth_algebra.GetSessionByTokenEffectName),
+            effect_trace.AuthEffectName(
+              auth_algebra.GetSessionByTokenEffectName,
+            ),
             effect_trace.DbReadEffectCategory,
             started_at,
           ),

@@ -113,17 +113,27 @@ fn map_effect(
       program_types.BasicEffect(basic_algebra.map(effect, f))
     program_types.EmailEffect(effect) ->
       program_types.EmailEffect(email_algebra.map(effect, f))
-    program_types.JobEffect(effect) ->
-      program_types.JobEffect(job_algebra.map(effect, f))
-    program_types.AuthEffect(effect) ->
-      program_types.AuthEffect(auth_algebra.map(effect, f))
-    program_types.SnippetEffect(effect) ->
-      program_types.SnippetEffect(snippet_algebra.map(effect, f))
     program_types.DockerRunEffect(effect) ->
       program_types.DockerRunEffect(docker_run_algebra.map(effect, f))
-    program_types.UserActionEffect(effect) ->
-      program_types.UserActionEffect(user_action_algebra.map(effect, f))
+    program_types.DbEffect(effect) ->
+      program_types.DbEffect(map_db_effect(effect, f))
     program_types.TransactionEffect(effect) ->
       program_types.TransactionEffect(transaction_algebra.map(effect, f))
+  }
+}
+
+fn map_db_effect(
+  effect: program_types.DbEffect(a),
+  f: fn(a) -> b,
+) -> program_types.DbEffect(b) {
+  case effect {
+    program_types.AuthEffect(effect) ->
+      program_types.AuthEffect(auth_algebra.map(effect, f))
+    program_types.JobEffect(effect) ->
+      program_types.JobEffect(job_algebra.map(effect, f))
+    program_types.SnippetEffect(effect) ->
+      program_types.SnippetEffect(snippet_algebra.map(effect, f))
+    program_types.UserActionEffect(effect) ->
+      program_types.UserActionEffect(user_action_algebra.map(effect, f))
   }
 }

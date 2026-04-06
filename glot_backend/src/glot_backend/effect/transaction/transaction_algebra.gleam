@@ -1,13 +1,13 @@
-pub type TransactionEffect(next) {
-  Run(program: next)
-}
+import glot_backend/effect/program_types
+import glot_backend/effect/transaction/transaction_program
 
 pub fn map(
-  effect: TransactionEffect(a),
+  effect: program_types.TransactionEffect(a),
   f: fn(a) -> b,
-) -> TransactionEffect(b) {
+) -> program_types.TransactionEffect(b) {
   case effect {
-    Run(program:) -> Run(program: f(program))
+    program_types.Run(program:) ->
+      program_types.Run(program: transaction_program.map(program, f))
   }
 }
 
@@ -20,4 +20,3 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     RunEffectName -> "run"
   }
 }
-

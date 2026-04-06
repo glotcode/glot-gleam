@@ -18,7 +18,7 @@ pub fn enforce(
   ctx ctx: context.Context,
   user_id user_id: Option(Uuid),
   action action: ApiAction,
-) -> program_types.Program(program_types.Program(Nil)) {
+) -> program_types.Program(user_action.UserAction) {
   let action_rate_limits = lookup_rate_limits(ctx.config.rate_limits, action)
 
   use _ <- program.and_then(program.when(
@@ -50,16 +50,14 @@ pub fn enforce(
   )
   use id <- program.and_then(basic_effect.uuid_v7())
 
-  program.succeed(
-    user_action_effect.create_user_action(user_action.UserAction(
-      id: id,
-      request_id: ctx.request_id,
-      action: action,
-      ip: ctx.client_info.ip,
-      user_id: user_id,
-      created_at: ctx.timestamp,
-    )),
-  )
+  program.succeed(user_action.UserAction(
+    id: id,
+    request_id: ctx.request_id,
+    action: action,
+    ip: ctx.client_info.ip,
+    user_id: user_id,
+    created_at: ctx.timestamp,
+  ))
 }
 
 fn user_action_filter(

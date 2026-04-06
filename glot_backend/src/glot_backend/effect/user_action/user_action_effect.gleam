@@ -8,10 +8,7 @@ pub fn count_user_actions(
   filter filter: UserActionFilter,
 ) -> program_types.Program(List(rate_limit.WindowCount)) {
   program_types.Impure(
-    program_types.UserActionEffect(user_action_algebra.CountUserActions(
-      filter: filter,
-      next: program_types.Pure,
-    )),
+    program_types.DbEffect(count_user_actions_effect(filter, program_types.Pure)),
   )
 }
 
@@ -19,10 +16,7 @@ pub fn create_user_action(
   user_action user_action: UserAction,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.UserActionEffect(user_action_algebra.CreateUserAction(
-      user_action: user_action,
-      next: command_next,
-    )),
+    program_types.DbEffect(create_user_action_effect(user_action, command_next)),
   )
 }
 
@@ -33,4 +27,45 @@ fn command_next(
     Ok(_) -> program_types.Pure(Nil)
     Error(err) -> program_types.Fail(error.CommandError(err))
   }
+}
+
+pub fn count_user_actions_tx(
+  filter filter: UserActionFilter,
+) -> program_types.TransactionProgram(List(rate_limit.WindowCount)) {
+  program_types.TxImpure(count_user_actions_effect(filter, program_types.TxPure))
+}
+
+pub fn create_user_action_tx(
+  user_action user_action: UserAction,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(create_user_action_effect(user_action, tx_command_next))
+}
+
+fn tx_command_next(
+  result: Result(Nil, error.DbCommandError),
+) -> program_types.TransactionProgram(Nil) {
+  case result {
+    Ok(_) -> program_types.TxPure(Nil)
+    Error(err) -> program_types.TxFail(error.CommandError(err))
+  }
+}
+
+fn count_user_actions_effect(
+  filter: UserActionFilter,
+  next: fn(List(rate_limit.WindowCount)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.UserActionEffect(user_action_algebra.CountUserActions(
+    filter: filter,
+    next: next,
+  ))
+}
+
+fn create_user_action_effect(
+  user_action: UserAction,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.UserActionEffect(user_action_algebra.CreateUserAction(
+    user_action: user_action,
+    next: next,
+  ))
 }

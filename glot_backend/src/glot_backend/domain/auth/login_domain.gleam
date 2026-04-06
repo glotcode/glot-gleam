@@ -10,6 +10,8 @@ import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
+import glot_backend/effect/transaction/transaction_program
+import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
 import glot_core/auth/login_dto
@@ -30,7 +32,7 @@ pub fn login(
     ),
   )
 
-  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     user_id: option.None,
     action: api_action.LoginAction,
@@ -65,18 +67,18 @@ pub fn login(
     option.None -> {
       user
       |> user_model.mark_first_login(ctx.timestamp)
-      |> auth_effect.update_user
+      |> auth_effect.update_user_tx
     }
-    option.Some(_) -> program.succeed(Nil)
+    option.Some(_) -> transaction_program.succeed(Nil)
   }
 
   use _ <- program.and_then(
     transaction_effect.run_all([
-      auth_effect.update_login_token(login_token_model.mark_as_used(
+      auth_effect.update_login_token_tx(login_token_model.mark_as_used(
         matching_token,
         ctx.timestamp,
       )),
-      auth_effect.create_session(session_model.Session(
+      auth_effect.create_session_tx(session_model.Session(
         id: session_id,
         user_id: user.id,
         token: session_token,
@@ -85,7 +87,7 @@ pub fn login(
         created_at: ctx.timestamp,
       )),
       update_user_effect,
-      user_action_cmd,
+      user_action_effect.create_user_action_tx(user_action),
     ]),
   )
   use _ <- program.and_then(

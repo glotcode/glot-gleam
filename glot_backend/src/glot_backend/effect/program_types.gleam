@@ -5,7 +5,6 @@ import glot_backend/effect/email/email_algebra
 import glot_backend/effect/error
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/snippet/snippet_algebra
-import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/user_action/user_action_algebra
 
 pub type Program(a) {
@@ -14,13 +13,27 @@ pub type Program(a) {
   Impure(Effect(Program(a)))
 }
 
+pub type TransactionProgram(a) {
+  TxPure(a)
+  TxFail(error.Error)
+  TxImpure(DbEffect(TransactionProgram(a)))
+}
+
 pub type Effect(next) {
   BasicEffect(basic_algebra.BasicEffect(next))
   EmailEffect(email_algebra.EmailEffect(next))
-  JobEffect(job_algebra.JobEffect(next))
-  AuthEffect(auth_algebra.AuthEffect(next))
-  SnippetEffect(snippet_algebra.SnippetEffect(next))
   DockerRunEffect(docker_run_algebra.DockerRunEffect(next))
+  DbEffect(DbEffect(next))
+  TransactionEffect(TransactionEffect(next))
+}
+
+pub type DbEffect(next) {
+  AuthEffect(auth_algebra.AuthEffect(next))
+  JobEffect(job_algebra.JobEffect(next))
+  SnippetEffect(snippet_algebra.SnippetEffect(next))
   UserActionEffect(user_action_algebra.UserActionEffect(next))
-  TransactionEffect(transaction_algebra.TransactionEffect(next))
+}
+
+pub type TransactionEffect(next) {
+  Run(program: TransactionProgram(next))
 }

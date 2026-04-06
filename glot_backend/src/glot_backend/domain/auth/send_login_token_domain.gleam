@@ -8,6 +8,8 @@ import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
+import glot_backend/effect/transaction/transaction_program
+import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
 import glot_core/auth/login_token_dto
@@ -25,7 +27,7 @@ pub fn send_login_token(
     basic_effect.info(log.singleton(log.email("email", request.email))),
   )
 
-  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     user_id: option.None,
     action: api_action.SendLoginTokenAction,
@@ -56,19 +58,23 @@ pub fn send_login_token(
       email_message,
     )
   let create_token_effect =
-    auth_effect.create_login_token(login_token_model.LoginToken(
+    auth_effect.create_login_token_tx(login_token_model.LoginToken(
       id: login_token_id,
       user_id: user_outcome.user.id,
       token: token,
       created_at: ctx.timestamp,
       used_at: option.None,
     ))
+  let create_user_effect = case user_outcome.is_new_user {
+    True -> auth_effect.create_user_tx(user_outcome.user)
+    False -> transaction_program.succeed(Nil)
+  }
 
   transaction_effect.run_all([
-    user_outcome.effect,
+    create_user_effect,
     create_token_effect,
-    job_effect.create_job(send_email_job),
-    user_action_cmd,
+    job_effect.create_job_tx(send_email_job),
+    user_action_effect.create_user_action_tx(user_action),
   ])
 }
 
@@ -80,11 +86,7 @@ pub fn request_from_dynamic(
 }
 
 type UserOutcome {
-  UserOutcome(
-    user: user_model.User,
-    effect: program_types.Program(Nil),
-    is_new_user: Bool,
-  )
+  UserOutcome(user: user_model.User, is_new_user: Bool)
 }
 
 fn get_or_create_user(
@@ -95,11 +97,7 @@ fn get_or_create_user(
 
   case maybe_user {
     option.Some(existing_user) ->
-      program.succeed(UserOutcome(
-        user: existing_user,
-        effect: program.succeed(Nil),
-        is_new_user: False,
-      ))
+      program.succeed(UserOutcome(user: existing_user, is_new_user: False))
     option.None -> {
       use user_id <- program.and_then(basic_effect.uuid_v7())
 
@@ -113,11 +111,7 @@ fn get_or_create_user(
           updated_at: ctx.timestamp,
         )
 
-      program.succeed(UserOutcome(
-        user: new_user,
-        effect: auth_effect.create_user(new_user),
-        is_new_user: True,
-      ))
+      program.succeed(UserOutcome(user: new_user, is_new_user: True))
     }
   }
 }

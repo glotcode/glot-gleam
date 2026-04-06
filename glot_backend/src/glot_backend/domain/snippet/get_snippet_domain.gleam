@@ -8,6 +8,7 @@ import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
+import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
 import glot_core/snippet/snippet_dto
@@ -31,7 +32,7 @@ pub fn get_snippet(
     ),
   )
 
-  use user_action_cmd <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
     user_id: maybe_user_id,
     action: api_action.GetSnippetAction,
@@ -39,7 +40,9 @@ pub fn get_snippet(
 
   use snippet <- program.and_then(
     snippet_effect.get_by_slug(request.slug)
-    |> program.require(error.QueryError(error.DbQueryError("Snippet not found"))),
+    |> program.require(
+      error.QueryError(error.DbQueryError("Snippet not found")),
+    ),
   )
 
   let is_owner = maybe_user_id == option.Some(snippet.user.id)
@@ -56,7 +59,7 @@ pub fn get_snippet(
     ),
   )
 
-  use _ <- program.and_then(user_action_cmd)
+  use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
   program.succeed(snippet_dto.from_snippet(snippet))
 }

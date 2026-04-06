@@ -6,8 +6,8 @@ import glot_backend/effect/docker_run/docker_run_interpreter
 import glot_backend/effect/email/email_interpreter
 import glot_backend/effect/error
 import glot_backend/effect/job/job_interpreter
-import glot_backend/effect/program_types
 import glot_backend/effect/program_state
+import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_interpreter
 import glot_backend/effect/transaction/transaction_interpreter
@@ -48,25 +48,32 @@ pub fn run_with_state(
           basic_interpreter.run(effect, ctx, runtime.handlers, state, continue)
         program_types.EmailEffect(effect) ->
           email_interpreter.run(effect, ctx, runtime.handlers, state, continue)
-        program_types.JobEffect(effect) ->
-          job_interpreter.run(effect, runtime.handlers, state, continue)
-        program_types.AuthEffect(effect) ->
-          auth_interpreter.run(effect, ctx, runtime.handlers, state, continue)
-        program_types.SnippetEffect(effect) ->
-          snippet_interpreter.run(effect, runtime.handlers, state, continue)
         program_types.DockerRunEffect(effect) ->
           docker_run_interpreter.run(effect, runtime.handlers, state, continue)
-        program_types.UserActionEffect(effect) ->
-          user_action_interpreter.run(effect, runtime.handlers, state, continue)
+        program_types.DbEffect(effect) ->
+          run_db_effect(effect, runtime, ctx, state, continue)
         program_types.TransactionEffect(effect) ->
-          transaction_interpreter.run(
-            effect,
-            runtime,
-            ctx,
-            state,
-            continue,
-            run_with_state,
-          )
+          transaction_interpreter.run(effect, runtime, ctx, state, continue)
       }
+  }
+}
+
+fn run_db_effect(
+  effect: program_types.DbEffect(program_types.Program(a)),
+  runtime: runtime.Runtime,
+  ctx: context.Context,
+  state: program_state.State,
+  continue: fn(program_types.Program(a), program_state.State) ->
+    #(Result(a, error.Error), program_state.State),
+) -> #(Result(a, error.Error), program_state.State) {
+  case effect {
+    program_types.AuthEffect(effect) ->
+      auth_interpreter.run(effect, ctx, runtime.handlers, state, continue)
+    program_types.JobEffect(effect) ->
+      job_interpreter.run(effect, runtime.handlers, state, continue)
+    program_types.SnippetEffect(effect) ->
+      snippet_interpreter.run(effect, runtime.handlers, state, continue)
+    program_types.UserActionEffect(effect) ->
+      user_action_interpreter.run(effect, runtime.handlers, state, continue)
   }
 }
