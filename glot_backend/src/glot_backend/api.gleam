@@ -23,7 +23,7 @@ import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
-import glot_backend/log_worker
+import glot_backend/worker/log_worker
 import glot_backend/server_timing
 import glot_core/api_action.{type ApiAction}
 import glot_core/run

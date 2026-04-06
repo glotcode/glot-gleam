@@ -12,10 +12,10 @@ import gleam/string
 import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
-import glot_backend/db_monitor
+import glot_backend/worker/db_monitor
 import glot_backend/erlang
-import glot_backend/job_worker
-import glot_backend/log_worker
+import glot_backend/worker/job_worker
+import glot_backend/worker/log_worker
 import glot_core/email/email_address_model
 import lustre/attribute
 import lustre/element
