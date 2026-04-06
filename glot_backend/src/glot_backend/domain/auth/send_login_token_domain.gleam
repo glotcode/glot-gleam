@@ -65,13 +65,9 @@ pub fn send_login_token(
       created_at: ctx.timestamp,
       used_at: option.None,
     ))
-  let create_user_effect = case user_outcome.is_new_user {
-    True -> auth_effect.create_user_tx(user_outcome.user)
-    False -> transaction_program.succeed(Nil)
-  }
 
   transaction_effect.run_all([
-    create_user_effect,
+    user_outcome.effect,
     create_token_effect,
     job_effect.create_job_tx(send_email_job),
     user_action_effect.create_user_action_tx(user_action),
@@ -86,7 +82,11 @@ pub fn request_from_dynamic(
 }
 
 type UserOutcome {
-  UserOutcome(user: user_model.User, is_new_user: Bool)
+  UserOutcome(
+    user: user_model.User,
+    effect: program_types.TransactionProgram(Nil),
+    is_new_user: Bool,
+  )
 }
 
 fn get_or_create_user(
@@ -97,11 +97,15 @@ fn get_or_create_user(
 
   case maybe_user {
     option.Some(existing_user) ->
-      program.succeed(UserOutcome(user: existing_user, is_new_user: False))
+      program.succeed(UserOutcome(
+        user: existing_user,
+        is_new_user: False,
+        effect: transaction_program.succeed(Nil),
+      ))
     option.None -> {
       use user_id <- program.and_then(basic_effect.uuid_v7())
 
-      let new_user =
+      let user =
         user_model.User(
           id: user_id,
           email: email,
@@ -111,7 +115,11 @@ fn get_or_create_user(
           updated_at: ctx.timestamp,
         )
 
-      program.succeed(UserOutcome(user: new_user, is_new_user: True))
+      program.succeed(UserOutcome(
+        user: user,
+        is_new_user: True,
+        effect: auth_effect.create_user_tx(user),
+      ))
     }
   }
 }
