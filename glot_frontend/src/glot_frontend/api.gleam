@@ -2,6 +2,7 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/option
 import glot_core/api_action.{type ApiAction}
+import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
 import glot_core/email/email_address_model.{type EmailAddress}
 import lustre/effect
@@ -32,6 +33,20 @@ pub fn send_login_token(
     )
 
   send_api_request(req, login_token_dto.encode, nil_decoder(), to_msg)
+}
+
+pub fn login(
+  email: EmailAddress,
+  token: String,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req =
+    ApiRequest(
+      api_action.LoginAction,
+      login_dto.LoginRequest(email: email, token: token),
+    )
+
+  send_api_request(req, login_dto.encode, nil_decoder(), to_msg)
 }
 
 fn send_api_request(
