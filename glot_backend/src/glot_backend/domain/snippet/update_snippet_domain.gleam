@@ -15,6 +15,7 @@ import glot_backend/log
 import glot_core/api_action
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
+import glot_core/snippet/snippet_spam
 
 pub fn update_snippet(
   ctx: context.Context,
@@ -49,6 +50,13 @@ pub fn update_snippet(
     session.user.id,
     existing_snippet.user.id,
   ))
+
+  use _ <- program.and_then(
+    case snippet_spam.ensure_clean(request.data) {
+      Ok(_) -> program.succeed(Nil)
+      Error(message) -> program.fail(error.ValidationError(message))
+    },
+  )
 
   let updated_snippet =
     snippet_model.Snippet(

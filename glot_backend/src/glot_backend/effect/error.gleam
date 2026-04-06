@@ -50,6 +50,7 @@ pub type Error {
   JsonParseError(json.DecodeError)
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
+  ValidationError(String)
   TooManyRequestsError(count: Int, rate_limit: RateLimit)
   QueryError(DbQueryError)
   CommandError(DbCommandError)
@@ -67,6 +68,7 @@ pub fn to_string(err: Error) -> String {
     JsonParseError(error) -> "parse_error:" <> string.inspect(error)
     DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
     EmailInvalidError(message) -> "email_invalid:" <> message
+    ValidationError(message) -> "validation_error:" <> message
     TooManyRequestsError(count, _) ->
       "too_many_requests:" <> int.to_string(count)
     QueryError(DbQueryError(message: message)) -> "query_error:" <> message

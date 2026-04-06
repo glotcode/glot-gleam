@@ -1,9 +1,10 @@
 import gleam/dynamic
 import gleam/option
 import glot_backend/context
-import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/domain/shared/session_domain
+import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/effect/basic/basic_effect
+import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
@@ -13,6 +14,7 @@ import glot_backend/log
 import glot_core/api_action
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
+import glot_core/snippet/snippet_spam
 
 pub fn create_snippet(
   ctx: context.Context,
@@ -34,6 +36,13 @@ pub fn create_snippet(
     user_id: option.Some(session.user.id),
     action: api_action.CreateSnippetAction,
   ))
+
+  use _ <- program.and_then(
+    case snippet_spam.ensure_clean(request.data) {
+      Ok(_) -> program.succeed(Nil)
+      Error(message) -> program.fail(error.ValidationError(message))
+    },
+  )
 
   use snippet_id <- program.and_then(basic_effect.uuid_v7())
   let new_snippet =

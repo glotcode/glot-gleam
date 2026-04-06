@@ -297,6 +297,10 @@ fn error_to_response(error: error.Error) -> wisp.Response {
     error.EmailInvalidError(message) -> {
       error_response("email_invalid", "Invalid email: " <> message)
     }
+    error.ValidationError(message) -> {
+      wisp.log_error("Validation error: " <> message)
+      error_response("validation_error", message)
+    }
     error.TooManyRequestsError(count, config) -> {
       error_response(
         "too_many_requests",
