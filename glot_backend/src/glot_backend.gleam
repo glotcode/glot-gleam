@@ -12,6 +12,7 @@ import gleam/string
 import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
+import glot_backend/db_monitor
 import glot_backend/erlang
 import glot_backend/job_worker
 import glot_backend/log_worker
@@ -190,8 +191,9 @@ fn start_supervisor_tree(
   log_worker_name: process.Name(log_worker.Message),
   mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
 ) {
-  static_supervisor.new(static_supervisor.RestForOne)
+  static_supervisor.new(static_supervisor.OneForAll)
   |> static_supervisor.add(pog.supervised(pog_config))
+  |> static_supervisor.add(db_monitor.supervised(db))
   |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
   |> static_supervisor.add(job_worker.supervised(db, config, regexes))
   |> static_supervisor.add(mist.supervised(mist_builder))
