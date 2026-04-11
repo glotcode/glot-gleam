@@ -21,6 +21,7 @@ import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
+import glot_backend/crypto_token
 import glot_backend/log
 import glot_core/job/job_model
 import glot_core/language
@@ -74,7 +75,9 @@ pub fn measures_effects_in_success_test() {
   let effect_runtime = test_runtime()
   let ctx = test_context()
   let measured_effect = {
-    use _ <- program.and_then(basic_effect.new_token(5))
+    use _ <- program.and_then(
+      basic_effect.new_token(5, crypto_token.AlphaNumeric),
+    )
     program.succeed("ok")
   }
   let #(run_result, state) =
@@ -95,7 +98,9 @@ pub fn measures_effects_in_error_test() {
   let effect_runtime = test_runtime()
   let ctx = test_context()
   let failing_effect = {
-    use _ <- program.and_then(basic_effect.new_token(5))
+    use _ <- program.and_then(
+      basic_effect.new_token(5, crypto_token.AlphaNumeric),
+    )
     program.fail(error.EmailInvalidError("bad"))
   }
   let #(run_result, state) =
@@ -231,7 +236,7 @@ pub fn snippet_spam_filter_blocks_obvious_spam_test() {
 fn test_handlers() -> handlers.Handlers {
   handlers.Handlers(
     basic: basic_handlers.BasicHandlers(
-      new_token: fn(_) { "random" },
+      new_token: fn(_, _) { "random" },
       system_time: timestamp.system_time,
       uuid_v7: fn(_) { uuid.nil },
     ),

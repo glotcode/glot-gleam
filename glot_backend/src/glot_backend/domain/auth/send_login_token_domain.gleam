@@ -1,6 +1,7 @@
 import gleam/dynamic
 import gleam/option
 import glot_backend/context
+import glot_backend/crypto_token
 import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
@@ -30,7 +31,9 @@ pub fn send_login_token(
     action: api_action.SendLoginTokenAction,
   ))
 
-  use token <- program.and_then(basic_effect.new_token(10))
+  use token <- program.and_then(
+    basic_effect.new_token(10, crypto_token.Numeric),
+  )
   use login_token_id <- program.and_then(basic_effect.uuid_v7())
   use job_id <- program.and_then(basic_effect.uuid_v7())
 

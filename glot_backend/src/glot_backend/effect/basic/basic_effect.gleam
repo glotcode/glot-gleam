@@ -1,12 +1,20 @@
 import gleam/time/timestamp.{type Timestamp}
+import glot_backend/crypto_token
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/program_types
 import glot_backend/log
 import youid/uuid.{type Uuid}
 
-pub fn new_token(length: Int) -> program_types.Program(String) {
+pub fn new_token(
+  length: Int,
+  alphabet: crypto_token.Alphabet,
+) -> program_types.Program(String) {
   program_types.Impure(
-    program_types.BasicEffect(basic_algebra.NewToken(length, program_types.Pure)),
+    program_types.BasicEffect(basic_algebra.NewToken(
+      length,
+      alphabet,
+      program_types.Pure,
+    )),
   )
 }
 

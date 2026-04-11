@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
+import glot_backend/crypto_token
 import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
@@ -55,7 +56,10 @@ pub fn login(
     login_token_model.mark_as_used(matching_token, ctx.timestamp)
 
   use session_id <- program.and_then(basic_effect.uuid_v7())
-  use session_token <- program.and_then(basic_effect.new_token(32))
+  use session_token <- program.and_then(basic_effect.new_token(
+    32,
+    crypto_token.AlphaNumeric,
+  ))
 
   use user_outcome <- program.and_then(get_or_create_user(
     request.email,

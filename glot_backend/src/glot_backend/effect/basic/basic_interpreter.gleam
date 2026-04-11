@@ -17,9 +17,9 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    basic_algebra.NewToken(length, next) -> {
+    basic_algebra.NewToken(length, alphabet, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.basic.new_token(length)
+      let value = handlers.basic.new_token(length, alphabet)
       continue(
         next(value),
         program_state.add_effect_measurement(
