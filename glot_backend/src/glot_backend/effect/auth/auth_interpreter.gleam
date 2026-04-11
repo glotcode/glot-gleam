@@ -40,9 +40,9 @@ pub fn run(
         )
       }
     }
-    auth_algebra.ListLoginTokensByUser(user_id:, limit:, next:) -> {
+    auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.list_login_tokens_by_user(user_id, limit)
+      let result = handlers.auth.list_login_tokens_by_email(email, limit)
       case result {
         Ok(value) ->
           continue(
@@ -50,7 +50,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.AuthEffectName(
-                auth_algebra.ListLoginTokensByUserEffectName,
+                auth_algebra.ListLoginTokensByEmailEffectName,
               ),
               effect_trace.DbReadEffectCategory,
               started_at,
@@ -61,7 +61,7 @@ pub fn run(
           program_state.add_effect_measurement(
             state,
             effect_trace.AuthEffectName(
-              auth_algebra.ListLoginTokensByUserEffectName,
+              auth_algebra.ListLoginTokensByEmailEffectName,
             ),
             effect_trace.DbReadEffectCategory,
             started_at,

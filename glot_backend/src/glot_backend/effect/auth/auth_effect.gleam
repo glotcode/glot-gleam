@@ -6,7 +6,6 @@ import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
-import youid/uuid.{type Uuid}
 
 pub fn get_user_by_email(
   email email: email_address_model.EmailAddress,
@@ -16,13 +15,13 @@ pub fn get_user_by_email(
   )
 }
 
-pub fn list_login_tokens_by_user(
-  user_id user_id: Uuid,
+pub fn list_login_tokens_by_email(
+  email email: email_address_model.EmailAddress,
   limit limit: Int,
 ) -> program_types.Program(List(login_token_model.LoginToken)) {
   program_types.Impure(
-    program_types.DbEffect(list_login_tokens_by_user_effect(
-      user_id,
+    program_types.DbEffect(list_login_tokens_by_email_effect(
+      email,
       limit,
       program_types.Pure,
     )),
@@ -82,12 +81,12 @@ pub fn get_user_by_email_tx(
   program_types.TxImpure(get_user_by_email_effect(email, program_types.TxPure))
 }
 
-pub fn list_login_tokens_by_user_tx(
-  user_id user_id: Uuid,
+pub fn list_login_tokens_by_email_tx(
+  email email: email_address_model.EmailAddress,
   limit limit: Int,
 ) -> program_types.TransactionProgram(List(login_token_model.LoginToken)) {
-  program_types.TxImpure(list_login_tokens_by_user_effect(
-    user_id,
+  program_types.TxImpure(list_login_tokens_by_email_effect(
+    email,
     limit,
     program_types.TxPure,
   ))
@@ -159,13 +158,13 @@ fn get_user_by_email_effect(
   program_types.AuthEffect(auth_algebra.GetUserByEmail(email:, next: next))
 }
 
-fn list_login_tokens_by_user_effect(
-  user_id: Uuid,
+fn list_login_tokens_by_email_effect(
+  email: email_address_model.EmailAddress,
   limit: Int,
   next: fn(List(login_token_model.LoginToken)) -> next,
 ) -> program_types.DbEffect(next) {
-  program_types.AuthEffect(auth_algebra.ListLoginTokensByUser(
-    user_id:,
+  program_types.AuthEffect(auth_algebra.ListLoginTokensByEmail(
+    email:,
     limit:,
     next: next,
   ))

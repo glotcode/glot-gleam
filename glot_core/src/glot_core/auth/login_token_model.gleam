@@ -1,11 +1,12 @@
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/email/email_address_model
 import youid/uuid.{type Uuid}
 
 pub type LoginToken {
   LoginToken(
     id: Uuid,
-    user_id: Uuid,
+    email: email_address_model.EmailAddress,
     token: String,
     created_at: Timestamp,
     used_at: Option(Timestamp),

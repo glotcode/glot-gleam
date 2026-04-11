@@ -4,15 +4,14 @@ import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
-import youid/uuid.{type Uuid}
 
 pub type AuthEffect(next) {
   GetUserByEmail(
     email: email_address_model.EmailAddress,
     next: fn(option.Option(user_model.User)) -> next,
   )
-  ListLoginTokensByUser(
-    user_id: Uuid,
+  ListLoginTokensByEmail(
+    email: email_address_model.EmailAddress,
     limit: Int,
     next: fn(List(login_token_model.LoginToken)) -> next,
   )
@@ -46,8 +45,8 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
   case effect {
     GetUserByEmail(email:, next:) ->
       GetUserByEmail(email: email, next: fn(value) { f(next(value)) })
-    ListLoginTokensByUser(user_id:, limit:, next:) ->
-      ListLoginTokensByUser(user_id: user_id, limit: limit, next: fn(value) {
+    ListLoginTokensByEmail(email:, limit:, next:) ->
+      ListLoginTokensByEmail(email: email, limit: limit, next: fn(value) {
         f(next(value))
       })
     GetSessionByToken(token:, next:) ->
@@ -76,7 +75,7 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
 
 pub type EffectName {
   GetUserByEmailEffectName
-  ListLoginTokensByUserEffectName
+  ListLoginTokensByEmailEffectName
   GetSessionByTokenEffectName
   CreateUserEffectName
   UpdateUserEffectName
@@ -88,7 +87,7 @@ pub type EffectName {
 pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetUserByEmailEffectName -> "get_user_by_email"
-    ListLoginTokensByUserEffectName -> "list_login_tokens_by_user"
+    ListLoginTokensByEmailEffectName -> "list_login_tokens_by_email"
     GetSessionByTokenEffectName -> "get_session_by_token"
     CreateUserEffectName -> "create_user"
     UpdateUserEffectName -> "update_user"

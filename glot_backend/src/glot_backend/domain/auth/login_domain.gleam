@@ -17,6 +17,8 @@ import glot_core/auth/login_dto
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
+import glot_core/email/email_address_model.{type EmailAddress}
+import youid/uuid.{type Uuid}
 
 pub fn login(
   ctx: context.Context,
@@ -37,17 +39,8 @@ pub fn login(
     action: api_action.LoginAction,
   ))
 
-  use user <- program.and_then(
-    auth_effect.get_user_by_email(request.email)
-    |> program.require(error.LoginError(error.InvalidTokenError)),
-  )
-
-  use _ <- program.and_then(
-    basic_effect.info(log.singleton(log.uuid("user_id", user.id))),
-  )
-
-  use tokens <- program.and_then(auth_effect.list_login_tokens_by_user(
-    user.id,
+  use tokens <- program.and_then(auth_effect.list_login_tokens_by_email(
+    request.email,
     10,
   ))
   use matching_token <- program.and_then(
@@ -58,38 +51,47 @@ pub fn login(
       ctx.config.auth.login_token_max_age,
     )),
   )
+  let used_login_token =
+    login_token_model.mark_as_used(matching_token, ctx.timestamp)
 
   use session_id <- program.and_then(basic_effect.uuid_v7())
   use session_token <- program.and_then(basic_effect.new_token(32))
 
-  let updated_user = case user.first_login_at {
-    option.None -> user_model.mark_first_login(user, ctx.timestamp)
-    option.Some(_) -> user_model.mark_last_login(user, ctx.timestamp)
-  }
+  use user_outcome <- program.and_then(get_or_create_user(
+    request.email,
+    ctx.timestamp,
+  ))
+
+  let user = user_outcome.user |> user_model.mark_last_login(ctx.timestamp)
+
+  let session =
+    session_model.Session(
+      id: session_id,
+      user_id: user.id,
+      token: session_token,
+      ip: ctx.client_info.ip,
+      user_agent: ctx.client_info.user_agent,
+      created_at: ctx.timestamp,
+    )
+
+  use _ <- program.and_then(
+    basic_effect.info(log.singleton(log.uuid("user_id", user.id))),
+  )
 
   use _ <- program.and_then(
     transaction_effect.run_all([
-      auth_effect.update_login_token_tx(login_token_model.mark_as_used(
-        matching_token,
-        ctx.timestamp,
-      )),
-      auth_effect.create_session_tx(session_model.Session(
-        id: session_id,
-        user_id: user.id,
-        token: session_token,
-        ip: ctx.client_info.ip,
-        user_agent: ctx.client_info.user_agent,
-        created_at: ctx.timestamp,
-      )),
-      auth_effect.update_user_tx(updated_user),
+      auth_effect.update_login_token_tx(used_login_token),
+      user_outcome.persist_fn(user),
+      auth_effect.create_session_tx(session),
       user_action_effect.create_user_action_tx(user_action),
     ]),
   )
+
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
         log.uuid("session_id", session_id),
-        log.bool("is_first_login", option.is_none(user.first_login_at)),
+        log.bool("is_first_login", user_outcome.is_new_user),
       ]),
     ),
   )
@@ -102,6 +104,41 @@ pub fn request_from_dynamic(
   data: dynamic.Dynamic,
 ) -> program_types.Program(login_dto.LoginRequest) {
   program.decode_dynamic(data, login_dto.decoder(ctx.regexes.is_email))
+}
+
+type UserOutcome {
+  UserOutcome(
+    user: user_model.User,
+    is_new_user: Bool,
+    persist_fn: fn(user_model.User) -> program_types.TransactionProgram(Nil),
+  )
+}
+
+fn get_or_create_user(
+  email: EmailAddress,
+  now: timestamp.Timestamp,
+) -> program_types.Program(UserOutcome) {
+  use maybe_user <- program.and_then(auth_effect.get_user_by_email(email))
+
+  case maybe_user {
+    option.Some(existing_user) -> {
+      program.succeed(UserOutcome(
+        user: existing_user,
+        is_new_user: False,
+        persist_fn: auth_effect.update_user_tx,
+      ))
+    }
+    option.None -> {
+      use user_id <- program.and_then(basic_effect.uuid_v7())
+      let new_user = new_user(user_id, email, now)
+
+      program.succeed(UserOutcome(
+        user: new_user,
+        is_new_user: True,
+        persist_fn: auth_effect.create_user_tx,
+      ))
+    }
+  }
 }
 
 fn find_valid_token(
@@ -134,4 +171,19 @@ fn token_is_still_valid(
   let #(now_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(now)
 
   now_seconds >= created_seconds && now_seconds - created_seconds <= max_age
+}
+
+fn new_user(
+  id: Uuid,
+  email: EmailAddress,
+  now: timestamp.Timestamp,
+) -> user_model.User {
+  user_model.User(
+    id: id,
+    email: email,
+    username: option.None,
+    last_login_at: now,
+    created_at: now,
+    updated_at: now,
+  )
 }

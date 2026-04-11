@@ -4,8 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   username TEXT UNIQUE,
-  first_login_at TIMESTAMPTZ,
-  last_login_at TIMESTAMPTZ,
+  last_login_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
 );
@@ -15,13 +14,13 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE login_tokens (
   id UUID PRIMARY KEY,
-  user_id UUID NOT NULL,
+  email TEXT NOT NULL,
   token TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   used_at TIMESTAMPTZ
 );
 
-CREATE INDEX idx_login_tokens_user_id ON login_tokens(user_id);
+CREATE INDEX idx_login_tokens_email ON login_tokens(email);
 CREATE INDEX idx_login_tokens_used_at ON login_tokens(used_at);
 
 

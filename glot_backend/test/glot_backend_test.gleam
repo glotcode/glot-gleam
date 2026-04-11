@@ -247,7 +247,7 @@ fn test_handlers() -> handlers.Handlers {
     ),
     auth: auth_handlers.AuthHandlers(
       get_user_by_email: fn(_, _) { Ok(option.None) },
-      list_login_tokens_by_user: fn(_, _) { Ok([]) },
+      list_login_tokens_by_email: fn(_, _) { Ok([]) },
       get_session_by_token: fn(_, _) { Ok(option.None) },
       create_user: fn(_) { Ok(Nil) },
       update_user: fn(_) { Ok(Nil) },
