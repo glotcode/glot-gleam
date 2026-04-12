@@ -1,8 +1,10 @@
 import envoy
+import exception
 import gleam/dict
 import gleam/erlang/process
 import gleam/http
 import gleam/http/request
+import gleam/int
 import gleam/io
 import gleam/json
 import gleam/list
@@ -15,6 +17,7 @@ import glot_backend/api
 import glot_backend/context
 import glot_backend/erlang
 import glot_backend/helpers/response_helpers
+import glot_backend/request_tracker
 import glot_backend/server_mode
 import glot_backend/worker/db_monitor
 import glot_backend/worker/job_worker
@@ -30,6 +33,10 @@ import signal_handler
 import wisp
 import wisp/wisp_mist
 import youid/uuid
+
+const drain_poll_interval_ms = 100
+
+const drain_timeout_ms = 30_000
 
 pub fn main() {
   let signal_name = process.new_name("graceful_gleam_sigterm")
@@ -68,6 +75,8 @@ pub fn main() {
   let regexes = context.Regexes(is_email)
   let log_worker_name = process.new_name("log_worker")
   let log_worker_subject = process.named_subject(log_worker_name)
+  let request_tracker_name = process.new_name("request_tracker")
+  let request_tracker_subject = process.named_subject(request_tracker_name)
   let server_mode_name = process.new_name("server_mode")
   let server_mode_subject = process.named_subject(server_mode_name)
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
@@ -83,7 +92,14 @@ pub fn main() {
             client_info: get_client_info(req, conn.body),
           )
 
-        handle_request(db, ctx, log_worker_subject, server_mode_subject, req)
+        handle_request(
+          db,
+          ctx,
+          log_worker_subject,
+          request_tracker_subject,
+          server_mode_subject,
+          req,
+        )
       },
       cfg.encryption_key,
     )(conn)
@@ -100,11 +116,12 @@ pub fn main() {
       cfg,
       regexes,
       log_worker_name,
+      request_tracker_name,
       server_mode_name,
       mist_builder,
     )
 
-  wait_for_signal(signal_subject, server_mode_subject)
+  wait_for_signal(signal_subject, server_mode_subject, request_tracker_subject)
 }
 
 type SignalMessage {
@@ -114,13 +131,47 @@ type SignalMessage {
 fn wait_for_signal(
   signal_subject: process.Subject(SignalMessage),
   server_mode_subject: process.Subject(server_mode.Message),
+  request_tracker_subject: process.Subject(request_tracker.Message),
 ) -> Nil {
   case process.receive_forever(signal_subject) {
     SigtermReceived -> {
       wisp.log_warning("SIGTERM received")
       server_mode.enter_maintenance(server_mode_subject)
       wisp.log_warning("Server mode changed to Maintenance")
-      wait_for_signal(signal_subject, server_mode_subject)
+      drain_requests(request_tracker_subject, drain_timeout_ms)
+    }
+  }
+}
+
+fn drain_requests(
+  request_tracker_subject: process.Subject(request_tracker.Message),
+  remaining_ms: Int,
+) -> Nil {
+  let in_flight_count = request_tracker.get_count(request_tracker_subject)
+
+  case in_flight_count == 0 {
+    True -> {
+      io.println("No in-flight requests remain, shutting down")
+      erlang.halt()
+    }
+    False -> {
+      case remaining_ms <= 0 {
+        True -> {
+          io.println(
+            "Graceful shutdown timed out with "
+            <> int.to_string(in_flight_count)
+            <> " in-flight requests remaining",
+          )
+          erlang.halt()
+        }
+        False -> {
+          process.sleep(drain_poll_interval_ms)
+          drain_requests(
+            request_tracker_subject,
+            remaining_ms - drain_poll_interval_ms,
+          )
+        }
+      }
     }
   }
 }
@@ -129,10 +180,16 @@ pub fn handle_request(
   db: pog.Connection,
   ctx: context.Context,
   log_worker_subject: process.Subject(log_worker.Message),
+  request_tracker_subject: process.Subject(request_tracker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
   req: wisp.Request,
 ) -> wisp.Response {
-  use req <- app_middleware(req, ctx, server_mode_subject)
+  use req <- app_middleware(
+    req,
+    ctx,
+    request_tracker_subject,
+    server_mode_subject,
+  )
 
   case req.method, wisp.path_segments(req) {
     //Get, [] -> home_page.home_page()
@@ -178,6 +235,7 @@ fn get_client_ip(conn: mist.Connection) -> option.Option(String) {
 fn app_middleware(
   req: wisp.Request,
   ctx: context.Context,
+  request_tracker_subject: process.Subject(request_tracker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
   next: fn(wisp.Request) -> wisp.Response,
 ) -> wisp.Response {
@@ -189,6 +247,7 @@ fn app_middleware(
   case server_mode.get_mode(server_mode_subject) {
     server_mode.Maintenance -> maintenance_response()
     server_mode.Running -> {
+      use <- with_tracked_request(request_tracker_subject)
       use <- wisp.serve_static(
         req,
         under: "/static",
@@ -198,6 +257,17 @@ fn app_middleware(
       next(req)
     }
   }
+}
+
+fn with_tracked_request(
+  request_tracker_subject: process.Subject(request_tracker.Message),
+  next: fn() -> wisp.Response,
+) -> wisp.Response {
+  request_tracker.request_started(request_tracker_subject)
+  use <- exception.defer(fn() {
+    request_tracker.request_finished(request_tracker_subject)
+  })
+  next()
 }
 
 fn serve_spa_page() -> wisp.Response {
@@ -236,6 +306,7 @@ fn start_supervisor_tree(
   config: context.Config,
   regexes: context.Regexes,
   log_worker_name: process.Name(log_worker.Message),
+  request_tracker_name: process.Name(request_tracker.Message),
   server_mode_name: process.Name(server_mode.Message),
   mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
 ) {
@@ -244,6 +315,7 @@ fn start_supervisor_tree(
   |> static_supervisor.add(db_monitor.supervised(db))
   |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
   |> static_supervisor.add(job_worker.supervised(db, config, regexes))
+  |> static_supervisor.add(request_tracker.supervised(request_tracker_name))
   |> static_supervisor.add(server_mode.supervised(server_mode_name))
   |> static_supervisor.add(mist.supervised(mist_builder))
   |> static_supervisor.start
