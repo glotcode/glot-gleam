@@ -4,6 +4,7 @@ import gleam/erlang/process
 import gleam/http
 import gleam/http/request
 import gleam/io
+import gleam/json
 import gleam/list
 import gleam/option
 import gleam/otp/static_supervisor
@@ -13,6 +14,8 @@ import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
 import glot_backend/erlang
+import glot_backend/helpers/response_helpers
+import glot_backend/server_mode
 import glot_backend/worker/db_monitor
 import glot_backend/worker/job_worker
 import glot_backend/worker/log_worker
@@ -65,6 +68,8 @@ pub fn main() {
   let regexes = context.Regexes(is_email)
   let log_worker_name = process.new_name("log_worker")
   let log_worker_subject = process.named_subject(log_worker_name)
+  let server_mode_name = process.new_name("server_mode")
+  let server_mode_subject = process.named_subject(server_mode_name)
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
     wisp_mist.handler(
       fn(req: request.Request(wisp.Connection)) {
@@ -78,7 +83,7 @@ pub fn main() {
             client_info: get_client_info(req, conn.body),
           )
 
-        handle_request(db, ctx, log_worker_subject, req)
+        handle_request(db, ctx, log_worker_subject, server_mode_subject, req)
       },
       cfg.encryption_key,
     )(conn)
@@ -95,21 +100,27 @@ pub fn main() {
       cfg,
       regexes,
       log_worker_name,
+      server_mode_name,
       mist_builder,
     )
 
-  wait_for_signal(signal_subject)
+  wait_for_signal(signal_subject, server_mode_subject)
 }
 
 type SignalMessage {
   SigtermReceived
 }
 
-fn wait_for_signal(signal_subject: process.Subject(SignalMessage)) -> Nil {
+fn wait_for_signal(
+  signal_subject: process.Subject(SignalMessage),
+  server_mode_subject: process.Subject(server_mode.Message),
+) -> Nil {
   case process.receive_forever(signal_subject) {
     SigtermReceived -> {
       wisp.log_warning("SIGTERM received")
-      wait_for_signal(signal_subject)
+      server_mode.enter_maintenance(server_mode_subject)
+      wisp.log_warning("Server mode changed to Maintenance")
+      wait_for_signal(signal_subject, server_mode_subject)
     }
   }
 }
@@ -118,9 +129,10 @@ pub fn handle_request(
   db: pog.Connection,
   ctx: context.Context,
   log_worker_subject: process.Subject(log_worker.Message),
+  server_mode_subject: process.Subject(server_mode.Message),
   req: wisp.Request,
 ) -> wisp.Response {
-  use req <- app_middleware(req, ctx)
+  use req <- app_middleware(req, ctx, server_mode_subject)
 
   case req.method, wisp.path_segments(req) {
     //Get, [] -> home_page.home_page()
@@ -166,19 +178,26 @@ fn get_client_ip(conn: mist.Connection) -> option.Option(String) {
 fn app_middleware(
   req: wisp.Request,
   ctx: context.Context,
+  server_mode_subject: process.Subject(server_mode.Message),
   next: fn(wisp.Request) -> wisp.Response,
 ) -> wisp.Response {
   let req = wisp.method_override(req)
   use <- wisp.log_request(req)
   use <- wisp.rescue_crashes
   use req <- wisp.handle_head(req)
-  use <- wisp.serve_static(
-    req,
-    under: "/static",
-    from: ctx.config.static_base_path,
-  )
 
-  next(req)
+  case server_mode.get_mode(server_mode_subject) {
+    server_mode.Maintenance -> maintenance_response()
+    server_mode.Running -> {
+      use <- wisp.serve_static(
+        req,
+        under: "/static",
+        from: ctx.config.static_base_path,
+      )
+
+      next(req)
+    }
+  }
 }
 
 fn serve_spa_page() -> wisp.Response {
@@ -202,12 +221,22 @@ fn serve_spa_page() -> wisp.Response {
   |> wisp.html_response(200)
 }
 
+fn maintenance_response() -> wisp.Response {
+  wisp.json_response(
+    json.to_string(response_helpers.error_body(
+      "Service temporarily unavailable",
+    )),
+    503,
+  )
+}
+
 fn start_supervisor_tree(
   pog_config: pog.Config,
   db: pog.Connection,
   config: context.Config,
   regexes: context.Regexes,
   log_worker_name: process.Name(log_worker.Message),
+  server_mode_name: process.Name(server_mode.Message),
   mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
 ) {
   static_supervisor.new(static_supervisor.OneForAll)
@@ -215,6 +244,7 @@ fn start_supervisor_tree(
   |> static_supervisor.add(db_monitor.supervised(db))
   |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
   |> static_supervisor.add(job_worker.supervised(db, config, regexes))
+  |> static_supervisor.add(server_mode.supervised(server_mode_name))
   |> static_supervisor.add(mist.supervised(mist_builder))
   |> static_supervisor.start
 }
