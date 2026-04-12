@@ -12,8 +12,8 @@ import gleam/string
 import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
-import glot_backend/worker/db_monitor
 import glot_backend/erlang
+import glot_backend/worker/db_monitor
 import glot_backend/worker/job_worker
 import glot_backend/worker/log_worker
 import glot_core/email/email_address_model
@@ -23,11 +23,16 @@ import lustre/element/html
 import mist
 import pog
 import radiate
+import signal_handler
 import wisp
 import wisp/wisp_mist
 import youid/uuid
 
 pub fn main() {
+  let signal_name = process.new_name("graceful_gleam_sigterm")
+  let assert Ok(Nil) = process.register(process.self(), signal_name)
+  let signal_subject = process.named_subject(signal_name)
+
   // TODO: only in dev mode
   let _ =
     radiate.new()
@@ -40,6 +45,7 @@ pub fn main() {
     |> radiate.start()
 
   wisp.configure_logger()
+  signal_handler.install(signal_name)
 
   let assert Ok(priv_directory) = wisp.priv_directory("glot_backend")
   let static_directory = priv_directory <> "/static"
@@ -92,7 +98,20 @@ pub fn main() {
       mist_builder,
     )
 
-  process.sleep_forever()
+  wait_for_signal(signal_subject)
+}
+
+type SignalMessage {
+  SigtermReceived
+}
+
+fn wait_for_signal(signal_subject: process.Subject(SignalMessage)) -> Nil {
+  case process.receive_forever(signal_subject) {
+    SigtermReceived -> {
+      wisp.log_warning("SIGTERM received")
+      wait_for_signal(signal_subject)
+    }
+  }
 }
 
 pub fn handle_request(
