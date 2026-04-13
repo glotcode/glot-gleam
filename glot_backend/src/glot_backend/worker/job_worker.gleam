@@ -79,6 +79,7 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
     Tick -> {
       case server_mode.get_mode(state.server_mode_subject) {
         server_mode.Maintenance -> actor.continue(state)
+        server_mode.ShuttingDown -> actor.continue(state)
         server_mode.Running -> {
           let delay = case run_once(state) {
             job_model.NoJobs -> idle_poll_ms

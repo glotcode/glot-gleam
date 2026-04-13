@@ -5,6 +5,7 @@ import gleam/otp/supervision
 pub type Mode {
   Running
   Maintenance
+  ShuttingDown
 }
 
 pub type Message {
@@ -35,6 +36,10 @@ pub fn get_mode(subject: process.Subject(Message)) -> Mode {
 
 pub fn enter_maintenance(subject: process.Subject(Message)) -> Nil {
   process.send(subject, SetMode(Maintenance))
+}
+
+pub fn enter_shutting_down(subject: process.Subject(Message)) -> Nil {
+  process.send(subject, SetMode(ShuttingDown))
 }
 
 fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {

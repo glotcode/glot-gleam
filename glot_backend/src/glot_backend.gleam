@@ -148,8 +148,8 @@ fn wait_for_signal(
   case process.receive_forever(signal_subject) {
     SigtermReceived -> {
       wisp.log_warning("SIGTERM received")
-      server_mode.enter_maintenance(server_mode_subject)
-      wisp.log_warning("Server mode changed to Maintenance")
+      server_mode.enter_shutting_down(server_mode_subject)
+      wisp.log_warning("Server mode changed to ShuttingDown")
       drain_work(
         request_tracker_subject,
         job_tracker_subject,
@@ -275,6 +275,7 @@ fn app_middleware(
 
   case server_mode.get_mode(server_mode_subject) {
     server_mode.Maintenance -> maintenance_response()
+    server_mode.ShuttingDown -> maintenance_response()
     server_mode.Running -> {
       use <- with_tracked_request(request_tracker_subject)
       use <- wisp.serve_static(
@@ -342,10 +343,12 @@ fn start_supervisor_tree(
 ) {
   static_supervisor.new(static_supervisor.OneForAll)
   |> static_supervisor.add(pog.supervised(pog_config))
-  |> static_supervisor.add(db_monitor.supervised(db))
+  |> static_supervisor.add(server_mode.supervised(server_mode_name))
+  |> static_supervisor.add(
+    db_monitor.supervised(db, process.named_subject(server_mode_name)),
+  )
   |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
   |> static_supervisor.add(request_tracker.supervised(request_tracker_name))
-  |> static_supervisor.add(server_mode.supervised(server_mode_name))
   |> static_supervisor.add(job_tracker.supervised(job_tracker_name))
   |> static_supervisor.add(
     job_worker.supervised(
