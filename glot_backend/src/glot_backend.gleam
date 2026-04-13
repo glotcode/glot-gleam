@@ -127,6 +127,7 @@ pub fn main() {
 
   wait_for_signal(
     signal_subject,
+    log_worker_subject,
     server_mode_subject,
     request_tracker_subject,
     job_tracker_subject,
@@ -139,6 +140,7 @@ type SignalMessage {
 
 fn wait_for_signal(
   signal_subject: process.Subject(SignalMessage),
+  log_worker_subject: process.Subject(log_worker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
   request_tracker_subject: process.Subject(request_tracker.Message),
   job_tracker_subject: process.Subject(job_tracker.Message),
@@ -148,7 +150,12 @@ fn wait_for_signal(
       wisp.log_warning("SIGTERM received")
       server_mode.enter_maintenance(server_mode_subject)
       wisp.log_warning("Server mode changed to Maintenance")
-      drain_work(request_tracker_subject, job_tracker_subject, drain_timeout_ms)
+      drain_work(
+        request_tracker_subject,
+        job_tracker_subject,
+        log_worker_subject,
+        drain_timeout_ms,
+      )
     }
   }
 }
@@ -156,15 +163,18 @@ fn wait_for_signal(
 fn drain_work(
   request_tracker_subject: process.Subject(request_tracker.Message),
   job_tracker_subject: process.Subject(job_tracker.Message),
+  log_worker_subject: process.Subject(log_worker.Message),
   remaining_ms: Int,
 ) -> Nil {
   let in_flight_request_count = request_tracker.get_count(request_tracker_subject)
   let in_flight_job_count = job_tracker.get_count(job_tracker_subject)
-  let total_in_flight_count = in_flight_request_count + in_flight_job_count
+  let pending_log_count = log_worker.get_count(log_worker_subject)
+  let total_in_flight_count =
+    in_flight_request_count + in_flight_job_count + pending_log_count
 
   case total_in_flight_count == 0 {
     True -> {
-      io.println("No in-flight requests or jobs remain, shutting down")
+      io.println("No in-flight requests, jobs, or logs remain, shutting down")
       erlang.halt()
     }
     False -> {
@@ -175,7 +185,9 @@ fn drain_work(
             <> int.to_string(in_flight_request_count)
             <> " in-flight requests and "
             <> int.to_string(in_flight_job_count)
-            <> " in-flight jobs remaining",
+            <> " in-flight jobs and "
+            <> int.to_string(pending_log_count)
+            <> " pending logs remaining",
           )
           erlang.halt()
         }
@@ -184,6 +196,7 @@ fn drain_work(
           drain_work(
             request_tracker_subject,
             job_tracker_subject,
+            log_worker_subject,
             remaining_ms - drain_poll_interval_ms,
           )
         }

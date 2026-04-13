@@ -37,11 +37,14 @@ pub type ApiLogEntry {
 
 pub type Message {
   Insert(ApiLogEntry)
+  GetCount(reply: process.Subject(Int))
 }
 
 type State {
   State(db: pog.Connection)
 }
+
+const call_timeout_ms = 100
 
 pub fn start(name: process.Name(Message), db: pog.Connection) {
   actor.new(State(db: db))
@@ -54,10 +57,20 @@ pub fn supervised(name: process.Name(Message), db: pog.Connection) {
   supervision.worker(fn() { start(name, db) })
 }
 
+pub fn get_count(subject: process.Subject(Message)) -> Int {
+  process.call(subject, call_timeout_ms, GetCount)
+}
+
 fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
   case message {
     Insert(log_entry) -> {
       insert_api_log(state.db, log_entry)
+      actor.continue(state)
+    }
+    GetCount(reply) -> {
+      // `process.call` only reaches this point after earlier inserts in the
+      // mailbox have been processed, so replying `0` acts as an idle barrier.
+      process.send(reply, 0)
       actor.continue(state)
     }
   }
