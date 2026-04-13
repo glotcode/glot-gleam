@@ -1,3 +1,4 @@
+import exception
 import gleam/erlang/process
 import gleam/json
 import gleam/option.{type Option}
@@ -11,11 +12,13 @@ import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/interpreter
+import glot_backend/job_tracker
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/helpers/db_helpers
 import glot_backend/log
+import glot_backend/server_mode
 import glot_backend/sql
 import glot_core/helpers/dict_helpers
 import glot_core/helpers/list_helpers
@@ -36,6 +39,8 @@ type State {
     db: pog.Connection,
     config: context.Config,
     regexes: context.Regexes,
+    job_tracker_subject: process.Subject(job_tracker.Message),
+    server_mode_subject: process.Subject(server_mode.Message),
   )
 }
 
@@ -43,9 +48,12 @@ pub fn start(
   db: pog.Connection,
   config: context.Config,
   regexes: context.Regexes,
+  job_tracker_subject: process.Subject(job_tracker.Message),
+  server_mode_subject: process.Subject(server_mode.Message),
 ) {
   actor.new_with_initialiser(1000, fn(subject) {
-    let initial_state = State(subject:, db:, config:, regexes:)
+    let initial_state =
+      State(subject:, db:, config:, regexes:, job_tracker_subject:, server_mode_subject:)
     let _ = process.send(subject, Tick)
     let initialised = actor.initialised(initial_state)
     Ok(actor.returning(initialised, Nil))
@@ -58,20 +66,29 @@ pub fn supervised(
   db: pog.Connection,
   config: context.Config,
   regexes: context.Regexes,
+  job_tracker_subject: process.Subject(job_tracker.Message),
+  server_mode_subject: process.Subject(server_mode.Message),
 ) {
-  supervision.worker(fn() { start(db, config, regexes) })
+  supervision.worker(fn() {
+    start(db, config, regexes, job_tracker_subject, server_mode_subject)
+  })
 }
 
 fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
   case message {
     Tick -> {
-      let delay = case run_once(state) {
-        job_model.NoJobs -> idle_poll_ms
-        job_model.JobProcessed -> 0
-      }
+      case server_mode.get_mode(state.server_mode_subject) {
+        server_mode.Maintenance -> actor.continue(state)
+        server_mode.Running -> {
+          let delay = case run_once(state) {
+            job_model.NoJobs -> idle_poll_ms
+            job_model.JobProcessed -> 0
+          }
 
-      let _ = process.send_after(state.subject, delay, Tick)
-      actor.continue(state)
+          let _ = process.send_after(state.subject, delay, Tick)
+          actor.continue(state)
+        }
+      }
     }
   }
 }
@@ -102,6 +119,11 @@ fn run_once(state: State) -> job_model.Outcome {
 }
 
 fn process_job(state: State, job: job_model.Job) -> Nil {
+  job_tracker.job_started(state.job_tracker_subject)
+  use <- exception.defer(fn() {
+    job_tracker.job_finished(state.job_tracker_subject)
+  })
+
   let effect_runtime = runtime.new(state.db)
   let ctx = context_from_state(state, job.request_id)
   let #(result, program_state) =

@@ -17,6 +17,7 @@ import glot_backend/api
 import glot_backend/context
 import glot_backend/erlang
 import glot_backend/helpers/response_helpers
+import glot_backend/job_tracker
 import glot_backend/request_tracker
 import glot_backend/server_mode
 import glot_backend/worker/db_monitor
@@ -75,6 +76,8 @@ pub fn main() {
   let regexes = context.Regexes(is_email)
   let log_worker_name = process.new_name("log_worker")
   let log_worker_subject = process.named_subject(log_worker_name)
+  let job_tracker_name = process.new_name("job_tracker")
+  let job_tracker_subject = process.named_subject(job_tracker_name)
   let request_tracker_name = process.new_name("request_tracker")
   let request_tracker_subject = process.named_subject(request_tracker_name)
   let server_mode_name = process.new_name("server_mode")
@@ -116,12 +119,18 @@ pub fn main() {
       cfg,
       regexes,
       log_worker_name,
+      job_tracker_name,
       request_tracker_name,
       server_mode_name,
       mist_builder,
     )
 
-  wait_for_signal(signal_subject, server_mode_subject, request_tracker_subject)
+  wait_for_signal(
+    signal_subject,
+    server_mode_subject,
+    request_tracker_subject,
+    job_tracker_subject,
+  )
 }
 
 type SignalMessage {
@@ -132,26 +141,30 @@ fn wait_for_signal(
   signal_subject: process.Subject(SignalMessage),
   server_mode_subject: process.Subject(server_mode.Message),
   request_tracker_subject: process.Subject(request_tracker.Message),
+  job_tracker_subject: process.Subject(job_tracker.Message),
 ) -> Nil {
   case process.receive_forever(signal_subject) {
     SigtermReceived -> {
       wisp.log_warning("SIGTERM received")
       server_mode.enter_maintenance(server_mode_subject)
       wisp.log_warning("Server mode changed to Maintenance")
-      drain_requests(request_tracker_subject, drain_timeout_ms)
+      drain_work(request_tracker_subject, job_tracker_subject, drain_timeout_ms)
     }
   }
 }
 
-fn drain_requests(
+fn drain_work(
   request_tracker_subject: process.Subject(request_tracker.Message),
+  job_tracker_subject: process.Subject(job_tracker.Message),
   remaining_ms: Int,
 ) -> Nil {
-  let in_flight_count = request_tracker.get_count(request_tracker_subject)
+  let in_flight_request_count = request_tracker.get_count(request_tracker_subject)
+  let in_flight_job_count = job_tracker.get_count(job_tracker_subject)
+  let total_in_flight_count = in_flight_request_count + in_flight_job_count
 
-  case in_flight_count == 0 {
+  case total_in_flight_count == 0 {
     True -> {
-      io.println("No in-flight requests remain, shutting down")
+      io.println("No in-flight requests or jobs remain, shutting down")
       erlang.halt()
     }
     False -> {
@@ -159,15 +172,18 @@ fn drain_requests(
         True -> {
           io.println(
             "Graceful shutdown timed out with "
-            <> int.to_string(in_flight_count)
-            <> " in-flight requests remaining",
+            <> int.to_string(in_flight_request_count)
+            <> " in-flight requests and "
+            <> int.to_string(in_flight_job_count)
+            <> " in-flight jobs remaining",
           )
           erlang.halt()
         }
         False -> {
           process.sleep(drain_poll_interval_ms)
-          drain_requests(
+          drain_work(
             request_tracker_subject,
+            job_tracker_subject,
             remaining_ms - drain_poll_interval_ms,
           )
         }
@@ -306,6 +322,7 @@ fn start_supervisor_tree(
   config: context.Config,
   regexes: context.Regexes,
   log_worker_name: process.Name(log_worker.Message),
+  job_tracker_name: process.Name(job_tracker.Message),
   request_tracker_name: process.Name(request_tracker.Message),
   server_mode_name: process.Name(server_mode.Message),
   mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
@@ -314,9 +331,18 @@ fn start_supervisor_tree(
   |> static_supervisor.add(pog.supervised(pog_config))
   |> static_supervisor.add(db_monitor.supervised(db))
   |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
-  |> static_supervisor.add(job_worker.supervised(db, config, regexes))
   |> static_supervisor.add(request_tracker.supervised(request_tracker_name))
   |> static_supervisor.add(server_mode.supervised(server_mode_name))
+  |> static_supervisor.add(job_tracker.supervised(job_tracker_name))
+  |> static_supervisor.add(
+    job_worker.supervised(
+      db,
+      config,
+      regexes,
+      process.named_subject(job_tracker_name),
+      process.named_subject(server_mode_name),
+    ),
+  )
   |> static_supervisor.add(mist.supervised(mist_builder))
   |> static_supervisor.start
 }
