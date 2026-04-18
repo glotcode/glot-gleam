@@ -5,6 +5,7 @@ pub type Route {
   Home
   Login
   NewSnippet(language: String)
+  Snippet(slug: String)
   NotFound(uri: Uri)
 }
 
@@ -13,6 +14,7 @@ pub fn from_uri(uri: Uri) -> Route {
     [] | [""] -> Home
     ["auth", "login"] -> Login
     ["new", language] -> NewSnippet(language: language)
+    ["snippets", slug] -> Snippet(slug: slug)
     _ -> NotFound(uri:)
   }
 }
@@ -22,6 +24,7 @@ pub fn to_string(route: Route) -> String {
     Home -> "/"
     Login -> "/auth/login"
     NewSnippet(language) -> "/new/" <> language
+    Snippet(slug) -> "/snippets/" <> slug
     NotFound(_) -> ""
   }
 }

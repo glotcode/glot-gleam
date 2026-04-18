@@ -7,19 +7,24 @@ import glot_core/run
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/api
+import glot_frontend/route
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
+import modem
 
 pub type Model {
   UnsupportedLanguage(String)
+  LoadingSnippet(String)
+  LoadError(String)
   SupportedLanguage(RealModel)
 }
 
 pub type RealModel {
   RealModel(
+    slug: option.Option(String),
     language: language.Language,
     source_code: String,
     run_state: RunState,
@@ -41,10 +46,11 @@ pub type SaveState {
   SaveError(String)
 }
 
-pub fn init(language: String) -> #(Model, Effect(Msg)) {
+pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
   let model = case language.from_string(language) {
     option.Some(lang) ->
       SupportedLanguage(RealModel(
+        slug: option.None,
         language: lang,
         source_code: language.example_code(lang),
         run_state: Idle,
@@ -56,7 +62,15 @@ pub fn init(language: String) -> #(Model, Effect(Msg)) {
   #(model, effect.none())
 }
 
+pub fn init_existing(slug: String) -> #(Model, Effect(Msg)) {
+  #(
+    LoadingSnippet(slug),
+    api.get_snippet(snippet_dto.GetSnippetRequest(slug: slug), SnippetLoaded),
+  )
+}
+
 pub type Msg {
+  SnippetLoaded(api.ApiResponse(snippet_dto.SnippetResponse))
   SourceCodeChanged(String)
   RunSubmitted
   RunFinished(api.ApiResponse(run.RunResult))
@@ -65,9 +79,39 @@ pub type Msg {
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
-  case model {
-    UnsupportedLanguage(_) -> #(model, effect.none())
-    SupportedLanguage(model) ->
+  case model, msg {
+    LoadingSnippet(_), SnippetLoaded(result) -> {
+      case result {
+        api.ApiSuccess(response) -> {
+          let files = response.data.files
+          let source_code = case files {
+            [snippet_model.File(content:, ..), ..] -> content
+            [] -> ""
+          }
+
+          #(
+            SupportedLanguage(RealModel(
+              slug: option.Some(response.slug),
+              language: response.data.language,
+              source_code: source_code,
+              run_state: Idle,
+              save_state: SaveIdle,
+            )),
+            effect.none(),
+          )
+        }
+
+        api.ApiFailure(error) -> #(LoadError(error.message), effect.none())
+
+        api.HttpFailure(_) ->
+          #(LoadError("Could not load snippet."), effect.none())
+      }
+    }
+
+    UnsupportedLanguage(_), _ -> #(model, effect.none())
+    LoadingSnippet(_), _ -> #(model, effect.none())
+    LoadError(_), _ -> #(model, effect.none())
+    SupportedLanguage(model), _ ->
       update_helper(model, msg)
       |> pair.map_first(SupportedLanguage)
   }
@@ -75,6 +119,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
   case msg {
+    SnippetLoaded(_) -> #(model, effect.none())
+
     SourceCodeChanged(source_code) -> #(
       RealModel(..model, source_code: source_code),
       effect.none(),
@@ -157,18 +203,37 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
           ),
         )
 
-      #(
-        RealModel(..model, save_state: Saving),
-        api.create_snippet(request, SaveFinished),
-      )
+      let effect = case model.slug {
+        option.Some(slug) ->
+          api.update_snippet(
+            snippet_dto.UpdateSnippetRequest(slug: slug, data: request.data),
+            SaveFinished,
+          )
+
+        option.None ->
+          api.create_snippet(request, SaveFinished)
+      }
+
+      #(RealModel(..model, save_state: Saving), effect)
     }
 
     SaveFinished(result) -> {
       case result {
-        api.ApiSuccess(response) -> #(
-          RealModel(..model, save_state: Saved(response.slug)),
-          effect.none(),
-        )
+        api.ApiSuccess(response) -> {
+          let next_model = RealModel(..model, save_state: Saved(response.slug))
+          case model.slug {
+            option.Some(_) -> #(next_model, effect.none())
+            option.None -> {
+              let navigate =
+                modem.push(
+                  route.to_string(route.Snippet(response.slug)),
+                  option.None,
+                  option.None,
+                )
+              #(next_model, navigate)
+            }
+          }
+        }
 
         api.ApiFailure(error) -> #(
           RealModel(..model, save_state: SaveError(error.message)),
@@ -195,13 +260,22 @@ pub fn view(model: Model) -> Element(Msg) {
   case model {
     UnsupportedLanguage(lang) ->
       html.div([], [html.text("Unsupported language: " <> lang)])
+    LoadingSnippet(_slug) ->
+      html.div([], [html.text("Loading snippet...")])
+    LoadError(message) ->
+      html.div([], [html.text(message)])
     SupportedLanguage(model) -> view_helper(model)
   }
 }
 
 fn view_helper(model: RealModel) -> Element(Msg) {
+  let title = case model.slug {
+    option.Some(slug) -> "Snippet: " <> slug
+    option.None -> "New Snippet: " <> language.name(model.language)
+  }
+
   html.div([], [
-    html.h2([], [html.text("New Snippet: " <> language.name(model.language))]),
+    html.h2([], [html.text(title)]),
     html.div([], [
       element.element(
         "glot-codemirror",
@@ -216,27 +290,34 @@ fn view_helper(model: RealModel) -> Element(Msg) {
         [],
       ),
     ]),
-    html.div([], [
-      html.button(
-        [
-          attribute.type_("button"),
-          attribute.disabled(model.run_state == Running),
-          event.on_click(RunSubmitted),
-        ],
-        [html.text(run_button_text(model.run_state))],
-      ),
-      html.button(
-        [
-          attribute.type_("button"),
-          attribute.disabled(model.save_state == Saving),
-          event.on_click(SaveSubmitted),
-        ],
-        [html.text(save_button_text(model.save_state))],
-      ),
-    ]),
-    save_result_view(model.save_state),
+    html.div([], action_buttons(model)),
+    save_result_view(model.slug, model.save_state),
     run_result_view(model.run_state),
   ])
+}
+
+fn action_buttons(model: RealModel) -> List(Element(Msg)) {
+  let run_button =
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(model.run_state == Running),
+        event.on_click(RunSubmitted),
+      ],
+      [html.text(run_button_text(model.run_state))],
+    )
+
+  let save_button =
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(model.save_state == Saving),
+        event.on_click(SaveSubmitted),
+      ],
+      [html.text(save_button_text(model.save_state))],
+    )
+
+  [run_button, save_button]
 }
 
 fn run_button_text(run_state: RunState) -> String {
@@ -253,7 +334,7 @@ fn save_button_text(save_state: SaveState) -> String {
   }
 }
 
-fn save_result_view(save_state: SaveState) -> Element(Msg) {
+fn save_result_view(_slug: option.Option(String), save_state: SaveState) -> Element(Msg) {
   case save_state {
     SaveIdle -> html.div([], [])
 

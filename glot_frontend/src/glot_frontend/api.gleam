@@ -78,6 +78,43 @@ pub fn create_snippet(
   )
 }
 
+pub fn get_snippet(
+  request: snippet_dto.GetSnippetRequest,
+  to_msg: fn(ApiResponse(snippet_dto.SnippetResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetSnippetAction, request)
+
+  send_api_request(
+    req,
+    fn(get_request) {
+      json.object([
+        #("slug", json.string(get_request.slug)),
+      ])
+    },
+    snippet_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn update_snippet(
+  request: snippet_dto.UpdateSnippetRequest,
+  to_msg: fn(ApiResponse(snippet_dto.SnippetResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.UpdateSnippetAction, request)
+
+  send_api_request(
+    req,
+    fn(update_request) {
+      json.object([
+        #("slug", json.string(update_request.slug)),
+        #("data", snippet_dto.encode_data(update_request.data)),
+      ])
+    },
+    snippet_dto.response_decoder(),
+    to_msg,
+  )
+}
+
 fn send_api_request(
   req: ApiRequest(a),
   encode_data: fn(a) -> json.Json,

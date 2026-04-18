@@ -39,7 +39,12 @@ fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
     }
 
     route.NewSnippet(language) -> {
-      let #(m, eff) = editor_page.init(language)
+      let #(m, eff) = editor_page.init_new(language)
+      #(EditorPage(m), effect.map(eff, EditorPageMsg))
+    }
+
+    route.Snippet(slug) -> {
+      let #(m, eff) = editor_page.init_existing(slug)
       #(EditorPage(m), effect.map(eff, EditorPageMsg))
     }
 
