@@ -54,6 +54,37 @@ pub type SnippetResponse {
   )
 }
 
+pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
+  use slug <- decode.field("slug", decode.string)
+  use user <- decode.field("user", user_dto.user_decoder())
+  use title <- decode.field("title", decode.string)
+  use language <- decode.field("language", language.decoder())
+  use visibility <- decode.field(
+    "visibility",
+    snippet_model.visibility_decoder(),
+  )
+  use stdin <- decode.field("stdin", decode.string)
+  use run_command <- decode.field("runCommand", decode.string)
+  use files <- decode.field("files", decode.list(snippet_model.file_decoder()))
+  use created_at <- decode.field("createdAt", timestamp_helpers.decoder())
+  use updated_at <- decode.field("updatedAt", timestamp_helpers.decoder())
+
+  decode.success(SnippetResponse(
+    slug: slug,
+    user: user,
+    data: SnippetData(
+      title: title,
+      language: language,
+      visibility: visibility,
+      stdin: stdin,
+      run_command: run_command,
+      files: files,
+    ),
+    created_at: created_at,
+    updated_at: updated_at,
+  ))
+}
+
 pub fn from_snippet(
   snippet: snippet_model.HydratedSnippet,
 ) -> SnippetResponse {
@@ -98,6 +129,17 @@ pub type SnippetData {
     run_command: String,
     files: List(snippet_model.File),
   )
+}
+
+pub fn encode_data(data: SnippetData) -> json.Json {
+  json.object([
+    #("title", json.string(data.title)),
+    #("language", language.encode(data.language)),
+    #("visibility", snippet_model.encode_visibility(data.visibility)),
+    #("stdin", json.string(data.stdin)),
+    #("runCommand", json.string(data.run_command)),
+    #("files", json.array(data.files, snippet_model.encode_file)),
+  ])
 }
 
 pub fn data_decoder() -> decode.Decoder(SnippetData) {

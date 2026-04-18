@@ -6,6 +6,7 @@ import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
 import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/run
+import glot_core/snippet/snippet_dto
 import lustre/effect
 import rsvp
 
@@ -57,6 +58,24 @@ pub fn run_code(
   let req = ApiRequest(api_action.RunAction, request)
 
   send_api_request(req, run.encode_run_request, run.run_result_decoder(), to_msg)
+}
+
+pub fn create_snippet(
+  request: snippet_dto.CreateSnippetRequest,
+  to_msg: fn(ApiResponse(snippet_dto.SnippetResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.CreateSnippetAction, request)
+
+  send_api_request(
+    req,
+    fn(create_request) {
+      json.object([
+        #("data", snippet_dto.encode_data(create_request.data)),
+      ])
+    },
+    snippet_dto.response_decoder(),
+    to_msg,
+  )
 }
 
 fn send_api_request(

@@ -4,6 +4,7 @@ import gleam/pair
 import glot_core/api_action
 import glot_core/language
 import glot_core/run
+import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/api
 import lustre/attribute
@@ -22,6 +23,7 @@ pub type RealModel {
     language: language.Language,
     source_code: String,
     run_state: RunState,
+    save_state: SaveState,
   )
 }
 
@@ -32,6 +34,13 @@ pub type RunState {
   RequestError(String)
 }
 
+pub type SaveState {
+  SaveIdle
+  Saving
+  Saved(slug: String)
+  SaveError(String)
+}
+
 pub fn init(language: String) -> #(Model, Effect(Msg)) {
   let model = case language.from_string(language) {
     option.Some(lang) ->
@@ -39,6 +48,7 @@ pub fn init(language: String) -> #(Model, Effect(Msg)) {
         language: lang,
         source_code: language.example_code(lang),
         run_state: Idle,
+        save_state: SaveIdle,
       ))
     option.None -> UnsupportedLanguage(language)
   }
@@ -50,6 +60,8 @@ pub type Msg {
   SourceCodeChanged(String)
   RunSubmitted
   RunFinished(api.ApiResponse(run.RunResult))
+  SaveSubmitted
+  SaveFinished(api.ApiResponse(snippet_dto.SnippetResponse))
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -119,6 +131,63 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
         )
       }
     }
+
+    SaveSubmitted -> {
+      let run_instructions =
+        language.run_instructions(
+          model.language,
+          language.default_filename(model.language),
+          [],
+        )
+
+      let request =
+        snippet_dto.CreateSnippetRequest(
+          data: snippet_dto.SnippetData(
+            title: "",
+            language: model.language,
+            visibility: snippet_model.Unlisted,
+            stdin: "",
+            run_command: run_instructions.run_command,
+            files: [
+              snippet_model.File(
+                name: language.default_filename(model.language),
+                content: model.source_code,
+              ),
+            ],
+          ),
+        )
+
+      #(
+        RealModel(..model, save_state: Saving),
+        api.create_snippet(request, SaveFinished),
+      )
+    }
+
+    SaveFinished(result) -> {
+      case result {
+        api.ApiSuccess(response) -> #(
+          RealModel(..model, save_state: Saved(response.slug)),
+          effect.none(),
+        )
+
+        api.ApiFailure(error) -> #(
+          RealModel(..model, save_state: SaveError(error.message)),
+          effect.none(),
+        )
+
+        api.HttpFailure(_) -> #(
+          RealModel(
+            ..model,
+            save_state: SaveError(
+              "Could not complete "
+              <> api_action.to_string(api_action.CreateSnippetAction)
+              <> ".",
+            ),
+          ),
+          effect.none(),
+        )
+      }
+    }
   }
 }
 
@@ -156,7 +225,16 @@ fn view_helper(model: RealModel) -> Element(Msg) {
         ],
         [html.text(run_button_text(model.run_state))],
       ),
+      html.button(
+        [
+          attribute.type_("button"),
+          attribute.disabled(model.save_state == Saving),
+          event.on_click(SaveSubmitted),
+        ],
+        [html.text(save_button_text(model.save_state))],
+      ),
     ]),
+    save_result_view(model.save_state),
     run_result_view(model.run_state),
   ])
 }
@@ -165,6 +243,29 @@ fn run_button_text(run_state: RunState) -> String {
   case run_state {
     Running -> "Running..."
     _ -> "Run"
+  }
+}
+
+fn save_button_text(save_state: SaveState) -> String {
+  case save_state {
+    Saving -> "Saving..."
+    _ -> "Save"
+  }
+}
+
+fn save_result_view(save_state: SaveState) -> Element(Msg) {
+  case save_state {
+    SaveIdle -> html.div([], [])
+
+    Saving -> html.p([], [html.text("Saving snippet...")])
+
+    Saved(slug) -> html.p([], [html.text("Saved snippet: " <> slug)])
+
+    SaveError(message) ->
+      html.div([], [
+        html.h3([], [html.text("Save failed")]),
+        html.pre([], [html.text(message)]),
+      ])
   }
 }
 
