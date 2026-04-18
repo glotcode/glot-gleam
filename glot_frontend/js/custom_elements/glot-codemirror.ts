@@ -38,17 +38,81 @@ const basicSetup: Extension = [
 ];
 
 const languageMap: Record<string, () => Promise<Extension>> = {
+  bash: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/shell');
+    return StreamLanguage.define(module.shell);
+  },
+  c: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/clike');
+    return StreamLanguage.define(module.c);
+  },
+  clisp: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/commonlisp');
+    return StreamLanguage.define(module.commonLisp);
+  },
+  clojure: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/clojure');
+    return StreamLanguage.define(module.clojure);
+  },
+  cobol: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/cobol');
+    return StreamLanguage.define(module.cobol);
+  },
+  coffeescript: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/coffeescript');
+    return StreamLanguage.define(module.coffeeScript);
+  },
   cpp: async () => {
     const module = await import('@codemirror/lang-cpp');
     return module.cpp();
+  },
+  crystal: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/crystal');
+    return StreamLanguage.define(module.crystal);
+  },
+  csharp: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/clike');
+    return StreamLanguage.define(module.csharp);
+  },
+  d: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/d');
+    return StreamLanguage.define(module.d);
+  },
+  dart: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/clike');
+    return StreamLanguage.define(module.dart);
+  },
+  elm: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/elm');
+    return StreamLanguage.define(module.elm);
   },
   elixir: async () => {
     const module = await import('codemirror-lang-elixir');
     return module.elixir();
   },
+  erlang: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/erlang');
+    return StreamLanguage.define(module.erlang);
+  },
+  fsharp: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/mllike');
+    return StreamLanguage.define(module.fSharp);
+  },
   go: async () => {
     const module = await import('@codemirror/lang-go');
     return module.go();
+  },
+  groovy: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/groovy');
+    return StreamLanguage.define(module.groovy);
+  },
+  guile: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/scheme');
+    return StreamLanguage.define(module.scheme);
+  },
+  haskell: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/haskell');
+    return StreamLanguage.define(module.haskell);
   },
   java: async () => {
     const module = await import('@codemirror/lang-java');
@@ -62,14 +126,29 @@ const languageMap: Record<string, () => Promise<Extension>> = {
     const module = await import('@plutojl/lang-julia');
     return module.julia();
   },
+  kotlin: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/clike');
+    return StreamLanguage.define(module.kotlin);
+  },
   lua: async () => {
     const module = await import('@codemirror/legacy-modes/mode/lua');
-    // @ts-ignore
     return StreamLanguage.define(module.lua);
   },
   nix: async () => {
     const module = await import('@replit/codemirror-lang-nix');
     return module.nix();
+  },
+  ocaml: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/mllike');
+    return StreamLanguage.define(module.oCaml);
+  },
+  pascal: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/pascal');
+    return StreamLanguage.define(module.pascal);
+  },
+  perl: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/perl');
+    return StreamLanguage.define(module.perl);
   },
   php: async () => {
     const module = await import('@codemirror/lang-php');
@@ -79,9 +158,25 @@ const languageMap: Record<string, () => Promise<Extension>> = {
     const module = await import('@codemirror/lang-python');
     return module.python();
   },
+  ruby: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/ruby');
+    return StreamLanguage.define(module.ruby);
+  },
   rust: async () => {
     const module = await import('@codemirror/lang-rust');
     return module.rust();
+  },
+  scala: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/clike');
+    return StreamLanguage.define(module.scala);
+  },
+  swift: async () => {
+    const module = await import('@codemirror/legacy-modes/mode/swift');
+    return StreamLanguage.define(module.swift);
+  },
+  typescript: async () => {
+    const module = await import('@codemirror/lang-javascript');
+    return module.javascript({ typescript: true });
   },
 };
 
