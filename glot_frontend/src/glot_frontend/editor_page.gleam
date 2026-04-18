@@ -1,6 +1,9 @@
 import gleam/dynamic/decode
+import gleam/float
+import gleam/int
 import gleam/option
 import gleam/pair
+import gleam/string
 import glot_core/api_action
 import glot_core/language
 import glot_core/run
@@ -27,6 +30,7 @@ pub type RealModel {
   RealModel(
     slug: option.Option(String),
     owner_user_id: option.Option(Uuid),
+    title: String,
     language: language.Language,
     source_code: String,
     run_state: RunState,
@@ -54,6 +58,7 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
       SupportedLanguage(RealModel(
         slug: option.None,
         owner_user_id: option.None,
+        title: "Hello World",
         language: lang,
         source_code: language.example_code(lang),
         run_state: Idle,
@@ -96,6 +101,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             SupportedLanguage(RealModel(
               slug: option.Some(response.slug),
               owner_user_id: option.Some(response.user.id),
+              title: title_or_default(response.data.title),
               language: response.data.language,
               source_code: source_code,
               run_state: Idle,
@@ -193,7 +199,7 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       let request =
         snippet_dto.CreateSnippetRequest(
           data: snippet_dto.SnippetData(
-            title: "",
+            title: model.title,
             language: model.language,
             visibility: snippet_model.Unlisted,
             stdin: "",
@@ -273,61 +279,87 @@ pub fn view(model: Model, current_user_id: option.Option(Uuid)) -> Element(Msg) 
 }
 
 fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Element(Msg) {
-  let title = case model.slug {
-    option.Some(slug) -> "Snippet: " <> slug
-    option.None -> "New Snippet: " <> language.name(model.language)
-  }
+  let can_save = can_save(model, current_user_id)
 
-  html.div([], [
-    html.h2([], [html.text(title)]),
-    html.div([], [
-      element.element(
-        "glot-codemirror",
-        [
-          attribute.attribute("language", language.to_string(model.language)),
-          attribute.attribute("value", model.source_code),
-          event.on("change", {
-            use value <- decode.subfield(["detail", "value"], decode.string)
-            decode.success(SourceCodeChanged(value))
-          }),
-        ],
-        [],
-      ),
+  html.div([attribute.class("editor-page")], [
+    html.header([attribute.class("editor-page__topbar")], [
+      html.div([attribute.class("editor-page__title-group")], [
+        icon_button("editor-page__icon-button editor-page__icon-button--menu", [
+          html.span([attribute.class("editor-page__menu-icon")], []),
+        ]),
+        html.h1([attribute.class("editor-page__title")], [html.text(model.title)]),
+      ]),
     ]),
-    html.div([], action_buttons(model, current_user_id)),
-    save_result_view(model.slug, model.save_state),
-    run_result_view(model.run_state),
+    html.main([attribute.class("editor-shell")], [
+      html.div([attribute.class("editor-shell__tabbar")], [
+        icon_button("editor-shell__settings-button", [
+          html.span([attribute.class("editor-shell__gear-icon")], []),
+        ]),
+        html.div([attribute.class("editor-shell__tab")], [
+          html.span([attribute.class("editor-shell__file-icon")], []),
+          html.span([], [html.text(language.default_filename(model.language))]),
+        ]),
+      ]),
+      html.div([attribute.class("editor-shell__editor")], [
+        element.element(
+          "glot-codemirror",
+          [
+            attribute.class("editor-shell__codemirror"),
+            attribute.attribute("language", language.to_string(model.language)),
+            attribute.attribute("value", model.source_code),
+            event.on("change", {
+              use value <- decode.subfield(["detail", "value"], decode.string)
+              decode.success(SourceCodeChanged(value))
+            }),
+          ],
+          [],
+        ),
+      ]),
+      html.div([attribute.class("editor-shell__stdin-bar")], [
+        html.span([attribute.class("editor-shell__stdin-icon")], []),
+        html.span([], [html.text("STDIN")]),
+      ]),
+      html.div([attribute.class("editor-shell__actions")], [
+        action_button(
+          "editor-shell__action-button",
+          run_button_text(model.run_state),
+          model.run_state == Running,
+          RunSubmitted,
+        ),
+        action_button(
+          "editor-shell__action-button",
+          save_button_text(model.save_state),
+          model.save_state == Saving || !can_save,
+          SaveSubmitted,
+        ),
+      ]),
+      console_view(model.run_state, model.save_state),
+    ]),
   ])
 }
 
-fn action_buttons(
-  model: RealModel,
-  current_user_id: option.Option(Uuid),
-) -> List(Element(Msg)) {
-  let run_button =
-    html.button(
-      [
-        attribute.type_("button"),
-        attribute.disabled(model.run_state == Running),
-        event.on_click(RunSubmitted),
-      ],
-      [html.text(run_button_text(model.run_state))],
-    )
+fn icon_button(class_name: String, children: List(Element(msg))) -> Element(msg) {
+  html.button(
+    [attribute.type_("button"), attribute.class(class_name)],
+    children,
+  )
+}
 
-  let save_button =
-    html.button(
-      [
-        attribute.type_("button"),
-        attribute.disabled(model.save_state == Saving),
-        event.on_click(SaveSubmitted),
-      ],
-      [html.text(save_button_text(model.save_state))],
-    )
-
-  case can_save(model, current_user_id) {
-    True -> [run_button, save_button]
-    False -> [run_button]
-  }
+fn action_button(
+  class_name: String,
+  label: String,
+  disabled: Bool,
+  msg: Msg,
+) -> Element(Msg) {
+  html.button(
+    [
+      attribute.type_("button"),
+      attribute.class(class_name),
+      attribute.disabled(disabled),
+      event.on_click(msg),
+    ],
+    [html.text(label)],
+  )
 }
 
 fn can_save(model: RealModel, current_user_id: option.Option(Uuid)) -> Bool {
@@ -355,60 +387,166 @@ fn save_button_text(save_state: SaveState) -> String {
   }
 }
 
-fn save_result_view(_slug: option.Option(String), save_state: SaveState) -> Element(Msg) {
-  case save_state {
-    SaveIdle -> html.div([], [])
+fn console_view(run_state: RunState, save_state: SaveState) -> Element(Msg) {
+  html.div([attribute.class("editor-shell__console")], [
+    console_header_view(run_state, save_state),
+    html.div([attribute.class("editor-shell__console-body")], [
+      console_content(run_state, save_state),
+    ]),
+  ])
+}
 
-    Saving -> html.p([], [html.text("Saving snippet...")])
-
-    Saved(slug) -> html.p([], [html.text("Saved snippet: " <> slug)])
-
-    SaveError(message) ->
-      html.div([], [
-        html.h3([], [html.text("Save failed")]),
-        html.pre([], [html.text(message)]),
+fn console_header_view(run_state: RunState, save_state: SaveState) -> Element(Msg) {
+  case save_state, run_state {
+    SaveIdle, Completed(Ok(_)) -> html.div([], [])
+    _, _ ->
+      html.div([attribute.class("editor-shell__console-header")], [
+        html.text("INFO"),
       ])
   }
 }
 
-fn run_result_view(run_state: RunState) -> Element(Msg) {
-  case run_state {
-    Idle -> html.div([], [])
+fn console_content(run_state: RunState, save_state: SaveState) -> Element(Msg) {
+  case save_state {
+    SaveError(message) ->
+      console_block("SAVE FAILED", message)
 
-    Running -> html.p([], [html.text("Running snippet...")])
+    Saving ->
+      console_block("", "Saving snippet...")
+
+    Saved(slug) ->
+      console_block("", "Saved snippet: " <> slug)
+
+    SaveIdle ->
+      run_console_content(run_state)
+  }
+}
+
+fn run_console_content(run_state: RunState) -> Element(Msg) {
+  case run_state {
+    Idle ->
+      console_block("", "READY.")
+
+    Running ->
+      console_block("", "Running snippet...")
 
     RequestError(message) ->
-      html.div([], [
-        html.h3([], [html.text("Run failed")]),
-        html.pre([], [html.text(message)]),
-      ])
+      console_block("RUN FAILED", message)
 
     Completed(result) ->
       case result {
         Ok(success) ->
-          html.div([], [
-            html.h3([], [html.text("Output")]),
-            output_block("stdout", success.stdout),
-            output_block("stderr", success.stderr),
-            output_block("error", success.error),
-          ])
+          successful_run_console(success)
 
         Error(failure) ->
-          html.div([], [
-            html.h3([], [html.text("Run failed")]),
-            html.pre([], [html.text(failure.message)]),
-          ])
+          console_block("RUN FAILED", failure.message)
       }
   }
 }
 
-fn output_block(label: String, content: String) -> Element(Msg) {
+fn successful_run_console(success: run.SuccessfulRun) -> Element(Msg) {
+  let run.SuccessfulRun(duration:, stdout:, stderr:, error:) = success
+
+  case stdout != "" {
+    True ->
+      html.div([], [
+        result_panel("stdout", stdout, option.Some(duration)),
+        optional_result_panel("stderr", stderr),
+        optional_result_panel("error", error),
+      ])
+
+    False ->
+      case stderr != "" {
+        True ->
+          html.div([], [
+            result_panel("stderr", stderr, option.Some(duration)),
+            optional_result_panel("error", error),
+          ])
+
+        False ->
+          case error != "" {
+            True -> result_panel("error", error, option.Some(duration))
+            False -> console_block("", "READY.")
+          }
+      }
+  }
+}
+
+fn optional_result_panel(label: String, content: String) -> Element(Msg) {
   case content == "" {
     True -> html.div([], [])
-    False ->
-      html.div([], [
-        html.h4([], [html.text(label)]),
-        html.pre([], [html.text(content)]),
-      ])
+    False -> result_panel(label, content, option.None)
   }
+}
+
+fn console_block(label: String, content: String) -> Element(Msg) {
+  let label_view = case label == "" {
+    True -> html.div([], [])
+    False ->
+      html.div([attribute.class("editor-shell__console-label")], [html.text(label)])
+  }
+
+  html.div([attribute.class("editor-shell__console-section")], [
+    label_view,
+    html.pre([attribute.class("editor-shell__console-pre")], [html.text(content)]),
+  ])
+}
+
+fn result_panel(
+  label: String,
+  content: String,
+  duration: option.Option(Int),
+) -> Element(Msg) {
+  html.div([attribute.class("editor-shell__result-panel")], [
+    html.div([attribute.class(result_header_class(label))], [
+      html.span([attribute.class("editor-shell__result-title")], [
+        html.text(string.uppercase(label)),
+      ]),
+      result_duration_view(duration),
+    ]),
+    html.div([attribute.class("editor-shell__result-body")], [
+      html.pre([attribute.class("editor-shell__result-pre")], [html.text(content)]),
+    ]),
+  ])
+}
+
+fn result_duration_view(duration: option.Option(Int)) -> Element(Msg) {
+  case duration {
+    option.Some(value) ->
+      html.span([attribute.class("editor-shell__result-duration")], [
+        html.text(duration_in_ms_label(value)),
+      ])
+
+    option.None -> html.span([], [])
+  }
+}
+
+fn result_header_class(label: String) -> String {
+  case label {
+    "stdout" -> "editor-shell__result-header editor-shell__result-header--stdout"
+    "stderr" -> "editor-shell__result-header editor-shell__result-header--stderr"
+    "error" -> "editor-shell__result-header editor-shell__result-header--error"
+    _ -> "editor-shell__result-header"
+  }
+}
+
+fn title_or_default(title: String) -> String {
+  case title == "" {
+    True -> "Hello World"
+    False -> title
+  }
+}
+
+fn duration_in_ms_label(duration_ns: Int) -> String {
+  let hundredths_of_ms =
+    int.to_float(duration_ns) /. 10_000.0
+    |> float.round
+
+  let whole_ms = hundredths_of_ms / 100
+  let fractional_ms =
+    hundredths_of_ms % 100
+    |> int.to_string
+    |> string.pad_start(to: 2, with: "0")
+
+  int.to_string(whole_ms) <> "." <> fractional_ms <> "ms"
 }

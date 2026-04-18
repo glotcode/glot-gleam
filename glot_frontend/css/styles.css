@@ -67,3 +67,326 @@ body {
   cursor: default;
   opacity: 0.7;
 }
+
+.editor-page {
+  min-height: 100vh;
+  background: #f4f4f4;
+  color: #2d2d2d;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.editor-page__topbar {
+  display: flex;
+  align-items: center;
+  height: 2.9rem;
+  padding: 0 0.9rem;
+  border-bottom: 1px solid #d9d9d9;
+  background: linear-gradient(#f7f7f7, #ececec);
+  box-sizing: border-box;
+}
+
+.editor-page__title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.editor-page__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.editor-page__icon-button,
+.editor-shell__settings-button,
+.editor-shell__action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.editor-page__icon-button {
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+}
+
+.editor-page__icon-button:hover,
+.editor-shell__settings-button:hover,
+.editor-shell__action-button:hover:not(:disabled) {
+  background: #f1f1f1;
+}
+
+.editor-shell {
+  margin: 0 auto;
+  padding: 0.9rem;
+  box-sizing: border-box;
+}
+
+.editor-shell__tabbar {
+  display: flex;
+  align-items: center;
+  height: 1.55rem;
+  border: 1px solid #cfcfcf;
+  border-bottom: 0;
+  background: #f4f4f4;
+}
+
+.editor-shell__settings-button {
+  width: 1.7rem;
+  height: 100%;
+  padding: 0;
+  border-right: 1px solid #d8d8d8;
+}
+
+.editor-shell__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 100%;
+  padding: 0 0.7rem;
+  border-right: 1px solid #d8d8d8;
+  background: #ffffff;
+  font-size: 0.82rem;
+}
+
+.editor-shell__editor {
+  border: 1px solid #cfcfcf;
+  background: #ffffff;
+  min-height: 28rem;
+}
+
+.editor-shell__codemirror {
+  display: block;
+  min-height: 28rem;
+}
+
+.editor-shell__stdin-bar,
+.editor-shell__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  min-height: 1.5rem;
+  border-left: 1px solid #cfcfcf;
+  border-right: 1px solid #cfcfcf;
+  border-bottom: 1px solid #cfcfcf;
+  background: linear-gradient(#fafafa, #efefef);
+}
+
+.editor-shell__stdin-bar {
+  justify-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: #505050;
+}
+
+.editor-shell__actions {
+  background: #f7f7f7;
+}
+
+.editor-shell__action-button {
+  width: 100%;
+  min-height: 1.5rem;
+  border-right: 1px solid #d7d7d7;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.editor-shell__action-button:last-child {
+  border-right: 0;
+}
+
+.editor-shell__action-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.editor-shell__console {
+  margin-top: 0.7rem;
+  border: 1px solid #cfcfcf;
+  background: #ffffff;
+  min-height: 10rem;
+}
+
+.editor-shell__console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.38rem 1.1rem;
+  border-bottom: 1px solid #bfc6d1;
+  background: #5d96e8;
+  color: #233f68;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.editor-shell__console-body {
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.editor-shell__console-section + .editor-shell__console-section {
+  margin-top: 0.8rem;
+}
+
+.editor-shell__console-section {
+  min-height: 4.5rem;
+  padding: 0.9rem 1.1rem 1rem;
+  box-sizing: border-box;
+}
+
+.editor-shell__console-label {
+  margin-bottom: 0.3rem;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: #233f68;
+}
+
+.editor-shell__console-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.editor-shell__result-panel + .editor-shell__result-panel {
+  border-top: 1px solid #bfc6d1;
+}
+
+.editor-shell__result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.38rem 1.1rem;
+  border-bottom: 1px solid #bfc6d1;
+  color: #233f68;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.editor-shell__result-header--stdout {
+  background: #74d282;
+}
+
+.editor-shell__result-header--stderr {
+  background: #ffd54f;
+}
+
+.editor-shell__result-header--error {
+  background: #e87474;
+}
+
+.editor-shell__result-title,
+.editor-shell__result-duration {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.editor-shell__result-body {
+  min-height: 4.5rem;
+  padding: 0.9rem 1.1rem 1rem;
+  background: #ffffff;
+}
+
+.editor-shell__result-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.editor-page__menu-icon,
+.editor-shell__stdin-icon,
+.editor-shell__file-icon,
+.editor-shell__gear-icon {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.editor-page__menu-icon {
+  width: 0.8rem;
+  height: 0.6rem;
+  background:
+    linear-gradient(#707070, #707070) 0 0 / 100% 1px no-repeat,
+    linear-gradient(#707070, #707070) 0 50% / 100% 1px no-repeat,
+    linear-gradient(#707070, #707070) 0 100% / 100% 1px no-repeat;
+}
+
+.editor-shell__stdin-icon {
+  width: 0.78rem;
+  height: 0.72rem;
+  border: 1px solid #8b8b8b;
+  border-radius: 2px;
+}
+
+.editor-shell__stdin-icon::after {
+  content: "";
+  position: absolute;
+  left: 0.14rem;
+  top: 0.14rem;
+  width: 0.34rem;
+  height: 0.18rem;
+  border-left: 1px solid #8b8b8b;
+  border-bottom: 1px solid #8b8b8b;
+  transform: rotate(-45deg);
+}
+
+.editor-shell__file-icon {
+  width: 0.62rem;
+  height: 0.8rem;
+  border: 1px solid #8f8f8f;
+  border-radius: 1px;
+}
+
+.editor-shell__file-icon::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 0.26rem;
+  height: 0.26rem;
+  border-top: 1px solid #8f8f8f;
+  border-right: 1px solid #8f8f8f;
+  background: #ffffff;
+}
+
+.editor-shell__gear-icon {
+  width: 0.72rem;
+  height: 0.72rem;
+  border: 1px solid #868686;
+  border-radius: 50%;
+}
+
+.editor-shell__gear-icon::before,
+.editor-shell__gear-icon::after {
+  content: "";
+  position: absolute;
+  inset: 50%;
+  width: 1rem;
+  height: 1px;
+  margin-left: -0.5rem;
+  margin-top: -0.5px;
+  background: #868686;
+}
+
+.editor-shell__gear-icon::after {
+  transform: rotate(90deg);
+}
