@@ -3,11 +3,13 @@ import gleam/regexp
 import gleam/string
 import glot_core/email/email_address_model
 import glot_frontend/api
+import glot_frontend/route
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
+import modem
 
 pub type Model {
   Model(email: String, token: String, step: Step, status: Status)
@@ -152,7 +154,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiSuccess(_) -> {
           #(
             Model(..model, status: Info("You are now logged in.")),
-            effect.none(),
+            modem.replace(route.to_string(route.Home), option.None, option.None),
           )
         }
 
