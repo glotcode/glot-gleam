@@ -7,6 +7,7 @@ import gleam/json
 import gleam/option
 import gleam/string
 import glot_backend/context
+import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/run_code/run_domain
@@ -23,9 +24,10 @@ import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
-import glot_backend/worker/log_worker
 import glot_backend/server_timing
+import glot_backend/worker/log_worker
 import glot_core/api_action.{type ApiAction}
+import glot_core/auth/session_dto
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import pog
@@ -73,6 +75,10 @@ fn handle_api_request(
       ))
       run_domain.run(ctx, request)
       |> program.map(RunResultResponse)
+    }
+    api_action.GetSessionAction -> {
+      get_session_domain.get_session(ctx)
+      |> program.map(SessionResponse)
     }
     api_action.GetSnippetAction -> {
       use request <- program.and_then(get_snippet_domain.request_from_dynamic(
@@ -158,6 +164,7 @@ fn require_api_request(
 
 type ApiResult {
   RunResultResponse(run.RunResult)
+  SessionResponse(option.Option(session_dto.SessionResponse))
   SnippetResponse(snippet_dto.SnippetResponse)
   LoginResponse(session_token: String)
   NoContentResponse
@@ -172,6 +179,8 @@ fn api_result_to_response(
     RunResultResponse(run_result) -> {
       success_response(run.encode_run_result(run_result))
     }
+    SessionResponse(response) ->
+      success_response(json.nullable(response, session_dto.encode))
     SnippetResponse(response) ->
       success_response(snippet_dto.encode_response(response))
     LoginResponse(session_token) -> {
@@ -280,7 +289,10 @@ fn result_to_response(
   case result {
     Ok(response) ->
       api_result_to_response(ctx, request, response)
-      |> wisp.set_header("Server-Timing", server_timing.prepare(effects, total_duration_ns))
+      |> wisp.set_header(
+        "Server-Timing",
+        server_timing.prepare(effects, total_duration_ns),
+      )
     Error(err) -> error_to_response(err)
   }
 }

@@ -4,6 +4,7 @@ import gleam/option
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
+import glot_core/auth/session_dto
 import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/run
 import glot_core/snippet/snippet_dto
@@ -111,6 +112,19 @@ pub fn update_snippet(
       ])
     },
     snippet_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_session(
+  to_msg: fn(ApiResponse(option.Option(session_dto.SessionResponse))) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetSessionAction, Nil)
+
+  send_api_request(
+    req,
+    fn(_) { json.null() },
+    decode.optional(session_dto.decoder()),
     to_msg,
   )
 }

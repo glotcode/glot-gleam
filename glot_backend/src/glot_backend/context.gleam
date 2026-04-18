@@ -144,6 +144,7 @@ fn rate_limits_config_from_dict(
   values: Dict(String, String),
 ) -> RateLimitsConfig {
   dict.from_list([
+    #(api_action.GetSessionAction, lookup_rate_limits(values, "GET_SESSION")),
     #(api_action.GetSnippetAction, lookup_rate_limits(values, "GET_SNIPPET")),
     #(
       api_action.SendLoginTokenAction,

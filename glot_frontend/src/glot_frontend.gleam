@@ -1,3 +1,6 @@
+import gleam/option
+import glot_core/auth/session_dto
+import glot_frontend/api
 import glot_frontend/editor_page
 import glot_frontend/home_page
 import glot_frontend/login_page
@@ -16,7 +19,7 @@ pub fn main() -> Nil {
 }
 
 type Model {
-  Model(route: route.Route, page_model: PageModel)
+  Model(route: route.Route, page_model: PageModel, session: SessionState)
 }
 
 type PageModel {
@@ -24,6 +27,13 @@ type PageModel {
   LoginPage(login_page.Model)
   EditorPage(editor_page.Model)
   EmptyPageModel
+}
+
+type SessionState {
+  LoadingSession
+  AnonymousSession
+  AuthenticatedSession(session_dto.SessionResponse)
+  SessionError
 }
 
 fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
@@ -71,13 +81,16 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
       |> UserNavigatedTo
     })
 
-  let effects = effect.batch([eff, page_effect])
+  let session_effect = api.get_session(SessionLoaded)
 
-  #(Model(route: r, page_model: page_model), effects)
+  let effects = effect.batch([eff, page_effect, session_effect])
+
+  #(Model(route: r, page_model: page_model, session: LoadingSession), effects)
 }
 
 type Msg {
   UserNavigatedTo(route: route.Route)
+  SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
   HomePageMsg(home_page.Msg)
   LoginPageMsg(login_page.Msg)
   EditorPageMsg(editor_page.Msg)
@@ -85,6 +98,16 @@ type Msg {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.page_model {
+    SessionLoaded(result), _ -> {
+      let session = case result {
+        api.ApiSuccess(option.Some(session)) -> AuthenticatedSession(session)
+        api.ApiSuccess(option.None) -> AnonymousSession
+        api.ApiFailure(_) | api.HttpFailure(_) -> SessionError
+      }
+
+      #(Model(..model, session: session), effect.none())
+    }
+
     HomePageMsg(page_msg), HomePageModel(page_model) -> {
       let #(new_page_model, page_effect) =
         home_page.update(page_model, page_msg)
@@ -108,7 +131,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     UserNavigatedTo(route:), _ -> {
       let #(page_model, page_effect) = init_page(route)
-      #(Model(route:, page_model:), page_effect)
+      #(Model(..model, route:, page_model:), page_effect)
     }
 
     _, _ -> {
