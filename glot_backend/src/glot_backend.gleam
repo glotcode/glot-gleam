@@ -168,12 +168,11 @@ fn drain_work(
 ) -> Nil {
   let in_flight_request_count = request_tracker.get_count(request_tracker_subject)
   let in_flight_job_count = job_tracker.get_count(job_tracker_subject)
-  let pending_log_count = log_worker.get_count(log_worker_subject)
-  let total_in_flight_count =
-    in_flight_request_count + in_flight_job_count + pending_log_count
+  let total_in_flight_count = in_flight_request_count + in_flight_job_count
 
   case total_in_flight_count == 0 {
     True -> {
+      log_worker.drain(log_worker_subject)
       io.println("No in-flight requests, jobs, or logs remain, shutting down")
       erlang.halt()
     }
@@ -185,9 +184,7 @@ fn drain_work(
             <> int.to_string(in_flight_request_count)
             <> " in-flight requests and "
             <> int.to_string(in_flight_job_count)
-            <> " in-flight jobs and "
-            <> int.to_string(pending_log_count)
-            <> " pending logs remaining",
+            <> " in-flight jobs remaining",
           )
           erlang.halt()
         }

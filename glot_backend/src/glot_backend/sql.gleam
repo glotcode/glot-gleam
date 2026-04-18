@@ -751,39 +751,39 @@ pub fn insert_session(
   ])
 }
 
-pub fn insert_api_log(
-  id id: BitArray,
-  request_id request_id: BitArray,
-  created_at created_at: Timestamp,
-  action action: String,
-  body_bytes body_bytes: Int,
-  duration_ns duration_ns: Int,
-  ip ip: Option(String),
-  user_agent user_agent: Option(String),
-  info info: Option(String),
-  warnings warnings: Option(String),
-  debug debug: Option(String),
-  error error: Option(String),
-  effects effects: Option(String),
-) {
+pub fn insert_api_log(entries entries: String) {
   let sql =
     "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, info, warnings, debug, error, effects)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamBitArray(request_id),
-    dev.ParamTimestamp(created_at),
-    dev.ParamString(action),
-    dev.ParamInt(body_bytes),
-    dev.ParamInt(duration_ns),
-    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(info, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(warnings, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(debug, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(effects, fn(v) { dev.ParamString(v) })),
-  ])
+SELECT
+  id,
+  request_id,
+  created_at,
+  action,
+  body_bytes,
+  duration_ns,
+  ip,
+  user_agent,
+  info,
+  warnings,
+  debug,
+  error,
+  effects
+FROM jsonb_to_recordset($1::JSONB) AS rows(
+  id UUID,
+  request_id UUID,
+  created_at TIMESTAMPTZ,
+  action TEXT,
+  body_bytes BIGINT,
+  duration_ns BIGINT,
+  ip TEXT,
+  user_agent TEXT,
+  info JSONB,
+  warnings JSONB,
+  debug JSONB,
+  error JSONB,
+  effects JSONB
+)"
+  #(sql, [dev.ParamString(entries)])
 }
 
 pub fn update_user(
