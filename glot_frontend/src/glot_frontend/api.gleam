@@ -5,6 +5,7 @@ import glot_core/api_action.{type ApiAction}
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
 import glot_core/email/email_address_model.{type EmailAddress}
+import glot_core/run
 import lustre/effect
 import rsvp
 
@@ -47,6 +48,15 @@ pub fn login(
     )
 
   send_api_request(req, login_dto.encode, nil_decoder(), to_msg)
+}
+
+pub fn run_code(
+  request: run.RunRequest,
+  to_msg: fn(ApiResponse(run.RunResult)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.RunAction, request)
+
+  send_api_request(req, run.encode_run_request, run.run_result_decoder(), to_msg)
 }
 
 fn send_api_request(
