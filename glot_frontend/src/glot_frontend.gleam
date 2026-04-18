@@ -10,6 +10,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import modem
+import youid/uuid.{type Uuid}
 
 pub fn main() -> Nil {
   let app = lustre.application(init, update, view)
@@ -157,9 +158,16 @@ fn view(model: Model) -> Element(Msg) {
     }
 
     EditorPage(page_model) -> {
-      let elem = editor_page.view(page_model)
+      let elem = editor_page.view(page_model, current_user_id(model.session))
       element.map(elem, EditorPageMsg)
     }
+  }
+}
+
+fn current_user_id(session: SessionState) -> option.Option(Uuid) {
+  case session {
+    AuthenticatedSession(session) -> option.Some(session.user.id)
+    LoadingSession | AnonymousSession | SessionError -> option.None
   }
 }
 

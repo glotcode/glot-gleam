@@ -14,6 +14,7 @@ import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import modem
+import youid/uuid.{type Uuid}
 
 pub type Model {
   UnsupportedLanguage(String)
@@ -25,6 +26,7 @@ pub type Model {
 pub type RealModel {
   RealModel(
     slug: option.Option(String),
+    owner_user_id: option.Option(Uuid),
     language: language.Language,
     source_code: String,
     run_state: RunState,
@@ -51,6 +53,7 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
     option.Some(lang) ->
       SupportedLanguage(RealModel(
         slug: option.None,
+        owner_user_id: option.None,
         language: lang,
         source_code: language.example_code(lang),
         run_state: Idle,
@@ -92,6 +95,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             SupportedLanguage(RealModel(
               slug: option.Some(response.slug),
+              owner_user_id: option.Some(response.user.id),
               language: response.data.language,
               source_code: source_code,
               run_state: Idle,
@@ -256,7 +260,7 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
   }
 }
 
-pub fn view(model: Model) -> Element(Msg) {
+pub fn view(model: Model, current_user_id: option.Option(Uuid)) -> Element(Msg) {
   case model {
     UnsupportedLanguage(lang) ->
       html.div([], [html.text("Unsupported language: " <> lang)])
@@ -264,11 +268,11 @@ pub fn view(model: Model) -> Element(Msg) {
       html.div([], [html.text("Loading snippet...")])
     LoadError(message) ->
       html.div([], [html.text(message)])
-    SupportedLanguage(model) -> view_helper(model)
+    SupportedLanguage(model) -> view_helper(model, current_user_id)
   }
 }
 
-fn view_helper(model: RealModel) -> Element(Msg) {
+fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Element(Msg) {
   let title = case model.slug {
     option.Some(slug) -> "Snippet: " <> slug
     option.None -> "New Snippet: " <> language.name(model.language)
@@ -290,13 +294,16 @@ fn view_helper(model: RealModel) -> Element(Msg) {
         [],
       ),
     ]),
-    html.div([], action_buttons(model)),
+    html.div([], action_buttons(model, current_user_id)),
     save_result_view(model.slug, model.save_state),
     run_result_view(model.run_state),
   ])
 }
 
-fn action_buttons(model: RealModel) -> List(Element(Msg)) {
+fn action_buttons(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+) -> List(Element(Msg)) {
   let run_button =
     html.button(
       [
@@ -317,7 +324,21 @@ fn action_buttons(model: RealModel) -> List(Element(Msg)) {
       [html.text(save_button_text(model.save_state))],
     )
 
-  [run_button, save_button]
+  case can_save(model, current_user_id) {
+    True -> [run_button, save_button]
+    False -> [run_button]
+  }
+}
+
+fn can_save(model: RealModel, current_user_id: option.Option(Uuid)) -> Bool {
+  case current_user_id {
+    option.None -> False
+    option.Some(user_id) ->
+      case model.slug {
+        option.None -> True
+        option.Some(_) -> model.owner_user_id == option.Some(user_id)
+      }
+  }
 }
 
 fn run_button_text(run_state: RunState) -> String {
