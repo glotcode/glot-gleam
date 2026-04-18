@@ -26,13 +26,19 @@ fn prepare_effect_timings(ems: List(effect_trace.EffectMeasurement)) -> String {
 
 fn prepare_effect_timing(em: effect_trace.EffectMeasurement) -> String {
   case em.name {
-    effect_trace.TransactionEffectName(_, ems) -> {
+    effect_trace.TransactionEffectName(_, ems, rolled_back:) -> {
       let sub_duration = list.fold(ems, 0, fn(acc, e) { acc + e.duration_ns })
       let tx_duration = em.duration_ns - sub_duration
+      let tx_end_label = case rolled_back {
+        True -> "TxRollback"
+        False -> "TxCommit"
+      }
 
       "TxBegin,"
       <> prepare_effect_timings(ems)
-      <> ",TxCommit;dur="
+      <> ","
+      <> tx_end_label
+      <> ";dur="
       <> float.to_string(int.to_float(tx_duration) /. 1_000_000.0)
     }
 

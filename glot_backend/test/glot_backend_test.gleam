@@ -1,6 +1,8 @@
 import gleam/dict
+import gleam/json
 import gleam/option
 import gleam/regexp
+import gleam/string
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
@@ -18,7 +20,9 @@ import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/runtime
+import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/snippet/snippet_handlers
+import glot_backend/server_timing
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
 import glot_backend/crypto_token
@@ -135,6 +139,37 @@ pub fn suppressed_debug_log_is_not_stored_or_measured_test() {
   assert run_result == Ok("ok")
   assert state.debug_fields == log.new()
   assert state.effect_measurements == []
+}
+
+pub fn rolled_back_transaction_effect_is_marked_test() {
+  let rolled_back_measurement =
+    effect_trace.EffectMeasurement(
+      name: effect_trace.TransactionEffectName(
+        transaction_algebra.RunEffectName,
+        [
+          effect_trace.EffectMeasurement(
+            name: effect_trace.BasicEffectName(
+              basic_algebra.NewTokenEffectName,
+            ),
+            category: effect_trace.UtilEffectCategory,
+            duration_ns: 5,
+          ),
+        ],
+        rolled_back: True,
+      ),
+      category: effect_trace.DbWriteEffectCategory,
+      duration_ns: 10,
+    )
+
+  let encoded =
+    rolled_back_measurement
+    |> effect_trace.encode_effect_measurement
+    |> json.to_string
+
+  assert string.contains(encoded, "\"rolled_back\":true")
+
+  let timing = server_timing.prepare([rolled_back_measurement], 10)
+  assert string.contains(timing, "TxRollback;dur=")
 }
 
 pub fn get_session_without_token_returns_none_test() {

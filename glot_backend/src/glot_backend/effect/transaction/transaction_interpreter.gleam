@@ -1,4 +1,5 @@
 import gleam/list
+import gleam/result
 import gleam/string
 import glot_backend/context
 import glot_backend/effect/effect_trace
@@ -33,6 +34,7 @@ pub fn run(
           effect_trace.TransactionEffectName(
             transaction_algebra.RunEffectName,
             transaction_state.effect_measurements,
+            rolled_back: result.is_error(transaction_result),
           ),
           effect_trace.DbWriteEffectCategory,
           started_at,

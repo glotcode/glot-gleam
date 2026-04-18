@@ -17,7 +17,11 @@ pub type EffectName {
   SnippetEffectName(snippet_algebra.EffectName)
   DockerRunEffectName(docker_run_algebra.EffectName)
   UserActionEffectName(user_action_algebra.EffectName)
-  TransactionEffectName(transaction_algebra.EffectName, List(EffectMeasurement))
+  TransactionEffectName(
+    transaction_algebra.EffectName,
+    List(EffectMeasurement),
+    rolled_back: Bool,
+  )
 }
 
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
@@ -30,7 +34,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     DockerRunEffectName(name) -> docker_run_algebra.effect_name_to_string(name)
     UserActionEffectName(name) ->
       user_action_algebra.effect_name_to_string(name)
-    TransactionEffectName(name, _) ->
+    TransactionEffectName(name, _, _) ->
       transaction_algebra.effect_name_to_string(name)
   }
 }
@@ -44,7 +48,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     SnippetEffectName(_) -> "snippet"
     DockerRunEffectName(_) -> "docker_run"
     UserActionEffectName(_) -> "user_action"
-    TransactionEffectName(_, _) -> "transaction"
+    TransactionEffectName(_, _, _) -> "transaction"
   }
 }
 
@@ -103,11 +107,12 @@ pub fn encode_effect_measurement(
   let duration_ns = effect_measurement.duration_ns
   let effect_category = effect_category_to_string(effect_measurement.category)
   case effect_name {
-    TransactionEffectName(_, sub_effects) ->
+    TransactionEffectName(_, sub_effects, rolled_back:) ->
       json.object([
         #("category", json.string(effect_category)),
         #("family", json.string(effect_name_to_family(effect_name))),
         #("name", json.string(effect_name_to_string(effect_name))),
+        #("rolled_back", json.bool(rolled_back)),
         #("effects", json.array(sub_effects, encode_effect_measurement)),
         #("duration_ns", json.int(duration_ns)),
       ])
