@@ -10,6 +10,7 @@ import glot_core/run
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/api
+import glot_frontend/icons
 import glot_frontend/route
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -305,11 +306,13 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
       ]),
       html.div([attribute.class("editor-shell__tabbar")], [
         icon_button("editor-shell__settings-button", [
-          html.span([attribute.class("editor-shell__gear-icon")], []),
+          icons.gear_icon(),
         ]),
         html.div([attribute.class("editor-shell__tab")], [
-          html.span([attribute.class("editor-shell__file-icon")], []),
           html.span([], [html.text(filename)]),
+        ]),
+        icon_button("editor-shell__tab-action-button", [
+          icons.document_plus(),
         ]),
       ]),
       html.div([attribute.class("editor-shell__editor")], [

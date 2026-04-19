@@ -148,6 +148,7 @@ body {
 
 .editor-page__icon-button,
 .editor-shell__settings-button,
+.editor-shell__tab-action-button,
 .editor-shell__action-button {
   display: inline-flex;
   align-items: center;
@@ -167,12 +168,14 @@ body {
 
 .editor-page__icon-button:hover,
 .editor-shell__settings-button:hover,
+.editor-shell__tab-action-button:hover,
 .editor-shell__action-button:hover:not(:disabled) {
   background: #eef4ff;
 }
 
 .editor-page__icon-button:active,
 .editor-shell__settings-button:active,
+.editor-shell__tab-action-button:active,
 .editor-shell__action-button:active:not(:disabled) {
   background: #e1ebff;
 }
@@ -206,17 +209,32 @@ body {
   min-height: 2rem;
   border: 1px solid #c8d7ef;
   border-bottom: 0;
-  background: #eef4ff;
+  background: #f8fbff;
 }
 
 .editor-shell__settings-button {
-  width: 2rem;
+  width: 2.5rem;
   height: 100%;
-  padding: 0;
+  padding: 0.5rem;
   border-top: 0;
   border-bottom: 0;
   border-left: 0;
   border-right: 1px solid #c8d7ef;
+}
+
+.editor-shell__tab-action-button {
+  width: 2.5rem;
+  height: 100%;
+  padding: 0.6rem;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 0;
+}
+
+.editor-shell__tabbar > .editor-shell__settings-button:last-child,
+.editor-shell__tabbar > .editor-shell__tab-action-button:last-child {
+  border-right: 0;
 }
 
 .editor-shell__tab {
@@ -226,7 +244,7 @@ body {
   height: 100%;
   padding: 0 0.8rem;
   border-right: 1px solid #c8d7ef;
-  background: #ffffff;
+  background: inherit;
   color: #203152;
   font-size: 0.82rem;
 }
@@ -427,8 +445,7 @@ body {
 
 .editor-page__menu-icon,
 .editor-shell__stdin-icon,
-.editor-shell__file-icon,
-.editor-shell__gear-icon {
+.editor-shell__file-icon {
   position: relative;
   display: inline-block;
   flex: 0 0 auto;
@@ -482,29 +499,6 @@ body {
   border-top: 2px solid #5a6f99;
   border-right: 2px solid #5a6f99;
   background: #fbfbfb;
-}
-
-.editor-shell__gear-icon {
-  width: 0.72rem;
-  height: 0.72rem;
-  border: 2px solid #5a6f99;
-  border-radius: 50%;
-}
-
-.editor-shell__gear-icon::before,
-.editor-shell__gear-icon::after {
-  content: "";
-  position: absolute;
-  inset: 50%;
-  width: 1rem;
-  height: 2px;
-  margin-left: -0.5rem;
-  margin-top: -1px;
-  background: #5a6f99;
-}
-
-.editor-shell__gear-icon::after {
-  transform: rotate(90deg);
 }
 
 @media (max-width: 720px) {
