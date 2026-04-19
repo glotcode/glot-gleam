@@ -434,6 +434,11 @@ export class GlotCodeMirror extends HTMLElement {
     else this.removeAttribute("disabled");
   }
 
+  focus(options?: FocusOptions) {
+    super.focus(options);
+    this._view?.focus();
+  }
+
   // Helpers
   private _getLanguageExtension(name: string): Promise<Extension> | null {
     const factory = languageMap[name];

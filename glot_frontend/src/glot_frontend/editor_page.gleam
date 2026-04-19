@@ -10,6 +10,7 @@ import glot_core/run
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/api
+import glot_frontend/editor_dialog
 import glot_frontend/icons
 import glot_frontend/route
 import lustre/attribute
@@ -32,6 +33,7 @@ pub type RealModel {
     slug: option.Option(String),
     owner_user_id: option.Option(Uuid),
     title: String,
+    title_draft: String,
     language: language.Language,
     source_code: String,
     run_state: RunState,
@@ -60,6 +62,7 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
         slug: option.None,
         owner_user_id: option.None,
         title: "Hello World",
+        title_draft: "Hello World",
         language: lang,
         source_code: language.example_code(lang),
         run_state: Idle,
@@ -80,6 +83,11 @@ pub fn init_existing(slug: String) -> #(Model, Effect(Msg)) {
 
 pub type Msg {
   SnippetLoaded(api.ApiResponse(snippet_dto.SnippetResponse))
+  TitleClicked
+  TitleDraftChanged(String)
+  TitleEditCancelled
+  TitleEditSubmitted
+  TitleDialogClosed
   SourceCodeChanged(String)
   RunSubmitted
   RunFinished(api.ApiResponse(run.RunResult))
@@ -103,6 +111,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               slug: option.Some(response.slug),
               owner_user_id: option.Some(response.user.id),
               title: title_or_default(response.data.title),
+              title_draft: title_or_default(response.data.title),
               language: response.data.language,
               source_code: source_code,
               run_state: Idle,
@@ -131,6 +140,31 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
   case msg {
     SnippetLoaded(_) -> #(model, effect.none())
+
+    TitleClicked -> #(
+      RealModel(..model, title_draft: model.title),
+      editor_dialog.open(),
+    )
+
+    TitleDraftChanged(title_draft) -> #(
+      RealModel(..model, title_draft: title_draft),
+      effect.none(),
+    )
+
+    TitleEditCancelled -> #(
+      RealModel(..model, title_draft: model.title),
+      editor_dialog.close(),
+    )
+
+    TitleEditSubmitted -> #(
+      RealModel(..model, title: model.title_draft),
+      editor_dialog.close(),
+    )
+
+    TitleDialogClosed -> #(
+      RealModel(..model, title_draft: model.title),
+      editor_dialog.focus_editor(),
+    )
 
     SourceCodeChanged(source_code) -> #(
       RealModel(..model, source_code: source_code),
@@ -302,8 +336,26 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
     ]),
     html.main([attribute.class("editor-shell")], [
       html.div([attribute.class("editor-shell__bezel")], [
-        html.h1([attribute.class("editor-page__title")], [html.text(model.title)]),
+        html.h1([attribute.class("editor-page__title")], [
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class("editor-page__title-button"),
+              attribute.attribute("aria-label", "Edit title"),
+              event.on_click(TitleClicked),
+            ],
+            [
+              html.span([attribute.class("editor-page__title-text")], [
+                html.text(model.title),
+              ]),
+              html.span([attribute.class("editor-page__title-hint")], [
+                html.text("Edit"),
+              ]),
+            ],
+          ),
+        ]),
       ]),
+      title_dialog_view(model),
       html.div([attribute.class("editor-shell__tabbar")], [
         icon_button("editor-shell__settings-button", [
           icons.gear_icon(),
@@ -319,6 +371,7 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
         element.element(
           "glot-codemirror",
           [
+            attribute.id(editor_dialog.editor_id),
             attribute.class("editor-shell__codemirror"),
             attribute.attribute("language", language.to_string(model.language)),
             attribute.attribute("value", model.source_code),
@@ -370,6 +423,59 @@ fn action_button(
       event.on_click(msg),
     ],
     [html.text(label)],
+  )
+}
+
+fn title_dialog_view(model: RealModel) -> Element(Msg) {
+  html.dialog(
+    [
+      attribute.id(editor_dialog.dialog_id),
+      attribute.class("editor-page__dialog"),
+      event.on("close", decode.success(TitleDialogClosed)),
+    ],
+    [
+      html.form(
+        [
+          attribute.class("editor-page__dialog-form"),
+          event.on_submit(fn(_) { TitleEditSubmitted }),
+        ],
+        [
+          html.label(
+            [
+              attribute.for("editor-page-title-input"),
+              attribute.class("editor-page__dialog-label"),
+            ],
+            [html.text("Title")],
+          ),
+          html.input([
+            attribute.id("editor-page-title-input"),
+            attribute.name("title"),
+            attribute.type_("text"),
+            attribute.value(model.title_draft),
+            attribute.autofocus(True),
+            attribute.class("editor-page__dialog-input"),
+            event.on_input(TitleDraftChanged),
+          ]),
+          html.div([attribute.class("editor-page__dialog-actions")], [
+            html.button(
+              [
+                attribute.type_("button"),
+                attribute.class("editor-page__dialog-button editor-page__dialog-button--secondary"),
+                event.on_click(TitleEditCancelled),
+              ],
+              [html.text("Cancel")],
+            ),
+            html.button(
+              [
+                attribute.type_("submit"),
+                attribute.class("editor-page__dialog-button"),
+              ],
+              [html.text("Apply")],
+            ),
+          ]),
+        ],
+      ),
+    ],
   )
 }
 
