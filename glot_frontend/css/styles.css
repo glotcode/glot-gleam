@@ -120,19 +120,33 @@ body {
   color: #1d2c4b;
 }
 
+.editor-page__title-row {
+  display: flex;
+  align-self: stretch;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.7rem;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
 .editor-page__title {
   margin: 0;
+  align-self: center;
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
 
-.editor-page__title-button {
+.editor-page__title-edit-button {
   display: inline-flex;
+  flex: 0 0 auto;
+  align-self: stretch;
   align-items: center;
-  gap: 0.7rem;
-  min-height: 2.25rem;
-  padding: 0.2rem 0;
+  justify-content: center;
+  min-height: 100%;
+  padding: 0 0.15rem 0 0.55rem;
   border: 0;
   background: transparent;
   color: inherit;
@@ -142,17 +156,20 @@ body {
   text-transform: inherit;
 }
 
-.editor-page__title-button:hover {
+.editor-page__title-edit-button:hover {
   color: #2853a6;
 }
 
-.editor-page__title-button:focus-visible {
+.editor-page__title-edit-button:focus-visible {
   outline: 2px solid #4f8ff3;
   outline-offset: 2px;
 }
 
-.editor-page__title-text {
-  display: inline-block;
+.editor-page__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editor-page__title-hint {
@@ -269,8 +286,10 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex: 0 0 auto;
   font-size: 0.75rem;
   letter-spacing: 0.12em;
+  white-space: nowrap;
 }
 
 .editor-page__status-pill {
@@ -329,13 +348,15 @@ body {
 
 .editor-shell__bezel {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.45rem 0.8rem;
+  height: 43px;
+  padding: 0 0.8rem;
   border: 1px solid #c8d7ef;
   border-bottom: 0;
   background: #dbe7fb;
+  box-sizing: border-box;
   color: #1d2c4b;
   font-size: 0.72rem;
   letter-spacing: 0.12em;
@@ -459,7 +480,7 @@ body {
   border: 1px solid #c8d7ef;
   background: #f8fbff;
   height: 60vh;
-  min-height: 24rem;
+  min-height: 12rem;
   overflow: hidden;
 }
 
@@ -473,11 +494,12 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   align-items: center;
-  min-height: 2rem;
+  height: 43px;
   border-left: 1px solid #c8d7ef;
   border-right: 1px solid #c8d7ef;
   border-bottom: 1px solid #c8d7ef;
   background: linear-gradient(180deg, #f8fbff 0%, #e7f0ff 100%);
+  box-sizing: border-box;
 }
 
 .editor-shell__stdin-bar {
@@ -496,7 +518,7 @@ body {
 
 .editor-shell__action-button {
   width: 100%;
-  min-height: 2rem;
+  height: 100%;
   border-top: 0;
   border-bottom: 0;
   border-left: 0;
@@ -522,7 +544,7 @@ body {
   margin-top: 1rem;
   border: 1px solid #c8d7ef;
   background: #ffffff;
-  min-height: 10rem;
+  min-height: 12rem;
   overflow: hidden;
 }
 
@@ -720,11 +742,11 @@ body {
   }
 
   .editor-page__topbar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
 
   .editor-page__status {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     margin-left: auto;
   }
 
@@ -740,5 +762,33 @@ body {
   .editor-shell__stdin-hint {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+}
+
+@media (max-height: 900px) {
+  .editor-shell {
+    padding-top: 0.5rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .editor-shell__editor {
+    height: 12rem;
+    min-height: 10rem;
+  }
+
+  .editor-shell__console {
+    margin-top: 0.5rem;
+    min-height: 6rem;
+  }
+
+  .editor-shell__console-section,
+  .editor-shell__result-body {
+    min-height: 3rem;
+    padding: 0.75rem;
+  }
+
+  .editor-shell__console-header,
+  .editor-shell__result-header {
+    padding: 0.35rem 0.75rem;
   }
 }

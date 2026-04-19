@@ -458,18 +458,18 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
     ]),
     html.main([attribute.class("editor-shell")], [
       html.div([attribute.class("editor-shell__bezel")], [
-        html.h1([attribute.class("editor-page__title")], [
+        html.div([attribute.class("editor-page__title-row")], [
+          html.h1([attribute.class("editor-page__title")], [
+            html.text(model.title),
+          ]),
           html.button(
             [
               attribute.type_("button"),
-              attribute.class("editor-page__title-button"),
+              attribute.class("editor-page__title-edit-button"),
               attribute.attribute("aria-label", "Edit title"),
               event.on_click(TitleClicked),
             ],
             [
-              html.span([attribute.class("editor-page__title-text")], [
-                html.text(model.title),
-              ]),
               html.span([attribute.class("editor-page__title-hint")], [
                 html.text("Edit"),
               ]),
