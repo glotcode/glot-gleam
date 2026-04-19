@@ -195,6 +195,13 @@ body {
   color: #2853a6;
 }
 
+.editor-page__dialog-panel {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-height: 5.1rem;
+}
+
 .editor-page__dialog-input {
   width: 100%;
   min-height: 2.5rem;
@@ -212,6 +219,26 @@ body {
   gap: 0.75rem;
 }
 
+.editor-page__dialog-toggle-group {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.editor-page__dialog-toggle {
+  min-width: 5.5rem;
+  min-height: 2.25rem;
+  border: 1px solid #c8d7ef;
+  background: #ffffff;
+  color: #23406f;
+  cursor: pointer;
+  font: inherit;
+}
+
+.editor-page__dialog-toggle--selected {
+  background: #2853a6;
+  color: #ffffff;
+}
+
 .editor-page__dialog-button {
   min-width: 6rem;
   min-height: 2.25rem;
@@ -225,6 +252,17 @@ body {
 .editor-page__dialog-button--secondary {
   background: #f8fbff;
   color: #23406f;
+}
+
+.editor-page__dialog-button--danger {
+  background: #fff1f1;
+  color: #9f1d1d;
+}
+
+.editor-page__dialog-copy {
+  margin: 0;
+  color: #35507f;
+  line-height: 1.6;
 }
 
 .editor-page__status {
@@ -341,12 +379,55 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  height: 100%;
+  align-self: stretch;
+  min-height: 2rem;
   padding: 0 0.8rem;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
   border-right: 1px solid #c8d7ef;
   background: inherit;
   color: #203152;
+  cursor: pointer;
+  font: inherit;
   font-size: 0.82rem;
+  appearance: none;
+  box-sizing: border-box;
+}
+
+.editor-shell__tab--selected {
+  background: #ffffff;
+  color: #1d4ed8;
+}
+
+.editor-shell__tab-meta-button {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.55rem 0 0.6rem;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 1px solid #c8d7ef;
+  background: inherit;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.editor-shell__tab-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.3rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: #2853a6;
+  color: #ffffff;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .editor-shell__editor {

@@ -1,6 +1,7 @@
 import gleam/dynamic/decode
 import gleam/float
 import gleam/int
+import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/string
@@ -35,10 +36,25 @@ pub type RealModel {
     title: String,
     title_draft: String,
     language: language.Language,
-    source_code: String,
+    files: List(snippet_model.File),
+    stdin: option.Option(String),
+    selected_tab: EditorTab,
+    add_entry_kind: AddEntryKind,
+    add_entry_filename: String,
+    edit_entry_filename: String,
     run_state: RunState,
     save_state: SaveState,
   )
+}
+
+pub type EditorTab {
+  FileTab(Int)
+  StdinTab
+}
+
+pub type AddEntryKind {
+  AddFileEntry
+  AddStdinEntry
 }
 
 pub type RunState {
@@ -57,17 +73,25 @@ pub type SaveState {
 
 pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
   let model = case language.from_string(language) {
-    option.Some(lang) ->
+    option.Some(lang) -> {
+      let default_file = snippet_model.default_file(lang)
       SupportedLanguage(RealModel(
         slug: option.None,
         owner_user_id: option.None,
         title: "Hello World",
         title_draft: "Hello World",
         language: lang,
-        source_code: language.example_code(lang),
+        files: [default_file],
+        stdin: option.None,
+        selected_tab: FileTab(0),
+        add_entry_kind: AddFileEntry,
+        add_entry_filename: "",
+        edit_entry_filename: default_file_name([default_file], FileTab(0)),
         run_state: Idle,
         save_state: SaveIdle,
       ))
+    }
+
     option.None -> UnsupportedLanguage(language)
   }
 
@@ -88,6 +112,19 @@ pub type Msg {
   TitleEditCancelled
   TitleEditSubmitted
   TitleDialogClosed
+  AddEntryClicked
+  AddEntryKindSelected(AddEntryKind)
+  AddEntryFilenameChanged(String)
+  AddEntryCancelled
+  AddEntrySubmitted
+  AddEntryDialogClosed
+  SelectedTabActionClicked
+  EditEntryFilenameChanged(String)
+  EditEntryCancelled
+  EditEntrySubmitted
+  EditEntryDeleted
+  EditEntryDialogClosed
+  TabSelected(EditorTab)
   SourceCodeChanged(String)
   RunSubmitted
   RunFinished(api.ApiResponse(run.RunResult))
@@ -101,10 +138,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case result {
         api.ApiSuccess(response) -> {
           let files = response.data.files
-          let source_code = case files {
-            [snippet_model.File(content:, ..), ..] -> content
-            [] -> ""
-          }
+          let stdin = stdin_option(response.data.stdin)
 
           #(
             SupportedLanguage(RealModel(
@@ -113,7 +147,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               title: title_or_default(response.data.title),
               title_draft: title_or_default(response.data.title),
               language: response.data.language,
-              source_code: source_code,
+              files: files,
+              stdin: stdin,
+              selected_tab: initial_selected_tab(files, stdin),
+              add_entry_kind: default_add_entry_kind(stdin),
+              add_entry_filename: "",
+              edit_entry_filename: default_file_name(
+                files,
+                initial_selected_tab(files, stdin),
+              ),
               run_state: Idle,
               save_state: SaveIdle,
             )),
@@ -143,7 +185,7 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
 
     TitleClicked -> #(
       RealModel(..model, title_draft: model.title),
-      editor_dialog.open(),
+      editor_dialog.open_title_dialog(),
     )
 
     TitleDraftChanged(title_draft) -> #(
@@ -153,12 +195,12 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
 
     TitleEditCancelled -> #(
       RealModel(..model, title_draft: model.title),
-      editor_dialog.close(),
+      editor_dialog.close_title_dialog(),
     )
 
     TitleEditSubmitted -> #(
       RealModel(..model, title: model.title_draft),
-      editor_dialog.close(),
+      editor_dialog.close_title_dialog(),
     )
 
     TitleDialogClosed -> #(
@@ -166,8 +208,99 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       editor_dialog.focus_editor(),
     )
 
+    AddEntryClicked -> #(
+      RealModel(
+        ..model,
+        add_entry_kind: default_add_entry_kind(model.stdin),
+        add_entry_filename: "",
+      ),
+      editor_dialog.open_add_entry_dialog(),
+    )
+
+    AddEntryKindSelected(kind) -> #(
+      RealModel(..model, add_entry_kind: kind),
+      effect.none(),
+    )
+
+    AddEntryFilenameChanged(filename) -> #(
+      RealModel(..model, add_entry_filename: filename),
+      effect.none(),
+    )
+
+    AddEntryCancelled -> #(
+      reset_add_entry_draft(model),
+      editor_dialog.close_add_entry_dialog(),
+    )
+
+    AddEntrySubmitted -> {
+      case add_entry(model) {
+        option.Some(next_model) ->
+          #(next_model, editor_dialog.close_add_entry_dialog())
+
+        option.None ->
+          #(model, effect.none())
+      }
+    }
+
+    AddEntryDialogClosed -> #(
+      reset_add_entry_draft(model),
+      editor_dialog.focus_editor(),
+    )
+
+    SelectedTabActionClicked -> #(
+      RealModel(
+        ..model,
+        edit_entry_filename: default_file_name(model.files, model.selected_tab),
+      ),
+      editor_dialog.open_edit_entry_dialog(),
+    )
+
+    EditEntryFilenameChanged(filename) -> #(
+      RealModel(..model, edit_entry_filename: filename),
+      effect.none(),
+    )
+
+    EditEntryCancelled -> #(
+      reset_edit_entry_draft(model),
+      editor_dialog.close_edit_entry_dialog(),
+    )
+
+    EditEntrySubmitted -> {
+      case rename_selected_file(model) {
+        option.Some(next_model) ->
+          #(next_model, editor_dialog.close_edit_entry_dialog())
+
+        option.None ->
+          #(model, effect.none())
+      }
+    }
+
+    EditEntryDeleted -> {
+      case delete_selected_entry(model) {
+        option.Some(next_model) ->
+          #(next_model, editor_dialog.close_edit_entry_dialog())
+
+        option.None ->
+          #(model, effect.none())
+      }
+    }
+
+    EditEntryDialogClosed -> #(
+      reset_edit_entry_draft(model),
+      editor_dialog.focus_editor(),
+    )
+
+    TabSelected(tab) -> #(
+      RealModel(
+        ..model,
+        selected_tab: tab,
+        edit_entry_filename: default_file_name(model.files, tab),
+      ),
+      effect.none(),
+    )
+
     SourceCodeChanged(source_code) -> #(
-      RealModel(..model, source_code: source_code),
+      update_selected_tab_content(model, source_code),
       effect.none(),
     )
 
@@ -181,13 +314,8 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
               language.default_filename(model.language),
               [],
             ),
-            files: [
-              snippet_model.File(
-                name: language.default_filename(model.language),
-                content: model.source_code,
-              ),
-            ],
-            stdin: option.None,
+            files: model.files,
+            stdin: model.stdin,
           ),
         )
 
@@ -237,14 +365,9 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
             title: model.title,
             language: model.language,
             visibility: snippet_model.Unlisted,
-            stdin: "",
+            stdin: stdin_to_string(model.stdin),
             run_command: run_instructions.run_command,
-            files: [
-              snippet_model.File(
-                name: language.default_filename(model.language),
-                content: model.source_code,
-              ),
-            ],
+            files: model.files,
           ),
         )
 
@@ -315,7 +438,6 @@ pub fn view(model: Model, current_user_id: option.Option(Uuid)) -> Element(Msg) 
 
 fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Element(Msg) {
   let can_save = can_save(model, current_user_id)
-  let filename = language.default_filename(model.language)
 
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
@@ -356,17 +478,9 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
         ]),
       ]),
       title_dialog_view(model),
-      html.div([attribute.class("editor-shell__tabbar")], [
-        icon_button("editor-shell__settings-button", [
-          icons.gear_icon(),
-        ]),
-        html.div([attribute.class("editor-shell__tab")], [
-          html.span([], [html.text(filename)]),
-        ]),
-        icon_button("editor-shell__tab-action-button", [
-          icons.document_plus(),
-        ]),
-      ]),
+      add_entry_dialog_view(model),
+      edit_entry_dialog_view(model),
+      html.div([attribute.class("editor-shell__tabbar")], tabbar_children(model)),
       html.div([attribute.class("editor-shell__editor")], [
         element.element(
           "glot-codemirror",
@@ -374,7 +488,7 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
             attribute.id(editor_dialog.editor_id),
             attribute.class("editor-shell__codemirror"),
             attribute.attribute("language", language.to_string(model.language)),
-            attribute.attribute("value", model.source_code),
+            attribute.attribute("value", selected_tab_content(model)),
             event.on("change", {
               use value <- decode.subfield(["detail", "value"], decode.string)
               decode.success(SourceCodeChanged(value))
@@ -409,6 +523,21 @@ fn icon_button(class_name: String, children: List(Element(msg))) -> Element(msg)
   )
 }
 
+fn icon_action_button(
+  class_name: String,
+  msg: Msg,
+  children: List(Element(Msg)),
+) -> Element(Msg) {
+  html.button(
+    [
+      attribute.type_("button"),
+      attribute.class(class_name),
+      event.on_click(msg),
+    ],
+    children,
+  )
+}
+
 fn action_button(
   class_name: String,
   label: String,
@@ -429,7 +558,7 @@ fn action_button(
 fn title_dialog_view(model: RealModel) -> Element(Msg) {
   html.dialog(
     [
-      attribute.id(editor_dialog.dialog_id),
+      attribute.id(editor_dialog.title_dialog_id),
       attribute.class("editor-page__dialog"),
       event.on("close", decode.success(TitleDialogClosed)),
     ],
@@ -475,6 +604,285 @@ fn title_dialog_view(model: RealModel) -> Element(Msg) {
           ]),
         ],
       ),
+    ],
+  )
+}
+
+fn add_entry_dialog_view(model: RealModel) -> Element(Msg) {
+  html.dialog(
+    [
+      attribute.id(editor_dialog.add_entry_dialog_id),
+      attribute.class("editor-page__dialog"),
+      event.on("close", decode.success(AddEntryDialogClosed)),
+    ],
+    [
+      html.form(
+        [
+          attribute.class("editor-page__dialog-form"),
+          event.on_submit(fn(_) { AddEntrySubmitted }),
+        ],
+        [
+          html.div([attribute.class("editor-page__dialog-toggle-group")], [
+            toggle_button("File", model.add_entry_kind == AddFileEntry, AddFileEntry),
+            toggle_button("stdin", model.add_entry_kind == AddStdinEntry, AddStdinEntry),
+          ]),
+          add_entry_fields_view(model),
+          html.div([attribute.class("editor-page__dialog-actions")], [
+            html.button(
+              [
+                attribute.type_("button"),
+                attribute.class("editor-page__dialog-button editor-page__dialog-button--secondary"),
+                event.on_click(AddEntryCancelled),
+              ],
+              [html.text("Cancel")],
+            ),
+            html.button(
+              [
+                attribute.type_("submit"),
+                attribute.class("editor-page__dialog-button"),
+                attribute.disabled(!can_submit_add_entry(model)),
+              ],
+              [html.text("Add")],
+            ),
+          ]),
+        ],
+      ),
+    ],
+  )
+}
+
+fn edit_entry_dialog_view(model: RealModel) -> Element(Msg) {
+  html.dialog(
+    [
+      attribute.id(editor_dialog.edit_entry_dialog_id),
+      attribute.class("editor-page__dialog"),
+      event.on("close", decode.success(EditEntryDialogClosed)),
+    ],
+    [
+      html.form(
+        [
+          attribute.class("editor-page__dialog-form"),
+          event.on_submit(fn(_) { EditEntrySubmitted }),
+        ],
+        edit_entry_dialog_children(model),
+      ),
+    ],
+  )
+}
+
+fn edit_entry_dialog_children(model: RealModel) -> List(Element(Msg)) {
+  case model.selected_tab {
+    FileTab(_) -> [
+      html.label(
+        [
+          attribute.for("editor-page-edit-entry-input"),
+          attribute.class("editor-page__dialog-label"),
+        ],
+        [html.text("Filename")],
+      ),
+      html.input([
+        attribute.id("editor-page-edit-entry-input"),
+        attribute.name("filename"),
+        attribute.type_("text"),
+        attribute.value(model.edit_entry_filename),
+        attribute.autofocus(True),
+        attribute.class("editor-page__dialog-input"),
+        event.on_input(EditEntryFilenameChanged),
+      ]),
+      html.div(
+        [attribute.class("editor-page__dialog-actions")],
+        file_edit_actions(model),
+      ),
+    ]
+
+    StdinTab -> [
+      html.p([attribute.class("editor-page__dialog-copy")], [
+        html.text("Delete the <stdin> tab and keep only source files."),
+      ]),
+      html.div([attribute.class("editor-page__dialog-actions")], [
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class("editor-page__dialog-button editor-page__dialog-button--danger"),
+            event.on_click(EditEntryDeleted),
+          ],
+          [html.text("Delete <stdin>")],
+        ),
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class("editor-page__dialog-button editor-page__dialog-button--secondary"),
+            event.on_click(EditEntryCancelled),
+          ],
+          [html.text("Close")],
+        ),
+      ]),
+    ]
+  }
+}
+
+fn file_edit_actions(model: RealModel) -> List(Element(Msg)) {
+  let delete_button = case can_delete_selected_file(model) {
+    True -> [
+      html.button(
+        [
+          attribute.type_("button"),
+          attribute.class("editor-page__dialog-button editor-page__dialog-button--danger"),
+          event.on_click(EditEntryDeleted),
+        ],
+        [html.text("Delete file")],
+      ),
+    ]
+
+    False -> []
+  }
+
+  list.append(delete_button, [
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.class("editor-page__dialog-button editor-page__dialog-button--secondary"),
+        event.on_click(EditEntryCancelled),
+      ],
+      [html.text("Cancel")],
+    ),
+    html.button(
+      [
+        attribute.type_("submit"),
+        attribute.class("editor-page__dialog-button"),
+        attribute.disabled(!can_submit_edit_entry(model)),
+      ],
+      [html.text("Save")],
+    ),
+  ])
+}
+
+fn toggle_button(
+  label: String,
+  is_selected: Bool,
+  kind: AddEntryKind,
+) -> Element(Msg) {
+  let class_name = case is_selected {
+    True ->
+      "editor-page__dialog-toggle editor-page__dialog-toggle--selected"
+    False -> "editor-page__dialog-toggle"
+  }
+
+  html.button(
+    [
+      attribute.type_("button"),
+      attribute.class(class_name),
+      attribute.attribute("aria-pressed", bool_attribute(is_selected)),
+      event.on_click(AddEntryKindSelected(kind)),
+    ],
+    [html.text(label)],
+  )
+}
+
+fn add_entry_fields_view(model: RealModel) -> Element(Msg) {
+  case model.add_entry_kind {
+    AddFileEntry ->
+      html.div([attribute.class("editor-page__dialog-panel")], [
+        html.label(
+          [
+            attribute.for("editor-page-filename-input"),
+            attribute.class("editor-page__dialog-label"),
+          ],
+          [html.text("Filename")],
+        ),
+        html.input([
+          attribute.id("editor-page-filename-input"),
+          attribute.name("filename"),
+          attribute.type_("text"),
+          attribute.value(model.add_entry_filename),
+          attribute.autofocus(True),
+          attribute.class("editor-page__dialog-input"),
+          event.on_input(AddEntryFilenameChanged),
+        ]),
+      ])
+
+    AddStdinEntry ->
+      html.div([attribute.class("editor-page__dialog-panel")], [
+        html.p([attribute.class("editor-page__dialog-copy")], [
+          html.text(add_stdin_message(model.stdin)),
+        ]),
+      ])
+  }
+}
+
+fn tabbar_children(model: RealModel) -> List(Element(Msg)) {
+  [
+    icon_button("editor-shell__settings-button", [
+      icons.gear_icon(),
+    ]),
+    ..list.append(
+      tab_views(model),
+      [
+        selected_tab_action_button(model),
+        icon_action_button("editor-shell__tab-action-button", AddEntryClicked, [
+          icons.document_plus(),
+        ]),
+      ],
+    ),
+  ]
+}
+
+fn tab_views(model: RealModel) -> List(Element(Msg)) {
+  let file_tabs = file_tab_views(model.files, model.selected_tab, 0)
+  case model.stdin {
+    option.Some(_) ->
+      list.append(
+        file_tabs,
+        [tab_button("<stdin>", StdinTab, model.selected_tab == StdinTab)],
+      )
+
+    option.None -> file_tabs
+  }
+}
+
+fn file_tab_views(
+  files: List(snippet_model.File),
+  selected_tab: EditorTab,
+  index: Int,
+) -> List(Element(Msg)) {
+  case files {
+    [] -> []
+    [snippet_model.File(name:, ..), ..rest] -> [
+      tab_button(name, FileTab(index), selected_tab == FileTab(index)),
+      ..file_tab_views(rest, selected_tab, index + 1),
+    ]
+  }
+}
+
+fn tab_button(label: String, tab: EditorTab, is_selected: Bool) -> Element(Msg) {
+  let class_name = case is_selected {
+    True -> "editor-shell__tab editor-shell__tab--selected"
+    False -> "editor-shell__tab"
+  }
+
+  html.button(
+    [
+      attribute.type_("button"),
+      attribute.class(class_name),
+      attribute.attribute("aria-selected", bool_attribute(is_selected)),
+      event.on_click(TabSelected(tab)),
+    ],
+    [html.span([], [html.text(label)])],
+  )
+}
+
+fn selected_tab_action_button(model: RealModel) -> Element(Msg) {
+  html.button(
+    [
+      attribute.type_("button"),
+      attribute.class("editor-shell__tab-meta-button"),
+      attribute.attribute("aria-label", selected_tab_action_label(model.selected_tab)),
+      event.on_click(SelectedTabActionClicked),
+    ],
+    [
+      html.span([attribute.class("editor-shell__tab-meta-pill")], [
+        html.text("Edit"),
+      ]),
     ],
   )
 }
@@ -654,6 +1062,286 @@ fn title_or_default(title: String) -> String {
   }
 }
 
+fn stdin_option(stdin: String) -> option.Option(String) {
+  case stdin == "" {
+    True -> option.None
+    False -> option.Some(stdin)
+  }
+}
+
+fn stdin_to_string(stdin: option.Option(String)) -> String {
+  case stdin {
+    option.Some(content) -> content
+    option.None -> ""
+  }
+}
+
+fn initial_selected_tab(
+  files: List(snippet_model.File),
+  stdin: option.Option(String),
+) -> EditorTab {
+  case files {
+    [_first, ..] -> FileTab(0)
+    [] ->
+      case stdin {
+        option.Some(_) -> StdinTab
+        option.None -> FileTab(0)
+      }
+  }
+}
+
+fn default_add_entry_kind(stdin: option.Option(String)) -> AddEntryKind {
+  case stdin {
+    option.Some(_) -> AddFileEntry
+    option.None -> AddFileEntry
+  }
+}
+
+fn reset_add_entry_draft(model: RealModel) -> RealModel {
+  RealModel(
+    ..model,
+    add_entry_kind: default_add_entry_kind(model.stdin),
+    add_entry_filename: "",
+  )
+}
+
+fn reset_edit_entry_draft(model: RealModel) -> RealModel {
+  RealModel(
+    ..model,
+    edit_entry_filename: default_file_name(model.files, model.selected_tab),
+  )
+}
+
+fn add_entry(model: RealModel) -> option.Option(RealModel) {
+  case model.add_entry_kind {
+    AddFileEntry -> add_file_entry(model)
+    AddStdinEntry -> add_stdin_entry(model)
+  }
+}
+
+fn add_file_entry(model: RealModel) -> option.Option(RealModel) {
+  let filename = string.trim(model.add_entry_filename)
+  case filename == "" || file_name_exists(model.files, filename) {
+    True -> option.None
+    False -> {
+      let next_index = list.length(model.files)
+      let next_file = snippet_model.File(name: filename, content: "")
+      option.Some(RealModel(
+        ..model,
+        files: list.append(model.files, [next_file]),
+        selected_tab: FileTab(next_index),
+        add_entry_filename: "",
+      ))
+    }
+  }
+}
+
+fn add_stdin_entry(model: RealModel) -> option.Option(RealModel) {
+  case model.stdin {
+    option.Some(_) -> option.None
+    option.None ->
+      option.Some(RealModel(
+        ..model,
+        stdin: option.Some(""),
+        selected_tab: StdinTab,
+        add_entry_filename: "",
+      ))
+  }
+}
+
+fn can_submit_add_entry(model: RealModel) -> Bool {
+  case model.add_entry_kind {
+    AddFileEntry -> {
+      let filename = string.trim(model.add_entry_filename)
+      filename != "" && !file_name_exists(model.files, filename)
+    }
+
+    AddStdinEntry ->
+      case model.stdin {
+        option.Some(_) -> False
+        option.None -> True
+      }
+  }
+}
+
+fn add_stdin_message(stdin: option.Option(String)) -> String {
+  case stdin {
+    option.Some(_) -> "<stdin> already exists for this snippet."
+    option.None -> "Add a dedicated <stdin> tab for runtime input."
+  }
+}
+
+fn file_name_exists(files: List(snippet_model.File), filename: String) -> Bool {
+  case files {
+    [] -> False
+    [snippet_model.File(name:, ..), ..rest] ->
+      name == filename || file_name_exists(rest, filename)
+  }
+}
+
+fn can_submit_edit_entry(model: RealModel) -> Bool {
+  case model.selected_tab {
+    StdinTab -> False
+    FileTab(index) -> {
+      let filename = string.trim(model.edit_entry_filename)
+      filename != "" && !file_name_exists_except(model.files, filename, index)
+    }
+  }
+}
+
+fn can_delete_selected_file(model: RealModel) -> Bool {
+  case model.selected_tab {
+    FileTab(_) -> list.length(model.files) > 1
+    StdinTab -> False
+  }
+}
+
+fn rename_selected_file(model: RealModel) -> option.Option(RealModel) {
+  case model.selected_tab {
+    StdinTab -> option.None
+    FileTab(index) -> {
+      let filename = string.trim(model.edit_entry_filename)
+      case filename == "" || file_name_exists_except(model.files, filename, index) {
+        True -> option.None
+        False ->
+          option.Some(RealModel(
+            ..model,
+            files: rename_file_at(model.files, index, filename),
+          ))
+      }
+    }
+  }
+}
+
+fn delete_selected_entry(model: RealModel) -> option.Option(RealModel) {
+  case model.selected_tab {
+    StdinTab ->
+      option.Some(RealModel(
+        ..model,
+        stdin: option.None,
+        selected_tab: FileTab(0),
+        edit_entry_filename: default_file_name(model.files, FileTab(0)),
+      ))
+
+    FileTab(index) ->
+      case list.length(model.files) > 1 {
+        False -> option.None
+        True -> {
+          let next_files = remove_file_at(model.files, index)
+          let next_tab =
+            case index >= list.length(next_files) {
+              True -> FileTab(list.length(next_files) - 1)
+              False -> FileTab(index)
+            }
+
+          option.Some(RealModel(
+            ..model,
+            files: next_files,
+            selected_tab: next_tab,
+            edit_entry_filename: default_file_name(next_files, next_tab),
+          ))
+        }
+      }
+  }
+}
+
+fn default_file_name(files: List(snippet_model.File), tab: EditorTab) -> String {
+  case tab {
+    FileTab(index) -> file_name_at(files, index)
+    StdinTab -> ""
+  }
+}
+
+fn file_name_at(files: List(snippet_model.File), index: Int) -> String {
+  case files, index {
+    [snippet_model.File(name:, ..), ..], 0 -> name
+    [_first, ..rest], _ -> file_name_at(rest, index - 1)
+    [], _ -> ""
+  }
+}
+
+fn file_name_exists_except(
+  files: List(snippet_model.File),
+  filename: String,
+  skip_index: Int,
+) -> Bool {
+  case files, skip_index {
+    [], _ -> False
+    [snippet_model.File(_name, ..), ..rest], 0 ->
+      file_name_exists_except(rest, filename, -1)
+    [snippet_model.File(name:, ..), ..rest], _ ->
+      name == filename || file_name_exists_except(rest, filename, skip_index - 1)
+  }
+}
+
+fn selected_tab_content(model: RealModel) -> String {
+  case model.selected_tab {
+    FileTab(index) -> file_content_at(model.files, index)
+    StdinTab ->
+      case model.stdin {
+        option.Some(content) -> content
+        option.None -> ""
+      }
+  }
+}
+
+fn file_content_at(files: List(snippet_model.File), index: Int) -> String {
+  case files, index {
+    [snippet_model.File(content:, ..), ..], 0 -> content
+    [_first, ..rest], _ -> file_content_at(rest, index - 1)
+    [], _ -> ""
+  }
+}
+
+fn update_selected_tab_content(model: RealModel, content: String) -> RealModel {
+  case model.selected_tab {
+    FileTab(index) ->
+      RealModel(..model, files: update_file_content_at(model.files, index, content))
+    StdinTab ->
+      RealModel(..model, stdin: option.Some(content))
+  }
+}
+
+fn update_file_content_at(
+  files: List(snippet_model.File),
+  index: Int,
+  content: String,
+) -> List(snippet_model.File) {
+  case files, index {
+    [snippet_model.File(name:, ..), ..rest], 0 ->
+      [snippet_model.File(name: name, content: content), ..rest]
+
+    [first, ..rest], _ ->
+      [first, ..update_file_content_at(rest, index - 1, content)]
+
+    [], _ -> []
+  }
+}
+
+fn rename_file_at(
+  files: List(snippet_model.File),
+  index: Int,
+  filename: String,
+) -> List(snippet_model.File) {
+  case files, index {
+    [snippet_model.File(content:, ..), ..rest], 0 ->
+      [snippet_model.File(name: filename, content: content), ..rest]
+
+    [first, ..rest], _ ->
+      [first, ..rename_file_at(rest, index - 1, filename)]
+
+    [], _ -> []
+  }
+}
+
+fn remove_file_at(files: List(snippet_model.File), index: Int) -> List(snippet_model.File) {
+  case files, index {
+    [_first, ..rest], 0 -> rest
+    [first, ..rest], _ -> [first, ..remove_file_at(rest, index - 1)]
+    [], _ -> []
+  }
+}
+
 fn duration_in_ms_label(duration_ns: Int) -> String {
   let hundredths_of_ms =
     int.to_float(duration_ns) /. 10_000.0
@@ -666,4 +1354,18 @@ fn duration_in_ms_label(duration_ns: Int) -> String {
     |> string.pad_start(to: 2, with: "0")
 
   int.to_string(whole_ms) <> "." <> fractional_ms <> "ms"
+}
+
+fn bool_attribute(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
+}
+
+fn selected_tab_action_label(tab: EditorTab) -> String {
+  case tab {
+    FileTab(_) -> "Edit selected file"
+    StdinTab -> "Manage stdin tab"
+  }
 }

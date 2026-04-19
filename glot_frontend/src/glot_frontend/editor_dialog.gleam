@@ -1,17 +1,43 @@
 import lustre/effect.{type Effect}
 
-pub const dialog_id = "editor-page-title-dialog"
+pub const title_dialog_id = "editor-page-title-dialog"
+pub const add_entry_dialog_id = "editor-page-add-entry-dialog"
+pub const edit_entry_dialog_id = "editor-page-edit-entry-dialog"
 pub const editor_id = "editor-page-codemirror"
 
-pub fn open() -> Effect(msg) {
+pub fn open_title_dialog() -> Effect(msg) {
   effect.from(fn(_dispatch) {
-    open_dialog(dialog_id)
+    open_dialog(title_dialog_id)
   })
 }
 
-pub fn close() -> Effect(msg) {
+pub fn close_title_dialog() -> Effect(msg) {
   effect.from(fn(_dispatch) {
-    close_dialog(dialog_id)
+    close_dialog(title_dialog_id)
+  })
+}
+
+pub fn open_add_entry_dialog() -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    open_dialog(add_entry_dialog_id)
+  })
+}
+
+pub fn close_add_entry_dialog() -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    close_dialog(add_entry_dialog_id)
+  })
+}
+
+pub fn open_edit_entry_dialog() -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    open_dialog(edit_entry_dialog_id)
+  })
+}
+
+pub fn close_edit_entry_dialog() -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    close_dialog(edit_entry_dialog_id)
   })
 }
 
