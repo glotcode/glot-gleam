@@ -42,9 +42,17 @@ pub type RealModel {
     add_entry_kind: AddEntryKind,
     add_entry_filename: String,
     edit_entry_filename: String,
+    keyboard_bindings: KeyboardBindings,
+    keyboard_bindings_draft: KeyboardBindings,
     run_state: RunState,
     save_state: SaveState,
   )
+}
+
+pub type KeyboardBindings {
+  DefaultBindings
+  EmacsBindings
+  VimBindings
 }
 
 pub type EditorTab {
@@ -87,6 +95,8 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
         add_entry_kind: AddFileEntry,
         add_entry_filename: "",
         edit_entry_filename: default_file_name([default_file], FileTab(0)),
+        keyboard_bindings: DefaultBindings,
+        keyboard_bindings_draft: DefaultBindings,
         run_state: Idle,
         save_state: SaveIdle,
       ))
@@ -124,6 +134,11 @@ pub type Msg {
   EditEntrySubmitted
   EditEntryDeleted
   EditEntryDialogClosed
+  SettingsClicked
+  KeyboardBindingsDraftSelected(KeyboardBindings)
+  SettingsCancelled
+  SettingsSubmitted
+  SettingsDialogClosed
   TabSelected(EditorTab)
   SourceCodeChanged(String)
   RunSubmitted
@@ -156,6 +171,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 files,
                 initial_selected_tab(files, stdin),
               ),
+              keyboard_bindings: DefaultBindings,
+              keyboard_bindings_draft: DefaultBindings,
               run_state: Idle,
               save_state: SaveIdle,
             )),
@@ -287,6 +304,43 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
 
     EditEntryDialogClosed -> #(
       reset_edit_entry_draft(model),
+      editor_dialog.focus_editor(),
+    )
+
+    SettingsClicked -> #(
+      RealModel(
+        ..model,
+        keyboard_bindings_draft: model.keyboard_bindings,
+      ),
+      editor_dialog.open_settings_dialog(),
+    )
+
+    KeyboardBindingsDraftSelected(bindings) -> #(
+      RealModel(..model, keyboard_bindings_draft: bindings),
+      effect.none(),
+    )
+
+    SettingsCancelled -> #(
+      RealModel(
+        ..model,
+        keyboard_bindings_draft: model.keyboard_bindings,
+      ),
+      editor_dialog.close_settings_dialog(),
+    )
+
+    SettingsSubmitted -> #(
+      RealModel(
+        ..model,
+        keyboard_bindings: model.keyboard_bindings_draft,
+      ),
+      editor_dialog.close_settings_dialog(),
+    )
+
+    SettingsDialogClosed -> #(
+      RealModel(
+        ..model,
+        keyboard_bindings_draft: model.keyboard_bindings,
+      ),
       editor_dialog.focus_editor(),
     )
 
@@ -480,6 +534,7 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
       title_dialog_view(model),
       add_entry_dialog_view(model),
       edit_entry_dialog_view(model),
+      settings_dialog_view(model),
       html.div([attribute.class("editor-shell__tabbar")], tabbar_children(model)),
       html.div([attribute.class("editor-shell__editor")], [
         element.element(
@@ -489,6 +544,10 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
             attribute.class("editor-shell__codemirror"),
             attribute.attribute("language", language.to_string(model.language)),
             attribute.attribute("value", selected_tab_content(model)),
+            attribute.attribute(
+              "keyboard-bindings",
+              keyboard_bindings_to_attribute(model.keyboard_bindings),
+            ),
             event.on("change", {
               use value <- decode.subfield(["detail", "value"], decode.string)
               decode.success(SourceCodeChanged(value))
@@ -670,6 +729,66 @@ fn edit_entry_dialog_view(model: RealModel) -> Element(Msg) {
   )
 }
 
+fn settings_dialog_view(model: RealModel) -> Element(Msg) {
+  html.dialog(
+    [
+      attribute.id(editor_dialog.settings_dialog_id),
+      attribute.class("editor-page__dialog"),
+      event.on("close", decode.success(SettingsDialogClosed)),
+    ],
+    [
+      html.form(
+        [
+          attribute.class("editor-page__dialog-form"),
+          event.on_submit(fn(_) { SettingsSubmitted }),
+        ],
+        [
+          html.label([attribute.class("editor-page__dialog-label")], [
+            html.text("Keyboard bindings"),
+          ]),
+          html.div([attribute.class("editor-page__dialog-panel")], [
+            keyboard_bindings_option(
+              "Default",
+              "Standard CodeMirror shortcuts.",
+              DefaultBindings,
+              model.keyboard_bindings_draft,
+            ),
+            keyboard_bindings_option(
+              "Emacs",
+              "Enable Emacs-style editing commands.",
+              EmacsBindings,
+              model.keyboard_bindings_draft,
+            ),
+            keyboard_bindings_option(
+              "Vim",
+              "Enable modal Vim keybindings.",
+              VimBindings,
+              model.keyboard_bindings_draft,
+            ),
+          ]),
+          html.div([attribute.class("editor-page__dialog-actions")], [
+            html.button(
+              [
+                attribute.type_("button"),
+                attribute.class("editor-page__dialog-button editor-page__dialog-button--secondary"),
+                event.on_click(SettingsCancelled),
+              ],
+              [html.text("Cancel")],
+            ),
+            html.button(
+              [
+                attribute.type_("submit"),
+                attribute.class("editor-page__dialog-button"),
+              ],
+              [html.text("Apply")],
+            ),
+          ]),
+        ],
+      ),
+    ],
+  )
+}
+
 fn edit_entry_dialog_children(model: RealModel) -> List(Element(Msg)) {
   case model.selected_tab {
     FileTab(_) -> [
@@ -812,9 +931,40 @@ fn add_entry_fields_view(model: RealModel) -> Element(Msg) {
   }
 }
 
+fn keyboard_bindings_option(
+  label: String,
+  description: String,
+  value: KeyboardBindings,
+  selected: KeyboardBindings,
+) -> Element(Msg) {
+  let is_selected = value == selected
+  let class_name = case is_selected {
+    True ->
+      "editor-page__settings-option editor-page__settings-option--selected"
+    False -> "editor-page__settings-option"
+  }
+
+  html.button(
+    [
+      attribute.type_("button"),
+      attribute.class(class_name),
+      attribute.attribute("aria-pressed", bool_attribute(is_selected)),
+      event.on_click(KeyboardBindingsDraftSelected(value)),
+    ],
+    [
+      html.span([attribute.class("editor-page__settings-option-title")], [
+        html.text(label),
+      ]),
+      html.span([attribute.class("editor-page__settings-option-copy")], [
+        html.text(description),
+      ]),
+    ],
+  )
+}
+
 fn tabbar_children(model: RealModel) -> List(Element(Msg)) {
   [
-    icon_button("editor-shell__settings-button", [
+    icon_action_button("editor-shell__settings-button", SettingsClicked, [
       icons.gear_icon(),
     ]),
     html.div([attribute.class("editor-shell__tab-scroll")], [
@@ -909,6 +1059,14 @@ fn save_button_text(save_state: SaveState) -> String {
   case save_state {
     Saving -> "Saving..."
     _ -> "Save"
+  }
+}
+
+fn keyboard_bindings_to_attribute(bindings: KeyboardBindings) -> String {
+  case bindings {
+    DefaultBindings -> "default"
+    EmacsBindings -> "emacs"
+    VimBindings -> "vim"
   }
 }
 

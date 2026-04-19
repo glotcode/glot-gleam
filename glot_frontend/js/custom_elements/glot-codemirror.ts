@@ -252,10 +252,24 @@ const languageMap: Record<string, () => Promise<Extension>> = {
 };
 
 type ChangeEventDetail = { value: string };
+type KeyboardBindingsName = "default" | "emacs" | "vim";
+
+const defaultKeyboardBindingsExtension: Extension = [];
+
+const keyboardBindingsMap: Record<Exclude<KeyboardBindingsName, "default">, () => Promise<Extension>> = {
+  emacs: async () => {
+    const module = await import("@replit/codemirror-emacs");
+    return module.emacs();
+  },
+  vim: async () => {
+    const module = await import("@replit/codemirror-vim");
+    return module.vim();
+  }
+};
 
 export class GlotCodeMirror extends HTMLElement {
   static get observedAttributes() {
-    return ["value", "language", "disabled"];
+    return ["value", "language", "disabled", "keyboard-bindings"];
   }
 
   private _shadow: ShadowRoot;
@@ -264,16 +278,21 @@ export class GlotCodeMirror extends HTMLElement {
 
   private _valueCache = "";
   private _languageName = "javascript";
+  private _keyboardBindingsName: KeyboardBindingsName = "default";
   private _updatingFromOutside = false;
 
   private _language = new Compartment();
   private _editable = new Compartment();
+  private _keyboardBindings = new Compartment();
 
   constructor() {
     super();
 
     this._valueCache = this.getAttribute("value") ?? "";
     this._languageName = (this.getAttribute("language") ?? "javascript").toLowerCase();
+    this._keyboardBindingsName = this._parseKeyboardBindingsAttribute(
+      this.getAttribute("keyboard-bindings")
+    );
 
     this._shadow = this.attachShadow({ mode: "open" });
 
@@ -338,6 +357,7 @@ export class GlotCodeMirror extends HTMLElement {
         basicSetup,
         this._language.of([]),
         this._editable.of(editableExt),
+        this._keyboardBindings.of(defaultKeyboardBindingsExtension),
         EditorView.updateListener.of((update) => {
           if (!update.docChanged) return;
           const next = update.state.doc.toString();
@@ -365,7 +385,13 @@ export class GlotCodeMirror extends HTMLElement {
       if (this._view && ext) {
         this._view.dispatch({ effects: this._language.reconfigure(ext) });
       }
-    })
+    });
+
+    this._getKeyboardBindingsExtension(this._keyboardBindingsName).then((ext) => {
+      if (this._view) {
+        this._view.dispatch({ effects: this._keyboardBindings.reconfigure(ext) });
+      }
+    });
   }
 
   disconnectedCallback() {
@@ -380,6 +406,9 @@ export class GlotCodeMirror extends HTMLElement {
     if (!this._view) {
       if (name === "value") this._valueCache = newVal ?? "";
       if (name === "language") this._languageName = (newVal ?? "javascript").toLowerCase();
+      if (name === "keyboard-bindings") {
+        this._keyboardBindingsName = this._parseKeyboardBindingsAttribute(newVal);
+      }
       return;
     }
 
@@ -396,8 +425,18 @@ export class GlotCodeMirror extends HTMLElement {
     }
 
     if (name === "language") {
-      const ext = await this._getLanguageExtension((newVal ?? "javascript").toLowerCase());
+      this._languageName = (newVal ?? "javascript").toLowerCase();
+      const ext = await this._getLanguageExtension(this._languageName);
       this._view.dispatch({ effects: this._language.reconfigure(ext ?? []) });
+      return;
+    }
+
+    if (name === "keyboard-bindings") {
+      this._keyboardBindingsName = this._parseKeyboardBindingsAttribute(newVal);
+      const ext = await this._getKeyboardBindingsExtension(this._keyboardBindingsName);
+      this._view.dispatch({
+        effects: this._keyboardBindings.reconfigure(ext)
+      });
       return;
     }
 
@@ -426,6 +465,13 @@ export class GlotCodeMirror extends HTMLElement {
     this.setAttribute("language", name);
   }
 
+  get keyboardBindings(): KeyboardBindingsName {
+    return this._keyboardBindingsName;
+  }
+  set keyboardBindings(name: KeyboardBindingsName) {
+    this.setAttribute("keyboard-bindings", name);
+  }
+
   get disabled(): boolean {
     return this.hasAttribute("disabled");
   }
@@ -447,6 +493,25 @@ export class GlotCodeMirror extends HTMLElement {
     }
 
     return factory()
+  }
+
+  private _parseKeyboardBindingsAttribute(name: string | null): KeyboardBindingsName {
+    switch ((name ?? "default").toLowerCase()) {
+      case "emacs":
+        return "emacs";
+      case "vim":
+        return "vim";
+      default:
+        return "default";
+    }
+  }
+
+  private _getKeyboardBindingsExtension(name: KeyboardBindingsName): Promise<Extension> {
+    if (name === "default") {
+      return Promise.resolve(defaultKeyboardBindingsExtension);
+    }
+
+    return keyboardBindingsMap[name]();
   }
 }
 
