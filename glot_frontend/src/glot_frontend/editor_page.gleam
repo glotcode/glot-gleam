@@ -48,6 +48,7 @@ pub type RealModel {
     run_instructions_override: option.Option(language.RunInstructions),
     run_instructions_mode_draft: RunInstructionsMode,
     run_instructions_draft: RunInstructionsDraft,
+    version_info: option.Option(String),
     run_state: RunState,
     save_state: SaveState,
   )
@@ -110,6 +111,7 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
         run_instructions_draft: run_instructions_to_draft(
           default_run_instructions(lang, [default_file]),
         ),
+        version_info: option.None,
         run_state: Idle,
         save_state: SaveIdle,
       ))
@@ -118,7 +120,7 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
     option.None -> UnsupportedLanguage(language)
   }
 
-  #(model, effect.none())
+  #(model, version_run_effect_for_model(model))
 }
 
 pub fn init_existing(slug: String) -> #(Model, Effect(Msg)) {
@@ -160,6 +162,7 @@ pub type Msg {
   SourceCodeChanged(String)
   RunSubmitted
   RunFinished(api.ApiResponse(run.RunResult))
+  VersionRunFinished(api.ApiResponse(run.RunResult))
   SaveSubmitted
   SaveFinished(api.ApiResponse(snippet_dto.SnippetResponse))
 }
@@ -207,10 +210,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               run_instructions_override: run_instructions_override,
               run_instructions_mode_draft: run_instructions_mode_draft,
               run_instructions_draft: run_instructions_draft,
+              version_info: option.None,
               run_state: Idle,
               save_state: SaveIdle,
             )),
-            effect.none(),
+            version_run_effect(response.data.language),
           )
         }
 
@@ -495,6 +499,22 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       }
     }
 
+    VersionRunFinished(result) -> {
+      case result {
+        api.ApiSuccess(Ok(run.SuccessfulRun(stdout:, ..))) ->
+          case stdout == "" {
+            True -> #(model, effect.none())
+            False ->
+              #(
+                RealModel(..model, version_info: option.Some(stdout)),
+                effect.none(),
+              )
+          }
+
+        _ -> #(model, effect.none())
+      }
+    }
+
     SaveSubmitted -> {
       let request =
         snippet_dto.CreateSnippetRequest(data: snippet_dto.SnippetData(
@@ -656,7 +676,7 @@ fn view_helper(
           SaveSubmitted,
         ),
       ]),
-      console_view(model.run_state, model.save_state),
+      console_view(model.version_info, model.run_state, model.save_state),
     ]),
   ])
 }
@@ -1381,29 +1401,59 @@ fn remove_first_matching_file_name(
   }
 }
 
-fn console_view(run_state: RunState, save_state: SaveState) -> Element(Msg) {
+fn version_run_effect_for_model(model: Model) -> Effect(Msg) {
+  case model {
+    SupportedLanguage(real_model) -> version_run_effect(real_model.language)
+    _ -> effect.none()
+  }
+}
+
+fn version_run_effect(lang: language.Language) -> Effect(Msg) {
+  api.run_code(
+    run.RunRequest(
+      image: language.container_image(lang),
+      payload: run.RunRequestPayload(
+        run_instructions: language.version_run_instructions(lang),
+        files: [],
+        stdin: option.None,
+      ),
+    ),
+    VersionRunFinished,
+  )
+}
+
+fn console_view(
+  version_info: option.Option(String),
+  run_state: RunState,
+  save_state: SaveState,
+) -> Element(Msg) {
   html.div([attribute.class("editor-shell__console")], [
-    console_header_view(run_state, save_state),
+    console_header_view(version_info, run_state, save_state),
     html.div([attribute.class("editor-shell__console-body")], [
-      console_content(run_state, save_state),
+      console_content(version_info, run_state, save_state),
     ]),
   ])
 }
 
 fn console_header_view(
+  version_info: option.Option(String),
   run_state: RunState,
   save_state: SaveState,
 ) -> Element(Msg) {
-  case save_state, run_state {
-    SaveIdle, Completed(Ok(_)) -> html.div([], [])
-    _, _ ->
+  case save_state, run_state, version_info {
+    SaveIdle, Completed(Ok(_)), option.None -> html.div([], [])
+    _, _, _ ->
       html.div([attribute.class("editor-shell__console-header")], [
         html.text("INFO"),
       ])
   }
 }
 
-fn console_content(run_state: RunState, save_state: SaveState) -> Element(Msg) {
+fn console_content(
+  version_info: option.Option(String),
+  run_state: RunState,
+  save_state: SaveState,
+) -> Element(Msg) {
   case save_state {
     SaveError(message) -> console_block("SAVE FAILED", message)
 
@@ -1411,13 +1461,20 @@ fn console_content(run_state: RunState, save_state: SaveState) -> Element(Msg) {
 
     Saved(slug) -> console_block("", "Saved snippet: " <> slug)
 
-    SaveIdle -> run_console_content(run_state)
+    SaveIdle -> run_console_content(version_info, run_state)
   }
 }
 
-fn run_console_content(run_state: RunState) -> Element(Msg) {
+fn run_console_content(
+  version_info: option.Option(String),
+  run_state: RunState,
+) -> Element(Msg) {
   case run_state {
-    Idle -> console_block("", "READY.")
+    Idle ->
+      case version_info {
+        option.Some(stdout) -> console_block("", stdout <> "\nREADY.")
+        option.None -> html.div([], [])
+      }
 
     Running -> console_block("", "Running snippet...")
 
