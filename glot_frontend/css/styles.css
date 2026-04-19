@@ -343,15 +343,37 @@ body {
 
 .editor-shell__tabbar {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   min-height: 2rem;
   border: 1px solid #c8d7ef;
   border-bottom: 0;
   background: #f8fbff;
 }
 
+.editor-shell__tab-scroll {
+  flex: 1 1 auto;
+  align-self: stretch;
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.editor-shell__tab-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.editor-shell__tab-strip {
+  display: flex;
+  align-items: stretch;
+  min-height: 100%;
+  min-width: max-content;
+}
+
 .editor-shell__settings-button {
-  width: 2.5rem;
+  flex: 0 0 auto;
+  width: 43px;
   height: 100%;
   padding: 0.5rem;
   border-top: 0;
@@ -361,6 +383,7 @@ body {
 }
 
 .editor-shell__tab-action-button {
+  flex: 0 0 auto;
   width: 2.5rem;
   height: 100%;
   padding: 0.6rem;
@@ -377,6 +400,7 @@ body {
 
 .editor-shell__tab {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 0.45rem;
   align-self: stretch;
@@ -401,6 +425,7 @@ body {
 }
 
 .editor-shell__tab-meta-button {
+  flex: 0 0 auto;
   align-self: stretch;
   display: inline-flex;
   align-items: center;

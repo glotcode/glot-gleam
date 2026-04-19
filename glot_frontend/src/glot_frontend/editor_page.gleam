@@ -680,13 +680,14 @@ fn edit_entry_dialog_children(model: RealModel) -> List(Element(Msg)) {
         ],
         [html.text("Filename")],
       ),
-      html.input([
-        attribute.id("editor-page-edit-entry-input"),
-        attribute.name("filename"),
-        attribute.type_("text"),
-        attribute.value(model.edit_entry_filename),
-        attribute.autofocus(True),
-        attribute.class("editor-page__dialog-input"),
+        html.input([
+          attribute.id("editor-page-edit-entry-input"),
+          attribute.name("filename"),
+          attribute.type_("text"),
+          attribute.maxlength(30),
+          attribute.value(model.edit_entry_filename),
+          attribute.autofocus(True),
+          attribute.class("editor-page__dialog-input"),
         event.on_input(EditEntryFilenameChanged),
       ]),
       html.div(
@@ -794,6 +795,7 @@ fn add_entry_fields_view(model: RealModel) -> Element(Msg) {
           attribute.id("editor-page-filename-input"),
           attribute.name("filename"),
           attribute.type_("text"),
+          attribute.maxlength(30),
           attribute.value(model.add_entry_filename),
           attribute.autofocus(True),
           attribute.class("editor-page__dialog-input"),
@@ -815,15 +817,13 @@ fn tabbar_children(model: RealModel) -> List(Element(Msg)) {
     icon_button("editor-shell__settings-button", [
       icons.gear_icon(),
     ]),
-    ..list.append(
-      tab_views(model),
-      [
-        selected_tab_action_button(model),
-        icon_action_button("editor-shell__tab-action-button", AddEntryClicked, [
-          icons.document_plus(),
-        ]),
-      ],
-    ),
+    html.div([attribute.class("editor-shell__tab-scroll")], [
+      html.div([attribute.class("editor-shell__tab-strip")], tab_views(model)),
+    ]),
+    selected_tab_action_button(model),
+    icon_action_button("editor-shell__tab-action-button", AddEntryClicked, [
+      icons.document_plus(),
+    ]),
   ]
 }
 
@@ -848,7 +848,7 @@ fn file_tab_views(
   case files {
     [] -> []
     [snippet_model.File(name:, ..), ..rest] -> [
-      tab_button(name, FileTab(index), selected_tab == FileTab(index)),
+      tab_button(tab_label(name), FileTab(index), selected_tab == FileTab(index)),
       ..file_tab_views(rest, selected_tab, index + 1),
     ]
   }
@@ -1121,7 +1121,7 @@ fn add_entry(model: RealModel) -> option.Option(RealModel) {
 
 fn add_file_entry(model: RealModel) -> option.Option(RealModel) {
   let filename = string.trim(model.add_entry_filename)
-  case filename == "" || file_name_exists(model.files, filename) {
+  case !is_valid_filename_length(filename) || file_name_exists(model.files, filename) {
     True -> option.None
     False -> {
       let next_index = list.length(model.files)
@@ -1153,7 +1153,7 @@ fn can_submit_add_entry(model: RealModel) -> Bool {
   case model.add_entry_kind {
     AddFileEntry -> {
       let filename = string.trim(model.add_entry_filename)
-      filename != "" && !file_name_exists(model.files, filename)
+      is_valid_filename_length(filename) && !file_name_exists(model.files, filename)
     }
 
     AddStdinEntry ->
@@ -1184,7 +1184,8 @@ fn can_submit_edit_entry(model: RealModel) -> Bool {
     StdinTab -> False
     FileTab(index) -> {
       let filename = string.trim(model.edit_entry_filename)
-      filename != "" && !file_name_exists_except(model.files, filename, index)
+      is_valid_filename_length(filename)
+      && !file_name_exists_except(model.files, filename, index)
     }
   }
 }
@@ -1201,7 +1202,8 @@ fn rename_selected_file(model: RealModel) -> option.Option(RealModel) {
     StdinTab -> option.None
     FileTab(index) -> {
       let filename = string.trim(model.edit_entry_filename)
-      case filename == "" || file_name_exists_except(model.files, filename, index) {
+      case !is_valid_filename_length(filename)
+      || file_name_exists_except(model.files, filename, index) {
         True -> option.None
         False ->
           option.Some(RealModel(
@@ -1271,6 +1273,33 @@ fn file_name_exists_except(
       file_name_exists_except(rest, filename, -1)
     [snippet_model.File(name:, ..), ..rest], _ ->
       name == filename || file_name_exists_except(rest, filename, skip_index - 1)
+  }
+}
+
+fn tab_label(filename: String) -> String {
+  case string.length(filename) > 10 {
+    False -> filename
+    True -> truncate_filename(filename)
+  }
+}
+
+fn truncate_filename(filename: String) -> String {
+  let parts = string.split(filename, ".")
+
+  case list.reverse(parts) {
+    [extension, stem, ..rest] ->
+      truncate_stem_middle(string.join(list.reverse([stem, ..rest]), "."))
+      <> "."
+      <> extension
+
+    _ -> truncate_stem_middle(filename)
+  }
+}
+
+fn truncate_stem_middle(stem: String) -> String {
+  case string.length(stem) > 7 {
+    True -> string.slice(stem, 0, 4) <> "..." <> string.slice(stem, -3, string.length(stem))
+    False -> stem
   }
 }
 
@@ -1361,6 +1390,10 @@ fn bool_attribute(value: Bool) -> String {
     True -> "true"
     False -> "false"
   }
+}
+
+fn is_valid_filename_length(filename: String) -> Bool {
+  filename != "" && string.length(filename) <= 30
 }
 
 fn selected_tab_action_label(tab: EditorTab) -> String {
