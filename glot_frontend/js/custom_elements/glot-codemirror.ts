@@ -3,7 +3,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { lineNumbers, highlightActiveLineGutter } from "@codemirror/view";
 import { highlightActiveLine, drawSelection, dropCursor } from "@codemirror/view";
-import { defaultHighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language";
+import { defaultHighlightStyle, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language";
 import { bracketMatching } from "@codemirror/language";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
@@ -11,6 +11,75 @@ import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import { rectangularSelection } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { StreamLanguage } from "@codemirror/language"
+import { tags } from "@lezer/highlight";
+
+const retroTheme = EditorView.theme({
+  "&": {
+    height: "100%",
+    color: "#172033",
+    backgroundColor: "#ffffff"
+  },
+  ".cm-content": {
+    caretColor: "#1d4ed8",
+    fontFamily: '"Lucida Console", Monaco, "Courier New", monospace',
+    fontSize: "14px",
+    lineHeight: "1.6",
+    textShadow: "0 0 4px rgba(255, 255, 255, 0.35)"
+  },
+  ".cm-cursor, .cm-dropCursor": {
+    borderLeftColor: "#1d4ed8"
+  },
+  ".cm-selectionBackground, ::selection": {
+    backgroundColor: "rgba(59, 130, 246, 0.18) !important"
+  },
+  ".cm-gutters": {
+    backgroundColor: "#edf4ff",
+    color: "#6480b9",
+    borderRight: "1px solid #c8d7ef"
+  },
+  ".cm-activeLineGutter": {
+    backgroundColor: "#dbe7fb",
+    color: "#23406f"
+  },
+  ".cm-activeLine": {
+    backgroundColor: "rgba(59, 130, 246, 0.05)"
+  },
+  ".cm-lineNumbers .cm-gutterElement": {
+    paddingLeft: "10px",
+    paddingRight: "10px"
+  },
+  ".cm-scroller": {
+    fontFamily: '"Lucida Console", Monaco, "Courier New", monospace'
+  },
+  ".cm-tooltip": {
+    border: "1px solid #c8d7ef",
+    backgroundColor: "#ffffff",
+    color: "#172033"
+  },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
+    backgroundColor: "#e7f0ff",
+    color: "#172033"
+  },
+  ".cm-panels": {
+    backgroundColor: "#f8fbff",
+    color: "#172033"
+  },
+  ".cm-searchMatch": {
+    backgroundColor: "rgba(251, 191, 36, 0.22)",
+    outline: "1px solid #f59e0b"
+  }
+});
+
+const retroHighlightStyle = HighlightStyle.define([
+  { tag: [tags.keyword, tags.modifier], color: "#2563eb", fontWeight: "bold" },
+  { tag: [tags.string, tags.special(tags.string)], color: "#059669" },
+  { tag: [tags.number, tags.bool, tags.null], color: "#d97706" },
+  { tag: [tags.comment], color: "#7c8aa5", fontStyle: "italic" },
+  { tag: [tags.function(tags.variableName), tags.labelName], color: "#7c3aed" },
+  { tag: [tags.typeName, tags.className], color: "#0891b2" },
+  { tag: [tags.variableName, tags.propertyName], color: "#172033" },
+  { tag: [tags.operator, tags.punctuation, tags.separator], color: "#51627f" }
+]);
 
 // Minimal "basic setup" (avoids depending on codemirror meta-package)
 const basicSetup: Extension = [
@@ -26,7 +95,9 @@ const basicSetup: Extension = [
   rectangularSelection(),
   highlightActiveLine(),
   highlightSelectionMatches(),
+  retroTheme,
   syntaxHighlighting(defaultHighlightStyle),
+  syntaxHighlighting(retroHighlightStyle),
   keymap.of([
     ...closeBracketsKeymap,
     ...defaultKeymap,
@@ -210,14 +281,15 @@ export class GlotCodeMirror extends HTMLElement {
     style.textContent = `
       :host {
         display: block;
+        height: 100%;
       }
 
       .cm-wrapper, .cm-gutter {
-        min-height: 200px !important;
+        height: 100% !important;
       }
 
       .cm-gutter {
-        min-width: 33px;
+        min-width: 42px;
       }
 
       .cm-scroller {
@@ -225,13 +297,26 @@ export class GlotCodeMirror extends HTMLElement {
       }
 
       .cm-wrapper {
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
+        border: 0;
         overflow: clip;
-        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+        height: 100%;
+        font-family: "Lucida Console", Monaco, "Courier New", monospace;
+        background:
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.05) 0,
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 1px,
+            transparent 4px
+          ),
+          #ffffff;
       }
 
       .cm-editor {
+        height: 100%;
+      }
+
+      .cm-scroller {
         height: 100%;
       }
     `;

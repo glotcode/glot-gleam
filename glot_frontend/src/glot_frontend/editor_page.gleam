@@ -280,24 +280,36 @@ pub fn view(model: Model, current_user_id: option.Option(Uuid)) -> Element(Msg) 
 
 fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Element(Msg) {
   let can_save = can_save(model, current_user_id)
+  let filename = language.default_filename(model.language)
 
   html.div([attribute.class("editor-page")], [
+    html.div([attribute.class("editor-page__screen-glow")], []),
     html.header([attribute.class("editor-page__topbar")], [
       html.div([attribute.class("editor-page__title-group")], [
         icon_button("editor-page__icon-button editor-page__icon-button--menu", [
           html.span([attribute.class("editor-page__menu-icon")], []),
         ]),
-        html.h1([attribute.class("editor-page__title")], [html.text(model.title)]),
+        html.span([attribute.class("editor-page__brand")], [
+          html.text("glot.io"),
+        ]),
+      ]),
+      html.div([attribute.class("editor-page__status")], [
+        html.span([attribute.class("editor-page__status-pill")], [
+          html.text(string.uppercase(language.to_string(model.language))),
+        ]),
       ]),
     ]),
     html.main([attribute.class("editor-shell")], [
+      html.div([attribute.class("editor-shell__bezel")], [
+        html.h1([attribute.class("editor-page__title")], [html.text(model.title)]),
+      ]),
       html.div([attribute.class("editor-shell__tabbar")], [
         icon_button("editor-shell__settings-button", [
           html.span([attribute.class("editor-shell__gear-icon")], []),
         ]),
         html.div([attribute.class("editor-shell__tab")], [
           html.span([attribute.class("editor-shell__file-icon")], []),
-          html.span([], [html.text(language.default_filename(model.language))]),
+          html.span([], [html.text(filename)]),
         ]),
       ]),
       html.div([attribute.class("editor-shell__editor")], [
@@ -314,10 +326,6 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
           ],
           [],
         ),
-      ]),
-      html.div([attribute.class("editor-shell__stdin-bar")], [
-        html.span([attribute.class("editor-shell__stdin-icon")], []),
-        html.span([], [html.text("STDIN")]),
       ]),
       html.div([attribute.class("editor-shell__actions")], [
         action_button(
