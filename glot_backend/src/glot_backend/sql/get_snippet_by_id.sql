@@ -6,7 +6,7 @@ SELECT
   snippets.title,
   snippets.visibility,
   snippets.stdin,
-  snippets.run_command,
+  snippets.run_instructions,
   snippets.files,
   snippets.created_at,
   snippets.updated_at,

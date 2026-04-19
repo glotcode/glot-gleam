@@ -6,6 +6,7 @@ import gleam/string
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
+import glot_backend/crypto_token
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/basic/basic_algebra
@@ -20,13 +21,12 @@ import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/runtime
-import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/snippet/snippet_handlers
-import glot_backend/server_timing
+import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
-import glot_backend/crypto_token
 import glot_backend/log
+import glot_backend/server_timing
 import glot_core/job/job_model
 import glot_core/language
 import glot_core/snippet/snippet_dto
@@ -79,9 +79,10 @@ pub fn measures_effects_in_success_test() {
   let effect_runtime = test_runtime()
   let ctx = test_context()
   let measured_effect = {
-    use _ <- program.and_then(
-      basic_effect.new_token(5, crypto_token.AlphaNumeric),
-    )
+    use _ <- program.and_then(basic_effect.new_token(
+      5,
+      crypto_token.AlphaNumeric,
+    ))
     program.succeed("ok")
   }
   let #(run_result, state) =
@@ -102,9 +103,10 @@ pub fn measures_effects_in_error_test() {
   let effect_runtime = test_runtime()
   let ctx = test_context()
   let failing_effect = {
-    use _ <- program.and_then(
-      basic_effect.new_token(5, crypto_token.AlphaNumeric),
-    )
+    use _ <- program.and_then(basic_effect.new_token(
+      5,
+      crypto_token.AlphaNumeric,
+    ))
     program.fail(error.EmailInvalidError("bad"))
   }
   let #(run_result, state) =
@@ -148,9 +150,7 @@ pub fn rolled_back_transaction_effect_is_marked_test() {
         transaction_algebra.RunEffectName,
         [
           effect_trace.EffectMeasurement(
-            name: effect_trace.BasicEffectName(
-              basic_algebra.NewTokenEffectName,
-            ),
+            name: effect_trace.BasicEffectName(basic_algebra.NewTokenEffectName),
             category: effect_trace.UtilEffectCategory,
             duration_ns: 5,
           ),
@@ -230,20 +230,18 @@ pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
 
 pub fn snippet_spam_filter_allows_normal_code_test() {
   assert snippet_spam.ensure_clean(
-    snippet_dto.SnippetData(
-      title: "Hello world",
-      language: language.Python,
-      visibility: snippet_model.Public,
-      stdin: "",
-      run_command: "python main.py",
-      files: [
-        snippet_model.File(
-          name: "main.py",
-          content: "print(\"hello\")",
-        ),
-      ],
-    ),
-  ) == Ok(Nil)
+      snippet_dto.SnippetData(
+        title: "Hello world",
+        language: language.Python,
+        visibility: snippet_model.Public,
+        stdin: "",
+        run_instructions: option.None,
+        files: [
+          snippet_model.File(name: "main.py", content: "print(\"hello\")"),
+        ],
+      ),
+    )
+    == Ok(Nil)
 }
 
 pub fn snippet_spam_filter_blocks_obvious_spam_test() {
@@ -254,7 +252,7 @@ pub fn snippet_spam_filter_blocks_obvious_spam_test() {
         language: language.Python,
         visibility: snippet_model.Public,
         stdin: "",
-        run_command: "python main.py",
+        run_instructions: option.None,
         files: [
           snippet_model.File(
             name: "promo.txt",

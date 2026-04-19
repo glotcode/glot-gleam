@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/json
+import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/user_dto
 import glot_core/helpers/timestamp_helpers
@@ -64,7 +65,10 @@ pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
     snippet_model.visibility_decoder(),
   )
   use stdin <- decode.field("stdin", decode.string)
-  use run_command <- decode.field("runCommand", decode.string)
+  use run_instructions <- decode.field(
+    "runInstructions",
+    decode.optional(language.run_instructions_decoder()),
+  )
   use files <- decode.field("files", decode.list(snippet_model.file_decoder()))
   use created_at <- decode.field("createdAt", timestamp_helpers.decoder())
   use updated_at <- decode.field("updatedAt", timestamp_helpers.decoder())
@@ -77,7 +81,7 @@ pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
       language: language,
       visibility: visibility,
       stdin: stdin,
-      run_command: run_command,
+      run_instructions: run_instructions,
       files: files,
     ),
     created_at: created_at,
@@ -85,9 +89,7 @@ pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
   ))
 }
 
-pub fn from_snippet(
-  snippet: snippet_model.HydratedSnippet,
-) -> SnippetResponse {
+pub fn from_snippet(snippet: snippet_model.HydratedSnippet) -> SnippetResponse {
   SnippetResponse(
     slug: snippet.slug,
     user: user_dto.from_user(snippet.user),
@@ -96,7 +98,7 @@ pub fn from_snippet(
       language: snippet.language,
       visibility: snippet.visibility,
       stdin: snippet.stdin,
-      run_command: snippet.run_command,
+      run_instructions: snippet.run_instructions,
       files: snippet.files,
     ),
     created_at: snippet.created_at,
@@ -113,7 +115,13 @@ pub fn encode_response(response: SnippetResponse) -> json.Json {
     #("language", language.encode(response.data.language)),
     #("visibility", snippet_model.encode_visibility(response.data.visibility)),
     #("stdin", json.string(response.data.stdin)),
-    #("runCommand", json.string(response.data.run_command)),
+    #(
+      "runInstructions",
+      json.nullable(
+        response.data.run_instructions,
+        language.encode_run_instructions,
+      ),
+    ),
     #("files", json.array(response.data.files, snippet_model.encode_file)),
     #("createdAt", timestamp_helpers.encode(response.created_at)),
     #("updatedAt", timestamp_helpers.encode(response.updated_at)),
@@ -126,7 +134,7 @@ pub type SnippetData {
     language: language.Language,
     visibility: snippet_model.Visibility,
     stdin: String,
-    run_command: String,
+    run_instructions: option.Option(language.RunInstructions),
     files: List(snippet_model.File),
   )
 }
@@ -137,7 +145,10 @@ pub fn encode_data(data: SnippetData) -> json.Json {
     #("language", language.encode(data.language)),
     #("visibility", snippet_model.encode_visibility(data.visibility)),
     #("stdin", json.string(data.stdin)),
-    #("runCommand", json.string(data.run_command)),
+    #(
+      "runInstructions",
+      json.nullable(data.run_instructions, language.encode_run_instructions),
+    ),
     #("files", json.array(data.files, snippet_model.encode_file)),
   ])
 }
@@ -150,7 +161,10 @@ pub fn data_decoder() -> decode.Decoder(SnippetData) {
     snippet_model.visibility_decoder(),
   )
   use stdin <- decode.field("stdin", decode.string)
-  use run_command <- decode.field("runCommand", decode.string)
+  use run_instructions <- decode.field(
+    "runInstructions",
+    decode.optional(language.run_instructions_decoder()),
+  )
   use files <- decode.field("files", decode.list(snippet_model.file_decoder()))
 
   decode.success(SnippetData(
@@ -158,7 +172,7 @@ pub fn data_decoder() -> decode.Decoder(SnippetData) {
     language: lang,
     visibility: visibility,
     stdin: stdin,
-    run_command: run_command,
+    run_instructions: run_instructions,
     files: files,
   ))
 }

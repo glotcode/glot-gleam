@@ -136,7 +136,7 @@ pub type ListSnippetsByUser {
     title: String,
     visibility: String,
     stdin: String,
-    run_command: String,
+    run_instructions: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
   )
@@ -144,7 +144,7 @@ pub type ListSnippetsByUser {
 
 pub fn list_snippets_by_user(user_id user_id: BitArray) {
   let sql =
-    "SELECT id, slug, user_id, language, title, visibility, stdin, run_command, created_at, updated_at FROM snippets WHERE user_id = $1"
+    "SELECT id, slug, user_id, language, title, visibility, stdin, run_instructions, created_at, updated_at FROM snippets WHERE user_id = $1"
   #(sql, [dev.ParamBitArray(user_id)], list_snippets_by_user_decoder())
 }
 
@@ -156,7 +156,7 @@ pub fn list_snippets_by_user_decoder() -> decode.Decoder(ListSnippetsByUser) {
   use title <- decode.field(4, decode.string)
   use visibility <- decode.field(5, decode.string)
   use stdin <- decode.field(6, decode.string)
-  use run_command <- decode.field(7, decode.string)
+  use run_instructions <- decode.field(7, decode.optional(decode.string))
   use created_at <- decode.field(8, dev.datetime_decoder())
   use updated_at <- decode.field(9, dev.datetime_decoder())
   decode.success(ListSnippetsByUser(
@@ -167,7 +167,7 @@ pub fn list_snippets_by_user_decoder() -> decode.Decoder(ListSnippetsByUser) {
     title:,
     visibility:,
     stdin:,
-    run_command:,
+    run_instructions:,
     created_at:,
     updated_at:,
   ))
@@ -335,7 +335,7 @@ pub type GetSnippetById {
     title: String,
     visibility: String,
     stdin: String,
-    run_command: String,
+    run_instructions: Option(String),
     files: String,
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -357,7 +357,7 @@ pub fn get_snippet_by_id(id id: BitArray) {
   snippets.title,
   snippets.visibility,
   snippets.stdin,
-  snippets.run_command,
+  snippets.run_instructions,
   snippets.files,
   snippets.created_at,
   snippets.updated_at,
@@ -380,7 +380,7 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   use title <- decode.field(3, decode.string)
   use visibility <- decode.field(4, decode.string)
   use stdin <- decode.field(5, decode.string)
-  use run_command <- decode.field(6, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
   use files <- decode.field(7, decode.string)
   use created_at <- decode.field(8, dev.datetime_decoder())
   use updated_at <- decode.field(9, dev.datetime_decoder())
@@ -397,7 +397,7 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
     title:,
     visibility:,
     stdin:,
-    run_command:,
+    run_instructions:,
     files:,
     created_at:,
     updated_at:,
@@ -417,14 +417,14 @@ pub fn update_snippet(
   title title: String,
   visibility visibility: String,
   stdin stdin: String,
-  run_command run_command: String,
+  run_instructions run_instructions: Option(String),
   files files: String,
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
   id id: BitArray,
 ) {
   let sql =
-    "UPDATE snippets SET slug = $1, user_id = $2, language = $3, title = $4, visibility = $5, stdin = $6, run_command = $7, files = $8, created_at = $9, updated_at = $10 WHERE id = $11"
+    "UPDATE snippets SET slug = $1, user_id = $2, language = $3, title = $4, visibility = $5, stdin = $6, run_instructions = $7, files = $8, created_at = $9, updated_at = $10 WHERE id = $11"
   #(sql, [
     dev.ParamString(slug),
     dev.ParamBitArray(user_id),
@@ -432,7 +432,9 @@ pub fn update_snippet(
     dev.ParamString(title),
     dev.ParamString(visibility),
     dev.ParamString(stdin),
-    dev.ParamString(run_command),
+    dev.ParamNullable(
+      option.map(run_instructions, fn(v) { dev.ParamString(v) }),
+    ),
     dev.ParamString(files),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
@@ -499,13 +501,13 @@ pub fn insert_snippet(
   title title: String,
   visibility visibility: String,
   stdin stdin: String,
-  run_command run_command: String,
+  run_instructions run_instructions: Option(String),
   files files: String,
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
 ) {
   let sql =
-    "INSERT INTO snippets (id, slug, user_id, language, title, visibility, stdin, run_command, files, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+    "INSERT INTO snippets (id, slug, user_id, language, title, visibility, stdin, run_instructions, files, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamString(slug),
@@ -514,7 +516,9 @@ pub fn insert_snippet(
     dev.ParamString(title),
     dev.ParamString(visibility),
     dev.ParamString(stdin),
-    dev.ParamString(run_command),
+    dev.ParamNullable(
+      option.map(run_instructions, fn(v) { dev.ParamString(v) }),
+    ),
     dev.ParamString(files),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
@@ -821,7 +825,7 @@ pub type GetSnippetBySlug {
     title: String,
     visibility: String,
     stdin: String,
-    run_command: String,
+    run_instructions: Option(String),
     files: String,
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -843,7 +847,7 @@ pub fn get_snippet_by_slug(slug slug: String) {
   snippets.title,
   snippets.visibility,
   snippets.stdin,
-  snippets.run_command,
+  snippets.run_instructions,
   snippets.files,
   snippets.created_at,
   snippets.updated_at,
@@ -866,7 +870,7 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
   use title <- decode.field(3, decode.string)
   use visibility <- decode.field(4, decode.string)
   use stdin <- decode.field(5, decode.string)
-  use run_command <- decode.field(6, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
   use files <- decode.field(7, decode.string)
   use created_at <- decode.field(8, dev.datetime_decoder())
   use updated_at <- decode.field(9, dev.datetime_decoder())
@@ -883,7 +887,7 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
     title:,
     visibility:,
     stdin:,
-    run_command:,
+    run_instructions:,
     files:,
     created_at:,
     updated_at:,

@@ -171,6 +171,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiSuccess(response) -> {
           let files = response.data.files
           let stdin = stdin_option(response.data.stdin)
+          let run_instructions_override = response.data.run_instructions
+          let run_instructions_mode_draft = case run_instructions_override {
+            option.Some(_) -> CustomRunInstructions
+            option.None -> DefaultRunInstructions
+          }
+          let run_instructions_draft =
+            case run_instructions_override {
+              option.Some(run_instructions) ->
+                run_instructions_to_draft(run_instructions)
+              option.None ->
+                run_instructions_to_draft(
+                  default_run_instructions(response.data.language, files),
+                )
+            }
 
           #(
             SupportedLanguage(RealModel(
@@ -190,11 +204,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               ),
               editor_settings: settings,
               editor_settings_draft: settings,
-              run_instructions_override: option.None,
-              run_instructions_mode_draft: DefaultRunInstructions,
-              run_instructions_draft: run_instructions_to_draft(
-                default_run_instructions(response.data.language, files),
-              ),
+              run_instructions_override: run_instructions_override,
+              run_instructions_mode_draft: run_instructions_mode_draft,
+              run_instructions_draft: run_instructions_draft,
               run_state: Idle,
               save_state: SaveIdle,
             )),
@@ -484,20 +496,13 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
     }
 
     SaveSubmitted -> {
-      let run_instructions =
-        language.run_instructions(
-          model.language,
-          language.default_filename(model.language),
-          [],
-        )
-
       let request =
         snippet_dto.CreateSnippetRequest(data: snippet_dto.SnippetData(
           title: model.title,
           language: model.language,
           visibility: snippet_model.Unlisted,
           stdin: stdin_to_string(model.stdin),
-          run_command: run_instructions.run_command,
+          run_instructions: model.run_instructions_override,
           files: model.files,
         ))
 

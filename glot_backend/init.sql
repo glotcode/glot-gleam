@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS snippets (
   title TEXT NOT NULL,
   visibility TEXT NOT NULL,
   stdin TEXT NOT NULL,
-  run_command TEXT NOT NULL,
+  run_instructions JSONB NULL,
   files JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL

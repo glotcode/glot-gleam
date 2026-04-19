@@ -3,8 +3,8 @@ import gleam/json
 import gleam/option
 import gleam/result
 import gleam/string
-import glot_backend/helpers/db_helpers
 import glot_backend/effect/error
+import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
@@ -75,6 +75,12 @@ pub fn create_snippet(
   snippet: Snippet,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+  let run_instructions =
+    snippet.run_instructions
+    |> option.map(fn(ri) {
+      language.encode_run_instructions(ri)
+      |> json.to_string
+    })
 
   db_helpers.execute(
     db,
@@ -86,7 +92,7 @@ pub fn create_snippet(
       title: snippet.title,
       visibility: snippet_model.visibility_to_string(snippet.visibility),
       stdin: snippet.stdin,
-      run_command: snippet.run_command,
+      run_instructions: run_instructions,
       files: json.to_string(json.array(snippet.files, snippet_model.encode_file)),
       created_at: snippet.created_at,
       updated_at: snippet.updated_at,
@@ -129,6 +135,7 @@ fn get_snippet_from_row(
       )
     }),
   )
+  use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
 
   Ok(snippet_model.HydratedSnippet(
     id: uuid_helpers.from_bit_array(row.id),
@@ -145,7 +152,7 @@ fn get_snippet_from_row(
     language: language,
     visibility: visibility,
     stdin: row.stdin,
-    run_command: row.run_command,
+    run_instructions: run_instructions,
     files: files,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -175,6 +182,7 @@ fn get_snippet_from_slug_row(
       )
     }),
   )
+  use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
 
   Ok(snippet_model.HydratedSnippet(
     id: uuid_helpers.from_bit_array(row.id),
@@ -191,7 +199,7 @@ fn get_snippet_from_slug_row(
     language: language,
     visibility: visibility,
     stdin: row.stdin,
-    run_command: row.run_command,
+    run_instructions: run_instructions,
     files: files,
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -203,6 +211,12 @@ pub fn update_snippet(
   snippet: Snippet,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+  let run_instructions =
+    snippet.run_instructions
+    |> option.map(fn(ri) {
+      language.encode_run_instructions(ri)
+      |> json.to_string
+    })
 
   db_helpers.execute(
     db,
@@ -214,7 +228,7 @@ pub fn update_snippet(
       title: snippet.title,
       visibility: snippet_model.visibility_to_string(snippet.visibility),
       stdin: snippet.stdin,
-      run_command: snippet.run_command,
+      run_instructions: run_instructions,
       files: json.to_string(json.array(snippet.files, snippet_model.encode_file)),
       created_at: snippet.created_at,
       updated_at: snippet.updated_at,
@@ -222,4 +236,21 @@ pub fn update_snippet(
     to_error,
   )
   |> result.map(fn(_) { Nil })
+}
+
+fn decode_run_instructions(
+  run_instructions: option.Option(String),
+) -> Result(option.Option(language.RunInstructions), error.DbQueryError) {
+  case run_instructions {
+    option.Some(value) ->
+      case json.parse(value, language.run_instructions_decoder()) {
+        Ok(instructions) -> Ok(option.Some(instructions))
+        Error(decode_errors) ->
+          Error(error.DbQueryError(
+            "Invalid snippet run instructions: "
+            <> string.inspect(decode_errors),
+          ))
+      }
+    option.None -> Ok(option.None)
+  }
 }

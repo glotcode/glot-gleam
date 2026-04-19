@@ -1,6 +1,8 @@
 import gleam/int
 import gleam/list
+import gleam/option
 import gleam/string
+import glot_core/language
 import glot_core/snippet/snippet_dto.{type SnippetData}
 import glot_core/snippet/snippet_model.{type File}
 
@@ -24,12 +26,29 @@ fn payload_signals(data: SnippetData) -> List(Signal) {
   let top_level = [
     score_text("title", data.title),
     score_text("stdin", data.stdin),
-    score_text("run_command", data.run_command),
+    score_run_instructions(data.run_instructions),
   ]
 
   list.fold(data.files, top_level, fn(acc, file) {
     list.append(acc, file_signals(file))
   })
+}
+
+fn score_run_instructions(
+  run_instructions: option.Option(language.RunInstructions),
+) -> Signal {
+  case run_instructions {
+    option.None -> Signal("", 0)
+    option.Some(instructions) -> {
+      let commands =
+        string.join(
+          [instructions.run_command, ..instructions.build_commands],
+          with: " ",
+        )
+
+      score_text("run_instructions", commands)
+    }
+  }
 }
 
 fn file_signals(file: File) -> List(Signal) {
@@ -49,8 +68,7 @@ fn score_file(file: File) -> Signal {
     || count_occurrences(normalized_name, "loan") > 0
     || count_occurrences(normalized_name, "telegram") > 0
 
-  let url_count =
-    url_count(normalized_name) + url_count(normalized_content)
+  let url_count = url_count(normalized_name) + url_count(normalized_content)
 
   case has_spammy_name && url_count > 0 {
     True -> Signal("suspicious filename combined with links", 6)
@@ -61,54 +79,44 @@ fn score_file(file: File) -> Signal {
 fn score_text(field: String, text: String) -> Signal {
   let normalized = normalize(text)
 
-  let url_signal =
-    case url_count(normalized) >= 2 {
-      True -> Signal(field <> " contains multiple links", 6)
-      False -> Signal("", 0)
-    }
+  let url_signal = case url_count(normalized) >= 2 {
+    True -> Signal(field <> " contains multiple links", 6)
+    False -> Signal("", 0)
+  }
 
   let contact_signal =
-    weighted_phrase_signal(
-      field,
-      normalized,
-      [
-        #("telegram", 6),
-        #("whatsapp", 6),
-        #("discord.gg", 6),
-        #("contact me", 6),
-        #("dm me", 5),
-        #("reach me", 5),
-      ],
-    )
+    weighted_phrase_signal(field, normalized, [
+      #("telegram", 6),
+      #("whatsapp", 6),
+      #("discord.gg", 6),
+      #("contact me", 6),
+      #("dm me", 5),
+      #("reach me", 5),
+    ])
 
   let promo_signal =
-    weighted_phrase_signal(
-      field,
-      normalized,
-      [
-        #("click here", 4),
-        #("limited offer", 4),
-        #("guaranteed", 4),
-        #("earn money", 5),
-        #("work from home", 5),
-        #("buy now", 5),
-        #("seo", 4),
-        #("backlinks", 4),
-        #("casino", 5),
-        #("betting", 5),
-        #("loan", 5),
-        #("forex", 5),
-        #("viagra", 6),
-        #("adult", 6),
-        #("onlyfans", 6),
-      ],
-    )
+    weighted_phrase_signal(field, normalized, [
+      #("click here", 4),
+      #("limited offer", 4),
+      #("guaranteed", 4),
+      #("earn money", 5),
+      #("work from home", 5),
+      #("buy now", 5),
+      #("seo", 4),
+      #("backlinks", 4),
+      #("casino", 5),
+      #("betting", 5),
+      #("loan", 5),
+      #("forex", 5),
+      #("viagra", 6),
+      #("adult", 6),
+      #("onlyfans", 6),
+    ])
 
-  let obfuscation_signal =
-    case has_zero_width_chars(text) {
-      True -> Signal(field <> " contains hidden characters", 8)
-      False -> Signal("", 0)
-    }
+  let obfuscation_signal = case has_zero_width_chars(text) {
+    True -> Signal(field <> " contains hidden characters", 8)
+    False -> Signal("", 0)
+  }
 
   strongest_signal([
     url_signal,
@@ -171,7 +179,9 @@ fn block_message(score: Int, signals: List(Signal)) -> String {
   let reasons =
     signals
     |> list.filter(fn(signal) { signal.score > 0 })
-    |> list.map(fn(signal) { signal.reason <> " (" <> int.to_string(signal.score) <> ")" })
+    |> list.map(fn(signal) {
+      signal.reason <> " (" <> int.to_string(signal.score) <> ")"
+    })
 
   "Snippet was blocked by spam filter. Score: "
   <> int.to_string(score)
