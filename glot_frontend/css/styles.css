@@ -204,12 +204,31 @@ body {
   padding: 1rem;
 }
 
+.editor-page__dialog-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.editor-page__dialog-divider {
+  margin: 0.7rem 0 0.8rem;
+  height: 1px;
+  background: linear-gradient(90deg, #d8e4f8 0%, #bdd0f0 50%, #d8e4f8 100%);
+}
+
 .editor-page__dialog-label {
-  font-size: 0.76rem;
+  font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #2853a6;
+}
+
+.editor-page__dialog-sublabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4b6798;
 }
 
 .editor-page__dialog-panel {
@@ -228,6 +247,29 @@ body {
   color: #172033;
   font: inherit;
   box-sizing: border-box;
+}
+
+.editor-page__dialog-input:disabled,
+.editor-page__dialog-select:disabled {
+  border-color: #d4dceb;
+  background: #eef3fb;
+  color: #6a7894;
+  cursor: not-allowed;
+}
+
+.editor-page__dialog-select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #bdd0f0;
+  background: #ffffff;
+  color: #172033;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.editor-page__dialog-input--multiline {
+  resize: vertical;
 }
 
 .editor-page__dialog-actions {
@@ -280,6 +322,13 @@ body {
   margin: 0;
   color: #35507f;
   line-height: 1.6;
+}
+
+.editor-page__dialog-helper-text {
+  margin: 0;
+  color: #5b6b8b;
+  font-size: 0.72rem;
+  line-height: 1.45;
 }
 
 .editor-page__settings-option {

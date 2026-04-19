@@ -45,9 +45,21 @@ pub type RealModel {
     edit_entry_filename: String,
     editor_settings: editor_settings.EditorSettings,
     editor_settings_draft: editor_settings.EditorSettings,
+    run_instructions_override: option.Option(language.RunInstructions),
+    run_instructions_mode_draft: RunInstructionsMode,
+    run_instructions_draft: RunInstructionsDraft,
     run_state: RunState,
     save_state: SaveState,
   )
+}
+
+pub type RunInstructionsDraft {
+  RunInstructionsDraft(build_commands_text: String, run_command: String)
+}
+
+pub type RunInstructionsMode {
+  DefaultRunInstructions
+  CustomRunInstructions
 }
 
 pub type EditorTab {
@@ -93,6 +105,11 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
         edit_entry_filename: default_file_name([default_file], FileTab(0)),
         editor_settings: settings,
         editor_settings_draft: settings,
+        run_instructions_override: option.None,
+        run_instructions_mode_draft: DefaultRunInstructions,
+        run_instructions_draft: run_instructions_to_draft(
+          default_run_instructions(lang, [default_file]),
+        ),
         run_state: Idle,
         save_state: SaveIdle,
       ))
@@ -133,6 +150,9 @@ pub type Msg {
   EditEntryDialogClosed
   SettingsClicked
   KeyboardBindingsDraftSelected(editor_settings.KeyboardBindings)
+  RunInstructionsModeDraftChanged(String)
+  RunInstructionsBuildCommandsDraftChanged(String)
+  RunInstructionsRunCommandDraftChanged(String)
   SettingsCancelled
   SettingsSubmitted
   SettingsDialogClosed
@@ -170,6 +190,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               ),
               editor_settings: settings,
               editor_settings_draft: settings,
+              run_instructions_override: option.None,
+              run_instructions_mode_draft: DefaultRunInstructions,
+              run_instructions_draft: run_instructions_to_draft(
+                default_run_instructions(response.data.language, files),
+              ),
               run_state: Idle,
               save_state: SaveIdle,
             )),
@@ -308,6 +333,10 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       RealModel(
         ..model,
         editor_settings_draft: model.editor_settings,
+        run_instructions_mode_draft: run_instructions_mode(model),
+        run_instructions_draft: run_instructions_to_draft(
+          effective_run_instructions(model),
+        ),
       ),
       editor_dialog.open_settings_dialog(),
     )
@@ -322,10 +351,48 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       effect.none(),
     )
 
+    RunInstructionsModeDraftChanged(value) -> #(
+      RealModel(
+        ..model,
+        run_instructions_mode_draft: run_instructions_mode_from_string(value),
+      ),
+      effect.none(),
+    )
+
+    RunInstructionsBuildCommandsDraftChanged(build_commands_text) -> {
+      #(
+        RealModel(
+          ..model,
+          run_instructions_draft: RunInstructionsDraft(
+            build_commands_text: build_commands_text,
+            run_command: model.run_instructions_draft.run_command,
+          ),
+        ),
+        effect.none(),
+      )
+    }
+
+    RunInstructionsRunCommandDraftChanged(run_command) -> {
+      #(
+        RealModel(
+          ..model,
+          run_instructions_draft: RunInstructionsDraft(
+            build_commands_text: model.run_instructions_draft.build_commands_text,
+            run_command: run_command,
+          ),
+        ),
+        effect.none(),
+      )
+    }
+
     SettingsCancelled -> #(
       RealModel(
         ..model,
         editor_settings_draft: model.editor_settings,
+        run_instructions_mode_draft: run_instructions_mode(model),
+        run_instructions_draft: run_instructions_to_draft(
+          effective_run_instructions(model),
+        ),
       ),
       editor_dialog.close_settings_dialog(),
     )
@@ -334,6 +401,7 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       RealModel(
         ..model,
         editor_settings: model.editor_settings_draft,
+        run_instructions_override: run_instructions_override_from_draft(model),
       ),
       effect.batch([
         editor_dialog.close_settings_dialog(),
@@ -345,6 +413,10 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       RealModel(
         ..model,
         editor_settings_draft: model.editor_settings,
+        run_instructions_mode_draft: run_instructions_mode(model),
+        run_instructions_draft: run_instructions_to_draft(
+          effective_run_instructions(model),
+        ),
       ),
       editor_dialog.focus_editor(),
     )
@@ -368,11 +440,7 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
         run.RunRequest(
           image: language.container_image(model.language),
           payload: run.RunRequestPayload(
-            run_instructions: language.run_instructions(
-              model.language,
-              language.default_filename(model.language),
-              [],
-            ),
+            run_instructions: effective_run_instructions(model),
             files: model.files,
             stdin: model.stdin,
           ),
@@ -736,6 +804,9 @@ fn edit_entry_dialog_view(model: RealModel) -> Element(Msg) {
 }
 
 fn settings_dialog_view(model: RealModel) -> Element(Msg) {
+  let custom_run_instructions =
+    model.run_instructions_mode_draft == CustomRunInstructions
+
   html.dialog(
     [
       attribute.id(editor_dialog.settings_dialog_id),
@@ -771,6 +842,88 @@ fn settings_dialog_view(model: RealModel) -> Element(Msg) {
               editor_settings.VimBindings,
               model.editor_settings_draft.keyboard_bindings,
             ),
+          ]),
+          html.div([attribute.class("editor-page__dialog-divider")], []),
+          html.div([attribute.class("editor-page__dialog-section")], [
+            html.label([attribute.class("editor-page__dialog-label")], [
+              html.text("Run instructions"),
+            ]),
+            html.div([attribute.class("editor-page__dialog-panel")], [
+              html.select(
+                [
+                  attribute.id("editor-page-run-instructions-mode"),
+                  attribute.name("run_instructions_mode"),
+                  attribute.class("editor-page__dialog-select"),
+                  attribute.value(
+                    run_instructions_mode_to_string(model.run_instructions_mode_draft),
+                  ),
+                  event.on_input(RunInstructionsModeDraftChanged),
+                ],
+                [
+                  html.option(
+                    [
+                      attribute.value("default"),
+                      attribute.selected(
+                        model.run_instructions_mode_draft == DefaultRunInstructions,
+                      ),
+                    ],
+                    "Default",
+                  ),
+                  html.option(
+                    [
+                      attribute.value("custom"),
+                      attribute.selected(
+                        model.run_instructions_mode_draft == CustomRunInstructions,
+                      ),
+                    ],
+                    "Custom",
+                  ),
+                ],
+              ),
+              html.label(
+                [
+                  attribute.for("editor-page-build-commands-input"),
+                  attribute.class("editor-page__dialog-sublabel"),
+                ],
+                [html.text("Build commands")],
+              ),
+              html.textarea(
+                [
+                  attribute.id("editor-page-build-commands-input"),
+                  attribute.name("build_commands"),
+                  attribute.rows(2),
+                  attribute.class(
+                    "editor-page__dialog-input editor-page__dialog-input--multiline",
+                  ),
+                  attribute.disabled(!custom_run_instructions),
+                  attribute.attribute(
+                    "placeholder",
+                    "One command per line",
+                  ),
+                  event.on_input(RunInstructionsBuildCommandsDraftChanged),
+                ],
+                model.run_instructions_draft.build_commands_text,
+              ),
+              html.p([attribute.class("editor-page__dialog-helper-text")], [
+                html.text("One build command per line. Leave blank to skip build."),
+              ]),
+              html.label(
+                [
+                  attribute.for("editor-page-run-command-input"),
+                  attribute.class("editor-page__dialog-sublabel"),
+                ],
+                [html.text("Run command")],
+              ),
+              html.input([
+                attribute.id("editor-page-run-command-input"),
+                attribute.name("run_command"),
+                attribute.type_("text"),
+                attribute.value(model.run_instructions_draft.run_command),
+                attribute.class("editor-page__dialog-input"),
+                attribute.disabled(!custom_run_instructions),
+                event.on_input(RunInstructionsRunCommandDraftChanged),
+              ]),
+            ]),
           ]),
           html.div([attribute.class("editor-page__dialog-actions")], [
             html.button(
@@ -1065,6 +1218,121 @@ fn save_button_text(save_state: SaveState) -> String {
   case save_state {
     Saving -> "Saving..."
     _ -> "Save"
+  }
+}
+
+fn run_instructions_to_draft(
+  run_instructions: language.RunInstructions,
+) -> RunInstructionsDraft {
+  RunInstructionsDraft(
+    build_commands_text: string.join(run_instructions.build_commands, with: "\n"),
+    run_command: run_instructions.run_command,
+  )
+}
+
+fn run_instructions_mode(model: RealModel) -> RunInstructionsMode {
+  case model.run_instructions_override {
+    option.Some(_) -> CustomRunInstructions
+    option.None -> DefaultRunInstructions
+  }
+}
+
+fn run_instructions_mode_to_string(mode: RunInstructionsMode) -> String {
+  case mode {
+    DefaultRunInstructions -> "default"
+    CustomRunInstructions -> "custom"
+  }
+}
+
+fn run_instructions_mode_from_string(value: String) -> RunInstructionsMode {
+  case value {
+    "custom" -> CustomRunInstructions
+    _ -> DefaultRunInstructions
+  }
+}
+
+fn run_instructions_from_draft(
+  draft: RunInstructionsDraft,
+) -> language.RunInstructions {
+  language.RunInstructions(
+    build_commands: draft.build_commands_text
+      |> string.split("\n")
+      |> list.map(string.trim)
+      |> list.filter(fn(command) { command != "" }),
+    run_command: string.trim(draft.run_command),
+  )
+}
+
+fn default_run_instructions(
+  lang: language.Language,
+  files: List(snippet_model.File),
+) -> language.RunInstructions {
+  let default_name = language.default_filename(lang)
+  let main_file = select_main_file_name(files, default_name)
+  let other_files =
+    files
+    |> list.map(fn(file) { file.name })
+    |> remove_first_matching_file_name(main_file)
+
+  language.run_instructions(lang, main_file, other_files)
+}
+
+fn effective_run_instructions(model: RealModel) -> language.RunInstructions {
+  case model.run_instructions_override {
+    option.Some(run_instructions) -> run_instructions
+    option.None -> default_run_instructions(model.language, model.files)
+  }
+}
+
+fn run_instructions_override_from_draft(
+  model: RealModel,
+) -> option.Option(language.RunInstructions) {
+  case model.run_instructions_mode_draft {
+    DefaultRunInstructions -> option.None
+    CustomRunInstructions ->
+      option.Some(run_instructions_from_draft(model.run_instructions_draft))
+  }
+}
+
+fn select_main_file_name(
+  files: List(snippet_model.File),
+  default_name: String,
+) -> String {
+  case find_file_name(files, default_name) {
+    option.Some(name) -> name
+    option.None -> first_file_name(files)
+  }
+}
+
+fn find_file_name(
+  files: List(snippet_model.File),
+  target: String,
+) -> option.Option(String) {
+  case files {
+    [] -> option.None
+    [snippet_model.File(name:, ..), ..rest] ->
+      case name == target {
+        True -> option.Some(name)
+        False -> find_file_name(rest, target)
+      }
+  }
+}
+
+fn first_file_name(files: List(snippet_model.File)) -> String {
+  case files {
+    [snippet_model.File(name:, ..), ..] -> name
+    [] -> ""
+  }
+}
+
+fn remove_first_matching_file_name(files: List(String), target: String) -> List(String) {
+  case files {
+    [] -> []
+    [name, ..rest] ->
+      case name == target {
+        True -> rest
+        False -> [name, ..remove_first_matching_file_name(rest, target)]
+      }
   }
 }
 
