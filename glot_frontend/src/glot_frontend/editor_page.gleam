@@ -12,6 +12,7 @@ import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/api
 import glot_frontend/editor_dialog
+import glot_frontend/editor_settings
 import glot_frontend/icons
 import glot_frontend/route
 import lustre/attribute
@@ -24,7 +25,7 @@ import youid/uuid.{type Uuid}
 
 pub type Model {
   UnsupportedLanguage(String)
-  LoadingSnippet(String)
+  LoadingSnippet(String, editor_settings.EditorSettings)
   LoadError(String)
   SupportedLanguage(RealModel)
 }
@@ -42,17 +43,11 @@ pub type RealModel {
     add_entry_kind: AddEntryKind,
     add_entry_filename: String,
     edit_entry_filename: String,
-    keyboard_bindings: KeyboardBindings,
-    keyboard_bindings_draft: KeyboardBindings,
+    editor_settings: editor_settings.EditorSettings,
+    editor_settings_draft: editor_settings.EditorSettings,
     run_state: RunState,
     save_state: SaveState,
   )
-}
-
-pub type KeyboardBindings {
-  DefaultBindings
-  EmacsBindings
-  VimBindings
 }
 
 pub type EditorTab {
@@ -80,6 +75,7 @@ pub type SaveState {
 }
 
 pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
+  let settings = editor_settings.load()
   let model = case language.from_string(language) {
     option.Some(lang) -> {
       let default_file = snippet_model.default_file(lang)
@@ -95,8 +91,8 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
         add_entry_kind: AddFileEntry,
         add_entry_filename: "",
         edit_entry_filename: default_file_name([default_file], FileTab(0)),
-        keyboard_bindings: DefaultBindings,
-        keyboard_bindings_draft: DefaultBindings,
+        editor_settings: settings,
+        editor_settings_draft: settings,
         run_state: Idle,
         save_state: SaveIdle,
       ))
@@ -109,8 +105,9 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
 }
 
 pub fn init_existing(slug: String) -> #(Model, Effect(Msg)) {
+  let settings = editor_settings.load()
   #(
-    LoadingSnippet(slug),
+    LoadingSnippet(slug, settings),
     api.get_snippet(snippet_dto.GetSnippetRequest(slug: slug), SnippetLoaded),
   )
 }
@@ -135,7 +132,7 @@ pub type Msg {
   EditEntryDeleted
   EditEntryDialogClosed
   SettingsClicked
-  KeyboardBindingsDraftSelected(KeyboardBindings)
+  KeyboardBindingsDraftSelected(editor_settings.KeyboardBindings)
   SettingsCancelled
   SettingsSubmitted
   SettingsDialogClosed
@@ -149,7 +146,7 @@ pub type Msg {
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case model, msg {
-    LoadingSnippet(_), SnippetLoaded(result) -> {
+    LoadingSnippet(_, settings), SnippetLoaded(result) -> {
       case result {
         api.ApiSuccess(response) -> {
           let files = response.data.files
@@ -171,8 +168,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 files,
                 initial_selected_tab(files, stdin),
               ),
-              keyboard_bindings: DefaultBindings,
-              keyboard_bindings_draft: DefaultBindings,
+              editor_settings: settings,
+              editor_settings_draft: settings,
               run_state: Idle,
               save_state: SaveIdle,
             )),
@@ -188,7 +185,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UnsupportedLanguage(_), _ -> #(model, effect.none())
-    LoadingSnippet(_), _ -> #(model, effect.none())
+    LoadingSnippet(_, _), _ -> #(model, effect.none())
     LoadError(_), _ -> #(model, effect.none())
     SupportedLanguage(model), _ ->
       update_helper(model, msg)
@@ -310,20 +307,25 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
     SettingsClicked -> #(
       RealModel(
         ..model,
-        keyboard_bindings_draft: model.keyboard_bindings,
+        editor_settings_draft: model.editor_settings,
       ),
       editor_dialog.open_settings_dialog(),
     )
 
     KeyboardBindingsDraftSelected(bindings) -> #(
-      RealModel(..model, keyboard_bindings_draft: bindings),
+      RealModel(
+        ..model,
+        editor_settings_draft: editor_settings.EditorSettings(
+          keyboard_bindings: bindings,
+        ),
+      ),
       effect.none(),
     )
 
     SettingsCancelled -> #(
       RealModel(
         ..model,
-        keyboard_bindings_draft: model.keyboard_bindings,
+        editor_settings_draft: model.editor_settings,
       ),
       editor_dialog.close_settings_dialog(),
     )
@@ -331,15 +333,18 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
     SettingsSubmitted -> #(
       RealModel(
         ..model,
-        keyboard_bindings: model.keyboard_bindings_draft,
+        editor_settings: model.editor_settings_draft,
       ),
-      editor_dialog.close_settings_dialog(),
+      effect.batch([
+        editor_dialog.close_settings_dialog(),
+        editor_settings.save(model.editor_settings_draft),
+      ]),
     )
 
     SettingsDialogClosed -> #(
       RealModel(
         ..model,
-        keyboard_bindings_draft: model.keyboard_bindings,
+        editor_settings_draft: model.editor_settings,
       ),
       editor_dialog.focus_editor(),
     )
@@ -482,7 +487,7 @@ pub fn view(model: Model, current_user_id: option.Option(Uuid)) -> Element(Msg) 
   case model {
     UnsupportedLanguage(lang) ->
       html.div([], [html.text("Unsupported language: " <> lang)])
-    LoadingSnippet(_slug) ->
+    LoadingSnippet(_slug, _settings) ->
       html.div([], [html.text("Loading snippet...")])
     LoadError(message) ->
       html.div([], [html.text(message)])
@@ -546,7 +551,8 @@ fn view_helper(model: RealModel, current_user_id: option.Option(Uuid)) -> Elemen
             attribute.attribute("value", selected_tab_content(model)),
             attribute.attribute(
               "keyboard-bindings",
-              keyboard_bindings_to_attribute(model.keyboard_bindings),
+              model.editor_settings.keyboard_bindings
+              |> editor_settings.keyboard_bindings_to_string(),
             ),
             event.on("change", {
               use value <- decode.subfield(["detail", "value"], decode.string)
@@ -750,20 +756,20 @@ fn settings_dialog_view(model: RealModel) -> Element(Msg) {
             keyboard_bindings_option(
               "Default",
               "Standard CodeMirror shortcuts.",
-              DefaultBindings,
-              model.keyboard_bindings_draft,
+              editor_settings.DefaultBindings,
+              model.editor_settings_draft.keyboard_bindings,
             ),
             keyboard_bindings_option(
               "Emacs",
               "Enable Emacs-style editing commands.",
-              EmacsBindings,
-              model.keyboard_bindings_draft,
+              editor_settings.EmacsBindings,
+              model.editor_settings_draft.keyboard_bindings,
             ),
             keyboard_bindings_option(
               "Vim",
               "Enable modal Vim keybindings.",
-              VimBindings,
-              model.keyboard_bindings_draft,
+              editor_settings.VimBindings,
+              model.editor_settings_draft.keyboard_bindings,
             ),
           ]),
           html.div([attribute.class("editor-page__dialog-actions")], [
@@ -934,8 +940,8 @@ fn add_entry_fields_view(model: RealModel) -> Element(Msg) {
 fn keyboard_bindings_option(
   label: String,
   description: String,
-  value: KeyboardBindings,
-  selected: KeyboardBindings,
+  value: editor_settings.KeyboardBindings,
+  selected: editor_settings.KeyboardBindings,
 ) -> Element(Msg) {
   let is_selected = value == selected
   let class_name = case is_selected {
@@ -1059,14 +1065,6 @@ fn save_button_text(save_state: SaveState) -> String {
   case save_state {
     Saving -> "Saving..."
     _ -> "Save"
-  }
-}
-
-fn keyboard_bindings_to_attribute(bindings: KeyboardBindings) -> String {
-  case bindings {
-    DefaultBindings -> "default"
-    EmacsBindings -> "emacs"
-    VimBindings -> "vim"
   }
 }
 
