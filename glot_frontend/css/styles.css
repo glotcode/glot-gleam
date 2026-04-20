@@ -1,77 +1,5 @@
 body {
   margin: 0;
-  background: #f6f4ef;
-  color: #1f1f1f;
-  font-family: Georgia, serif;
-}
-
-.login-page {
-  max-width: 24rem;
-  margin: 4rem auto;
-  padding: 2rem;
-  border: 1px solid #d4d4d4;
-  background-color: #ffffff;
-  box-sizing: border-box;
-}
-
-.login-page__title {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.75rem;
-  font-weight: normal;
-}
-
-.login-page__form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.login-page__label {
-  font-size: 0.95rem;
-}
-
-.login-page__input {
-  padding: 0.5rem;
-  border: 1px solid #b8b8b8;
-  font: inherit;
-  box-sizing: border-box;
-}
-
-.login-page__status {
-  margin: 0;
-  font-size: 0.95rem;
-  color: #444444;
-}
-
-.login-page__status--error {
-  color: #8a1f11;
-}
-
-.login-page__button {
-  align-self: flex-start;
-  padding: 0.45rem 0.85rem;
-  border: 1px solid #8f8f8f;
-  background: #f2f2f2;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.login-page__button:hover {
-  background: #e8e8e8;
-}
-
-.login-page__button:disabled,
-.login-page__input:disabled {
-  cursor: default;
-  opacity: 0.7;
-}
-
-.editor-page {
-  position: relative;
-  min-height: 100vh;
-  overflow: hidden;
   background:
     radial-gradient(circle at top, rgba(96, 165, 250, 0.18), transparent 32%),
     linear-gradient(180deg, #f8fbff 0%, #edf4ff 46%, #e3ecfb 100%);
@@ -79,7 +7,14 @@ body {
   font-family: "Lucida Console", Monaco, "Courier New", monospace;
 }
 
-.editor-page__screen-glow {
+.app-page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.app-page__screen-glow {
   position: absolute;
   inset: 0;
   background:
@@ -94,7 +29,122 @@ body {
   pointer-events: none;
 }
 
+.app-shell {
+  position: relative;
+  z-index: 1;
+  width: min(72rem, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0 1.4rem;
+  box-sizing: border-box;
+}
+
+.app-shell--narrow {
+  width: min(32rem, calc(100vw - 2rem));
+}
+
+.app-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #c8d7ef;
+  background: #f8fbff;
+  box-shadow: 0 1.5rem 4rem rgba(26, 50, 92, 0.12);
+  box-sizing: border-box;
+}
+
+.home-page__content {
+  max-width: 30rem;
+}
+
+.home-page__title,
+.login-page__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-page__link {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #bdd0f0;
+  background: #edf4ff;
+  color: #2853a6;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.login-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-page__label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #2853a6;
+}
+
+.login-page__input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #bdd0f0;
+  background: #ffffff;
+  color: inherit;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.login-page__status {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #51627f;
+}
+
+.login-page__status--error {
+  color: #8a1f11;
+}
+
+.login-page__button {
+  align-self: flex-start;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid #c8d7ef;
+  background: #f8fbff;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.login-page__button:hover {
+  background: #e8f0ff;
+}
+
+.login-page__button:disabled,
+.login-page__input:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.editor-page {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.editor-page__screen-glow {
+  position: absolute;
+  inset: 0;
+}
+
 .app-topbar {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -117,6 +167,28 @@ body {
   letter-spacing: 0.08em;
   color: #1d2c4b;
   text-decoration: none;
+}
+
+.app-topbar__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid #c8d7ef;
+  background: #f8fbff;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-topbar__icon-button:hover {
+  background: #eef4ff;
+}
+
+.app-topbar__icon-button:active {
+  background: #e1ebff;
 }
 
 .app-topbar__account {
@@ -406,7 +478,6 @@ body {
   color: #4a4a4a;
 }
 
-.editor-page__icon-button,
 .editor-shell__settings-button,
 .editor-shell__tab-action-button,
 .editor-shell__action-button {
@@ -420,20 +491,12 @@ body {
   font: inherit;
 }
 
-.editor-page__icon-button {
-  width: 1.9rem;
-  height: 1.9rem;
-  padding: 0;
-}
-
-.editor-page__icon-button:hover,
 .editor-shell__settings-button:hover,
 .editor-shell__tab-action-button:hover,
 .editor-shell__action-button:hover:not(:disabled) {
   background: #eef4ff;
 }
 
-.editor-page__icon-button:active,
 .editor-shell__settings-button:active,
 .editor-shell__tab-action-button:active,
 .editor-shell__action-button:active:not(:disabled) {
@@ -774,7 +837,7 @@ body {
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.35);
 }
 
-.editor-page__menu-icon,
+.app-topbar__menu-icon,
 .editor-shell__stdin-icon,
 .editor-shell__file-icon {
   position: relative;
@@ -782,7 +845,7 @@ body {
   flex: 0 0 auto;
 }
 
-.editor-page__menu-icon {
+.app-topbar__menu-icon {
   width: 0.8rem;
   height: 0.6rem;
   background:

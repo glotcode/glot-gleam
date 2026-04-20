@@ -153,7 +153,7 @@ fn view(model: Model) -> Element(Msg) {
     }
 
     LoginPage(page_model) -> {
-      let elem = login_page.view(page_model)
+      let elem = login_page.view(page_model, current_user_label(model.session))
       element.map(elem, LoginPageMsg)
     }
 

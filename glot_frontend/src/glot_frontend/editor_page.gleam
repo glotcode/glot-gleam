@@ -678,11 +678,7 @@ fn view_helper(
 
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
-    top_bar.view([
-      icon_button("editor-page__icon-button editor-page__icon-button--menu", [
-        html.span([attribute.class("editor-page__menu-icon")], []),
-      ]),
-    ], current_user_label),
+    top_bar.view(current_user_label),
     html.main([attribute.class("editor-shell")], [
       html.div([attribute.class("editor-shell__bezel")], [
         html.div([attribute.class("editor-page__title-row")], [
@@ -783,13 +779,6 @@ fn view_helper(
       console_view(model.version_info, model.run_state, model.save_state),
     ]),
   ])
-}
-
-fn icon_button(class_name: String, children: List(Element(msg))) -> Element(msg) {
-  html.button(
-    [attribute.type_("button"), attribute.class(class_name)],
-    children,
-  )
 }
 
 fn icon_action_button(

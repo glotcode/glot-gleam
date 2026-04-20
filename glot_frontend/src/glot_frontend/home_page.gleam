@@ -28,12 +28,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(_model: Model, current_user_label: String) -> Element(Msg) {
-  html.div([attribute.class("home-page")], [
-    top_bar.view([], current_user_label),
-    html.main([attribute.class("home-page__content")], [
-      html.h2([], [html.text("Home")]),
-      html.a([route.href(route.NewSnippet("python"))], [
-        html.text("Python"),
+  html.div([attribute.class("app-page")], [
+    html.div([attribute.class("app-page__screen-glow")], []),
+    top_bar.view(current_user_label),
+    html.main([attribute.class("app-shell")], [
+      html.section([attribute.class("app-panel home-page__content")], [
+        html.h2([attribute.class("home-page__title")], [html.text("Home")]),
+        html.a([
+          attribute.class("home-page__link"),
+          route.href(route.NewSnippet("python")),
+        ], [
+          html.text("Python"),
+        ]),
       ]),
     ]),
   ])

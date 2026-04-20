@@ -4,6 +4,7 @@ import gleam/string
 import glot_core/email/email_address_model
 import glot_frontend/api
 import glot_frontend/route
+import glot_frontend/top_bar
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -173,16 +174,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("login-page")], [
-    html.h2([attribute.class("login-page__title")], [html.text("Login")]),
-    html.form(
-      [
-        event.on_submit(fn(_) { submit_msg(model.step) }),
-        attribute.class("login-page__form"),
-      ],
-      form_fields(model),
-    ),
+pub fn view(model: Model, current_user_label: String) -> Element(Msg) {
+  html.div([attribute.class("app-page")], [
+    html.div([attribute.class("app-page__screen-glow")], []),
+    top_bar.view(current_user_label),
+    html.main([attribute.class("app-shell app-shell--narrow")], [
+      html.section([attribute.class("app-panel")], [
+        html.h2([attribute.class("login-page__title")], [html.text("Login")]),
+        html.form(
+          [
+            event.on_submit(fn(_) { submit_msg(model.step) }),
+            attribute.class("login-page__form"),
+          ],
+          form_fields(model),
+        ),
+      ]),
+    ]),
   ])
 }
 
