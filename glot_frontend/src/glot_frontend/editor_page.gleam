@@ -644,6 +644,8 @@ fn view_helper(
   model: RealModel,
   current_user_id: option.Option(Uuid),
 ) -> Element(Msg) {
+  let can_edit_title = model.slug == option.None || is_owner(model, current_user_id)
+
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
     html.header([attribute.class("editor-page__topbar")], [
@@ -667,19 +669,24 @@ fn view_helper(
           html.h1([attribute.class("editor-page__title")], [
             html.text(model.title),
           ]),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("editor-page__title-edit-button"),
-              attribute.attribute("aria-label", "Edit title"),
-              event.on_click(TitleClicked),
-            ],
-            [
-              html.span([attribute.class("editor-page__title-hint")], [
-                html.text("Edit"),
-              ]),
-            ],
-          ),
+          case can_edit_title {
+            True ->
+              html.button(
+                [
+                  attribute.type_("button"),
+                  attribute.class("editor-page__title-edit-button"),
+                  attribute.attribute("aria-label", "Edit title"),
+                  event.on_click(TitleClicked),
+                ],
+                [
+                  html.span([attribute.class("editor-page__title-hint")], [
+                    html.text("Edit"),
+                  ]),
+                ],
+              )
+
+            False -> html.div([], [])
+          },
         ]),
       ]),
       title_dialog_view(model),
