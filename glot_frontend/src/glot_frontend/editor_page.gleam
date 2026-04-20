@@ -1859,7 +1859,7 @@ fn console_header_view(
   save_state: SaveState,
 ) -> Element(Msg) {
   case save_state, run_state, version_info {
-    SaveIdle, Completed(Ok(_)), option.None -> html.div([], [])
+    SaveIdle, Completed(Ok(_)), _ -> html.div([], [])
     _, _, _ ->
       html.div([attribute.class("editor-shell__console-header")], [
         html.text("INFO"),
