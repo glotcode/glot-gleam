@@ -1,4 +1,6 @@
 import glot_frontend/route
+import glot_frontend/top_bar
+import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
@@ -25,14 +27,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(_model: Model) -> Element(Msg) {
-  html.div([], [
-    html.h2([], [html.text("Home")]),
-    html.div([], [
-      html.a([route.href(route.Login)], [html.text("Login")]),
-    ]),
-    html.a([route.href(route.NewSnippet("python"))], [
-      html.text("Python"),
+pub fn view(_model: Model, current_user_label: String) -> Element(Msg) {
+  html.div([attribute.class("home-page")], [
+    top_bar.view([], current_user_label),
+    html.main([attribute.class("home-page__content")], [
+      html.h2([], [html.text("Home")]),
+      html.a([route.href(route.NewSnippet("python"))], [
+        html.text("Python"),
+      ]),
     ]),
   ])
 }

@@ -10,7 +10,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import modem
-import youid/uuid.{type Uuid}
+import youid/uuid
 
 pub fn main() -> Nil {
   let app = lustre.application(init, update, view)
@@ -148,7 +148,7 @@ fn view(model: Model) -> Element(Msg) {
     }
 
     HomePageModel(page_model) -> {
-      let elem = home_page.view(page_model)
+      let elem = home_page.view(page_model, current_user_label(model.session))
       element.map(elem, HomePageMsg)
     }
 
@@ -158,16 +158,33 @@ fn view(model: Model) -> Element(Msg) {
     }
 
     EditorPage(page_model) -> {
-      let elem = editor_page.view(page_model, current_user_id(model.session))
+      let elem =
+        editor_page.view(
+          page_model,
+          current_user_id(model.session),
+          current_user_label(model.session),
+        )
       element.map(elem, EditorPageMsg)
     }
   }
 }
 
-fn current_user_id(session: SessionState) -> option.Option(Uuid) {
+fn current_user_id(session: SessionState) -> option.Option(uuid.Uuid) {
   case session {
     AuthenticatedSession(session) -> option.Some(session.user.id)
     LoadingSession | AnonymousSession | SessionError -> option.None
+  }
+}
+
+fn current_user_label(session: SessionState) -> String {
+  case session {
+    AuthenticatedSession(session) ->
+      case session.user.username {
+        option.Some(username) -> username
+        option.None -> uuid.to_string(session.user.id)
+      }
+
+    LoadingSession | AnonymousSession | SessionError -> "Account"
   }
 }
 

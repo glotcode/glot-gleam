@@ -94,7 +94,7 @@ body {
   pointer-events: none;
 }
 
-.editor-page__topbar {
+.app-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -105,17 +105,37 @@ body {
   box-sizing: border-box;
 }
 
-.editor-page__title-group {
+.app-topbar__title-group {
   display: flex;
   align-items: center;
   gap: 0.8rem;
 }
 
-.editor-page__brand {
+.app-topbar__brand {
   font-size: 0.9rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   color: #1d2c4b;
+  text-decoration: none;
+}
+
+.app-topbar__account {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.app-topbar__account-label {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid #bdd0f0;
+  background: #edf4ff;
+  color: #2853a6;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .editor-page__title-row {
@@ -380,23 +400,6 @@ body {
 .editor-page__settings-option-copy {
   color: #51627f;
   line-height: 1.5;
-}
-
-.editor-page__status {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 0 0 auto;
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  white-space: nowrap;
-}
-
-.editor-page__status-pill {
-  padding: 0.2rem 0.45rem;
-  border: 1px solid #bdd0f0;
-  background: #edf4ff;
-  color: #2853a6;
 }
 
 .editor-page__status-text {
@@ -831,7 +834,7 @@ body {
 
 @media (max-width: 720px) {
 
-  .editor-page__topbar,
+  .app-topbar,
   .editor-shell__bezel,
   .editor-shell__stdin-bar {
     gap: 0.5rem;
@@ -842,11 +845,11 @@ body {
     align-items: flex-start;
   }
 
-  .editor-page__topbar {
+  .app-topbar {
     flex-wrap: nowrap;
   }
 
-  .editor-page__status {
+  .app-topbar__account {
     flex-wrap: nowrap;
     margin-left: auto;
   }

@@ -17,6 +17,7 @@ import glot_frontend/editor_dialog
 import glot_frontend/editor_settings
 import glot_frontend/icons
 import glot_frontend/route
+import glot_frontend/top_bar
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -652,41 +653,36 @@ pub fn update_helper(
   }
 }
 
-pub fn view(model: Model, current_user_id: option.Option(Uuid)) -> Element(Msg) {
+pub fn view(
+  model: Model,
+  current_user_id: option.Option(Uuid),
+  current_user_label: String,
+) -> Element(Msg) {
   case model {
     UnsupportedLanguage(lang) ->
       html.div([], [html.text("Unsupported language: " <> lang)])
     LoadingSnippet(_slug, _settings) ->
       html.div([], [html.text("Loading snippet...")])
     LoadError(message) -> html.div([], [html.text(message)])
-    SupportedLanguage(model) -> view_helper(model, current_user_id)
+    SupportedLanguage(model) -> view_helper(model, current_user_id, current_user_label)
   }
 }
 
 fn view_helper(
   model: RealModel,
   current_user_id: option.Option(Uuid),
+  current_user_label: String,
 ) -> Element(Msg) {
   let can_edit_title = model.slug == option.None || is_owner(model, current_user_id)
   let show_snippet_info = model.slug != option.None
 
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
-    html.header([attribute.class("editor-page__topbar")], [
-      html.div([attribute.class("editor-page__title-group")], [
-        icon_button("editor-page__icon-button editor-page__icon-button--menu", [
-          html.span([attribute.class("editor-page__menu-icon")], []),
-        ]),
-        html.span([attribute.class("editor-page__brand")], [
-          html.text("glot.io"),
-        ]),
+    top_bar.view([
+      icon_button("editor-page__icon-button editor-page__icon-button--menu", [
+        html.span([attribute.class("editor-page__menu-icon")], []),
       ]),
-      html.div([attribute.class("editor-page__status")], [
-        html.span([attribute.class("editor-page__status-pill")], [
-          html.text(string.uppercase(language.to_string(model.language))),
-        ]),
-      ]),
-    ]),
+    ], current_user_label),
     html.main([attribute.class("editor-shell")], [
       html.div([attribute.class("editor-shell__bezel")], [
         html.div([attribute.class("editor-page__title-row")], [
