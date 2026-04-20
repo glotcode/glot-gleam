@@ -101,7 +101,7 @@ body {
   min-height: 3.2rem;
   padding: 0.65rem 1rem;
   border-bottom: 1px solid #c8d7ef;
-  background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%);
+  background: #ffffff;
   box-sizing: border-box;
 }
 
@@ -320,6 +320,11 @@ body {
   margin: 0;
   color: #35507f;
   line-height: 1.6;
+}
+
+.editor-page__dialog-link {
+  color: #2853a6;
+  font-weight: 700;
 }
 
 .editor-page__dialog-helper-text {

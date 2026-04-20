@@ -4,6 +4,7 @@ pub const title_dialog_id = "editor-page-title-dialog"
 pub const add_entry_dialog_id = "editor-page-add-entry-dialog"
 pub const edit_entry_dialog_id = "editor-page-edit-entry-dialog"
 pub const settings_dialog_id = "editor-page-settings-dialog"
+pub const save_dialog_id = "editor-page-save-dialog"
 pub const editor_id = "editor-page-codemirror"
 
 pub fn open_title_dialog() -> Effect(msg) {
@@ -51,6 +52,18 @@ pub fn open_settings_dialog() -> Effect(msg) {
 pub fn close_settings_dialog() -> Effect(msg) {
   effect.from(fn(_dispatch) {
     close_dialog(settings_dialog_id)
+  })
+}
+
+pub fn open_save_dialog() -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    open_dialog(save_dialog_id)
+  })
+}
+
+pub fn close_save_dialog() -> Effect(msg) {
+  effect.from(fn(_dispatch) {
+    close_dialog(save_dialog_id)
   })
 }
 

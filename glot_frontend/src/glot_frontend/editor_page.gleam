@@ -37,6 +37,7 @@ pub type RealModel {
     title: String,
     title_draft: String,
     language: language.Language,
+    visibility: snippet_model.Visibility,
     files: List(snippet_model.File),
     stdin: option.Option(String),
     selected_tab: EditorTab,
@@ -48,6 +49,7 @@ pub type RealModel {
     run_instructions_override: option.Option(language.RunInstructions),
     run_instructions_mode_draft: RunInstructionsMode,
     run_instructions_draft: RunInstructionsDraft,
+    save_visibility_draft: snippet_model.Visibility,
     version_info: option.Option(String),
     run_state: RunState,
     save_state: SaveState,
@@ -87,6 +89,11 @@ pub type SaveState {
   SaveError(String)
 }
 
+type SaveOperation {
+  CreateSnippet
+  UpdateSnippet(String)
+}
+
 pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
   let settings = editor_settings.load()
   let model = case language.from_string(language) {
@@ -98,6 +105,7 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
         title: "Hello World",
         title_draft: "Hello World",
         language: lang,
+        visibility: snippet_model.Unlisted,
         files: [default_file],
         stdin: option.None,
         selected_tab: FileTab(0),
@@ -111,6 +119,7 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
         run_instructions_draft: run_instructions_to_draft(
           default_run_instructions(lang, [default_file]),
         ),
+        save_visibility_draft: snippet_model.Unlisted,
         version_info: option.None,
         run_state: Idle,
         save_state: SaveIdle,
@@ -158,16 +167,24 @@ pub type Msg {
   SettingsCancelled
   SettingsSubmitted
   SettingsDialogClosed
+  SaveClicked
+  SaveVisibilityDraftSelected(snippet_model.Visibility)
+  SaveCancelled
+  SaveConfirmed
+  SaveDialogClosed
   TabSelected(EditorTab)
   SourceCodeChanged(String)
   RunSubmitted
   RunFinished(api.ApiResponse(run.RunResult))
   VersionRunFinished(api.ApiResponse(run.RunResult))
-  SaveSubmitted
   SaveFinished(api.ApiResponse(snippet_dto.SnippetResponse))
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(
+  model: Model,
+  msg: Msg,
+  current_user_id: option.Option(Uuid),
+) -> #(Model, Effect(Msg)) {
   case model, msg {
     LoadingSnippet(_, settings), SnippetLoaded(result) -> {
       case result {
@@ -196,6 +213,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               title: title_or_default(response.data.title),
               title_draft: title_or_default(response.data.title),
               language: response.data.language,
+              visibility: response.data.visibility,
               files: files,
               stdin: stdin,
               selected_tab: initial_selected_tab(files, stdin),
@@ -210,6 +228,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               run_instructions_override: run_instructions_override,
               run_instructions_mode_draft: run_instructions_mode_draft,
               run_instructions_draft: run_instructions_draft,
+              save_visibility_draft: response.data.visibility,
               version_info: option.None,
               run_state: Idle,
               save_state: SaveIdle,
@@ -231,12 +250,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     LoadingSnippet(_, _), _ -> #(model, effect.none())
     LoadError(_), _ -> #(model, effect.none())
     SupportedLanguage(model), _ ->
-      update_helper(model, msg)
+      update_helper(model, msg, current_user_id)
       |> pair.map_first(SupportedLanguage)
   }
 }
 
-pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
+pub fn update_helper(
+  model: RealModel,
+  msg: Msg,
+  current_user_id: option.Option(Uuid),
+) -> #(RealModel, Effect(Msg)) {
   case msg {
     SnippetLoaded(_) -> #(model, effect.none())
 
@@ -442,6 +465,26 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       editor_dialog.focus_editor(),
     )
 
+    SaveClicked -> #(
+      RealModel(..model, save_visibility_draft: model.visibility),
+      editor_dialog.open_save_dialog(),
+    )
+
+    SaveVisibilityDraftSelected(visibility) -> #(
+      RealModel(..model, save_visibility_draft: visibility),
+      effect.none(),
+    )
+
+    SaveCancelled -> #(
+      reset_save_dialog_draft(model),
+      editor_dialog.close_save_dialog(),
+    )
+
+    SaveDialogClosed -> #(
+      reset_save_dialog_draft(model),
+      editor_dialog.focus_editor(),
+    )
+
     TabSelected(tab) -> #(
       RealModel(
         ..model,
@@ -515,37 +558,45 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
       }
     }
 
-    SaveSubmitted -> {
-      let request =
-        snippet_dto.CreateSnippetRequest(data: snippet_dto.SnippetData(
+    SaveConfirmed -> {
+      let visibility = save_visibility(model, current_user_id)
+      let data =
+        snippet_dto.SnippetData(
           title: model.title,
           language: model.language,
-          visibility: snippet_model.Unlisted,
+          visibility: visibility,
           stdin: stdin_to_string(model.stdin),
           run_instructions: model.run_instructions_override,
           files: model.files,
-        ))
+        )
 
-      let effect = case model.slug {
-        option.Some(slug) ->
-          api.update_snippet(
-            snippet_dto.UpdateSnippetRequest(slug: slug, data: request.data),
+      let save_effect = case save_operation(model, current_user_id) {
+        CreateSnippet ->
+          api.create_snippet(
+            snippet_dto.CreateSnippetRequest(data: data),
             SaveFinished,
           )
 
-        option.None -> api.create_snippet(request, SaveFinished)
+        UpdateSnippet(slug) ->
+          api.update_snippet(
+            snippet_dto.UpdateSnippetRequest(slug: slug, data: data),
+            SaveFinished,
+          )
       }
 
-      #(RealModel(..model, save_state: Saving), effect)
+      #(
+        RealModel(..model, visibility: visibility, save_state: Saving),
+        effect.batch([editor_dialog.close_save_dialog(), save_effect]),
+      )
     }
 
     SaveFinished(result) -> {
       case result {
         api.ApiSuccess(response) -> {
           let next_model = RealModel(..model, save_state: Saved(response.slug))
-          case model.slug {
-            option.Some(_) -> #(next_model, effect.none())
-            option.None -> {
+          case save_operation(model, current_user_id) {
+            UpdateSnippet(_) -> #(next_model, effect.none())
+            CreateSnippet -> {
               let navigate =
                 modem.push(
                   route.to_string(route.Snippet(response.slug)),
@@ -567,7 +618,7 @@ pub fn update_helper(model: RealModel, msg: Msg) -> #(RealModel, Effect(Msg)) {
             ..model,
             save_state: SaveError(
               "Could not complete "
-              <> api_action.to_string(api_action.CreateSnippetAction)
+              <> save_action_name(model, current_user_id)
               <> ".",
             ),
           ),
@@ -593,8 +644,6 @@ fn view_helper(
   model: RealModel,
   current_user_id: option.Option(Uuid),
 ) -> Element(Msg) {
-  let can_save = can_save(model, current_user_id)
-
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
     html.header([attribute.class("editor-page__topbar")], [
@@ -637,6 +686,7 @@ fn view_helper(
       add_entry_dialog_view(model),
       edit_entry_dialog_view(model),
       settings_dialog_view(model),
+      save_dialog_view(model, current_user_id),
       html.div(
         [attribute.class("editor-shell__tabbar")],
         tabbar_children(model),
@@ -672,8 +722,8 @@ fn view_helper(
         action_button(
           "editor-shell__action-button",
           save_button_text(model.save_state),
-          model.save_state == Saving || !can_save,
-          SaveSubmitted,
+          model.save_state == Saving,
+          SaveClicked,
         ),
       ]),
       console_view(model.version_info, model.run_state, model.save_state),
@@ -994,6 +1044,147 @@ fn settings_dialog_view(model: RealModel) -> Element(Msg) {
   )
 }
 
+fn save_dialog_view(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+) -> Element(Msg) {
+  let children = case current_user_id {
+    option.None -> [
+      html.div(
+        [attribute.class("editor-page__dialog-form")],
+        save_dialog_children(model, current_user_id),
+      ),
+    ]
+
+    option.Some(_) -> [
+      html.form(
+        [
+          attribute.class("editor-page__dialog-form"),
+          event.on_submit(fn(_) { SaveConfirmed }),
+        ],
+        save_dialog_children(model, current_user_id),
+      ),
+    ]
+  }
+
+  html.dialog(
+    [
+      attribute.id(editor_dialog.save_dialog_id),
+      attribute.class("editor-page__dialog"),
+      event.on("close", decode.success(SaveDialogClosed)),
+    ],
+    children,
+  )
+}
+
+fn save_dialog_children(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+) -> List(Element(Msg)) {
+  case current_user_id {
+    option.None -> [
+      html.label([attribute.class("editor-page__dialog-label")], [
+        html.text("Save snippet"),
+      ]),
+      html.p([attribute.class("editor-page__dialog-copy")], [
+        html.text("You need to log in before you can save snippets. "),
+        html.a(
+          [
+            route.href(route.Login),
+            attribute.class("editor-page__dialog-link"),
+          ],
+          [html.text("Go to login")],
+        ),
+        html.text("."),
+      ]),
+      html.div([attribute.class("editor-page__dialog-actions")], [
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class(
+              "editor-page__dialog-button editor-page__dialog-button--secondary",
+            ),
+            event.on_click(SaveCancelled),
+          ],
+          [html.text("Close")],
+        ),
+      ]),
+    ]
+
+    option.Some(_) ->
+      case can_choose_save_visibility(model, current_user_id) {
+        True -> [
+          html.label([attribute.class("editor-page__dialog-label")], [
+            html.text("Visibility"),
+          ]),
+          html.div([attribute.class("editor-page__dialog-panel")], [
+            visibility_option(
+              "Public",
+              "Visible to everyone.",
+              snippet_model.Public,
+              model.save_visibility_draft,
+            ),
+            visibility_option(
+              "Unlisted",
+              "Available through the link only.",
+              snippet_model.Unlisted,
+              model.save_visibility_draft,
+            ),
+          ]),
+          html.div([attribute.class("editor-page__dialog-actions")], [
+            html.button(
+              [
+                attribute.type_("button"),
+                attribute.class(
+                  "editor-page__dialog-button editor-page__dialog-button--secondary",
+                ),
+                event.on_click(SaveCancelled),
+              ],
+              [html.text("Cancel")],
+            ),
+            html.button(
+              [
+                attribute.type_("submit"),
+                attribute.class("editor-page__dialog-button"),
+              ],
+              [html.text("Save")],
+            ),
+          ]),
+        ]
+
+        False -> [
+          html.label([attribute.class("editor-page__dialog-label")], [
+            html.text("Save snippet"),
+          ]),
+          html.p([attribute.class("editor-page__dialog-copy")], [
+            html.text(
+              "You do not own this snippet. Saving will create a new snippet in your account.",
+            ),
+          ]),
+          html.div([attribute.class("editor-page__dialog-actions")], [
+            html.button(
+              [
+                attribute.type_("button"),
+                attribute.class(
+                  "editor-page__dialog-button editor-page__dialog-button--secondary",
+                ),
+                event.on_click(SaveCancelled),
+              ],
+              [html.text("Cancel")],
+            ),
+            html.button(
+              [
+                attribute.type_("submit"),
+                attribute.class("editor-page__dialog-button"),
+              ],
+              [html.text("Save new snippet")],
+            ),
+          ]),
+        ]
+      }
+  }
+}
+
 fn edit_entry_dialog_children(model: RealModel) -> List(Element(Msg)) {
   case model.selected_tab {
     FileTab(_) -> [
@@ -1174,6 +1365,37 @@ fn keyboard_bindings_option(
   )
 }
 
+fn visibility_option(
+  label: String,
+  description: String,
+  value: snippet_model.Visibility,
+  selected: snippet_model.Visibility,
+) -> Element(Msg) {
+  let is_selected = value == selected
+  let class_name = case is_selected {
+    True ->
+      "editor-page__settings-option editor-page__settings-option--selected"
+    False -> "editor-page__settings-option"
+  }
+
+  html.button(
+    [
+      attribute.type_("button"),
+      attribute.class(class_name),
+      attribute.attribute("aria-pressed", bool_attribute(is_selected)),
+      event.on_click(SaveVisibilityDraftSelected(value)),
+    ],
+    [
+      html.span([attribute.class("editor-page__settings-option-title")], [
+        html.text(label),
+      ]),
+      html.span([attribute.class("editor-page__settings-option-copy")], [
+        html.text(description),
+      ]),
+    ],
+  )
+}
+
 fn tabbar_children(model: RealModel) -> List(Element(Msg)) {
   [
     icon_action_button("editor-shell__settings-button", SettingsClicked, [
@@ -1255,15 +1477,52 @@ fn selected_tab_action_button(model: RealModel) -> Element(Msg) {
   )
 }
 
-fn can_save(model: RealModel, current_user_id: option.Option(Uuid)) -> Bool {
+fn is_owner(model: RealModel, current_user_id: option.Option(Uuid)) -> Bool {
+  model.owner_user_id == current_user_id
+}
+
+fn can_choose_save_visibility(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+) -> Bool {
   case current_user_id {
     option.None -> False
-    option.Some(user_id) ->
-      case model.slug {
-        option.None -> True
-        option.Some(_) -> model.owner_user_id == option.Some(user_id)
-      }
+    option.Some(_) -> model.slug == option.None || is_owner(model, current_user_id)
   }
+}
+
+fn save_operation(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+) -> SaveOperation {
+  case model.slug, is_owner(model, current_user_id) {
+    option.Some(slug), True -> UpdateSnippet(slug)
+    _, _ -> CreateSnippet
+  }
+}
+
+fn save_visibility(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+) -> snippet_model.Visibility {
+  case can_choose_save_visibility(model, current_user_id) {
+    True -> model.save_visibility_draft
+    False -> model.visibility
+  }
+}
+
+fn save_action_name(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+) -> String {
+  case save_operation(model, current_user_id) {
+    CreateSnippet -> api_action.to_string(api_action.CreateSnippetAction)
+    UpdateSnippet(_) -> api_action.to_string(api_action.UpdateSnippetAction)
+  }
+}
+
+fn reset_save_dialog_draft(model: RealModel) -> RealModel {
+  RealModel(..model, save_visibility_draft: model.visibility)
 }
 
 fn run_button_text(run_state: RunState) -> String {

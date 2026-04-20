@@ -125,7 +125,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     EditorPageMsg(page_msg), EditorPage(page_model) -> {
       let #(new_page_model, page_effect) =
-        editor_page.update(page_model, page_msg)
+        editor_page.update(page_model, page_msg, current_user_id(model.session))
       let new_model = Model(..model, page_model: EditorPage(new_page_model))
       #(new_model, effect.map(page_effect, EditorPageMsg))
     }
