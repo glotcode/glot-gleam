@@ -1251,6 +1251,8 @@ fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
         html.text("Snippet info"),
       ]),
       html.div([attribute.class("editor-page__dialog-panel")], [
+        snippet_info_row("Title", model.title),
+        snippet_info_row("Language", language.name(model.language)),
         snippet_info_row("Author", snippet_owner_label(model)),
         snippet_info_row(
           "Visibility",
@@ -1276,6 +1278,10 @@ fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
     option.None -> [
       html.label([attribute.class("editor-page__dialog-label editor-page__dialog-label--snippet-info")], [
         html.text("Snippet info"),
+      ]),
+      html.div([attribute.class("editor-page__dialog-panel")], [
+        snippet_info_row("Title", model.title),
+        snippet_info_row("Language", language.name(model.language)),
       ]),
       html.p([attribute.class("editor-page__dialog-copy")], [
         html.text("This snippet has not been saved yet."),
