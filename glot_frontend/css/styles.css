@@ -137,6 +137,12 @@ body {
   letter-spacing: 0.12em;
 }
 
+.editor-page__title-actions {
+  display: flex;
+  align-items: stretch;
+  margin-left: auto;
+}
+
 .editor-page__title-edit-button {
   display: inline-flex;
   flex: 0 0 auto;
@@ -184,6 +190,12 @@ body {
   text-transform: uppercase;
 }
 
+.editor-page__title-hint--info {
+  background: #ffffff;
+  color: #2853a6;
+  border: 1px solid #2853a6;
+}
+
 .editor-page__dialog {
   width: min(28rem, calc(100vw - 2rem));
   padding: 0;
@@ -219,6 +231,10 @@ body {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #2853a6;
+}
+
+.editor-page__dialog-label--snippet-info {
+  margin-bottom: 1rem;
 }
 
 .editor-page__dialog-sublabel {

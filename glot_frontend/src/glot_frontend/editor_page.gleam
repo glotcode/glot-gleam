@@ -5,6 +5,8 @@ import gleam/list
 import gleam/option
 import gleam/pair
 import gleam/string
+import gleam/time/calendar
+import gleam/time/timestamp.{type Timestamp}
 import glot_core/api_action
 import glot_core/language
 import glot_core/run
@@ -34,10 +36,13 @@ pub type RealModel {
   RealModel(
     slug: option.Option(String),
     owner_user_id: option.Option(Uuid),
+    owner_username: option.Option(String),
     title: String,
     title_draft: String,
     language: language.Language,
     visibility: snippet_model.Visibility,
+    created_at: option.Option(Timestamp),
+    updated_at: option.Option(Timestamp),
     files: List(snippet_model.File),
     stdin: option.Option(String),
     selected_tab: EditorTab,
@@ -102,10 +107,13 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
       SupportedLanguage(RealModel(
         slug: option.None,
         owner_user_id: option.None,
+        owner_username: option.None,
         title: "Hello World",
         title_draft: "Hello World",
         language: lang,
         visibility: snippet_model.Unlisted,
+        created_at: option.None,
+        updated_at: option.None,
         files: [default_file],
         stdin: option.None,
         selected_tab: FileTab(0),
@@ -172,6 +180,9 @@ pub type Msg {
   SaveCancelled
   SaveConfirmed
   SaveDialogClosed
+  SnippetInfoClicked
+  SnippetInfoDismissed
+  SnippetInfoClosed
   TabSelected(EditorTab)
   SourceCodeChanged(String)
   RunSubmitted
@@ -210,10 +221,13 @@ pub fn update(
             SupportedLanguage(RealModel(
               slug: option.Some(response.slug),
               owner_user_id: option.Some(response.user.id),
+              owner_username: response.user.username,
               title: title_or_default(response.data.title),
               title_draft: title_or_default(response.data.title),
               language: response.data.language,
               visibility: response.data.visibility,
+              created_at: option.Some(response.created_at),
+              updated_at: option.Some(response.updated_at),
               files: files,
               stdin: stdin,
               selected_tab: initial_selected_tab(files, stdin),
@@ -485,6 +499,15 @@ pub fn update_helper(
       editor_dialog.focus_editor(),
     )
 
+    SnippetInfoClicked -> #(model, editor_dialog.open_snippet_info_dialog())
+
+    SnippetInfoDismissed -> #(
+      model,
+      editor_dialog.close_snippet_info_dialog(),
+    )
+
+    SnippetInfoClosed -> #(model, editor_dialog.focus_editor())
+
     TabSelected(tab) -> #(
       RealModel(
         ..model,
@@ -645,6 +668,7 @@ fn view_helper(
   current_user_id: option.Option(Uuid),
 ) -> Element(Msg) {
   let can_edit_title = model.slug == option.None || is_owner(model, current_user_id)
+  let show_snippet_info = model.slug != option.None
 
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
@@ -669,24 +693,50 @@ fn view_helper(
           html.h1([attribute.class("editor-page__title")], [
             html.text(model.title),
           ]),
-          case can_edit_title {
-            True ->
-              html.button(
-                [
-                  attribute.type_("button"),
-                  attribute.class("editor-page__title-edit-button"),
-                  attribute.attribute("aria-label", "Edit title"),
-                  event.on_click(TitleClicked),
-                ],
-                [
-                  html.span([attribute.class("editor-page__title-hint")], [
-                    html.text("Edit"),
-                  ]),
-                ],
-              )
+          html.div([attribute.class("editor-page__title-actions")], [
+            case show_snippet_info {
+              True ->
+                html.button(
+                  [
+                    attribute.type_("button"),
+                    attribute.class(
+                      "editor-page__title-edit-button editor-page__title-info-button",
+                    ),
+                    attribute.attribute("aria-label", "Snippet info"),
+                    event.on_click(SnippetInfoClicked),
+                  ],
+                  [
+                    html.span([
+                      attribute.class(
+                        "editor-page__title-hint editor-page__title-hint--info",
+                      ),
+                    ], [
+                      html.text("Info"),
+                    ]),
+                  ],
+                )
 
-            False -> html.div([], [])
-          },
+              False -> html.div([], [])
+            },
+            case can_edit_title {
+              True ->
+                html.button(
+                  [
+                    attribute.type_("button"),
+                    attribute.class("editor-page__title-edit-button"),
+                    attribute.attribute("aria-label", "Edit title"),
+                    event.on_click(TitleClicked),
+                  ],
+                  [
+                    html.span([attribute.class("editor-page__title-hint")], [
+                      html.text("Edit"),
+                    ]),
+                  ],
+                )
+
+              False -> html.div([], [])
+            },
+          ]),
         ]),
       ]),
       title_dialog_view(model),
@@ -694,6 +744,7 @@ fn view_helper(
       edit_entry_dialog_view(model),
       settings_dialog_view(model),
       save_dialog_view(model, current_user_id),
+      snippet_info_dialog_view(model),
       html.div(
         [attribute.class("editor-shell__tabbar")],
         tabbar_children(model),
@@ -1111,7 +1162,7 @@ fn save_dialog_children(
             attribute.class(
               "editor-page__dialog-button editor-page__dialog-button--secondary",
             ),
-            event.on_click(SaveCancelled),
+            event.on_click(SnippetInfoDismissed),
           ],
           [html.text("Close")],
         ),
@@ -1190,6 +1241,85 @@ fn save_dialog_children(
         ]
       }
   }
+}
+
+fn snippet_info_dialog_view(model: RealModel) -> Element(Msg) {
+  html.dialog(
+    [
+      attribute.id(editor_dialog.snippet_info_dialog_id),
+      attribute.class("editor-page__dialog"),
+      event.on("close", decode.success(SnippetInfoClosed)),
+    ],
+    [
+      html.div(
+        [attribute.class("editor-page__dialog-form")],
+        snippet_info_dialog_children(model),
+      ),
+    ],
+  )
+}
+
+fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
+  case model.slug {
+    option.Some(_) -> [
+      html.label([attribute.class("editor-page__dialog-label editor-page__dialog-label--snippet-info")], [
+        html.text("Snippet info"),
+      ]),
+      html.div([attribute.class("editor-page__dialog-panel")], [
+        snippet_info_row("Author", snippet_owner_label(model)),
+        snippet_info_row(
+          "Visibility",
+          snippet_model.visibility_to_string(model.visibility) |> string.uppercase,
+        ),
+        snippet_info_row("Created", optional_timestamp_label(model.created_at)),
+        snippet_info_row("Updated", optional_timestamp_label(model.updated_at)),
+      ]),
+      html.div([attribute.class("editor-page__dialog-actions")], [
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class(
+              "editor-page__dialog-button editor-page__dialog-button--secondary",
+            ),
+            event.on_click(SnippetInfoDismissed),
+          ],
+          [html.text("Close")],
+        ),
+      ]),
+    ]
+
+    option.None -> [
+      html.label([attribute.class("editor-page__dialog-label editor-page__dialog-label--snippet-info")], [
+        html.text("Snippet info"),
+      ]),
+      html.p([attribute.class("editor-page__dialog-copy")], [
+        html.text("This snippet has not been saved yet."),
+      ]),
+      html.div([attribute.class("editor-page__dialog-actions")], [
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class(
+              "editor-page__dialog-button editor-page__dialog-button--secondary",
+            ),
+            event.on_click(SnippetInfoDismissed),
+          ],
+          [html.text("Close")],
+        ),
+      ]),
+    ]
+  }
+}
+
+fn snippet_info_row(label: String, value: String) -> Element(Msg) {
+  html.div([attribute.class("editor-page__dialog-panel")], [
+    html.span([attribute.class("editor-page__dialog-sublabel")], [
+      html.text(label),
+    ]),
+    html.p([attribute.class("editor-page__dialog-copy")], [
+      html.text(value),
+    ]),
+  ])
 }
 
 fn edit_entry_dialog_children(model: RealModel) -> List(Element(Msg)) {
@@ -1401,6 +1531,28 @@ fn visibility_option(
       ]),
     ],
   )
+}
+
+fn snippet_owner_label(model: RealModel) -> String {
+  case model.owner_username {
+    option.Some(username) -> username
+    option.None ->
+      case model.owner_user_id {
+        option.Some(user_id) -> uuid.to_string(user_id)
+        option.None -> "Unknown"
+      }
+  }
+}
+
+fn optional_timestamp_label(value: option.Option(Timestamp)) -> String {
+  case value {
+    option.Some(timestamp) -> timestamp_label(timestamp)
+    option.None -> "Unknown"
+  }
+}
+
+fn timestamp_label(value: Timestamp) -> String {
+  timestamp.to_rfc3339(value, calendar.utc_offset)
 }
 
 fn tabbar_children(model: RealModel) -> List(Element(Msg)) {
