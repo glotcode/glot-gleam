@@ -1258,6 +1258,7 @@ fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
           "Visibility",
           snippet_model.visibility_to_string(model.visibility) |> string.uppercase,
         ),
+        snippet_info_row("URL", snippet_url(model)),
         snippet_info_row("Created", optional_timestamp_label(model.created_at)),
         snippet_info_row("Updated", optional_timestamp_label(model.updated_at)),
       ]),
@@ -1311,6 +1312,13 @@ fn snippet_info_row(label: String, value: String) -> Element(Msg) {
       html.text(value),
     ]),
   ])
+}
+
+fn snippet_url(model: RealModel) -> String {
+  case model.slug {
+    option.Some(slug) -> "https://glot.io" <> route.to_string(route.Snippet(slug))
+    option.None -> ""
+  }
 }
 
 fn edit_entry_dialog_children(model: RealModel) -> List(Element(Msg)) {
