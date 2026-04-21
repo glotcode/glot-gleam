@@ -12,7 +12,7 @@ pub type Route {
 pub fn from_uri(uri: Uri) -> Route {
   case uri.path_segments(uri.path) {
     [] | [""] -> Home
-    ["auth", "login"] -> Login
+    ["login"] -> Login
     ["new", language] -> NewSnippet(language: language)
     ["snippets", slug] -> Snippet(slug: slug)
     _ -> NotFound(uri:)
@@ -22,7 +22,7 @@ pub fn from_uri(uri: Uri) -> Route {
 pub fn to_string(route: Route) -> String {
   case route {
     Home -> "/"
-    Login -> "/auth/login"
+    Login -> "/login"
     NewSnippet(language) -> "/new/" <> language
     Snippet(slug) -> "/snippets/" <> slug
     NotFound(_) -> ""
