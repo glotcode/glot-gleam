@@ -178,11 +178,7 @@ fn current_user_id(session: SessionState) -> option.Option(uuid.Uuid) {
 
 fn current_user_label(session: SessionState) -> String {
   case session {
-    AuthenticatedSession(session) ->
-      case session.user.username {
-        option.Some(username) -> username
-        option.None -> uuid.to_string(session.user.id)
-      }
+    AuthenticatedSession(session) -> session.user.username
 
     LoadingSession | AnonymousSession | SessionError -> "Account"
   }

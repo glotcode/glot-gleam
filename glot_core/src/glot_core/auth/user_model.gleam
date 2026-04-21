@@ -1,4 +1,3 @@
-import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/email/email_address_model
 import youid/uuid.{type Uuid}
@@ -7,7 +6,7 @@ pub type User {
   User(
     id: Uuid,
     email: email_address_model.EmailAddress,
-    username: Option(String),
+    username: String,
     last_login_at: Timestamp,
     created_at: Timestamp,
     updated_at: Timestamp,

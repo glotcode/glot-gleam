@@ -89,7 +89,7 @@ pub fn view(_model: Model, current_user_label: String) -> Element(Msg) {
       ]),
       html.section([attribute.class("home-section home-languages")], [
         html.h2([attribute.class("home-section__title")], [
-          html.text("Languages"),
+          html.text("Select a language"),
         ]),
         html.div([attribute.class("home-languages__grid")], {
           language.list()

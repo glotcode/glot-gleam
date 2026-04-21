@@ -185,7 +185,7 @@ fn new_user(
   user_model.User(
     id: id,
     email: email,
-    username: option.None,
+    username: uuid.to_string(id),
     last_login_at: now,
     created_at: now,
     updated_at: now,

@@ -222,7 +222,7 @@ pub fn update(
             SupportedLanguage(RealModel(
               slug: option.Some(response.slug),
               owner_user_id: option.Some(response.user.id),
-              owner_username: response.user.username,
+              owner_username: option.Some(response.user.username),
               title: title_or_default(response.data.title),
               title_draft: title_or_default(response.data.title),
               language: response.data.language,

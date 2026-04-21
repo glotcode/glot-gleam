@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
-  username TEXT UNIQUE,
+  username TEXT NOT NULL UNIQUE,
   last_login_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
