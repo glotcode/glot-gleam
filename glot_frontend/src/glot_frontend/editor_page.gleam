@@ -1557,7 +1557,7 @@ fn timestamp_label(value: Timestamp) -> String {
 fn tabbar_children(model: RealModel) -> List(Element(Msg)) {
   [
     icon_action_button("editor-shell__settings-button", SettingsClicked, [
-      icons.gear_icon(),
+      icons.cog_6_tooth(),
     ]),
     html.div([attribute.class("editor-shell__tab-scroll")], [
       html.div([attribute.class("editor-shell__tab-strip")], tab_views(model)),
