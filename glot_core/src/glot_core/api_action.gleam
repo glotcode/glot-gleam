@@ -4,6 +4,8 @@ import gleam/json
 pub type ApiAction {
   RunAction
   GetSessionAction
+  GetAccountAction
+  UpdateAccountAction
   GetSnippetAction
   CreateSnippetAction
   UpdateSnippetAction
@@ -17,6 +19,8 @@ pub fn decoder() -> decode.Decoder(ApiAction) {
   case action {
     "run" -> decode.success(RunAction)
     "get_session" -> decode.success(GetSessionAction)
+    "get_account" -> decode.success(GetAccountAction)
+    "update_account" -> decode.success(UpdateAccountAction)
     "get_snippet" -> decode.success(GetSnippetAction)
     "create_snippet" -> decode.success(CreateSnippetAction)
     "update_snippet" -> decode.success(UpdateSnippetAction)
@@ -35,6 +39,8 @@ pub fn to_string(action: ApiAction) -> String {
   case action {
     RunAction -> "run"
     GetSessionAction -> "get_session"
+    GetAccountAction -> "get_account"
+    UpdateAccountAction -> "update_account"
     GetSnippetAction -> "get_snippet"
     CreateSnippetAction -> "create_snippet"
     UpdateSnippetAction -> "update_snippet"

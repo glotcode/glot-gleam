@@ -7,6 +7,8 @@ import gleam/json
 import gleam/option
 import gleam/string
 import glot_backend/context
+import glot_backend/domain/account/get_account_domain
+import glot_backend/domain/account/update_account_domain
 import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
@@ -27,6 +29,7 @@ import glot_backend/erlang
 import glot_backend/server_timing
 import glot_backend/worker/log_worker
 import glot_core/api_action.{type ApiAction}
+import glot_core/auth/account_dto
 import glot_core/auth/session_dto
 import glot_core/run
 import glot_core/snippet/snippet_dto
@@ -79,6 +82,17 @@ fn handle_api_request(
     api_action.GetSessionAction -> {
       get_session_domain.get_session(ctx)
       |> program.map(SessionResponse)
+    }
+    api_action.GetAccountAction -> {
+      get_account_domain.get_account(ctx)
+      |> program.map(AccountResponse)
+    }
+    api_action.UpdateAccountAction -> {
+      use request <- program.and_then(
+        update_account_domain.request_from_dynamic(api_request.data),
+      )
+      update_account_domain.update_account(ctx, request)
+      |> program.map(AccountResponse)
     }
     api_action.GetSnippetAction -> {
       use request <- program.and_then(get_snippet_domain.request_from_dynamic(
@@ -165,6 +179,7 @@ fn require_api_request(
 type ApiResult {
   RunResultResponse(run.RunResult)
   SessionResponse(option.Option(session_dto.SessionResponse))
+  AccountResponse(account_dto.AccountResponse)
   SnippetResponse(snippet_dto.SnippetResponse)
   LoginResponse(session_token: String)
   NoContentResponse
@@ -181,6 +196,7 @@ fn api_result_to_response(
     }
     SessionResponse(response) ->
       success_response(json.nullable(response, session_dto.encode))
+    AccountResponse(response) -> success_response(account_dto.encode(response))
     SnippetResponse(response) ->
       success_response(snippet_dto.encode_response(response))
     LoginResponse(session_token) -> {
