@@ -1,5 +1,6 @@
 import gleam/option
 import glot_core/auth/session_dto
+import glot_frontend/account_page
 import glot_frontend/api
 import glot_frontend/editor_page
 import glot_frontend/home_page
@@ -26,6 +27,7 @@ type Model {
 type PageModel {
   HomePageModel(home_page.Model)
   LoginPage(login_page.Model)
+  AccountPage(account_page.Model)
   EditorPage(editor_page.Model)
   EmptyPageModel
 }
@@ -47,6 +49,11 @@ fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
     route.Login -> {
       let #(m, eff) = login_page.init()
       #(LoginPage(m), effect.map(eff, LoginPageMsg))
+    }
+
+    route.Account -> {
+      let #(m, eff) = account_page.init()
+      #(AccountPage(m), effect.map(eff, AccountPageMsg))
     }
 
     route.NewSnippet(language) -> {
@@ -94,6 +101,7 @@ type Msg {
   SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
   HomePageMsg(home_page.Msg)
   LoginPageMsg(login_page.Msg)
+  AccountPageMsg(account_page.Msg)
   EditorPageMsg(editor_page.Msg)
 }
 
@@ -123,6 +131,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(new_model, effect.map(page_effect, LoginPageMsg))
     }
 
+    AccountPageMsg(page_msg), AccountPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        account_page.update(page_model, page_msg)
+      let new_model = Model(..model, page_model: AccountPage(new_page_model))
+      #(new_model, effect.map(page_effect, AccountPageMsg))
+    }
+
     EditorPageMsg(page_msg), EditorPage(page_model) -> {
       let #(new_page_model, page_effect) =
         editor_page.update(page_model, page_msg, current_user_id(model.session))
@@ -148,13 +163,33 @@ fn view(model: Model) -> Element(Msg) {
     }
 
     HomePageModel(page_model) -> {
-      let elem = home_page.view(page_model, current_user_label(model.session))
+      let elem =
+        home_page.view(
+          page_model,
+          current_user_label(model.session),
+          current_user_route(model.session),
+        )
       element.map(elem, HomePageMsg)
     }
 
     LoginPage(page_model) -> {
-      let elem = login_page.view(page_model, current_user_label(model.session))
+      let elem =
+        login_page.view(
+          page_model,
+          current_user_label(model.session),
+          current_user_route(model.session),
+        )
       element.map(elem, LoginPageMsg)
+    }
+
+    AccountPage(page_model) -> {
+      let elem =
+        account_page.view(
+          page_model,
+          current_user_label(model.session),
+          current_user_route(model.session),
+        )
+      element.map(elem, AccountPageMsg)
     }
 
     EditorPage(page_model) -> {
@@ -163,6 +198,7 @@ fn view(model: Model) -> Element(Msg) {
           page_model,
           current_user_id(model.session),
           current_user_label(model.session),
+          current_user_route(model.session),
         )
       element.map(elem, EditorPageMsg)
     }
@@ -181,6 +217,13 @@ fn current_user_label(session: SessionState) -> String {
     AuthenticatedSession(session) -> session.user.username
 
     LoadingSession | AnonymousSession | SessionError -> "Account"
+  }
+}
+
+fn current_user_route(session: SessionState) -> route.Route {
+  case session {
+    AuthenticatedSession(_) | LoadingSession -> route.Account
+    AnonymousSession | SessionError -> route.Login
   }
 }
 

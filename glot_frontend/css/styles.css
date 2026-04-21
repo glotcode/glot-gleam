@@ -57,7 +57,8 @@ body {
 }
 
 .home-page__title,
-.login-page__title {
+.login-page__title,
+.account-page__title {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
@@ -299,13 +300,16 @@ body {
   }
 }
 
-.login-page__form {
+.login-page__form,
+.account-page__form,
+.account-page__empty {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.login-page__label {
+.login-page__label,
+.account-page__label {
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -313,7 +317,8 @@ body {
   color: #2853a6;
 }
 
-.login-page__input {
+.login-page__input,
+.account-page__input {
   padding: 0.65rem 0.75rem;
   border: 1px solid #bdd0f0;
   background: #ffffff;
@@ -322,18 +327,21 @@ body {
   box-sizing: border-box;
 }
 
-.login-page__status {
+.login-page__status,
+.account-page__status {
   margin: 0;
   font-size: 0.85rem;
   line-height: 1.5;
   color: #51627f;
 }
 
-.login-page__status--error {
+.login-page__status--error,
+.account-page__status--error {
   color: #8a1f11;
 }
 
-.login-page__button {
+.login-page__button,
+.account-page__button {
   align-self: flex-start;
   padding: 0.45rem 0.85rem;
   border: 1px solid #c8d7ef;
@@ -343,14 +351,48 @@ body {
   cursor: pointer;
 }
 
-.login-page__button:hover {
+.login-page__button:hover,
+.account-page__button:hover {
   background: #e8f0ff;
 }
 
 .login-page__button:disabled,
-.login-page__input:disabled {
+.login-page__input:disabled,
+.account-page__button:disabled,
+.account-page__input:disabled {
   cursor: default;
   opacity: 0.7;
+}
+
+.account-page__row {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #d9e5f6;
+}
+
+.account-page__row-label {
+  color: #66789f;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-page__row-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #172033;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.account-page__link {
+  width: fit-content;
+  color: #2853a6;
+  font-weight: 700;
 }
 
 .editor-page {

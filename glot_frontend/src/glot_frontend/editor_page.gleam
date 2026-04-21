@@ -208,15 +208,15 @@ pub fn update(
             option.Some(_) -> CustomRunInstructions
             option.None -> DefaultRunInstructions
           }
-          let run_instructions_draft =
-            case run_instructions_override {
-              option.Some(run_instructions) ->
-                run_instructions_to_draft(run_instructions)
-              option.None ->
-                run_instructions_to_draft(
-                  default_run_instructions(response.data.language, files),
-                )
-            }
+          let run_instructions_draft = case run_instructions_override {
+            option.Some(run_instructions) ->
+              run_instructions_to_draft(run_instructions)
+            option.None ->
+              run_instructions_to_draft(default_run_instructions(
+                response.data.language,
+                files,
+              ))
+          }
 
           #(
             SupportedLanguage(RealModel(
@@ -502,10 +502,7 @@ pub fn update_helper(
 
     SnippetInfoClicked -> #(model, editor_dialog.open_snippet_info_dialog())
 
-    SnippetInfoDismissed -> #(
-      model,
-      editor_dialog.close_snippet_info_dialog(),
-    )
+    SnippetInfoDismissed -> #(model, editor_dialog.close_snippet_info_dialog())
 
     SnippetInfoClosed -> #(model, editor_dialog.focus_editor())
 
@@ -571,11 +568,10 @@ pub fn update_helper(
         api.ApiSuccess(Ok(run.SuccessfulRun(stdout:, ..))) ->
           case stdout == "" {
             True -> #(model, effect.none())
-            False ->
-              #(
-                RealModel(..model, version_info: option.Some(stdout)),
-                effect.none(),
-              )
+            False -> #(
+              RealModel(..model, version_info: option.Some(stdout)),
+              effect.none(),
+            )
           }
 
         _ -> #(model, effect.none())
@@ -657,6 +653,7 @@ pub fn view(
   model: Model,
   current_user_id: option.Option(Uuid),
   current_user_label: String,
+  account_route: route.Route,
 ) -> Element(Msg) {
   case model {
     UnsupportedLanguage(lang) ->
@@ -664,7 +661,8 @@ pub fn view(
     LoadingSnippet(_slug, _settings) ->
       html.div([], [html.text("Loading snippet...")])
     LoadError(message) -> html.div([], [html.text(message)])
-    SupportedLanguage(model) -> view_helper(model, current_user_id, current_user_label)
+    SupportedLanguage(model) ->
+      view_helper(model, current_user_id, current_user_label, account_route)
   }
 }
 
@@ -672,13 +670,15 @@ fn view_helper(
   model: RealModel,
   current_user_id: option.Option(Uuid),
   current_user_label: String,
+  account_route: route.Route,
 ) -> Element(Msg) {
-  let can_edit_title = model.slug == option.None || is_owner(model, current_user_id)
+  let can_edit_title =
+    model.slug == option.None || is_owner(model, current_user_id)
   let show_snippet_info = model.slug != option.None
 
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
-    top_bar.view(current_user_label),
+    top_bar.view(current_user_label, account_route),
     html.main([attribute.class("editor-shell")], [
       html.div([attribute.class("editor-shell__bezel")], [
         html.div([attribute.class("editor-page__title-row")], [
@@ -698,13 +698,16 @@ fn view_helper(
                     event.on_click(SnippetInfoClicked),
                   ],
                   [
-                    html.span([
-                      attribute.class(
-                        "editor-page__title-hint editor-page__title-hint--info",
-                      ),
-                    ], [
-                      html.text("Info"),
-                    ]),
+                    html.span(
+                      [
+                        attribute.class(
+                          "editor-page__title-hint editor-page__title-hint--info",
+                        ),
+                      ],
+                      [
+                        html.text("Info"),
+                      ],
+                    ),
                   ],
                 )
 
@@ -1247,16 +1250,24 @@ fn snippet_info_dialog_view(model: RealModel) -> Element(Msg) {
 fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
   case model.slug {
     option.Some(_) -> [
-      html.label([attribute.class("editor-page__dialog-label editor-page__dialog-label--snippet-info")], [
-        html.text("Snippet info"),
-      ]),
+      html.label(
+        [
+          attribute.class(
+            "editor-page__dialog-label editor-page__dialog-label--snippet-info",
+          ),
+        ],
+        [
+          html.text("Snippet info"),
+        ],
+      ),
       html.div([attribute.class("editor-page__dialog-panel")], [
         snippet_info_row("Title", model.title),
         snippet_info_row("Language", language.name(model.language)),
         snippet_info_row("Author", snippet_owner_label(model)),
         snippet_info_row(
           "Visibility",
-          snippet_model.visibility_to_string(model.visibility) |> string.uppercase,
+          snippet_model.visibility_to_string(model.visibility)
+            |> string.uppercase,
         ),
         snippet_info_row("URL", snippet_url(model)),
         snippet_info_row("Created", optional_timestamp_label(model.created_at)),
@@ -1277,9 +1288,16 @@ fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
     ]
 
     option.None -> [
-      html.label([attribute.class("editor-page__dialog-label editor-page__dialog-label--snippet-info")], [
-        html.text("Snippet info"),
-      ]),
+      html.label(
+        [
+          attribute.class(
+            "editor-page__dialog-label editor-page__dialog-label--snippet-info",
+          ),
+        ],
+        [
+          html.text("Snippet info"),
+        ],
+      ),
       html.div([attribute.class("editor-page__dialog-panel")], [
         snippet_info_row("Title", model.title),
         snippet_info_row("Language", language.name(model.language)),
@@ -1316,7 +1334,8 @@ fn snippet_info_row(label: String, value: String) -> Element(Msg) {
 
 fn snippet_url(model: RealModel) -> String {
   case model.slug {
-    option.Some(slug) -> "https://glot.io" <> route.to_string(route.Snippet(slug))
+    option.Some(slug) ->
+      "https://glot.io" <> route.to_string(route.Snippet(slug))
     option.None -> ""
   }
 }
@@ -1645,7 +1664,8 @@ fn can_choose_save_visibility(
 ) -> Bool {
   case current_user_id {
     option.None -> False
-    option.Some(_) -> model.slug == option.None || is_owner(model, current_user_id)
+    option.Some(_) ->
+      model.slug == option.None || is_owner(model, current_user_id)
   }
 }
 

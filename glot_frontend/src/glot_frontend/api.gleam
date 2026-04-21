@@ -1,7 +1,9 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option
+import gleam/regexp
 import glot_core/api_action.{type ApiAction}
+import glot_core/auth/account_dto
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
 import glot_core/auth/session_dto
@@ -58,7 +60,12 @@ pub fn run_code(
 ) -> effect.Effect(msg) {
   let req = ApiRequest(api_action.RunAction, request)
 
-  send_api_request(req, run.encode_run_request, run.run_result_decoder(), to_msg)
+  send_api_request(
+    req,
+    run.encode_run_request,
+    run.run_result_decoder(),
+    to_msg,
+  )
 }
 
 pub fn create_snippet(
@@ -129,6 +136,39 @@ pub fn get_session(
   )
 }
 
+pub fn get_account(
+  to_msg: fn(ApiResponse(account_dto.AccountResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let req = ApiRequest(api_action.GetAccountAction, Nil)
+
+  send_api_request(
+    req,
+    fn(_) { json.null() },
+    account_dto.decoder(is_email),
+    to_msg,
+  )
+}
+
+pub fn update_account(
+  request: account_dto.UpdateAccountRequest,
+  to_msg: fn(ApiResponse(account_dto.AccountResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let req = ApiRequest(api_action.UpdateAccountAction, request)
+
+  send_api_request(
+    req,
+    fn(update_request) {
+      json.object([
+        #("username", json.string(update_request.username)),
+      ])
+    },
+    account_dto.decoder(is_email),
+    to_msg,
+  )
+}
+
 fn send_api_request(
   req: ApiRequest(a),
   encode_data: fn(a) -> json.Json,
@@ -157,7 +197,9 @@ fn encode_api_request(
   ])
 }
 
-fn api_response_decoder(data_decoder: decode.Decoder(a)) -> decode.Decoder(ApiResponse(a)) {
+fn api_response_decoder(
+  data_decoder: decode.Decoder(a),
+) -> decode.Decoder(ApiResponse(a)) {
   use ok <- decode.field("ok", decode.bool)
 
   case ok {

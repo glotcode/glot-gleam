@@ -31,9 +31,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(_model: Model, current_user_label: String) -> Element(Msg) {
+pub fn view(
+  _model: Model,
+  current_user_label: String,
+  account_route: route.Route,
+) -> Element(Msg) {
   html.div([attribute.class("app-page app-page--home")], [
-    top_bar.view(current_user_label),
+    top_bar.view(current_user_label, account_route),
     html.main([attribute.class("home-page")], [
       html.section([attribute.class("home-hero")], [
         html.div([attribute.class("home-hero__inner")], [

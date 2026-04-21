@@ -174,10 +174,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(model: Model, current_user_label: String) -> Element(Msg) {
+pub fn view(
+  model: Model,
+  current_user_label: String,
+  account_route: route.Route,
+) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
-    top_bar.view(current_user_label),
+    top_bar.view(current_user_label, account_route),
     html.main([attribute.class("app-shell app-shell--narrow")], [
       html.section([attribute.class("app-panel")], [
         html.h2([attribute.class("login-page__title")], [html.text("Login")]),
