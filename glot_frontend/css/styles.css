@@ -219,7 +219,7 @@ body {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);
   align-items: stretch;
-  min-height: 50px;
+  height: 56px;
   overflow: hidden;
   border: 1px solid #e5e7ec;
   border-radius: 4px;
@@ -245,7 +245,9 @@ body {
 
 .home-language__logo svg {
   width: 100%;
+  max-width: 34px;
   height: 100%;
+  max-height: 34px;
 }
 
 .home-language__name {
