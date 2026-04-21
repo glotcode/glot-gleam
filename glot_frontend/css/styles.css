@@ -235,8 +235,17 @@ body {
 }
 
 .home-language__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
   border-right: 1px solid #edf0f4;
   background: #ffffff;
+}
+
+.home-language__logo svg {
+  width: 100%;
+  height: 100%;
 }
 
 .home-language__name {

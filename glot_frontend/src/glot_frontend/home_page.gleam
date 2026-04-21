@@ -1,6 +1,7 @@
 import gleam/list
 import glot_core/language.{type Language}
 import glot_frontend/icons
+import glot_frontend/logo
 import glot_frontend/route
 import glot_frontend/top_bar
 import lustre/attribute
@@ -124,7 +125,9 @@ fn language_card(lang: Language) -> Element(Msg) {
       route.href(route.NewSnippet(language.to_string(lang))),
     ],
     [
-      html.span([attribute.class("home-language__logo")], []),
+      html.span([attribute.class("home-language__logo")], [
+        logo.language_logo(lang),
+      ]),
       html.span([attribute.class("home-language__name")], [
         html.text(language.name(lang)),
       ]),
