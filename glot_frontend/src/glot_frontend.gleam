@@ -2,6 +2,7 @@ import gleam/option
 import glot_core/auth/session_dto
 import glot_frontend/account_page
 import glot_frontend/api
+import glot_frontend/app_event
 import glot_frontend/editor_page
 import glot_frontend/home_page
 import glot_frontend/login_page
@@ -125,17 +126,21 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     LoginPageMsg(page_msg), LoginPage(page_model) -> {
-      let #(new_page_model, page_effect) =
+      let #(new_page_model, page_effect, app_event) =
         login_page.update(page_model, page_msg)
       let new_model = Model(..model, page_model: LoginPage(new_page_model))
-      #(new_model, effect.map(page_effect, LoginPageMsg))
+      let mapped_effect = effect.map(page_effect, LoginPageMsg)
+      let effects = apply_app_event(mapped_effect, app_event)
+      #(new_model, effects)
     }
 
     AccountPageMsg(page_msg), AccountPage(page_model) -> {
-      let #(new_page_model, page_effect) =
+      let #(new_page_model, page_effect, app_event) =
         account_page.update(page_model, page_msg)
       let new_model = Model(..model, page_model: AccountPage(new_page_model))
-      #(new_model, effect.map(page_effect, AccountPageMsg))
+      let mapped_effect = effect.map(page_effect, AccountPageMsg)
+      let effects = apply_app_event(mapped_effect, app_event)
+      #(new_model, effects)
     }
 
     EditorPageMsg(page_msg), EditorPage(page_model) -> {
@@ -224,6 +229,17 @@ fn current_user_route(session: SessionState) -> route.Route {
   case session {
     AuthenticatedSession(_) | LoadingSession -> route.Account
     AnonymousSession | SessionError -> route.Login
+  }
+}
+
+fn apply_app_event(
+  page_effect: Effect(Msg),
+  event: app_event.AppEvent,
+) -> Effect(Msg) {
+  case event {
+    app_event.NoAppEvent -> page_effect
+    app_event.RefreshSession ->
+      effect.batch([page_effect, api.get_session(SessionLoaded)])
   }
 }
 

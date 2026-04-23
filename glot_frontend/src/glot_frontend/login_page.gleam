@@ -3,6 +3,7 @@ import gleam/regexp
 import gleam/string
 import glot_core/email/email_address_model
 import glot_frontend/api
+import glot_frontend/app_event
 import glot_frontend/route
 import glot_frontend/top_bar
 import lustre/attribute
@@ -42,18 +43,20 @@ pub type Msg {
   LoggedIn(api.ApiResponse(Nil))
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEvent) {
   case msg {
     EmailChanged(email) -> {
       #(
         Model(email: email, token: "", step: EnterEmail, status: Idle),
         effect.none(),
+        app_event.NoAppEvent,
       )
     }
 
     TokenChanged(token) -> #(
       Model(..model, token: token, status: Idle),
       effect.none(),
+      app_event.NoAppEvent,
     )
 
     SendTokenSubmitted -> {
@@ -63,7 +66,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         option.Some(email) -> {
           let next_model =
             Model(..model, step: EnterEmail, status: SendingToken)
-          #(next_model, api.send_login_token(email, LoginTokenSent))
+          #(
+            next_model,
+            api.send_login_token(email, LoginTokenSent),
+            app_event.NoAppEvent,
+          )
         }
 
         option.None -> {
@@ -74,6 +81,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               status: Error("Please enter a valid email address."),
             ),
             effect.none(),
+            app_event.NoAppEvent,
           )
         }
       }
@@ -81,7 +89,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     LoginSubmitted -> {
       case model.step {
-        EnterEmail -> #(model, effect.none())
+        EnterEmail -> #(model, effect.none(), app_event.NoAppEvent)
 
         EnterToken(email) -> {
           let token = string.trim(model.token)
@@ -91,12 +99,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               #(
                 Model(..model, status: Error("Please enter the login token.")),
                 effect.none(),
+                app_event.NoAppEvent,
               )
             }
 
             False -> {
               let next_model = Model(..model, status: LoggingIn)
-              #(next_model, api.login(email, token, LoggedIn))
+              #(next_model, api.login(email, token, LoggedIn), app_event.NoAppEvent)
             }
           }
         }
@@ -116,6 +125,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               status: Info("A login token has been sent to your email."),
             ),
             effect.none(),
+            app_event.NoAppEvent,
           )
         }
 
@@ -127,6 +137,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               status: Error("Please enter a valid email address."),
             ),
             effect.none(),
+            app_event.NoAppEvent,
           )
         }
 
@@ -134,6 +145,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(..model, step: EnterEmail, status: Error(error.message)),
             effect.none(),
+            app_event.NoAppEvent,
           )
         }
 
@@ -145,6 +157,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               status: Error("Could not send login email."),
             ),
             effect.none(),
+            app_event.NoAppEvent,
           )
         }
       }
@@ -156,17 +169,23 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(..model, status: Info("You are now logged in.")),
             modem.replace(route.to_string(route.Home), option.None, option.None),
+            app_event.RefreshSession,
           )
         }
 
         api.ApiFailure(error) -> {
-          #(Model(..model, status: Error(error.message)), effect.none())
+          #(
+            Model(..model, status: Error(error.message)),
+            effect.none(),
+            app_event.NoAppEvent,
+          )
         }
 
         api.HttpFailure(_) -> {
           #(
             Model(..model, status: Error("Could not complete login.")),
             effect.none(),
+            app_event.NoAppEvent,
           )
         }
       }

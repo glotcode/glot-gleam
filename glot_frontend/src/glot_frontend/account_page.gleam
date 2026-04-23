@@ -5,6 +5,7 @@ import gleam/time/timestamp
 import glot_core/auth/account_dto
 import glot_core/email/email_address_model
 import glot_frontend/api
+import glot_frontend/app_event
 import glot_frontend/route
 import glot_frontend/top_bar
 import lustre/attribute
@@ -47,7 +48,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
   )
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEvent) {
   case msg {
     AccountLoaded(result) ->
       case result {
@@ -59,23 +60,27 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               status: Idle,
             ),
             effect.none(),
+            app_event.NoAppEvent,
           )
         }
 
         api.ApiFailure(error) -> #(
           Model(..model, status: Error(error.message)),
           effect.none(),
+          app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
           Model(..model, status: Error("Could not load account.")),
           effect.none(),
+          app_event.NoAppEvent,
         )
       }
 
     UsernameChanged(username) -> #(
       Model(..model, username: username, status: Idle),
       effect.none(),
+      app_event.NoAppEvent,
     )
 
     UsernameSubmitted -> {
@@ -89,6 +94,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             status: Error("Username is required."),
           ),
           effect.none(),
+          app_event.NoAppEvent,
         )
 
         False -> {
@@ -96,6 +102,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(..model, username: username, status: Saving),
             api.update_account(request, AccountUpdated),
+            app_event.NoAppEvent,
           )
         }
       }
@@ -105,6 +112,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(
         Model(..model, status: LoggingOut),
         api.logout(LoggedOut),
+        app_event.NoAppEvent,
       )
 
     AccountUpdated(result) ->
@@ -117,17 +125,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               status: Saved,
             ),
             effect.none(),
+            app_event.RefreshSession,
           )
         }
 
         api.ApiFailure(error) -> #(
           Model(..model, status: Error(error.message)),
           effect.none(),
+          app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
           Model(..model, status: Error("Could not update account.")),
           effect.none(),
+          app_event.NoAppEvent,
         )
       }
 
@@ -137,16 +148,19 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(..model, status: Idle),
             modem.replace(route.to_string(route.Home), option.None, option.None),
+            app_event.RefreshSession,
           )
 
         api.ApiFailure(error) -> #(
           Model(..model, status: Error(error.message)),
           effect.none(),
+          app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
           Model(..model, status: Error("Could not log out.")),
           effect.none(),
+          app_event.NoAppEvent,
         )
       }
   }
