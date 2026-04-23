@@ -356,6 +356,15 @@ body {
   background: #e8f0ff;
 }
 
+.account-page__button--logout {
+  border-color: #e4c6c0;
+  background: #fff7f5;
+}
+
+.account-page__button--logout:hover {
+  background: #ffe8e3;
+}
+
 .login-page__button:disabled,
 .login-page__input:disabled,
 .account-page__button:disabled,
@@ -387,6 +396,24 @@ body {
   color: #172033;
   font-size: 0.95rem;
   line-height: 1.4;
+}
+
+.account-page__logout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #d9e5f6;
+}
+
+.account-page__section-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #2853a6;
 }
 
 .account-page__link {

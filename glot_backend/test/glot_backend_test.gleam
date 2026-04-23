@@ -290,6 +290,7 @@ fn test_handlers() -> handlers.Handlers {
       create_user: fn(_) { Ok(Nil) },
       update_user: fn(_) { Ok(Nil) },
       create_session: fn(_) { Ok(Nil) },
+      delete_session: fn(_) { Ok(Nil) },
       create_login_token: fn(_) { Ok(Nil) },
       update_login_token: fn(_) { Ok(Nil) },
     ),

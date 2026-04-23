@@ -6,6 +6,7 @@ import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import youid/uuid.{type Uuid}
 
 pub fn get_user_by_email(
   email email: email_address_model.EmailAddress,
@@ -56,6 +57,12 @@ pub fn create_session(
 ) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(create_session_effect(session, command_next)),
+  )
+}
+
+pub fn delete_session(id id: Uuid) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_session_effect(id, command_next)),
   )
 }
 
@@ -119,6 +126,10 @@ pub fn create_session_tx(
   session session: session_model.Session,
 ) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(create_session_effect(session, tx_command_next))
+}
+
+pub fn delete_session_tx(id id: Uuid) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_session_effect(id, tx_command_next))
 }
 
 pub fn create_login_token_tx(
@@ -196,6 +207,13 @@ fn create_session_effect(
   next: fn(Result(Nil, error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.CreateSession(session:, next: next))
+}
+
+fn delete_session_effect(
+  id: Uuid,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.DeleteSession(id:, next: next))
 }
 
 fn create_login_token_effect(

@@ -545,6 +545,11 @@ pub fn insert_user(
   ])
 }
 
+pub fn delete_session(id id: BitArray) {
+  let sql = "DELETE FROM sessions WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)])
+}
+
 pub fn update_job(
   id id: BitArray,
   request_id request_id: Option(BitArray),

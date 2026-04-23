@@ -138,6 +138,19 @@ pub fn run(
         ),
       )
     }
+    auth_algebra.DeleteSession(id: id, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.delete_session(id)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(auth_algebra.DeleteSessionEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     auth_algebra.CreateLoginToken(login_token: login_token, next: next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.auth.create_login_token(login_token)

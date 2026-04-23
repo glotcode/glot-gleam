@@ -4,6 +4,7 @@ import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import youid/uuid.{type Uuid}
 
 pub type AuthEffect(next) {
   GetUserByEmail(
@@ -29,6 +30,10 @@ pub type AuthEffect(next) {
   )
   CreateSession(
     session: session_model.Session,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  DeleteSession(
+    id: Uuid,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   CreateLoginToken(
@@ -60,6 +65,8 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
         session: session,
         next: fn(value) { f(next(value)) },
       )
+    DeleteSession(id: id, next: next) ->
+      DeleteSession(id: id, next: fn(value) { f(next(value)) })
     CreateLoginToken(login_token: login_token, next: next) ->
       CreateLoginToken(
         login_token: login_token,
@@ -80,6 +87,7 @@ pub type EffectName {
   CreateUserEffectName
   UpdateUserEffectName
   CreateSessionEffectName
+  DeleteSessionEffectName
   CreateLoginTokenEffectName
   UpdateLoginTokenEffectName
 }
@@ -92,6 +100,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     CreateUserEffectName -> "create_user"
     UpdateUserEffectName -> "update_user"
     CreateSessionEffectName -> "create_session"
+    DeleteSessionEffectName -> "delete_session"
     CreateLoginTokenEffectName -> "create_login_token"
     UpdateLoginTokenEffectName -> "update_login_token"
   }

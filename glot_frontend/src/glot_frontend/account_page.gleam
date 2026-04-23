@@ -12,6 +12,7 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
+import modem
 
 pub type Model {
   Model(
@@ -25,6 +26,7 @@ pub type Status {
   Loading
   Idle
   Saving
+  LoggingOut
   Saved
   Error(String)
 }
@@ -34,6 +36,8 @@ pub type Msg {
   UsernameChanged(String)
   UsernameSubmitted
   AccountUpdated(api.ApiResponse(account_dto.AccountResponse))
+  LogoutSubmitted
+  LoggedOut(api.ApiResponse(Nil))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
@@ -97,6 +101,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
     }
 
+    LogoutSubmitted ->
+      #(
+        Model(..model, status: LoggingOut),
+        api.logout(LoggedOut),
+      )
+
     AccountUpdated(result) ->
       case result {
         api.ApiSuccess(account) -> {
@@ -117,6 +127,25 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
         api.HttpFailure(_) -> #(
           Model(..model, status: Error("Could not update account.")),
+          effect.none(),
+        )
+      }
+
+    LoggedOut(result) ->
+      case result {
+        api.ApiSuccess(_) ->
+          #(
+            Model(..model, status: Idle),
+            modem.replace(route.to_string(route.Home), option.None, option.None),
+          )
+
+        api.ApiFailure(error) -> #(
+          Model(..model, status: Error(error.message)),
+          effect.none(),
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(..model, status: Error("Could not log out.")),
           effect.none(),
         )
       }
@@ -211,11 +240,12 @@ fn account_form(
       html.button(
         [
           attribute.type_("submit"),
-          attribute.disabled(model.status == Saving),
+          attribute.disabled(is_busy(model.status)),
           attribute.class("account-page__button"),
         ],
         [html.text(button_text(model.status))],
       ),
+      logout_section(model.status),
     ],
   )
 }
@@ -234,6 +264,10 @@ fn status_view(status: Status) -> Element(Msg) {
       html.p([attribute.class("account-page__status")], [
         html.text("Saving account..."),
       ])
+    LoggingOut ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Logging out..."),
+      ])
     Saved ->
       html.p([attribute.class("account-page__status")], [
         html.text("Account updated."),
@@ -248,9 +282,43 @@ fn status_view(status: Status) -> Element(Msg) {
   }
 }
 
+fn logout_section(status: Status) -> Element(Msg) {
+  html.section([attribute.class("account-page__logout")], [
+    html.h3([attribute.class("account-page__section-title")], [
+      html.text("Session"),
+    ]),
+    html.p([attribute.class("account-page__status")], [
+      html.text("End your current session on this device."),
+    ]),
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(is_busy(status)),
+        attribute.class("account-page__button account-page__button--logout"),
+        event.on_click(LogoutSubmitted),
+      ],
+      [html.text(logout_button_text(status))],
+    ),
+  ])
+}
+
 fn button_text(status: Status) -> String {
   case status {
     Saving -> "Saving..."
     _ -> "Save username"
+  }
+}
+
+fn logout_button_text(status: Status) -> String {
+  case status {
+    LoggingOut -> "Logging out..."
+    _ -> "Log out"
+  }
+}
+
+fn is_busy(status: Status) -> Bool {
+  case status {
+    Saving | LoggingOut -> True
+    Loading | Idle | Saved | Error(_) -> False
   }
 }

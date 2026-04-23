@@ -24,6 +24,7 @@ pub type AuthHandlers {
     create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
     update_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
     create_session: fn(session_model.Session) -> Result(Nil, error.DbCommandError),
+    delete_session: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
     create_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
     update_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
   )
@@ -43,6 +44,7 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
     create_session: fn(session) {
       create_session(db, session)
     },
+    delete_session: fn(id) { delete_session(db, id) },
     create_login_token: fn(login_token) {
       create_login_token(db, login_token)
     },
@@ -169,6 +171,16 @@ pub fn create_session(
     ),
     to_error,
   )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_session(
+  db: pog.Connection,
+  id: uuid.Uuid,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(db, sql.delete_session(uuid.to_bit_array(id)), to_error)
   |> result.map(fn(_) { Nil })
 }
 

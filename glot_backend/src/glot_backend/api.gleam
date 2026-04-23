@@ -11,6 +11,7 @@ import glot_backend/domain/account/get_account_domain
 import glot_backend/domain/account/update_account_domain
 import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
+import glot_backend/domain/auth/logout_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/run_code/run_domain
 import glot_backend/domain/snippet/create_snippet_domain
@@ -83,6 +84,9 @@ fn handle_api_request(
       get_session_domain.get_session(ctx)
       |> program.map(SessionResponse)
     }
+    api_action.LogoutAction ->
+      logout_domain.logout(ctx)
+      |> program.map(fn(_) { LogoutResponse })
     api_action.GetAccountAction -> {
       get_account_domain.get_account(ctx)
       |> program.map(AccountResponse)
@@ -182,6 +186,7 @@ type ApiResult {
   AccountResponse(account_dto.AccountResponse)
   SnippetResponse(snippet_dto.SnippetResponse)
   LoginResponse(session_token: String)
+  LogoutResponse
   NoContentResponse
 }
 
@@ -207,6 +212,16 @@ fn api_result_to_response(
         value: session_token,
         security: wisp.Signed,
         max_age: ctx.config.auth.session_cookie_max_age,
+      )
+    }
+    LogoutResponse -> {
+      success_response(json.null())
+      |> wisp.set_cookie(
+        request: req,
+        name: "session",
+        value: "",
+        security: wisp.Signed,
+        max_age: 0,
       )
     }
     NoContentResponse -> success_response(json.null())
