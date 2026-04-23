@@ -82,13 +82,13 @@ body {
   overflow: visible;
   background: #ffffff;
   color: #333844;
-  font-family: "Helvetica Neue", Arial, sans-serif;
 }
 
 .home-page {
   position: relative;
   z-index: 1;
   background: #ffffff;
+  font-family: "Helvetica Neue", Arial, sans-serif;
 }
 
 .home-hero {
