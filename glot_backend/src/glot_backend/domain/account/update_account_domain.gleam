@@ -38,9 +38,14 @@ pub fn update_account(
     action: api_action.UpdateAccountAction,
   ))
 
-  use _ <- program.and_then(case username == "" {
-    True -> program.fail(error.ValidationError("Username is required"))
-    False -> program.succeed(Nil)
+  use _ <- program.and_then(case user_model.is_valid_username(username) {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.ValidationError(
+          "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens",
+        ),
+      )
   })
 
   let user =

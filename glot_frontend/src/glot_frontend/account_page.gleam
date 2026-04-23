@@ -3,6 +3,7 @@ import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/auth/account_dto
+import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_frontend/api
 import glot_frontend/app_event
@@ -86,18 +87,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEven
     UsernameSubmitted -> {
       let username = string.trim(model.username)
 
-      case username == "" {
-        True -> #(
-          Model(
-            ..model,
-            username: username,
-            status: Error("Username is required."),
-          ),
-          effect.none(),
-          app_event.NoAppEvent,
-        )
-
-        False -> {
+      case user_model.is_valid_username(username) {
+        True -> {
           let request = account_dto.UpdateAccountRequest(username:)
           #(
             Model(..model, username: username, status: Saving),
@@ -105,6 +96,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEven
             app_event.NoAppEvent,
           )
         }
+
+        False -> #(
+          Model(
+            ..model,
+            username: username,
+            status: Error(
+              "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens",
+            ),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
       }
     }
 
