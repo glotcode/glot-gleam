@@ -9,6 +9,15 @@ CREATE TABLE IF NOT EXISTS accounts (
   updated_at TIMESTAMPTZ NOT NULL
 );
 
+-- NOTE TO SELF: if we want to start using accounts for real, add this table
+-- CREATE TABLE account_memberships (
+--   account_id UUID NOT NULL REFERENCES accounts(id),
+--   user_id UUID NOT NULL REFERENCES users(id),
+--   role TEXT NOT NULL,
+--   created_at TIMESTAMPTZ NOT NULL,
+--   PRIMARY KEY (account_id, user_id)
+-- );
+
 
 -- USERS
 
