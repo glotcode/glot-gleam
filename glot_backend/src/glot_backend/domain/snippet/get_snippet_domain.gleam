@@ -20,7 +20,7 @@ pub fn get_snippet(
 ) -> program_types.Program(snippet_dto.SnippetResponse) {
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
   let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
-  let maybe_user_id = option.map(maybe_session, fn(s) { s.user.id })
+  let maybe_user_id = option.map(maybe_session, fn(s) { s.user.identity.id })
 
   use _ <- program.and_then(
     basic_effect.info(
@@ -45,7 +45,7 @@ pub fn get_snippet(
     ),
   )
 
-  let is_owner = maybe_user_id == option.Some(snippet.user.id)
+  let is_owner = maybe_user_id == option.Some(snippet.user.identity.id)
 
   use _ <- program.and_then(
     basic_effect.info(

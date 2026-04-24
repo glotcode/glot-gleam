@@ -5,6 +5,7 @@ import gleam/string
 import glot_backend/helpers/db_helpers
 import glot_backend/effect/error
 import glot_backend/sql
+import glot_core/auth/account_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
@@ -16,12 +17,13 @@ import youid/uuid
 pub type AuthHandlers {
   AuthHandlers(
     get_user_by_email: fn(regexp.Regexp, email_address_model.EmailAddress) ->
-      Result(option.Option(user_model.User), error.DbQueryError),
+      Result(option.Option(user_model.HydratedUser), error.DbQueryError),
     list_login_tokens_by_email: fn(email_address_model.EmailAddress, Int) ->
       Result(List(login_token_model.LoginToken), error.DbQueryError),
     get_session_by_token: fn(regexp.Regexp, String) ->
       Result(option.Option(session_model.HydratedSession), error.DbQueryError),
     create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
+    create_account: fn(account_model.Account) -> Result(Nil, error.DbCommandError),
     update_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
     create_session: fn(session_model.Session) -> Result(Nil, error.DbCommandError),
     delete_session: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
@@ -40,6 +42,7 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
       get_session_by_token(db, is_email, token)
     },
     create_user: fn(user) { create_user(db, user) },
+    create_account: fn(account) { create_account(db, account) },
     update_user: fn(user) { update_user(db, user) },
     create_session: fn(session) {
       create_session(db, session)
@@ -58,7 +61,7 @@ pub fn get_user_by_email(
   db: pog.Connection,
   is_email: regexp.Regexp,
   user_email: email_address_model.EmailAddress,
-) -> Result(option.Option(user_model.User), error.DbQueryError) {
+) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
   db_helpers.query(
     db,
     sql.get_user_by_email(email_address_model.to_string(user_email)),
@@ -101,15 +104,36 @@ pub fn create_user(
     db,
     sql.insert_user(
       id: uuid.to_bit_array(user.id),
+      account_id: uuid.to_bit_array(user.account_id),
       email: email_address_model.to_string(user.email),
       username: user.username,
       role: user_model.role_to_string(user.role),
-      account_state: user_model.account_state_to_string(user.account_state),
-      account_state_reason: user.account_state_reason,
-      account_tier: user_model.account_tier_to_string(user.account_tier),
       last_login_at: user.last_login_at,
       created_at: user.created_at,
       updated_at: user.updated_at,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn create_account(
+  db: pog.Connection,
+  account: account_model.Account,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.insert_account(
+      id: uuid.to_bit_array(account.id),
+      account_state: account_model.account_state_to_string(
+        account.account_state,
+      ),
+      account_state_reason: account.account_state_reason,
+      account_tier: account_model.account_tier_to_string(account.account_tier),
+      created_at: account.created_at,
+      updated_at: account.updated_at,
     ),
     to_error,
   )
@@ -125,12 +149,10 @@ pub fn update_user(
   db_helpers.execute(
     db,
     sql.update_user(
+      account_id: uuid.to_bit_array(user.account_id),
       email: email_address_model.to_string(user.email),
       username: user.username,
       role: user_model.role_to_string(user.role),
-      account_state: user_model.account_state_to_string(user.account_state),
-      account_state_reason: user.account_state_reason,
-      account_tier: user_model.account_tier_to_string(user.account_tier),
       last_login_at: user.last_login_at,
       created_at: user.created_at,
       updated_at: user.updated_at,
@@ -215,7 +237,7 @@ pub fn update_login_token(
 fn user_from_rows(
   is_email: regexp.Regexp,
   rows: List(sql.GetUserByEmail),
-) -> Result(option.Option(user_model.User), error.DbQueryError) {
+) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> user_from_row(is_email, first) |> result.map(option.Some)
@@ -226,7 +248,7 @@ fn user_from_rows(
 fn user_from_row(
   is_email: regexp.Regexp,
   row: sql.GetUserByEmail,
-) -> Result(user_model.User, error.DbQueryError) {
+) -> Result(user_model.HydratedUser, error.DbQueryError) {
   use valid_email <- result.try(
     email_address_model.from_string(is_email, row.email)
     |> option.to_result(error.DbQueryError(
@@ -238,29 +260,37 @@ fn user_from_row(
     |> option.to_result(error.DbQueryError("Invalid user role: " <> row.role)),
   )
   use account_state <- result.try(
-    user_model.account_state_from_string(row.account_state)
+    account_model.account_state_from_string(row.account_state)
     |> option.to_result(error.DbQueryError(
       "Invalid account state: " <> row.account_state,
     )),
   )
   use account_tier <- result.try(
-    user_model.account_tier_from_string(row.account_tier)
+    account_model.account_tier_from_string(row.account_tier)
     |> option.to_result(error.DbQueryError(
       "Invalid account tier: " <> row.account_tier,
     )),
   )
 
-  Ok(user_model.User(
-    id: uuid_helpers.from_bit_array(row.id),
-    email: valid_email,
-    username: row.username,
-    role: role,
-    account_state: account_state,
-    account_state_reason: row.account_state_reason,
-    account_tier: account_tier,
-    last_login_at: row.last_login_at,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+  Ok(user_model.HydratedUser(
+    identity: user_model.User(
+      id: uuid_helpers.from_bit_array(row.id),
+      account_id: uuid_helpers.from_bit_array(row.account_id),
+      email: valid_email,
+      username: row.username,
+      role: role,
+      last_login_at: row.last_login_at,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    ),
+    account: account_model.Account(
+      id: uuid_helpers.from_bit_array(row.account_id),
+      account_state: account_state,
+      account_state_reason: row.account_state_reason,
+      account_tier: account_tier,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    ),
   ))
 }
 
@@ -326,13 +356,13 @@ fn session_from_row(
     )),
   )
   use account_state <- result.try(
-    user_model.account_state_from_string(row.user_account_state)
+    account_model.account_state_from_string(row.user_account_state)
     |> option.to_result(error.DbQueryError(
       "Invalid account state: " <> row.user_account_state,
     )),
   )
   use account_tier <- result.try(
-    user_model.account_tier_from_string(row.user_account_tier)
+    account_model.account_tier_from_string(row.user_account_tier)
     |> option.to_result(error.DbQueryError(
       "Invalid account tier: " <> row.user_account_tier,
     )),
@@ -340,17 +370,25 @@ fn session_from_row(
 
   Ok(session_model.HydratedSession(
     id: uuid_helpers.from_bit_array(row.id),
-    user: user_model.User(
-      id: uuid_helpers.from_bit_array(row.user_id),
-      email: valid_email,
-      username: row.user_username,
-      role: role,
-      account_state: account_state,
-      account_state_reason: row.user_account_state_reason,
-      account_tier: account_tier,
-      last_login_at: row.user_last_login_at,
-      created_at: row.user_created_at,
-      updated_at: row.user_updated_at,
+    user: user_model.HydratedUser(
+      identity: user_model.User(
+        id: uuid_helpers.from_bit_array(row.user_id),
+        account_id: uuid_helpers.from_bit_array(row.user_account_id),
+        email: valid_email,
+        username: row.user_username,
+        role: role,
+        last_login_at: row.user_last_login_at,
+        created_at: row.user_created_at,
+        updated_at: row.user_updated_at,
+      ),
+      account: account_model.Account(
+        id: uuid_helpers.from_bit_array(row.user_account_id),
+        account_state: account_state,
+        account_state_reason: row.user_account_state_reason,
+        account_tier: account_tier,
+        created_at: row.user_created_at,
+        updated_at: row.user_updated_at,
+      ),
     ),
     token: row.token,
     ip: row.ip,

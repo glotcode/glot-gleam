@@ -112,6 +112,19 @@ pub fn run(
         ),
       )
     }
+    auth_algebra.CreateAccount(account: account, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.create_account(account)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(auth_algebra.CreateAccountEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     auth_algebra.UpdateUser(user: user, next: next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.auth.update_user(user)

@@ -1,5 +1,6 @@
 import gleam/option
 import glot_backend/effect/error
+import glot_core/auth/account_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
@@ -9,7 +10,7 @@ import youid/uuid.{type Uuid}
 pub type AuthEffect(next) {
   GetUserByEmail(
     email: email_address_model.EmailAddress,
-    next: fn(option.Option(user_model.User)) -> next,
+    next: fn(option.Option(user_model.HydratedUser)) -> next,
   )
   ListLoginTokensByEmail(
     email: email_address_model.EmailAddress,
@@ -22,6 +23,10 @@ pub type AuthEffect(next) {
   )
   CreateUser(
     user: user_model.User,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  CreateAccount(
+    account: account_model.Account,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   UpdateUser(
@@ -58,6 +63,8 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       GetSessionByToken(token: token, next: fn(value) { f(next(value)) })
     CreateUser(user: user, next: next) ->
       CreateUser(user: user, next: fn(value) { f(next(value)) })
+    CreateAccount(account: account, next: next) ->
+      CreateAccount(account: account, next: fn(value) { f(next(value)) })
     UpdateUser(user: user, next: next) ->
       UpdateUser(user: user, next: fn(value) { f(next(value)) })
     CreateSession(session: session, next: next) ->
@@ -85,6 +92,7 @@ pub type EffectName {
   ListLoginTokensByEmailEffectName
   GetSessionByTokenEffectName
   CreateUserEffectName
+  CreateAccountEffectName
   UpdateUserEffectName
   CreateSessionEffectName
   DeleteSessionEffectName
@@ -98,6 +106,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     ListLoginTokensByEmailEffectName -> "list_login_tokens_by_email"
     GetSessionByTokenEffectName -> "get_session_by_token"
     CreateUserEffectName -> "create_user"
+    CreateAccountEffectName -> "create_account"
     UpdateUserEffectName -> "update_user"
     CreateSessionEffectName -> "create_session"
     DeleteSessionEffectName -> "delete_session"

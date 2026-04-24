@@ -21,7 +21,7 @@ pub fn run(
 
   use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
-    user_id: option.map(maybe_session, fn(s) { s.user.id }),
+    user_id: option.map(maybe_session, fn(s) { s.user.identity.id }),
     action: api_action.RunAction,
   ))
 

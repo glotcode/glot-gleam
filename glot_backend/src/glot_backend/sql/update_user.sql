@@ -1,13 +1,11 @@
 -- name: UpdateUser :exec
 UPDATE users
 SET
-  email = $1,
-  username = $2,
-  role = $3,
-  account_state = $4,
-  account_state_reason = $5,
-  account_tier = $6,
-  last_login_at = $7,
-  created_at = $8,
-  updated_at = $9
-WHERE id = $10;
+  account_id = $1,
+  email = $2,
+  username = $3,
+  role = $4,
+  last_login_at = $5,
+  created_at = $6,
+  updated_at = $7
+WHERE id = $8;

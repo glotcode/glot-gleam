@@ -218,6 +218,7 @@ pub fn delete_snippet(id id: BitArray) {
 pub type GetUserByEmail {
   GetUserByEmail(
     id: BitArray,
+    account_id: BitArray,
     email: String,
     username: String,
     role: String,
@@ -232,23 +233,39 @@ pub type GetUserByEmail {
 
 pub fn get_user_by_email(email email: String) {
   let sql =
-    "SELECT id, email, username, role, account_state, account_state_reason, account_tier, last_login_at, created_at, updated_at FROM users WHERE email = $1"
+    "SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+WHERE users.email = $1"
   #(sql, [dev.ParamString(email)], get_user_by_email_decoder())
 }
 
 pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
   use id <- decode.field(0, decode.bit_array)
-  use email <- decode.field(1, decode.string)
-  use username <- decode.field(2, decode.string)
-  use role <- decode.field(3, decode.string)
-  use account_state <- decode.field(4, decode.string)
-  use account_state_reason <- decode.field(5, decode.optional(decode.string))
-  use account_tier <- decode.field(6, decode.string)
-  use last_login_at <- decode.field(7, dev.datetime_decoder())
-  use created_at <- decode.field(8, dev.datetime_decoder())
-  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use account_id <- decode.field(1, decode.bit_array)
+  use email <- decode.field(2, decode.string)
+  use username <- decode.field(3, decode.string)
+  use role <- decode.field(4, decode.string)
+  use account_state <- decode.field(5, decode.string)
+  use account_state_reason <- decode.field(6, decode.optional(decode.string))
+  use account_tier <- decode.field(7, decode.string)
+  use last_login_at <- decode.field(8, dev.datetime_decoder())
+  use created_at <- decode.field(9, dev.datetime_decoder())
+  use updated_at <- decode.field(10, dev.datetime_decoder())
   decode.success(GetUserByEmail(
     id:,
+    account_id:,
     email:,
     username:,
     role:,
@@ -264,6 +281,7 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
 pub type GetUserById {
   GetUserById(
     id: BitArray,
+    account_id: BitArray,
     email: String,
     username: String,
     role: String,
@@ -278,23 +296,39 @@ pub type GetUserById {
 
 pub fn get_user_by_id(id id: BitArray) {
   let sql =
-    "SELECT id, email, username, role, account_state, account_state_reason, account_tier, last_login_at, created_at, updated_at FROM users WHERE id = $1"
+    "SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+WHERE users.id = $1"
   #(sql, [dev.ParamBitArray(id)], get_user_by_id_decoder())
 }
 
 pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
   use id <- decode.field(0, decode.bit_array)
-  use email <- decode.field(1, decode.string)
-  use username <- decode.field(2, decode.string)
-  use role <- decode.field(3, decode.string)
-  use account_state <- decode.field(4, decode.string)
-  use account_state_reason <- decode.field(5, decode.optional(decode.string))
-  use account_tier <- decode.field(6, decode.string)
-  use last_login_at <- decode.field(7, dev.datetime_decoder())
-  use created_at <- decode.field(8, dev.datetime_decoder())
-  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use account_id <- decode.field(1, decode.bit_array)
+  use email <- decode.field(2, decode.string)
+  use username <- decode.field(3, decode.string)
+  use role <- decode.field(4, decode.string)
+  use account_state <- decode.field(5, decode.string)
+  use account_state_reason <- decode.field(6, decode.optional(decode.string))
+  use account_tier <- decode.field(7, decode.string)
+  use last_login_at <- decode.field(8, dev.datetime_decoder())
+  use created_at <- decode.field(9, dev.datetime_decoder())
+  use updated_at <- decode.field(10, dev.datetime_decoder())
   decode.success(GetUserById(
     id:,
+    account_id:,
     email:,
     username:,
     role:,
@@ -364,6 +398,7 @@ pub type GetSnippetById {
     created_at: Timestamp,
     updated_at: Timestamp,
     user_id: BitArray,
+    user_account_id: BitArray,
     user_email: String,
     user_username: String,
     user_role: String,
@@ -390,17 +425,19 @@ pub fn get_snippet_by_id(id id: BitArray) {
   snippets.created_at,
   snippets.updated_at,
   users.id AS user_id,
+  users.account_id AS user_account_id,
   users.email AS user_email,
   users.username AS user_username,
   users.role AS user_role,
-  users.account_state AS user_account_state,
-  users.account_state_reason AS user_account_state_reason,
-  users.account_tier AS user_account_tier,
+  accounts.account_state AS user_account_state,
+  accounts.account_state_reason AS user_account_state_reason,
+  accounts.account_tier AS user_account_tier,
   users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at
 FROM snippets
 INNER JOIN users ON users.id = snippets.user_id
+INNER JOIN accounts ON accounts.id = users.account_id
 WHERE snippets.id = $1"
   #(sql, [dev.ParamBitArray(id)], get_snippet_by_id_decoder())
 }
@@ -417,18 +454,19 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   use created_at <- decode.field(8, dev.datetime_decoder())
   use updated_at <- decode.field(9, dev.datetime_decoder())
   use user_id <- decode.field(10, decode.bit_array)
-  use user_email <- decode.field(11, decode.string)
-  use user_username <- decode.field(12, decode.string)
-  use user_role <- decode.field(13, decode.string)
-  use user_account_state <- decode.field(14, decode.string)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_account_state <- decode.field(15, decode.string)
   use user_account_state_reason <- decode.field(
-    15,
+    16,
     decode.optional(decode.string),
   )
-  use user_account_tier <- decode.field(16, decode.string)
-  use user_last_login_at <- decode.field(17, dev.datetime_decoder())
-  use user_created_at <- decode.field(18, dev.datetime_decoder())
-  use user_updated_at <- decode.field(19, dev.datetime_decoder())
+  use user_account_tier <- decode.field(17, decode.string)
+  use user_last_login_at <- decode.field(18, dev.datetime_decoder())
+  use user_created_at <- decode.field(19, dev.datetime_decoder())
+  use user_updated_at <- decode.field(20, dev.datetime_decoder())
   decode.success(GetSnippetById(
     id:,
     slug:,
@@ -441,6 +479,7 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
     created_at:,
     updated_at:,
     user_id:,
+    user_account_id:,
     user_email:,
     user_username:,
     user_role:,
@@ -570,28 +609,22 @@ pub fn insert_snippet(
 
 pub fn insert_user(
   id id: BitArray,
+  account_id account_id: BitArray,
   email email: String,
   username username: String,
   role role: String,
-  account_state account_state: String,
-  account_state_reason account_state_reason: Option(String),
-  account_tier account_tier: String,
   last_login_at last_login_at: Timestamp,
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
 ) {
   let sql =
-    "INSERT INTO users (id, email, username, role, account_state, account_state_reason, account_tier, last_login_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+    "INSERT INTO users (id, account_id, email, username, role, last_login_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
   #(sql, [
     dev.ParamBitArray(id),
+    dev.ParamBitArray(account_id),
     dev.ParamString(email),
     dev.ParamString(username),
     dev.ParamString(role),
-    dev.ParamString(account_state),
-    dev.ParamNullable(
-      option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
-    ),
-    dev.ParamString(account_tier),
     dev.ParamTimestamp(last_login_at),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
@@ -738,6 +771,7 @@ pub type GetSessionByToken {
     user_agent: Option(String),
     created_at: Timestamp,
     user_id: BitArray,
+    user_account_id: BitArray,
     user_email: String,
     user_username: String,
     user_role: String,
@@ -759,17 +793,19 @@ pub fn get_session_by_token(token token: String) {
   sessions.user_agent,
   sessions.created_at,
   users.id AS user_id,
+  users.account_id AS user_account_id,
   users.email AS user_email,
   users.username AS user_username,
   users.role AS user_role,
-  users.account_state AS user_account_state,
-  users.account_state_reason AS user_account_state_reason,
-  users.account_tier AS user_account_tier,
+  accounts.account_state AS user_account_state,
+  accounts.account_state_reason AS user_account_state_reason,
+  accounts.account_tier AS user_account_tier,
   users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at
 FROM sessions
 INNER JOIN users ON users.id = sessions.user_id
+INNER JOIN accounts ON accounts.id = users.account_id
 WHERE sessions.token = $1"
   #(sql, [dev.ParamString(token)], get_session_by_token_decoder())
 }
@@ -781,18 +817,19 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
   use user_agent <- decode.field(3, decode.optional(decode.string))
   use created_at <- decode.field(4, dev.datetime_decoder())
   use user_id <- decode.field(5, decode.bit_array)
-  use user_email <- decode.field(6, decode.string)
-  use user_username <- decode.field(7, decode.string)
-  use user_role <- decode.field(8, decode.string)
-  use user_account_state <- decode.field(9, decode.string)
+  use user_account_id <- decode.field(6, decode.bit_array)
+  use user_email <- decode.field(7, decode.string)
+  use user_username <- decode.field(8, decode.string)
+  use user_role <- decode.field(9, decode.string)
+  use user_account_state <- decode.field(10, decode.string)
   use user_account_state_reason <- decode.field(
-    10,
+    11,
     decode.optional(decode.string),
   )
-  use user_account_tier <- decode.field(11, decode.string)
-  use user_last_login_at <- decode.field(12, dev.datetime_decoder())
-  use user_created_at <- decode.field(13, dev.datetime_decoder())
-  use user_updated_at <- decode.field(14, dev.datetime_decoder())
+  use user_account_tier <- decode.field(12, decode.string)
+  use user_last_login_at <- decode.field(13, dev.datetime_decoder())
+  use user_created_at <- decode.field(14, dev.datetime_decoder())
+  use user_updated_at <- decode.field(15, dev.datetime_decoder())
   decode.success(GetSessionByToken(
     id:,
     token:,
@@ -800,6 +837,7 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
     user_agent:,
     created_at:,
     user_id:,
+    user_account_id:,
     user_email:,
     user_username:,
     user_role:,
@@ -867,13 +905,33 @@ FROM jsonb_to_recordset($1::JSONB) AS rows(
   #(sql, [dev.ParamString(entries)])
 }
 
-pub fn update_user(
-  email email: String,
-  username username: String,
-  role role: String,
+pub fn insert_account(
+  id id: BitArray,
   account_state account_state: String,
   account_state_reason account_state_reason: Option(String),
   account_tier account_tier: String,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO accounts (id, account_state, account_state_reason, account_tier, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(account_state),
+    dev.ParamNullable(
+      option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamString(account_tier),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn update_user(
+  account_id account_id: BitArray,
+  email email: String,
+  username username: String,
+  role role: String,
   last_login_at last_login_at: Timestamp,
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
@@ -882,25 +940,19 @@ pub fn update_user(
   let sql =
     "UPDATE users
 SET
-  email = $1,
-  username = $2,
-  role = $3,
-  account_state = $4,
-  account_state_reason = $5,
-  account_tier = $6,
-  last_login_at = $7,
-  created_at = $8,
-  updated_at = $9
-WHERE id = $10"
+  account_id = $1,
+  email = $2,
+  username = $3,
+  role = $4,
+  last_login_at = $5,
+  created_at = $6,
+  updated_at = $7
+WHERE id = $8"
   #(sql, [
+    dev.ParamBitArray(account_id),
     dev.ParamString(email),
     dev.ParamString(username),
     dev.ParamString(role),
-    dev.ParamString(account_state),
-    dev.ParamNullable(
-      option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
-    ),
-    dev.ParamString(account_tier),
     dev.ParamTimestamp(last_login_at),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
@@ -921,6 +973,7 @@ pub type GetSnippetBySlug {
     created_at: Timestamp,
     updated_at: Timestamp,
     user_id: BitArray,
+    user_account_id: BitArray,
     user_email: String,
     user_username: String,
     user_role: String,
@@ -947,17 +1000,19 @@ pub fn get_snippet_by_slug(slug slug: String) {
   snippets.created_at,
   snippets.updated_at,
   users.id AS user_id,
+  users.account_id AS user_account_id,
   users.email AS user_email,
   users.username AS user_username,
   users.role AS user_role,
-  users.account_state AS user_account_state,
-  users.account_state_reason AS user_account_state_reason,
-  users.account_tier AS user_account_tier,
+  accounts.account_state AS user_account_state,
+  accounts.account_state_reason AS user_account_state_reason,
+  accounts.account_tier AS user_account_tier,
   users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at
 FROM snippets
 INNER JOIN users ON users.id = snippets.user_id
+INNER JOIN accounts ON accounts.id = users.account_id
 WHERE snippets.slug = $1"
   #(sql, [dev.ParamString(slug)], get_snippet_by_slug_decoder())
 }
@@ -974,18 +1029,19 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
   use created_at <- decode.field(8, dev.datetime_decoder())
   use updated_at <- decode.field(9, dev.datetime_decoder())
   use user_id <- decode.field(10, decode.bit_array)
-  use user_email <- decode.field(11, decode.string)
-  use user_username <- decode.field(12, decode.string)
-  use user_role <- decode.field(13, decode.string)
-  use user_account_state <- decode.field(14, decode.string)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_account_state <- decode.field(15, decode.string)
   use user_account_state_reason <- decode.field(
-    15,
+    16,
     decode.optional(decode.string),
   )
-  use user_account_tier <- decode.field(16, decode.string)
-  use user_last_login_at <- decode.field(17, dev.datetime_decoder())
-  use user_created_at <- decode.field(18, dev.datetime_decoder())
-  use user_updated_at <- decode.field(19, dev.datetime_decoder())
+  use user_account_tier <- decode.field(17, decode.string)
+  use user_last_login_at <- decode.field(18, dev.datetime_decoder())
+  use user_created_at <- decode.field(19, dev.datetime_decoder())
+  use user_updated_at <- decode.field(20, dev.datetime_decoder())
   decode.success(GetSnippetBySlug(
     id:,
     slug:,
@@ -998,6 +1054,7 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
     created_at:,
     updated_at:,
     user_id:,
+    user_account_id:,
     user_email:,
     user_username:,
     user_role:,

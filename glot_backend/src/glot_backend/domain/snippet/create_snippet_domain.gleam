@@ -26,14 +26,14 @@ pub fn create_snippet(
     basic_effect.info(
       log.from_list([
         log.uuid("session_id", session.id),
-        log.uuid("user_id", session.user.id),
+        log.uuid("user_id", session.user.identity.id),
       ]),
     ),
   )
 
   use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.id),
+    user_id: option.Some(session.user.identity.id),
     action: api_action.CreateSnippetAction,
   ))
 
@@ -49,7 +49,7 @@ pub fn create_snippet(
     snippet_model.Snippet(
       id: snippet_id,
       slug: snippet_model.new_slug(ctx.timestamp),
-      user_id: session.user.id,
+      user_id: session.user.identity.id,
       title: request.data.title,
       language: request.data.language,
       visibility: request.data.visibility,

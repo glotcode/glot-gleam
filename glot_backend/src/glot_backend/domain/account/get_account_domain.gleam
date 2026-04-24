@@ -19,19 +19,19 @@ pub fn get_account(
     basic_effect.info(
       log.from_list([
         log.uuid("session_id", session.id),
-        log.uuid("user_id", session.user.id),
+        log.uuid("user_id", session.user.identity.id),
       ]),
     ),
   )
 
   use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.id),
+    user_id: option.Some(session.user.identity.id),
     action: api_action.GetAccountAction,
   ))
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
   session.user
-  |> account_dto.from_user
+  |> account_dto.from_hydrated_user
   |> program.succeed
 }

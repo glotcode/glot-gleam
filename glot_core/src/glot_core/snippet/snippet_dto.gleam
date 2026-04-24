@@ -92,7 +92,7 @@ pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
 pub fn from_snippet(snippet: snippet_model.HydratedSnippet) -> SnippetResponse {
   SnippetResponse(
     slug: snippet.slug,
-    user: user_dto.from_user(snippet.user),
+    user: user_dto.from_hydrated_user(snippet.user),
     data: SnippetData(
       title: snippet.title,
       language: snippet.language,

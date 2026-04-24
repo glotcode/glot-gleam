@@ -14,7 +14,7 @@ pub type SessionResponse {
 pub fn from_session(session: session_model.HydratedSession) -> SessionResponse {
   SessionResponse(
     id: session.id,
-    user: user_dto.from_user(session.user),
+    user: user_dto.from_hydrated_user(session.user),
     created_at: session.created_at,
   )
 }

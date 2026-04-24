@@ -11,9 +11,11 @@ import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
+import glot_backend/effect/transaction/transaction_program
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/auth/account_model
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
@@ -85,9 +87,9 @@ pub fn login(
   use _ <- program.and_then(
     transaction_effect.run_all([
       auth_effect.update_login_token_tx(used_login_token),
-      user_outcome.persist_fn(user),
       auth_effect.create_session_tx(session),
       user_action_effect.create_user_action_tx(user_action),
+      user_outcome.persist_fn(user),
     ]),
   )
 
@@ -113,6 +115,7 @@ pub fn request_from_dynamic(
 type UserOutcome {
   UserOutcome(
     user: user_model.User,
+    account: account_model.Account,
     is_new_user: Bool,
     persist_fn: fn(user_model.User) -> program_types.TransactionProgram(Nil),
   )
@@ -126,21 +129,34 @@ fn get_or_create_user(
 
   case maybe_user {
     option.Some(existing_user) -> {
-      program.succeed(UserOutcome(
-        user: existing_user,
-        is_new_user: False,
-        persist_fn: auth_effect.update_user_tx,
-      ))
+      program.succeed(
+        UserOutcome(
+          user: existing_user.identity,
+          account: existing_user.account,
+          is_new_user: False,
+          persist_fn: fn(user) { auth_effect.update_user_tx(user) },
+        ),
+      )
     }
     option.None -> {
       use user_id <- program.and_then(basic_effect.uuid_v7())
-      let new_user = new_user(user_id, email, now)
+      use account_id <- program.and_then(basic_effect.uuid_v7())
+      let new_account = new_account(account_id, now)
+      let new_user = new_user(user_id, account_id, email, now)
 
-      program.succeed(UserOutcome(
-        user: new_user,
-        is_new_user: True,
-        persist_fn: auth_effect.create_user_tx,
-      ))
+      program.succeed(
+        UserOutcome(
+          user: new_user,
+          account: new_account,
+          is_new_user: True,
+          persist_fn: fn(user) {
+            use _ <- transaction_program.and_then(auth_effect.create_account_tx(
+              new_account,
+            ))
+            auth_effect.create_user_tx(user)
+          },
+        ),
+      )
     }
   }
 }
@@ -179,18 +195,28 @@ fn token_is_still_valid(
 
 fn new_user(
   id: Uuid,
+  account_id: Uuid,
   email: EmailAddress,
   now: timestamp.Timestamp,
 ) -> user_model.User {
   user_model.User(
     id: id,
+    account_id: account_id,
     email: email,
     username: uuid.to_string(id),
     role: user_model.RegularUser,
-    account_state: user_model.Active,
-    account_state_reason: option.None,
-    account_tier: user_model.FreeTier,
     last_login_at: now,
+    created_at: now,
+    updated_at: now,
+  )
+}
+
+fn new_account(id: Uuid, now: timestamp.Timestamp) -> account_model.Account {
+  account_model.Account(
+    id: id,
+    account_state: account_model.Active,
+    account_state_reason: option.None,
+    account_tier: account_model.FreeTier,
     created_at: now,
     updated_at: now,
   )

@@ -21,12 +21,12 @@ pub type UpdateAccountRequest {
   UpdateAccountRequest(username: String)
 }
 
-pub fn from_user(user: user_model.User) -> AccountResponse {
+pub fn from_hydrated_user(user: user_model.HydratedUser) -> AccountResponse {
   AccountResponse(
-    id: user.id,
-    email: user.email,
-    username: user.username,
-    joined_at: user.created_at,
+    id: user.identity.id,
+    email: user.identity.email,
+    username: user.identity.username,
+    joined_at: user.identity.created_at,
   )
 }
 

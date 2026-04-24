@@ -4,7 +4,7 @@ import gleam/json
 import gleam/option
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_core/auth/user_model
+import glot_core/auth/user_model.{type HydratedUser}
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import youid/uuid.{type Uuid}
@@ -29,7 +29,7 @@ pub type HydratedSnippet {
   HydratedSnippet(
     id: Uuid,
     slug: String,
-    user: user_model.User,
+    user: HydratedUser,
     title: String,
     language: language.Language,
     visibility: Visibility,

@@ -20,6 +20,10 @@ pub fn from_user(user: user_model.User) -> UserResponse {
   UserResponse(id: user.id, username: user.username)
 }
 
+pub fn from_hydrated_user(user: user_model.HydratedUser) -> UserResponse {
+  from_user(user.identity)
+}
+
 pub fn user_decoder() -> decode.Decoder(UserResponse) {
   use id <- decode.field("id", uuid_helpers.decoder())
   use username <- decode.field("username", decode.string)

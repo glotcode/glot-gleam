@@ -1,2 +1,16 @@
 -- name: GetUserByEmail :one
-SELECT id, email, username, role, account_state, account_state_reason, account_tier, last_login_at, created_at, updated_at FROM users WHERE email = $1;
+SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+WHERE users.email = $1;

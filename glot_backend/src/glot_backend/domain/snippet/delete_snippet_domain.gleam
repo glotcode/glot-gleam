@@ -25,7 +25,7 @@ pub fn delete_snippet(
     basic_effect.info(
       log.from_list([
         log.uuid("session_id", session.id),
-        log.uuid("user_id", session.user.id),
+        log.uuid("user_id", session.user.identity.id),
         log.string("slug", request.slug),
       ]),
     ),
@@ -33,7 +33,7 @@ pub fn delete_snippet(
 
   use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.id),
+    user_id: option.Some(session.user.identity.id),
     action: api_action.DeleteSnippetAction,
   ))
 
@@ -45,8 +45,8 @@ pub fn delete_snippet(
   )
 
   use _ <- program.and_then(authorization_domain.require_owner(
-    session.user.id,
-    existing_snippet.user.id,
+    session.user.identity.id,
+    existing_snippet.user.identity.id,
   ))
 
   use _ <- program.and_then(

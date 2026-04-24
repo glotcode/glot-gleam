@@ -1,12 +1,12 @@
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
-import glot_core/auth/user_model.{type User}
+import glot_core/auth/user_model.{type HydratedUser}
 import youid/uuid.{type Uuid}
 
 pub type HydratedSession {
   HydratedSession(
     id: Uuid,
-    user: User,
+    user: HydratedUser,
     token: String,
     ip: Option(String),
     user_agent: Option(String),

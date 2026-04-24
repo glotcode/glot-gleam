@@ -288,6 +288,7 @@ fn test_handlers() -> handlers.Handlers {
       list_login_tokens_by_email: fn(_, _) { Ok([]) },
       get_session_by_token: fn(_, _) { Ok(option.None) },
       create_user: fn(_) { Ok(Nil) },
+      create_account: fn(_) { Ok(Nil) },
       update_user: fn(_) { Ok(Nil) },
       create_session: fn(_) { Ok(Nil) },
       delete_session: fn(_) { Ok(Nil) },

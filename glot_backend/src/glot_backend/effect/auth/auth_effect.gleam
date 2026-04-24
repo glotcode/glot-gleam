@@ -2,6 +2,7 @@ import gleam/option
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/error
 import glot_backend/effect/program_types
+import glot_core/auth/account_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
@@ -10,7 +11,7 @@ import youid/uuid.{type Uuid}
 
 pub fn get_user_by_email(
   email email: email_address_model.EmailAddress,
-) -> program_types.Program(option.Option(user_model.User)) {
+) -> program_types.Program(option.Option(user_model.HydratedUser)) {
   program_types.Impure(
     program_types.DbEffect(get_user_by_email_effect(email, program_types.Pure)),
   )
@@ -43,6 +44,14 @@ pub fn get_session_by_token(
 pub fn create_user(user user: user_model.User) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(create_user_effect(user, command_next)),
+  )
+}
+
+pub fn create_account(
+  account account: account_model.Account,
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(create_account_effect(account, command_next)),
   )
 }
 
@@ -84,7 +93,7 @@ pub fn update_login_token(
 
 pub fn get_user_by_email_tx(
   email email: email_address_model.EmailAddress,
-) -> program_types.TransactionProgram(option.Option(user_model.User)) {
+) -> program_types.TransactionProgram(option.Option(user_model.HydratedUser)) {
   program_types.TxImpure(get_user_by_email_effect(email, program_types.TxPure))
 }
 
@@ -114,6 +123,12 @@ pub fn create_user_tx(
   user user: user_model.User,
 ) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(create_user_effect(user, tx_command_next))
+}
+
+pub fn create_account_tx(
+  account account: account_model.Account,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(create_account_effect(account, tx_command_next))
 }
 
 pub fn update_user_tx(
@@ -164,7 +179,7 @@ fn tx_command_next(
 
 fn get_user_by_email_effect(
   email: email_address_model.EmailAddress,
-  next: fn(option.Option(user_model.User)) -> next,
+  next: fn(option.Option(user_model.HydratedUser)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.GetUserByEmail(email:, next: next))
 }
@@ -193,6 +208,13 @@ fn create_user_effect(
   next: fn(Result(Nil, error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.CreateUser(user: user, next: next))
+}
+
+fn create_account_effect(
+  account: account_model.Account,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.CreateAccount(account:, next: next))
 }
 
 fn update_user_effect(

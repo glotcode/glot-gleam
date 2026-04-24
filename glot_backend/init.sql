@@ -1,17 +1,29 @@
+-- ACCOUNTS
+
+CREATE TABLE IF NOT EXISTS accounts (
+  id UUID PRIMARY KEY,
+  account_state TEXT NOT NULL,
+  account_state_reason TEXT,
+  account_tier TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL
+);
+
+
 -- USERS
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
+  account_id UUID NOT NULL,
   email TEXT NOT NULL UNIQUE,
   username TEXT NOT NULL UNIQUE,
   role TEXT NOT NULL,
-  account_state TEXT NOT NULL,
-  account_state_reason TEXT,
-  account_tier TEXT NOT NULL,
   last_login_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
 );
+
+CREATE INDEX idx_users_account_id ON users(account_id);
 
 
 -- LOGIN TOKENS

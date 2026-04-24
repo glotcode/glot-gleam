@@ -27,14 +27,14 @@ pub fn update_account(
     basic_effect.info(
       log.from_list([
         log.uuid("session_id", session.id),
-        log.uuid("user_id", session.user.id),
+        log.uuid("user_id", session.user.identity.id),
       ]),
     ),
   )
 
   use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.id),
+    user_id: option.Some(session.user.identity.id),
     action: api_action.UpdateAccountAction,
   ))
 
@@ -49,7 +49,7 @@ pub fn update_account(
   })
 
   let user =
-    user_model.change_username(session.user, username, ctx.timestamp)
+    user_model.change_username(session.user.identity, username, ctx.timestamp)
 
   use _ <- program.and_then(
     transaction_effect.run_all([
@@ -58,9 +58,12 @@ pub fn update_account(
     ]),
   )
 
-  user
-  |> account_dto.from_user
-  |> program.succeed
+  program.succeed(
+    account_dto.from_hydrated_user(user_model.HydratedUser(
+      identity: user,
+      account: session.user.account,
+    )),
+  )
 }
 
 pub fn request_from_dynamic(

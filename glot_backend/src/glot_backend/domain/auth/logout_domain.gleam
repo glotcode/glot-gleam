@@ -18,14 +18,14 @@ pub fn logout(ctx: context.Context) -> program_types.Program(Nil) {
     basic_effect.info(
       log.from_list([
         log.uuid("session_id", session.id),
-        log.uuid("user_id", session.user.id),
+        log.uuid("user_id", session.user.identity.id),
       ]),
     ),
   )
 
   use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.id),
+    user_id: option.Some(session.user.identity.id),
     action: api_action.LogoutAction,
   ))
 
