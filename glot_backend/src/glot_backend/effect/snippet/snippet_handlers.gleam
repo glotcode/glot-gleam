@@ -136,6 +136,24 @@ fn get_snippet_from_row(
     }),
   )
   use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
+  use role <- result.try(
+    user_model.role_from_string(row.user_role)
+    |> option.to_result(error.DbQueryError(
+      "Invalid user role: " <> row.user_role,
+    )),
+  )
+  use account_state <- result.try(
+    user_model.account_state_from_string(row.user_account_state)
+    |> option.to_result(error.DbQueryError(
+      "Invalid account state: " <> row.user_account_state,
+    )),
+  )
+  use account_tier <- result.try(
+    user_model.account_tier_from_string(row.user_account_tier)
+    |> option.to_result(error.DbQueryError(
+      "Invalid account tier: " <> row.user_account_tier,
+    )),
+  )
 
   Ok(snippet_model.HydratedSnippet(
     id: uuid_helpers.from_bit_array(row.id),
@@ -144,6 +162,10 @@ fn get_snippet_from_row(
       id: uuid_helpers.from_bit_array(row.user_id),
       email: email_address_model.EmailAddress(row.user_email),
       username: row.user_username,
+      role: role,
+      account_state: account_state,
+      account_state_reason: row.user_account_state_reason,
+      account_tier: account_tier,
       last_login_at: row.user_last_login_at,
       created_at: row.user_created_at,
       updated_at: row.user_updated_at,
@@ -183,6 +205,24 @@ fn get_snippet_from_slug_row(
     }),
   )
   use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
+  use role <- result.try(
+    user_model.role_from_string(row.user_role)
+    |> option.to_result(error.DbQueryError(
+      "Invalid user role: " <> row.user_role,
+    )),
+  )
+  use account_state <- result.try(
+    user_model.account_state_from_string(row.user_account_state)
+    |> option.to_result(error.DbQueryError(
+      "Invalid account state: " <> row.user_account_state,
+    )),
+  )
+  use account_tier <- result.try(
+    user_model.account_tier_from_string(row.user_account_tier)
+    |> option.to_result(error.DbQueryError(
+      "Invalid account tier: " <> row.user_account_tier,
+    )),
+  )
 
   Ok(snippet_model.HydratedSnippet(
     id: uuid_helpers.from_bit_array(row.id),
@@ -191,6 +231,10 @@ fn get_snippet_from_slug_row(
       id: uuid_helpers.from_bit_array(row.user_id),
       email: email_address_model.EmailAddress(row.user_email),
       username: row.user_username,
+      role: role,
+      account_state: account_state,
+      account_state_reason: row.user_account_state_reason,
+      account_tier: account_tier,
       last_login_at: row.user_last_login_at,
       created_at: row.user_created_at,
       updated_at: row.user_updated_at,
