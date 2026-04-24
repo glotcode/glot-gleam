@@ -17,6 +17,7 @@ import glot_frontend/editor_dialog
 import glot_frontend/editor_settings
 import glot_frontend/icons
 import glot_frontend/route
+import glot_frontend/string_helpers
 import glot_frontend/top_bar
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -2269,21 +2270,14 @@ fn truncate_filename(filename: String) -> String {
 
   case list.reverse(parts) {
     [extension, stem, ..rest] ->
-      truncate_stem_middle(string.join(list.reverse([stem, ..rest]), "."))
+      string_helpers.truncate_stem_middle(
+        string.join(list.reverse([stem, ..rest]), "."),
+        10,
+      )
       <> "."
       <> extension
 
-    _ -> truncate_stem_middle(filename)
-  }
-}
-
-fn truncate_stem_middle(stem: String) -> String {
-  case string.length(stem) > 7 {
-    True ->
-      string.slice(stem, 0, 4)
-      <> "..."
-      <> string.slice(stem, -3, string.length(stem))
-    False -> stem
+    _ -> string_helpers.truncate_stem_middle(filename, 10)
   }
 }
 

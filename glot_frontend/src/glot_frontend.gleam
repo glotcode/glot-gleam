@@ -1,4 +1,5 @@
 import gleam/option
+import gleam/string
 import glot_core/auth/session_dto
 import glot_frontend/account_page
 import glot_frontend/api
@@ -7,6 +8,7 @@ import glot_frontend/editor_page
 import glot_frontend/home_page
 import glot_frontend/login_page
 import glot_frontend/route
+import glot_frontend/string_helpers
 import lustre
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -219,7 +221,11 @@ fn current_user_id(session: SessionState) -> option.Option(uuid.Uuid) {
 
 fn current_user_label(session: SessionState) -> String {
   case session {
-    AuthenticatedSession(session) -> session.user.username
+    AuthenticatedSession(session) ->
+      case string.length(session.user.username) > 20 {
+        True -> string_helpers.truncate_stem_middle(session.user.username, 20)
+        False -> session.user.username
+      }
 
     LoadingSession | AnonymousSession | SessionError -> "Account"
   }
