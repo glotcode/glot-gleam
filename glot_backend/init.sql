@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY,
-  account_id UUID NOT NULL,
+  account_id UUID NOT NULL REFERENCES accounts(id),
   email TEXT NOT NULL UNIQUE,
   username TEXT NOT NULL UNIQUE,
   role TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE INDEX idx_login_tokens_used_at ON login_tokens(used_at);
 
 CREATE TABLE sessions (
   id UUID PRIMARY KEY,
-  user_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES users(id),
   token TEXT NOT NULL UNIQUE,
   ip TEXT NULL,
   user_agent TEXT NULL,
@@ -58,7 +58,7 @@ CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 CREATE TABLE IF NOT EXISTS snippets (
   id UUID PRIMARY KEY,
   slug TEXT NOT NULL UNIQUE,
-  user_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES users(id),
   language TEXT NOT NULL,
   title TEXT NOT NULL,
   visibility TEXT NOT NULL,
