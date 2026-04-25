@@ -66,10 +66,10 @@ fn delegate_job(
       send_email_domain.send_email(ctx, email)
     }
     job_model.DeleteAccountJob -> {
-      use account_id <- program.and_then(delete_account_domain.account_id_from_json(
+      use payload <- program.and_then(delete_account_domain.payload_from_json(
         job.payload,
       ))
-      delete_account_domain.delete_account(ctx, account_id)
+      delete_account_domain.delete_account(ctx, payload)
     }
   }
 }

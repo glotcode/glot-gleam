@@ -161,6 +161,7 @@ pub fn schedule_delete_account_rejects_existing_pending_delete_job_test() {
       test_timestamp(),
       test_timestamp(),
       test_account_id(),
+      test_email_address(),
     )
   let fixture =
     integration_fixture(
@@ -198,6 +199,7 @@ pub fn cancel_delete_account_clears_delete_job_id_and_removes_job_test() {
       test_timestamp(),
       test_timestamp(),
       test_account_id(),
+      test_email_address(),
     )
   let fixture =
     integration_fixture(
@@ -230,11 +232,12 @@ pub fn delete_account_job_execution_removes_data_in_order_test() {
       test_timestamp(),
       test_timestamp(),
       test_account_id(),
+      test_email_address(),
     )
   let running_job = job_model.start(scheduled_job, test_timestamp())
   let fixture =
     integration_fixture(
-      next_uuids: [],
+      next_uuids: [must_uuid("00000000-0000-0000-0000-000000000403")],
       jobs: [running_job],
       account_delete_job_id: option.Some(running_job.id),
     )
@@ -249,6 +252,11 @@ pub fn delete_account_job_execution_removes_data_in_order_test() {
   assert run_result == Ok(Nil)
 
   let assert Ok(completed_job) = dict.get(db.jobs, uuid_key(running_job.id))
+  let assert Ok(created_email_job) =
+    dict.get(
+      db.jobs,
+      uuid_key(must_uuid("00000000-0000-0000-0000-000000000403")),
+    )
 
   assert dict.to_list(db.accounts) == []
   assert dict.to_list(db.users) == []
@@ -256,6 +264,8 @@ pub fn delete_account_job_execution_removes_data_in_order_test() {
   assert dict.to_list(db.snippets) == []
   assert completed_job.status == job_model.Done
   assert completed_job.completed_at == option.Some(test_system_time())
+  assert created_email_job.job_type == job_model.SendEmailJob
+  assert created_email_job.status == job_model.Pending
   assert list.reverse(db.deletion_steps)
     == [
       "delete_sessions_by_account_id",
@@ -1007,6 +1017,10 @@ fn test_request_id() -> uuid.Uuid {
 
 fn test_account_id() -> uuid.Uuid {
   must_uuid("00000000-0000-0000-0000-000000000010")
+}
+
+fn test_email_address() -> email_address_model.EmailAddress {
+  email_address_model.EmailAddress("user@example.com")
 }
 
 fn test_user_id() -> uuid.Uuid {

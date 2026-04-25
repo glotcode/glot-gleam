@@ -56,3 +56,12 @@ pub fn login_token_email(
     html_body: option.None,
   )
 }
+
+pub fn account_deleted_email(to: email_address_model.EmailAddress) -> Email {
+  Email(
+    to: to,
+    subject: "Your account has been deleted",
+    text_body: "Your account has been deleted.",
+    html_body: option.None,
+  )
+}

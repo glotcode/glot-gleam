@@ -1,7 +1,9 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{type Option}
+import gleam/regexp
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/email/email_address_model
 import glot_core/email/email_model
 import glot_core/helpers/uuid_helpers
 import youid/uuid.{type Uuid}
@@ -72,7 +74,10 @@ pub type Job {
 }
 
 pub type DeleteAccountJobPayload {
-  DeleteAccountJobPayload(account_id: Uuid)
+  DeleteAccountJobPayload(
+    account_id: Uuid,
+    email: email_address_model.EmailAddress,
+  )
 }
 
 fn new(
@@ -124,9 +129,10 @@ pub fn delete_account_job(
   now: Timestamp,
   run_at: Timestamp,
   account_id: Uuid,
+  email: email_address_model.EmailAddress,
 ) -> Job {
   let payload =
-    DeleteAccountJobPayload(account_id:)
+    DeleteAccountJobPayload(account_id:, email:)
     |> encode_delete_account_job_payload
     |> json.to_string
 
@@ -147,14 +153,17 @@ pub fn encode_delete_account_job_payload(
 ) -> json.Json {
   json.object([
     #("accountId", json.string(uuid.to_string(payload.account_id))),
+    #("email", email_address_model.encode(payload.email)),
   ])
 }
 
 pub fn delete_account_job_payload_decoder() -> decode.Decoder(
   DeleteAccountJobPayload,
 ) {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
   use account_id <- decode.field("accountId", uuid_helpers.decoder())
-  decode.success(DeleteAccountJobPayload(account_id:))
+  use email <- decode.field("email", email_address_model.decoder(is_email))
+  decode.success(DeleteAccountJobPayload(account_id:, email:))
 }
 
 pub fn done(job: Job, now: Timestamp) -> Job {

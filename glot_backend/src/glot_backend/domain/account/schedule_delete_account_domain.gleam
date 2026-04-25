@@ -51,6 +51,7 @@ pub fn schedule_delete_account(
       ctx.timestamp,
       add_seconds(ctx.timestamp, delete_delay_seconds),
       session.user.account.id,
+      session.user.identity.email,
     )
   let updated_account =
     account_model.set_delete_job_id(
