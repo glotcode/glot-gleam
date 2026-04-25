@@ -2,6 +2,7 @@
 ////
 
 import gleam/dynamic/decode
+import gleam/list
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import parrot/dev
@@ -861,6 +862,122 @@ pub fn count_user_actions_by_user_decoder() -> decode.Decoder(
   use unit <- decode.field(0, decode.string)
   use count <- decode.field(1, decode.int)
   decode.success(CountUserActionsByUser(unit:, count:))
+}
+
+pub type ListSnippets {
+  ListSnippets(
+    id: BitArray,
+    slug: String,
+    language: String,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_instructions: Option(String),
+    files: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    user_id: BitArray,
+    user_account_id: BitArray,
+    user_email: String,
+    user_username: String,
+    user_role: String,
+    user_last_login_at: Timestamp,
+    user_created_at: Timestamp,
+    user_updated_at: Timestamp,
+  )
+}
+
+pub fn list_snippets(
+  visibilities visibilities: List(String),
+  skip_user_ids skip_user_ids: List(BitArray),
+  cursor_slug cursor_slug: Option(String),
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE
+  (
+    cardinality($1::text[]) = 0
+    OR snippets.visibility = ANY($1::text[])
+  )
+  AND NOT users.id = ANY($2::uuid[])
+  AND (
+    $3::text IS NULL
+    OR snippets.slug < $3::text
+  )
+ORDER BY snippets.slug DESC
+LIMIT $4"
+  #(
+    sql,
+    [
+      dev.ParamList(list.map(visibilities, dev.ParamString)),
+      dev.ParamList(list.map(skip_user_ids, dev.ParamBitArray)),
+      dev.ParamNullable(option.map(cursor_slug, fn(v) { dev.ParamString(v) })),
+      dev.ParamInt(page_limit),
+    ],
+    list_snippets_decoder(),
+  )
+}
+
+pub fn list_snippets_decoder() -> decode.Decoder(ListSnippets) {
+  use id <- decode.field(0, decode.bit_array)
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
+  decode.success(ListSnippets(
+    id:,
+    slug:,
+    language:,
+    title:,
+    visibility:,
+    stdin:,
+    run_instructions:,
+    files:,
+    created_at:,
+    updated_at:,
+    user_id:,
+    user_account_id:,
+    user_email:,
+    user_username:,
+    user_role:,
+    user_last_login_at:,
+    user_created_at:,
+    user_updated_at:,
+  ))
 }
 
 pub fn delete_sessions_by_account_id(account_id account_id: BitArray) {

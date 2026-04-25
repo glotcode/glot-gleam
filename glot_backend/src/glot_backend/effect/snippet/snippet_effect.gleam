@@ -2,7 +2,7 @@ import gleam/option
 import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
-import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet}
+import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet, type Visibility}
 import youid/uuid
 
 pub fn get_by_id(
@@ -19,6 +19,23 @@ pub fn get_by_slug(
   )
 }
 
+pub fn list(
+  visibilities visibilities: List(Visibility),
+  skip_user_ids skip_user_ids: List(uuid.Uuid),
+  cursor_slug cursor_slug: option.Option(String),
+  limit limit: Int,
+) -> program_types.Program(List(HydratedSnippet)) {
+  program_types.Impure(
+    program_types.DbEffect(list_effect(
+      visibilities,
+      skip_user_ids,
+      cursor_slug,
+      limit,
+      list_next,
+    )),
+  )
+}
+
 pub fn create(snippet snippet: Snippet) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(create_effect(snippet, command_next)),
@@ -28,6 +45,15 @@ pub fn create(snippet snippet: Snippet) -> program_types.Program(Nil) {
 fn query_next(
   result: Result(option.Option(HydratedSnippet), error.DbQueryError),
 ) -> program_types.Program(option.Option(HydratedSnippet)) {
+  case result {
+    Ok(value) -> program_types.Pure(value)
+    Error(err) -> program_types.Fail(error.QueryError(err))
+  }
+}
+
+fn list_next(
+  result: Result(List(HydratedSnippet), error.DbQueryError),
+) -> program_types.Program(List(HydratedSnippet)) {
   case result {
     Ok(value) -> program_types.Pure(value)
     Error(err) -> program_types.Fail(error.QueryError(err))
@@ -127,6 +153,22 @@ fn get_by_slug_effect(
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.GetSnippetBySlug(
     slug:,
+    next: next,
+  ))
+}
+
+fn list_effect(
+  visibilities: List(Visibility),
+  skip_user_ids: List(uuid.Uuid),
+  cursor_slug: option.Option(String),
+  limit: Int,
+  next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.SnippetEffect(snippet_algebra.ListSnippets(
+    visibilities: visibilities,
+    skip_user_ids: skip_user_ids,
+    cursor_slug: cursor_slug,
+    limit: limit,
     next: next,
   ))
 }

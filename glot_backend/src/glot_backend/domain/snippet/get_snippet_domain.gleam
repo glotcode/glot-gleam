@@ -32,14 +32,10 @@ pub fn get_snippet(
     ),
   )
 
-  let actor = case maybe_session {
-    option.Some(session) ->
-      api_action_policy_domain.KnownUser(
-        user_id: session.user.identity.id,
-        account_state: session.user.account.identity.account_state,
-      )
-    option.None -> api_action_policy_domain.Anonymous
-  }
+  let actor =
+    maybe_session
+    |> option.map(fn(session) { session.user })
+    |> api_action_policy_domain.actor_from_user
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,

@@ -19,6 +19,7 @@ import glot_backend/domain/run_code/run_domain
 import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/snippet/delete_snippet_domain
 import glot_backend/domain/snippet/get_snippet_domain
+import glot_backend/domain/snippet/list_public_snippets_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
@@ -114,6 +115,13 @@ fn handle_api_request(
       get_snippet_domain.get_snippet(ctx, request)
       |> program.map(SnippetResponse)
     }
+    api_action.ListPublicSnippetsAction -> {
+      use request <- program.and_then(
+        list_public_snippets_domain.request_from_dynamic(api_request.data),
+      )
+      list_public_snippets_domain.list_public_snippets(ctx, request)
+      |> program.map(PublicSnippetsResponse)
+    }
     api_action.CreateSnippetAction -> {
       use request <- program.and_then(
         create_snippet_domain.request_from_dynamic(api_request.data),
@@ -194,6 +202,7 @@ type ApiResult {
   SessionResponse(option.Option(session_dto.SessionResponse))
   AccountResponse(account_dto.AccountResponse)
   SnippetResponse(snippet_dto.SnippetResponse)
+  PublicSnippetsResponse(snippet_dto.ListPublicSnippetsResponse)
   LoginResponse(session_token: String)
   LogoutResponse
   NoContentResponse
@@ -213,6 +222,8 @@ fn api_result_to_response(
     AccountResponse(response) -> success_response(account_dto.encode(response))
     SnippetResponse(response) ->
       success_response(snippet_dto.encode_response(response))
+    PublicSnippetsResponse(response) ->
+      success_response(snippet_dto.encode_list_public_response(response))
     LoginResponse(session_token) -> {
       success_response(json.null())
       |> wisp.set_cookie(

@@ -161,6 +161,10 @@ fn rate_limits_config_from_dict(
     ),
     #(api_action.GetSnippetAction, lookup_rate_limits(values, "GET_SNIPPET")),
     #(
+      api_action.ListPublicSnippetsAction,
+      lookup_rate_limits(values, "LIST_PUBLIC_SNIPPETS"),
+    ),
+    #(
       api_action.SendLoginTokenAction,
       lookup_rate_limits(values, "SEND_LOGIN_TOKEN"),
     ),

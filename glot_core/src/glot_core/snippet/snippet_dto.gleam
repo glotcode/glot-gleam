@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/user_dto
@@ -15,6 +16,16 @@ pub type GetSnippetRequest {
 pub fn get_decoder() -> decode.Decoder(GetSnippetRequest) {
   use slug <- decode.field("slug", decode.string)
   decode.success(GetSnippetRequest(slug: slug))
+}
+
+pub type ListPublicSnippetsRequest {
+  ListPublicSnippetsRequest(cursor: option.Option(String), limit: Int)
+}
+
+pub fn list_public_decoder() -> decode.Decoder(ListPublicSnippetsRequest) {
+  use cursor <- decode.field("cursor", decode.optional(decode.string))
+  use limit <- decode.field("limit", decode.int)
+  decode.success(ListPublicSnippetsRequest(cursor:, limit:))
 }
 
 pub type DeleteSnippetRequest {
@@ -55,6 +66,13 @@ pub type SnippetResponse {
   )
 }
 
+pub type ListPublicSnippetsResponse {
+  ListPublicSnippetsResponse(
+    snippets: List(SnippetResponse),
+    next_cursor: option.Option(String),
+  )
+}
+
 pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
   use slug <- decode.field("slug", decode.string)
   use user <- decode.field("user", user_dto.user_decoder())
@@ -89,6 +107,15 @@ pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
   ))
 }
 
+pub fn list_public_response_decoder() -> decode.Decoder(
+  ListPublicSnippetsResponse,
+) {
+  use snippets <- decode.field("snippets", decode.list(response_decoder()))
+  use next_cursor <- decode.field("nextCursor", decode.optional(decode.string))
+
+  decode.success(ListPublicSnippetsResponse(snippets:, next_cursor:))
+}
+
 pub fn from_snippet(snippet: snippet_model.HydratedSnippet) -> SnippetResponse {
   SnippetResponse(
     slug: snippet.identity.slug,
@@ -118,6 +145,25 @@ pub fn encode_response(response: SnippetResponse) -> json.Json {
     #("files", json.array(response.data.files, snippet_model.encode_file)),
     #("createdAt", timestamp_helpers.encode(response.created_at)),
     #("updatedAt", timestamp_helpers.encode(response.updated_at)),
+  ])
+}
+
+pub fn from_public_snippets(
+  snippets snippets: List(snippet_model.HydratedSnippet),
+  next_cursor next_cursor: option.Option(String),
+) -> ListPublicSnippetsResponse {
+  ListPublicSnippetsResponse(
+    snippets: snippets |> list.map(from_snippet),
+    next_cursor: next_cursor,
+  )
+}
+
+pub fn encode_list_public_response(
+  response: ListPublicSnippetsResponse,
+) -> json.Json {
+  json.object([
+    #("snippets", json.array(response.snippets, encode_response)),
+    #("nextCursor", json.nullable(response.next_cursor, json.string)),
   ])
 }
 

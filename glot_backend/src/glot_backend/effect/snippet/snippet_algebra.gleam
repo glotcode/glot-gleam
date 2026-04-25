@@ -1,6 +1,6 @@
 import gleam/option
 import glot_backend/effect/error
-import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet}
+import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet, type Visibility}
 import youid/uuid.{type Uuid}
 
 pub type SnippetEffect(next) {
@@ -11,6 +11,13 @@ pub type SnippetEffect(next) {
   GetSnippetBySlug(
     slug: String,
     next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+  )
+  ListSnippets(
+    visibilities: List(Visibility),
+    skip_user_ids: List(Uuid),
+    cursor_slug: option.Option(String),
+    limit: Int,
+    next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
   )
   DeleteSnippet(
     id: BitArray,
@@ -36,6 +43,14 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
       GetSnippetById(id, next: fn(value) { f(next(value)) })
     GetSnippetBySlug(slug, next) ->
       GetSnippetBySlug(slug, next: fn(value) { f(next(value)) })
+    ListSnippets(visibilities:, skip_user_ids:, cursor_slug:, limit:, next:) ->
+      ListSnippets(
+        visibilities: visibilities,
+        skip_user_ids: skip_user_ids,
+        cursor_slug: cursor_slug,
+        limit: limit,
+        next: fn(value) { f(next(value)) },
+      )
     DeleteSnippet(id, next) ->
       DeleteSnippet(id, next: fn(value) { f(next(value)) })
     DeleteSnippetsByAccountId(account_id: account_id, next: next) ->
@@ -53,6 +68,7 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
 pub type EffectName {
   GetSnippetByIdEffectName
   GetSnippetBySlugEffectName
+  ListSnippetsEffectName
   DeleteSnippetEffectName
   DeleteSnippetsByAccountIdEffectName
   CreateSnippetEffectName
@@ -63,6 +79,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetSnippetByIdEffectName -> "get_snippet_by_id"
     GetSnippetBySlugEffectName -> "get_snippet_by_slug"
+    ListSnippetsEffectName -> "list_snippets"
     DeleteSnippetEffectName -> "delete_snippet"
     DeleteSnippetsByAccountIdEffectName -> "delete_snippets_by_account_id"
     CreateSnippetEffectName -> "create_snippet"

@@ -39,6 +39,31 @@ pub fn run(
         ),
       )
     }
+    snippet_algebra.ListSnippets(
+      visibilities: visibilities,
+      skip_user_ids: skip_user_ids,
+      cursor_slug: cursor_slug,
+      limit: limit,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        handlers.snippet.list_snippets(
+          visibilities,
+          skip_user_ids,
+          cursor_slug,
+          limit,
+        )
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.SnippetEffectName(snippet_algebra.ListSnippetsEffectName),
+          effect_trace.DbReadEffectCategory,
+          started_at,
+        ),
+      )
+    }
     snippet_algebra.DeleteSnippet(id, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.delete_snippet(id)
