@@ -93,14 +93,7 @@ pub fn from_snippet(snippet: snippet_model.HydratedSnippet) -> SnippetResponse {
   SnippetResponse(
     slug: snippet.identity.slug,
     user: user_dto.from_user(snippet.user),
-    data: SnippetData(
-      title: snippet.identity.title,
-      language: snippet.identity.language,
-      visibility: snippet.identity.visibility,
-      stdin: snippet.identity.stdin,
-      run_instructions: snippet.identity.run_instructions,
-      files: snippet.identity.files,
-    ),
+    data: data_from_snippet(snippet.identity),
     created_at: snippet.identity.created_at,
     updated_at: snippet.identity.updated_at,
   )
@@ -175,4 +168,15 @@ pub fn data_decoder() -> decode.Decoder(SnippetData) {
     run_instructions: run_instructions,
     files: files,
   ))
+}
+
+fn data_from_snippet(snippet: snippet_model.Snippet) -> SnippetData {
+  SnippetData(
+    title: snippet.title,
+    language: snippet.language,
+    visibility: snippet.visibility,
+    stdin: snippet.stdin,
+    run_instructions: snippet.run_instructions,
+    files: snippet.files,
+  )
 }
