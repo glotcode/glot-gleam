@@ -45,14 +45,14 @@ pub fn get_snippet(
     ),
   )
 
-  let is_owner = maybe_user_id == option.Some(snippet.user.identity.id)
+  let is_owner = maybe_user_id == option.Some(snippet.user.id)
 
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
         log.string(
           "visibility",
-          snippet_model.visibility_to_string(snippet.visibility),
+          snippet_model.visibility_to_string(snippet.identity.visibility),
         ),
         log.bool("is_owner", is_owner),
       ]),

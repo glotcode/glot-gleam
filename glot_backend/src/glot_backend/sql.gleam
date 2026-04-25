@@ -402,9 +402,6 @@ pub type GetSnippetById {
     user_email: String,
     user_username: String,
     user_role: String,
-    user_account_state: String,
-    user_account_state_reason: Option(String),
-    user_account_tier: String,
     user_last_login_at: Timestamp,
     user_created_at: Timestamp,
     user_updated_at: Timestamp,
@@ -429,15 +426,11 @@ pub fn get_snippet_by_id(id id: BitArray) {
   users.email AS user_email,
   users.username AS user_username,
   users.role AS user_role,
-  accounts.account_state AS user_account_state,
-  accounts.account_state_reason AS user_account_state_reason,
-  accounts.account_tier AS user_account_tier,
   users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at
 FROM snippets
 INNER JOIN users ON users.id = snippets.user_id
-INNER JOIN accounts ON accounts.id = users.account_id
 WHERE snippets.id = $1"
   #(sql, [dev.ParamBitArray(id)], get_snippet_by_id_decoder())
 }
@@ -458,15 +451,9 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   use user_email <- decode.field(12, decode.string)
   use user_username <- decode.field(13, decode.string)
   use user_role <- decode.field(14, decode.string)
-  use user_account_state <- decode.field(15, decode.string)
-  use user_account_state_reason <- decode.field(
-    16,
-    decode.optional(decode.string),
-  )
-  use user_account_tier <- decode.field(17, decode.string)
-  use user_last_login_at <- decode.field(18, dev.datetime_decoder())
-  use user_created_at <- decode.field(19, dev.datetime_decoder())
-  use user_updated_at <- decode.field(20, dev.datetime_decoder())
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
   decode.success(GetSnippetById(
     id:,
     slug:,
@@ -483,9 +470,6 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
     user_email:,
     user_username:,
     user_role:,
-    user_account_state:,
-    user_account_state_reason:,
-    user_account_tier:,
     user_last_login_at:,
     user_created_at:,
     user_updated_at:,
@@ -977,9 +961,6 @@ pub type GetSnippetBySlug {
     user_email: String,
     user_username: String,
     user_role: String,
-    user_account_state: String,
-    user_account_state_reason: Option(String),
-    user_account_tier: String,
     user_last_login_at: Timestamp,
     user_created_at: Timestamp,
     user_updated_at: Timestamp,
@@ -1004,15 +985,11 @@ pub fn get_snippet_by_slug(slug slug: String) {
   users.email AS user_email,
   users.username AS user_username,
   users.role AS user_role,
-  accounts.account_state AS user_account_state,
-  accounts.account_state_reason AS user_account_state_reason,
-  accounts.account_tier AS user_account_tier,
   users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at
 FROM snippets
 INNER JOIN users ON users.id = snippets.user_id
-INNER JOIN accounts ON accounts.id = users.account_id
 WHERE snippets.slug = $1"
   #(sql, [dev.ParamString(slug)], get_snippet_by_slug_decoder())
 }
@@ -1033,15 +1010,9 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
   use user_email <- decode.field(12, decode.string)
   use user_username <- decode.field(13, decode.string)
   use user_role <- decode.field(14, decode.string)
-  use user_account_state <- decode.field(15, decode.string)
-  use user_account_state_reason <- decode.field(
-    16,
-    decode.optional(decode.string),
-  )
-  use user_account_tier <- decode.field(17, decode.string)
-  use user_last_login_at <- decode.field(18, dev.datetime_decoder())
-  use user_created_at <- decode.field(19, dev.datetime_decoder())
-  use user_updated_at <- decode.field(20, dev.datetime_decoder())
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
   decode.success(GetSnippetBySlug(
     id:,
     slug:,
@@ -1058,9 +1029,6 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
     user_email:,
     user_username:,
     user_role:,
-    user_account_state:,
-    user_account_state_reason:,
-    user_account_tier:,
     user_last_login_at:,
     user_created_at:,
     user_updated_at:,

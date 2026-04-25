@@ -6,7 +6,6 @@ import gleam/string
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
-import glot_core/auth/account_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
@@ -143,50 +142,31 @@ fn get_snippet_from_row(
       "Invalid user role: " <> row.user_role,
     )),
   )
-  use account_state <- result.try(
-    account_model.account_state_from_string(row.user_account_state)
-    |> option.to_result(error.DbQueryError(
-      "Invalid account state: " <> row.user_account_state,
-    )),
-  )
-  use account_tier <- result.try(
-    account_model.account_tier_from_string(row.user_account_tier)
-    |> option.to_result(error.DbQueryError(
-      "Invalid account tier: " <> row.user_account_tier,
-    )),
-  )
 
   Ok(snippet_model.HydratedSnippet(
-    id: uuid_helpers.from_bit_array(row.id),
-    slug: row.slug,
-    user: user_model.HydratedUser(
-      identity: user_model.User(
-        id: uuid_helpers.from_bit_array(row.user_id),
-        account_id: uuid_helpers.from_bit_array(row.user_account_id),
-        email: email_address_model.EmailAddress(row.user_email),
-        username: row.user_username,
-        role: role,
-        last_login_at: row.user_last_login_at,
-        created_at: row.user_created_at,
-        updated_at: row.user_updated_at,
-      ),
-      account: account_model.Account(
-        id: uuid_helpers.from_bit_array(row.user_account_id),
-        account_state: account_state,
-        account_state_reason: row.user_account_state_reason,
-        account_tier: account_tier,
-        created_at: row.user_created_at,
-        updated_at: row.user_updated_at,
-      ),
+    identity: snippet_model.Snippet(
+      id: uuid_helpers.from_bit_array(row.id),
+      slug: row.slug,
+      user_id: uuid_helpers.from_bit_array(row.user_id),
+      title: row.title,
+      language: language,
+      visibility: visibility,
+      stdin: row.stdin,
+      run_instructions: run_instructions,
+      files: files,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
     ),
-    title: row.title,
-    language: language,
-    visibility: visibility,
-    stdin: row.stdin,
-    run_instructions: run_instructions,
-    files: files,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+    user: user_model.User(
+      id: uuid_helpers.from_bit_array(row.user_id),
+      account_id: uuid_helpers.from_bit_array(row.user_account_id),
+      email: email_address_model.EmailAddress(row.user_email),
+      username: row.user_username,
+      role: role,
+      last_login_at: row.user_last_login_at,
+      created_at: row.user_created_at,
+      updated_at: row.user_updated_at,
+    ),
   ))
 }
 
@@ -220,50 +200,31 @@ fn get_snippet_from_slug_row(
       "Invalid user role: " <> row.user_role,
     )),
   )
-  use account_state <- result.try(
-    account_model.account_state_from_string(row.user_account_state)
-    |> option.to_result(error.DbQueryError(
-      "Invalid account state: " <> row.user_account_state,
-    )),
-  )
-  use account_tier <- result.try(
-    account_model.account_tier_from_string(row.user_account_tier)
-    |> option.to_result(error.DbQueryError(
-      "Invalid account tier: " <> row.user_account_tier,
-    )),
-  )
 
   Ok(snippet_model.HydratedSnippet(
-    id: uuid_helpers.from_bit_array(row.id),
-    slug: row.slug,
-    user: user_model.HydratedUser(
-      identity: user_model.User(
-        id: uuid_helpers.from_bit_array(row.user_id),
-        account_id: uuid_helpers.from_bit_array(row.user_account_id),
-        email: email_address_model.EmailAddress(row.user_email),
-        username: row.user_username,
-        role: role,
-        last_login_at: row.user_last_login_at,
-        created_at: row.user_created_at,
-        updated_at: row.user_updated_at,
-      ),
-      account: account_model.Account(
-        id: uuid_helpers.from_bit_array(row.user_account_id),
-        account_state: account_state,
-        account_state_reason: row.user_account_state_reason,
-        account_tier: account_tier,
-        created_at: row.user_created_at,
-        updated_at: row.user_updated_at,
-      ),
+    identity: snippet_model.Snippet(
+      id: uuid_helpers.from_bit_array(row.id),
+      slug: row.slug,
+      user_id: uuid_helpers.from_bit_array(row.user_id),
+      title: row.title,
+      language: language,
+      visibility: visibility,
+      stdin: row.stdin,
+      run_instructions: run_instructions,
+      files: files,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
     ),
-    title: row.title,
-    language: language,
-    visibility: visibility,
-    stdin: row.stdin,
-    run_instructions: run_instructions,
-    files: files,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+    user: user_model.User(
+      id: uuid_helpers.from_bit_array(row.user_id),
+      account_id: uuid_helpers.from_bit_array(row.user_account_id),
+      email: email_address_model.EmailAddress(row.user_email),
+      username: row.user_username,
+      role: role,
+      last_login_at: row.user_last_login_at,
+      created_at: row.user_created_at,
+      updated_at: row.user_updated_at,
+    ),
   ))
 }
 

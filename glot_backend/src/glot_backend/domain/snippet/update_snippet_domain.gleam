@@ -48,7 +48,7 @@ pub fn update_snippet(
 
   use _ <- program.and_then(authorization_domain.require_owner(
     session.user.identity.id,
-    existing_snippet.user.identity.id,
+    existing_snippet.user.id,
   ))
 
   use _ <- program.and_then(
@@ -60,16 +60,16 @@ pub fn update_snippet(
 
   let updated_snippet =
     snippet_model.Snippet(
-      id: existing_snippet.id,
-      slug: existing_snippet.slug,
-      user_id: existing_snippet.user.identity.id,
+      id: existing_snippet.identity.id,
+      slug: existing_snippet.identity.slug,
+      user_id: existing_snippet.user.id,
       title: request.data.title,
       language: request.data.language,
       visibility: request.data.visibility,
       stdin: request.data.stdin,
       run_instructions: request.data.run_instructions,
       files: request.data.files,
-      created_at: existing_snippet.created_at,
+      created_at: existing_snippet.identity.created_at,
       updated_at: ctx.timestamp,
     )
 
@@ -82,17 +82,8 @@ pub fn update_snippet(
 
   program.succeed(
     snippet_model.HydratedSnippet(
-      id: updated_snippet.id,
-      slug: updated_snippet.slug,
+      identity: updated_snippet,
       user: existing_snippet.user,
-      title: updated_snippet.title,
-      language: updated_snippet.language,
-      visibility: updated_snippet.visibility,
-      stdin: updated_snippet.stdin,
-      run_instructions: updated_snippet.run_instructions,
-      files: updated_snippet.files,
-      created_at: updated_snippet.created_at,
-      updated_at: updated_snippet.updated_at,
     )
     |> snippet_dto.from_snippet,
   )

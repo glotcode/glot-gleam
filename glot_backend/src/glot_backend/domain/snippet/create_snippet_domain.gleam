@@ -71,17 +71,8 @@ pub fn create_snippet(
 
   program.succeed(
     snippet_model.HydratedSnippet(
-      id: new_snippet.id,
-      slug: new_snippet.slug,
-      user: session.user,
-      title: new_snippet.title,
-      language: new_snippet.language,
-      visibility: new_snippet.visibility,
-      stdin: new_snippet.stdin,
-      run_instructions: new_snippet.run_instructions,
-      files: new_snippet.files,
-      created_at: new_snippet.created_at,
-      updated_at: new_snippet.updated_at,
+      identity: new_snippet,
+      user: session.user.identity,
     )
     |> snippet_dto.from_snippet,
   )

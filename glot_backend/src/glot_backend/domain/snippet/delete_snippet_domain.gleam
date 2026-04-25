@@ -46,12 +46,12 @@ pub fn delete_snippet(
 
   use _ <- program.and_then(authorization_domain.require_owner(
     session.user.identity.id,
-    existing_snippet.user.identity.id,
+    existing_snippet.user.id,
   ))
 
   use _ <- program.and_then(
     transaction_effect.run_all([
-      snippet_effect.delete_tx(existing_snippet.id),
+      snippet_effect.delete_tx(existing_snippet.identity.id),
       user_action_effect.create_user_action_tx(user_action),
     ]),
   )

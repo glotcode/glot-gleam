@@ -4,7 +4,7 @@ import gleam/json
 import gleam/option
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_core/auth/user_model.{type HydratedUser}
+import glot_core/auth/user_model.{type User}
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import youid/uuid.{type Uuid}
@@ -26,19 +26,7 @@ pub type Snippet {
 }
 
 pub type HydratedSnippet {
-  HydratedSnippet(
-    id: Uuid,
-    slug: String,
-    user: HydratedUser,
-    title: String,
-    language: language.Language,
-    visibility: Visibility,
-    stdin: String,
-    run_instructions: option.Option(language.RunInstructions),
-    files: List(File),
-    created_at: Timestamp,
-    updated_at: Timestamp,
-  )
+  HydratedSnippet(identity: Snippet, user: User)
 }
 
 pub type Visibility {
