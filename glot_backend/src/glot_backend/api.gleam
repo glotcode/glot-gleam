@@ -31,8 +31,9 @@ import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/server_timing
 import glot_backend/worker/log_worker
-import glot_core/api_action.{type ApiAction}
+import glot_core/api_action
 import glot_core/auth/account_dto
+import glot_core/auth/account_model
 import glot_core/auth/session_dto
 import glot_core/run
 import glot_core/snippet/snippet_dto
@@ -153,7 +154,7 @@ fn handle_api_request(
 }
 
 pub type ApiRequest {
-  ApiRequest(action: ApiAction, data: dynamic.Dynamic, bytes: Int)
+  ApiRequest(action: api_action.ApiAction, data: dynamic.Dynamic, bytes: Int)
 }
 
 pub fn api_request_decoder(bytes: Int) -> decode.Decoder(ApiRequest) {
@@ -426,6 +427,21 @@ fn error_to_response(error: error.Error) -> wisp.Response {
         error.NotOwnerError -> {
           wisp.log_error("Authorization error: not owner")
           error_response("authorization_error", "Not authorized")
+        }
+      }
+    error.AccountStateError(account_state_error) ->
+      case account_state_error {
+        error.ForbiddenAccountState(
+          action: action,
+          account_state: account_state,
+        ) -> {
+          wisp.log_error(
+            "Account state error: "
+            <> account_model.account_state_to_string(account_state)
+            <> " not allowed for "
+            <> api_action.to_string(action),
+          )
+          error_response("account_state_error", "Account state not allowed")
         }
       }
     error.RunError(run_request_error) ->

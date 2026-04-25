@@ -8,6 +8,7 @@ import glot_backend/context
 import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
+import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_algebra
@@ -19,8 +20,10 @@ import glot_backend/effect/job/job_algebra
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
+import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
+import glot_core/auth/login_token_dto
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
@@ -133,6 +136,81 @@ pub fn login_creates_account_user_and_session_in_foreign_key_order_test() {
       "create_session",
       "create_user_action",
     ]
+}
+
+pub fn send_login_token_for_suspended_user_returns_account_state_error_test() {
+  let fixture =
+    suspended_integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let request = login_token_dto.LoginTokenRequest(email: fixture.user.email)
+
+  let #(run_result, db) =
+    run_test_program(
+      send_login_token_domain.send_login_token(fixture.ctx, request),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result
+    == Error(
+      error.AccountStateError(error.ForbiddenAccountState(
+        action: api_action.SendLoginTokenAction,
+        account_state: account_model.Suspended,
+      )),
+    )
+  assert db.write_steps == []
+}
+
+pub fn login_for_suspended_user_returns_account_state_error_test() {
+  let login_token =
+    login_token_model.LoginToken(
+      id: must_uuid("00000000-0000-0000-0000-000000000601"),
+      email: test_email_address(),
+      token: "login-token",
+      created_at: test_timestamp(),
+      used_at: option.None,
+    )
+  let fixture =
+    suspended_integration_fixture(
+      next_uuids: [
+        must_uuid("00000000-0000-0000-0000-000000000602"),
+        must_uuid("00000000-0000-0000-0000-000000000603"),
+        must_uuid("00000000-0000-0000-0000-000000000604"),
+      ],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let db =
+    TestDb(
+      ..fixture.db,
+      login_tokens: dict.from_list([#(uuid_key(login_token.id), login_token)]),
+    )
+  let ctx =
+    context.Context(
+      ..fixture.ctx,
+      client_info: context.ClientInfo(
+        session_token: option.None,
+        ip: option.Some("127.0.0.1"),
+        user_agent: option.Some("gleeunit"),
+      ),
+    )
+  let request =
+    login_dto.LoginRequest(email: test_email_address(), token: "login-token")
+
+  let #(run_result, updated_db) =
+    run_test_program(login_domain.login(ctx, request), ctx, db)
+
+  assert run_result
+    == Error(
+      error.AccountStateError(error.ForbiddenAccountState(
+        action: api_action.LoginAction,
+        account_state: account_model.Suspended,
+      )),
+    )
+  assert updated_db.write_steps == []
 }
 
 pub fn snippet_spam_filter_allows_normal_code_test() {
@@ -441,6 +519,36 @@ fn integration_fixture(
   )
 }
 
+fn suspended_integration_fixture(
+  next_uuids next_uuids: List(uuid.Uuid),
+  jobs jobs: List(job_model.Job),
+  account_delete_job_id account_delete_job_id: option.Option(uuid.Uuid),
+) -> TestFixture {
+  let fixture =
+    integration_fixture(
+      next_uuids: next_uuids,
+      jobs: jobs,
+      account_delete_job_id: account_delete_job_id,
+    )
+  let suspended_account =
+    account_model.Account(
+      ..fixture.account,
+      account_state: account_model.Suspended,
+      account_state_reason: option.Some("suspended for test"),
+    )
+  let db =
+    TestDb(
+      ..fixture.db,
+      accounts: dict.insert(
+        fixture.db.accounts,
+        uuid_key(suspended_account.id),
+        suspended_account,
+      ),
+    )
+
+  TestFixture(..fixture, db: db, account: suspended_account)
+}
+
 fn empty_test_db() -> TestDb {
   TestDb(
     accounts: dict.new(),
@@ -587,7 +695,11 @@ fn run_test_auth_effect(
     auth_algebra.GetUserByEmail(email:, next:) ->
       run_test_program(next(find_user_by_email(db, email)), ctx, db)
     auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
-      run_test_program(next(find_login_tokens_by_email(db, email, limit)), ctx, db)
+      run_test_program(
+        next(find_login_tokens_by_email(db, email, limit)),
+        ctx,
+        db,
+      )
     auth_algebra.GetSessionByToken(token:, next:) ->
       run_test_program(next(find_hydrated_session(db, token)), ctx, db)
     auth_algebra.CreateUser(user: user, next: next) ->
@@ -633,7 +745,11 @@ fn run_test_auth_tx_effect(
     auth_algebra.GetUserByEmail(email:, next:) ->
       run_test_tx_program(next(find_user_by_email(db, email)), ctx, db)
     auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
-      run_test_tx_program(next(find_login_tokens_by_email(db, email, limit)), ctx, db)
+      run_test_tx_program(
+        next(find_login_tokens_by_email(db, email, limit)),
+        ctx,
+        db,
+      )
     auth_algebra.GetSessionByToken(token:, next:) ->
       run_test_tx_program(next(find_hydrated_session(db, token)), ctx, db)
     auth_algebra.CreateUser(user: user, next: next) ->
@@ -667,10 +783,18 @@ fn run_test_auth_tx_effect(
     auth_algebra.DeleteSession(id: id, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, delete_session_by_id(db, id))
     auth_algebra.CreateLoginToken(login_token:, next:) -> {
-      run_test_tx_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        upsert_login_token(db, login_token),
+      )
     }
     auth_algebra.UpdateLoginToken(login_token:, next:) ->
-      run_test_tx_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        upsert_login_token(db, login_token),
+      )
   }
 }
 
@@ -1058,11 +1182,10 @@ fn delete_snippets_by_account_id(db: TestDb, account_id: uuid.Uuid) -> TestDb {
 }
 
 fn increment_user_action_count(db: TestDb) -> TestDb {
-  TestDb(
-    ..db,
-    user_action_count: db.user_action_count + 1,
-    write_steps: ["create_user_action", ..db.write_steps],
-  )
+  TestDb(..db, user_action_count: db.user_action_count + 1, write_steps: [
+    "create_user_action",
+    ..db.write_steps
+  ])
 }
 
 fn remove_users_by_account_id(

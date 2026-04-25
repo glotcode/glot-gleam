@@ -1,8 +1,7 @@
 import gleam/dynamic
-import gleam/option
 import glot_backend/context
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/authorization_domain
-import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -33,10 +32,13 @@ pub fn update_snippet(
     ),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.identity.id),
     action: api_action.UpdateSnippetAction,
+    actor: api_action_policy_domain.KnownUser(
+      user_id: session.user.identity.id,
+      account_state: session.user.account.identity.account_state,
+    ),
   ))
 
   use existing_snippet <- program.and_then(
@@ -51,12 +53,10 @@ pub fn update_snippet(
     existing_snippet.user.id,
   ))
 
-  use _ <- program.and_then(
-    case snippet_spam.ensure_clean(request.data) {
-      Ok(_) -> program.succeed(Nil)
-      Error(message) -> program.fail(error.ValidationError(message))
-    },
-  )
+  use _ <- program.and_then(case snippet_spam.ensure_clean(request.data) {
+    Ok(_) -> program.succeed(Nil)
+    Error(message) -> program.fail(error.ValidationError(message))
+  })
 
   let updated_snippet =
     snippet_model.Snippet(

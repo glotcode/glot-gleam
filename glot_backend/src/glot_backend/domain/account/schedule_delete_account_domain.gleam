@@ -2,7 +2,7 @@ import gleam/json
 import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
-import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
@@ -35,10 +35,13 @@ pub fn schedule_delete_account(
     ),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.identity.id),
     action: api_action.ScheduleDeleteAccountAction,
+    actor: api_action_policy_domain.KnownUser(
+      user_id: session.user.identity.id,
+      account_state: session.user.account.identity.account_state,
+    ),
   ))
 
   use _ <- program.and_then(require_no_pending_delete(ctx, session.user.account))
@@ -79,9 +82,9 @@ fn require_no_pending_delete(
         option.Some(job) -> {
           case is_pending_delete_job_for_account(job, account.identity.id) {
             True ->
-              program.fail(
-                error.ValidationError("Account deletion already scheduled"),
-              )
+              program.fail(error.ValidationError(
+                "Account deletion already scheduled",
+              ))
             False -> {
               let repaired_account =
                 account_model.set_delete_job_id(
@@ -95,7 +98,11 @@ fn require_no_pending_delete(
         }
         _ -> {
           let repaired_account =
-            account_model.set_delete_job_id(account.identity, option.None, ctx.timestamp)
+            account_model.set_delete_job_id(
+              account.identity,
+              option.None,
+              ctx.timestamp,
+            )
           auth_effect.update_account(repaired_account)
         }
       }
@@ -103,10 +110,15 @@ fn require_no_pending_delete(
   }
 }
 
-fn is_pending_delete_job_for_account(job: job_model.Job, account_id: Uuid) -> Bool {
-  case job.job_type == job_model.DeleteAccountJob
+fn is_pending_delete_job_for_account(
+  job: job_model.Job,
+  account_id: Uuid,
+) -> Bool {
+  case
+    job.job_type == job_model.DeleteAccountJob
     && job.status == job_model.Pending
-    && job.completed_at == option.None {
+    && job.completed_at == option.None
+  {
     True ->
       case
         json.parse(job.payload, job_model.delete_account_job_payload_decoder())

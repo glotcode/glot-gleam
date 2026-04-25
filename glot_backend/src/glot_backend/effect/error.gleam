@@ -2,6 +2,8 @@ import gleam/dynamic/decode
 import gleam/int
 import gleam/json
 import gleam/string
+import glot_core/api_action as api_action_model
+import glot_core/auth/account_model as account_state_model
 import glot_core/rate_limit.{type RateLimit}
 
 pub type DbQueryError {
@@ -46,6 +48,13 @@ pub type AuthorizationError {
   NotOwnerError
 }
 
+pub type AccountStateError {
+  ForbiddenAccountState(
+    action: api_action_model.ApiAction,
+    account_state: account_state_model.AccountState,
+  )
+}
+
 pub type Error {
   JsonParseError(json.DecodeError)
   DecodeError(List(decode.DecodeError))
@@ -61,6 +70,7 @@ pub type Error {
   SessionError(SessionError)
   ClientInfoError(ClientInfoError)
   AuthorizationError(AuthorizationError)
+  AccountStateError(AccountStateError)
 }
 
 pub fn to_string(err: Error) -> String {
@@ -90,6 +100,11 @@ pub fn to_string(err: Error) -> String {
     ClientInfoError(MissingUserIdAndIpError) ->
       "client_info_error:missing_user_id_and_ip"
     AuthorizationError(NotOwnerError) -> "authorization_error:not_owner"
+    AccountStateError(ForbiddenAccountState(action, account_state)) ->
+      "account_state_error:"
+      <> api_action_model.to_string(action)
+      <> ":"
+      <> account_state_model.account_state_to_string(account_state)
     RunError(PublicRunRequestError(message: message)) ->
       "run_error_public:" <> message
     RunError(InternalRunRequestError(message: message)) ->

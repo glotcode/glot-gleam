@@ -1,6 +1,6 @@
 import gleam/option
 import glot_backend/context
-import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
@@ -28,18 +28,19 @@ pub fn cancel_delete_account(ctx: context.Context) -> program_types.Program(Nil)
     ),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.identity.id),
     action: api_action.CancelDeleteAccountAction,
+    actor: api_action_policy_domain.KnownUser(
+      user_id: session.user.identity.id,
+      account_state: session.user.account.identity.account_state,
+    ),
   ))
 
-  use delete_job_id <- program.and_then(
-    program.from_option(
-      session.user.account.identity.delete_job_id,
-      error.ValidationError("Account deletion is not scheduled"),
-    ),
-  )
+  use delete_job_id <- program.and_then(program.from_option(
+    session.user.account.identity.delete_job_id,
+    error.ValidationError("Account deletion is not scheduled"),
+  ))
   use maybe_job <- program.and_then(job_effect.get_job_by_id(delete_job_id))
 
   let updated_account =
@@ -52,7 +53,8 @@ pub fn cancel_delete_account(ctx: context.Context) -> program_types.Program(Nil)
   case maybe_job {
     option.Some(job)
       if job.job_type == job_model.DeleteAccountJob
-      && job.status == job_model.Pending ->
+      && job.status == job_model.Pending
+    ->
       transaction_effect.run_all([
         job_effect.delete_job_tx(delete_job_id),
         auth_effect.update_account_tx(updated_account),

@@ -1,8 +1,7 @@
 import gleam/dynamic
-import gleam/option
 import glot_backend/context
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/authorization_domain
-import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -31,10 +30,13 @@ pub fn delete_snippet(
     ),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.identity.id),
     action: api_action.DeleteSnippetAction,
+    actor: api_action_policy_domain.KnownUser(
+      user_id: session.user.identity.id,
+      account_state: session.user.account.identity.account_state,
+    ),
   ))
 
   use existing_snippet <- program.and_then(

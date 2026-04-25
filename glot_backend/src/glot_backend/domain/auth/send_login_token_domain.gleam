@@ -2,7 +2,7 @@ import gleam/dynamic
 import gleam/option
 import glot_backend/context
 import glot_backend/crypto_token
-import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/job/job_effect
@@ -25,15 +25,16 @@ pub fn send_login_token(
     basic_effect.info(log.singleton(log.email("email", request.email))),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use maybe_user <- program.and_then(auth_effect.get_user_by_email(
+    request.email,
+  ))
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.None,
     action: api_action.SendLoginTokenAction,
+    actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 
-  use token <- program.and_then(
-    basic_effect.new_token(10, crypto_token.Numeric),
-  )
+  use token <- program.and_then(basic_effect.new_token(10, crypto_token.Numeric))
   use login_token_id <- program.and_then(basic_effect.uuid_v7())
   use job_id <- program.and_then(basic_effect.uuid_v7())
 

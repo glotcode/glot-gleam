@@ -1,6 +1,5 @@
-import gleam/option
 import glot_backend/context
-import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
@@ -23,10 +22,13 @@ pub fn logout(ctx: context.Context) -> program_types.Program(Nil) {
     ),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.identity.id),
     action: api_action.LogoutAction,
+    actor: api_action_policy_domain.KnownUser(
+      user_id: session.user.identity.id,
+      account_state: session.user.account.identity.account_state,
+    ),
   ))
 
   transaction_effect.run_all([

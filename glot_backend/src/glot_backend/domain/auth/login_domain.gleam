@@ -4,7 +4,7 @@ import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/crypto_token
-import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -36,10 +36,13 @@ pub fn login(
     ),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use maybe_user <- program.and_then(auth_effect.get_user_by_email(
+    request.email,
+  ))
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.None,
     action: api_action.LoginAction,
+    actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 
   use tokens <- program.and_then(auth_effect.list_login_tokens_by_email(
@@ -63,7 +66,8 @@ pub fn login(
     crypto_token.AlphaNumeric,
   ))
 
-  use user_outcome <- program.and_then(get_or_create_user(
+  use user_outcome <- program.and_then(update_or_create_user(
+    maybe_user,
     request.email,
     ctx.timestamp,
   ))
@@ -120,12 +124,11 @@ type UserOutcome {
   )
 }
 
-fn get_or_create_user(
+fn update_or_create_user(
+  maybe_user: option.Option(user_model.HydratedUser),
   email: EmailAddress,
   now: timestamp.Timestamp,
 ) -> program_types.Program(UserOutcome) {
-  use maybe_user <- program.and_then(auth_effect.get_user_by_email(email))
-
   case maybe_user {
     option.Some(existing_user) -> {
       program.succeed(

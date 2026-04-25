@@ -1,8 +1,7 @@
 import gleam/dynamic
-import gleam/option
 import gleam/string
 import glot_backend/context
-import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
@@ -13,8 +12,8 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
-import glot_core/auth/account_model
 import glot_core/auth/account_dto
+import glot_core/auth/account_model
 import glot_core/auth/user_model
 
 pub fn update_account(
@@ -33,20 +32,21 @@ pub fn update_account(
     ),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.Some(session.user.identity.id),
     action: api_action.UpdateAccountAction,
+    actor: api_action_policy_domain.KnownUser(
+      user_id: session.user.identity.id,
+      account_state: session.user.account.identity.account_state,
+    ),
   ))
 
   use _ <- program.and_then(case user_model.is_valid_username(username) {
     True -> program.succeed(Nil)
     False ->
-      program.fail(
-        error.ValidationError(
-          "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens",
-        ),
-      )
+      program.fail(error.ValidationError(
+        "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens",
+      ))
   })
 
   let user =

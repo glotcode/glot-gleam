@@ -1,7 +1,7 @@
 import gleam/dynamic
 import gleam/option
 import glot_backend/context
-import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/docker_run/docker_run_effect
@@ -18,11 +18,12 @@ pub fn run(
 ) -> program_types.Program(run.RunResult) {
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
   let maybe_session_id = option.map(maybe_session, fn(s) { s.identity.id })
+  let maybe_user = option.map(maybe_session, fn(session) { session.user })
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: option.map(maybe_session, fn(s) { s.user.identity.id }),
     action: api_action.RunAction,
+    actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 
   use result <- program.and_then(docker_run_effect.run_code(ctx.config, request))

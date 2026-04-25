@@ -1,6 +1,6 @@
 import gleam/option
 import glot_backend/context
-import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/program
@@ -28,10 +28,19 @@ pub fn get_session(
     ),
   )
 
-  use user_action <- program.and_then(rate_limit_domain.enforce(
+  let actor = case maybe_session {
+    option.Some(session) ->
+      api_action_policy_domain.KnownUser(
+        user_id: session.user.identity.id,
+        account_state: session.user.account.identity.account_state,
+      )
+    option.None -> api_action_policy_domain.Anonymous
+  }
+
+  use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    user_id: maybe_user_id,
     action: api_action.GetSessionAction,
+    actor: actor,
   ))
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
