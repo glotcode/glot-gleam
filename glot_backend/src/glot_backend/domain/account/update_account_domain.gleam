@@ -26,7 +26,7 @@ pub fn update_account(
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
-        log.uuid("session_id", session.id),
+        log.uuid("session_id", session.identity.id),
         log.uuid("user_id", session.user.identity.id),
       ]),
     ),

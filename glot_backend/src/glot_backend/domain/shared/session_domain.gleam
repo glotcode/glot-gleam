@@ -47,7 +47,7 @@ fn validate_session(
 ) -> Result(session_model.HydratedSession, error.Error) {
   let expired =
     is_expired(
-      session.created_at,
+      session.identity.created_at,
       ctx.timestamp,
       ctx.config.auth.session_token_max_age,
     )

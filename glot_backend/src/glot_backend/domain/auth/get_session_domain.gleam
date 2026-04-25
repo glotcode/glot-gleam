@@ -14,7 +14,8 @@ pub fn get_session(
   ctx: context.Context,
 ) -> program_types.Program(option.Option(session_dto.SessionResponse)) {
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
-  let maybe_session_id = option.map(maybe_session, fn(session) { session.id })
+  let maybe_session_id =
+    option.map(maybe_session, fn(session) { session.identity.id })
   let maybe_user_id =
     option.map(maybe_session, fn(session) { session.user.identity.id })
 

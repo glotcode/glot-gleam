@@ -369,7 +369,14 @@ fn session_from_row(
   )
 
   Ok(session_model.HydratedSession(
-    id: uuid_helpers.from_bit_array(row.id),
+    identity: session_model.Session(
+      id: uuid_helpers.from_bit_array(row.id),
+      user_id: uuid_helpers.from_bit_array(row.user_id),
+      token: row.token,
+      ip: row.ip,
+      user_agent: row.user_agent,
+      created_at: row.created_at,
+    ),
     user: user_model.HydratedUser(
       identity: user_model.User(
         id: uuid_helpers.from_bit_array(row.user_id),
@@ -390,9 +397,5 @@ fn session_from_row(
         updated_at: row.user_updated_at,
       ),
     ),
-    token: row.token,
-    ip: row.ip,
-    user_agent: row.user_agent,
-    created_at: row.created_at,
   ))
 }

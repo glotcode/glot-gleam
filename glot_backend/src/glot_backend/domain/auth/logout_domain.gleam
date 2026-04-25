@@ -17,7 +17,7 @@ pub fn logout(ctx: context.Context) -> program_types.Program(Nil) {
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
-        log.uuid("session_id", session.id),
+        log.uuid("session_id", session.identity.id),
         log.uuid("user_id", session.user.identity.id),
       ]),
     ),
@@ -30,7 +30,7 @@ pub fn logout(ctx: context.Context) -> program_types.Program(Nil) {
   ))
 
   transaction_effect.run_all([
-    auth_effect.delete_session_tx(session.id),
+    auth_effect.delete_session_tx(session.identity.id),
     user_action_effect.create_user_action_tx(user_action),
   ])
 }

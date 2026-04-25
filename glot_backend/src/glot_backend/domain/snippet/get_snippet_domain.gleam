@@ -19,7 +19,7 @@ pub fn get_snippet(
   request: snippet_dto.GetSnippetRequest,
 ) -> program_types.Program(snippet_dto.SnippetResponse) {
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
-  let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
+  let maybe_session_id = option.map(maybe_session, fn(s) { s.identity.id })
   let maybe_user_id = option.map(maybe_session, fn(s) { s.user.identity.id })
 
   use _ <- program.and_then(

@@ -17,7 +17,7 @@ pub fn run(
   request: run.RunRequest,
 ) -> program_types.Program(run.RunResult) {
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
-  let maybe_session_id = option.map(maybe_session, fn(s) { s.id })
+  let maybe_session_id = option.map(maybe_session, fn(s) { s.identity.id })
 
   use user_action <- program.and_then(rate_limit_domain.enforce(
     ctx: ctx,
