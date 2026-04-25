@@ -7,6 +7,7 @@ import gleeunit
 import glot_backend/context
 import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
+import glot_backend/domain/auth/login_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_algebra
@@ -19,6 +20,8 @@ import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 import glot_core/auth/account_model
+import glot_core/auth/login_dto
+import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
@@ -83,6 +86,53 @@ pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
     run_test_program(session_domain.require_session(ctx), ctx, empty_test_db())
 
   assert run_result == Error(error.SessionError(error.SessionNotFoundError))
+}
+
+pub fn login_creates_account_user_and_session_in_foreign_key_order_test() {
+  let login_token =
+    login_token_model.LoginToken(
+      id: must_uuid("00000000-0000-0000-0000-000000000501"),
+      email: test_email_address(),
+      token: "login-token",
+      created_at: test_timestamp(),
+      used_at: option.None,
+    )
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      login_tokens: dict.from_list([#(uuid_key(login_token.id), login_token)]),
+      next_uuids: [
+        must_uuid("00000000-0000-0000-0000-000000000502"),
+        must_uuid("00000000-0000-0000-0000-000000000503"),
+        must_uuid("00000000-0000-0000-0000-000000000504"),
+      ],
+    )
+  let ctx =
+    context.Context(
+      ..test_context(),
+      request_id: test_request_id(),
+      timestamp: test_timestamp(),
+      client_info: context.ClientInfo(
+        session_token: option.None,
+        ip: option.Some("127.0.0.1"),
+        user_agent: option.Some("gleeunit"),
+      ),
+    )
+  let request =
+    login_dto.LoginRequest(email: test_email_address(), token: "login-token")
+
+  let #(run_result, updated_db) =
+    run_test_program(login_domain.login(ctx, request), ctx, db)
+
+  assert run_result == Ok("random")
+  assert list.reverse(updated_db.write_steps)
+    == [
+      "update_login_token",
+      "create_account",
+      "create_user",
+      "create_session",
+      "create_user_action",
+    ]
 }
 
 pub fn snippet_spam_filter_allows_normal_code_test() {
@@ -290,11 +340,13 @@ type TestDb {
   TestDb(
     accounts: Dict(String, account_model.Account),
     users: Dict(String, user_model.User),
+    login_tokens: Dict(String, login_token_model.LoginToken),
     sessions: Dict(String, session_model.Session),
     session_ids_by_token: Dict(String, String),
     jobs: Dict(String, job_model.Job),
     snippets: Dict(String, snippet_model.Snippet),
     user_action_count: Int,
+    write_steps: List(String),
     deletion_steps: List(String),
     next_uuids: List(uuid.Uuid),
     system_time: timestamp.Timestamp,
@@ -354,6 +406,7 @@ fn integration_fixture(
     TestDb(
       accounts: dict.from_list([#(uuid_key(account.id), account)]),
       users: dict.from_list([#(uuid_key(user.id), user)]),
+      login_tokens: dict.new(),
       sessions: dict.from_list([#(uuid_key(session.id), session)]),
       session_ids_by_token: dict.from_list([
         #(session.token, uuid_key(session.id)),
@@ -361,6 +414,7 @@ fn integration_fixture(
       jobs: dict.from_list(list.map(jobs, fn(job) { #(uuid_key(job.id), job) })),
       snippets: dict.from_list([#(uuid_key(snippet.id), snippet)]),
       user_action_count: 0,
+      write_steps: [],
       deletion_steps: [],
       next_uuids: next_uuids,
       system_time: test_system_time(),
@@ -391,11 +445,13 @@ fn empty_test_db() -> TestDb {
   TestDb(
     accounts: dict.new(),
     users: dict.new(),
+    login_tokens: dict.new(),
     sessions: dict.new(),
     session_ids_by_token: dict.new(),
     jobs: dict.new(),
     snippets: dict.new(),
     user_action_count: 0,
+    write_steps: [],
     deletion_steps: [],
     next_uuids: [],
     system_time: test_system_time(),
@@ -530,11 +586,8 @@ fn run_test_auth_effect(
   case effect {
     auth_algebra.GetUserByEmail(email:, next:) ->
       run_test_program(next(find_user_by_email(db, email)), ctx, db)
-    auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) -> {
-      let _ = email
-      let _ = limit
-      run_test_program(next([]), ctx, db)
-    }
+    auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
+      run_test_program(next(find_login_tokens_by_email(db, email, limit)), ctx, db)
     auth_algebra.GetSessionByToken(token:, next:) ->
       run_test_program(next(find_hydrated_session(db, token)), ctx, db)
     auth_algebra.CreateUser(user: user, next: next) ->
@@ -564,13 +617,10 @@ fn run_test_auth_effect(
     auth_algebra.DeleteSession(id: id, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, delete_session_by_id(db, id))
     auth_algebra.CreateLoginToken(login_token:, next:) -> {
-      let _ = login_token
-      run_test_program(next(Ok(Nil)), ctx, db)
+      run_test_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
     }
-    auth_algebra.UpdateLoginToken(login_token:, next:) -> {
-      let _ = login_token
-      run_test_program(next(Ok(Nil)), ctx, db)
-    }
+    auth_algebra.UpdateLoginToken(login_token:, next:) ->
+      run_test_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
   }
 }
 
@@ -582,11 +632,8 @@ fn run_test_auth_tx_effect(
   case effect {
     auth_algebra.GetUserByEmail(email:, next:) ->
       run_test_tx_program(next(find_user_by_email(db, email)), ctx, db)
-    auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) -> {
-      let _ = email
-      let _ = limit
-      run_test_tx_program(next([]), ctx, db)
-    }
+    auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
+      run_test_tx_program(next(find_login_tokens_by_email(db, email, limit)), ctx, db)
     auth_algebra.GetSessionByToken(token:, next:) ->
       run_test_tx_program(next(find_hydrated_session(db, token)), ctx, db)
     auth_algebra.CreateUser(user: user, next: next) ->
@@ -620,13 +667,10 @@ fn run_test_auth_tx_effect(
     auth_algebra.DeleteSession(id: id, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, delete_session_by_id(db, id))
     auth_algebra.CreateLoginToken(login_token:, next:) -> {
-      let _ = login_token
-      run_test_tx_program(next(Ok(Nil)), ctx, db)
+      run_test_tx_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
     }
-    auth_algebra.UpdateLoginToken(login_token:, next:) -> {
-      let _ = login_token
-      run_test_tx_program(next(Ok(Nil)), ctx, db)
-    }
+    auth_algebra.UpdateLoginToken(login_token:, next:) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
   }
 }
 
@@ -824,6 +868,25 @@ fn find_session(db: TestDb, session_id: String) -> session_model.Session {
   session
 }
 
+fn find_login_tokens_by_email(
+  db: TestDb,
+  email: email_address_model.EmailAddress,
+  limit: Int,
+) -> List(login_token_model.LoginToken) {
+  let _ = limit
+
+  db.login_tokens
+  |> dict.to_list
+  |> list.filter(fn(entry) {
+    let #(_, login_token) = entry
+    login_token.email == email
+  })
+  |> list.map(fn(entry) {
+    let #(_, login_token) = entry
+    login_token
+  })
+}
+
 fn find_hydrated_session(
   db: TestDb,
   token: String,
@@ -868,13 +931,18 @@ fn session_belongs_to_account(
 }
 
 fn insert_user(db: TestDb, user: user_model.User) -> TestDb {
-  TestDb(..db, users: dict.insert(db.users, uuid_key(user.id), user))
+  TestDb(
+    ..db,
+    users: dict.insert(db.users, uuid_key(user.id), user),
+    write_steps: ["create_user", ..db.write_steps],
+  )
 }
 
 fn insert_account(db: TestDb, account: account_model.Account) -> TestDb {
   TestDb(
     ..db,
     accounts: dict.insert(db.accounts, uuid_key(account.id), account),
+    write_steps: ["create_account", ..db.write_steps],
   )
 }
 
@@ -887,6 +955,22 @@ fn insert_session(db: TestDb, session: session_model.Session) -> TestDb {
       session.token,
       uuid_key(session.id),
     ),
+    write_steps: ["create_session", ..db.write_steps],
+  )
+}
+
+fn upsert_login_token(
+  db: TestDb,
+  login_token: login_token_model.LoginToken,
+) -> TestDb {
+  TestDb(
+    ..db,
+    login_tokens: dict.insert(
+      db.login_tokens,
+      uuid_key(login_token.id),
+      login_token,
+    ),
+    write_steps: ["update_login_token", ..db.write_steps],
   )
 }
 
@@ -974,7 +1058,11 @@ fn delete_snippets_by_account_id(db: TestDb, account_id: uuid.Uuid) -> TestDb {
 }
 
 fn increment_user_action_count(db: TestDb) -> TestDb {
-  TestDb(..db, user_action_count: db.user_action_count + 1)
+  TestDb(
+    ..db,
+    user_action_count: db.user_action_count + 1,
+    write_steps: ["create_user_action", ..db.write_steps],
+  )
 }
 
 fn remove_users_by_account_id(

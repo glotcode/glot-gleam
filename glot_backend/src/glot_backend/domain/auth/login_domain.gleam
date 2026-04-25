@@ -143,16 +143,12 @@ fn get_or_create_user(
       let new_user = new_user(user_id, account_id, email, now)
 
       program.succeed(
-        UserOutcome(
-          user: new_user,
-          is_new_user: True,
-          persist_fn: fn(user) {
-            use _ <- transaction_program.and_then(auth_effect.create_account_tx(
-              new_account,
-            ))
-            auth_effect.create_user_tx(user)
-          },
-        ),
+        UserOutcome(user: new_user, is_new_user: True, persist_fn: fn(user) {
+          use _ <- transaction_program.and_then(auth_effect.create_account_tx(
+            new_account,
+          ))
+          auth_effect.create_user_tx(user)
+        }),
       )
     }
   }
