@@ -1,6 +1,7 @@
 import gleam/option
 import glot_backend/effect/error
 import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet}
+import youid/uuid.{type Uuid}
 
 pub type SnippetEffect(next) {
   GetSnippetById(
@@ -13,6 +14,10 @@ pub type SnippetEffect(next) {
   )
   DeleteSnippet(
     id: BitArray,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  DeleteSnippetsByAccountId(
+    account_id: Uuid,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   CreateSnippet(
@@ -33,6 +38,11 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
       GetSnippetBySlug(slug, next: fn(value) { f(next(value)) })
     DeleteSnippet(id, next) ->
       DeleteSnippet(id, next: fn(value) { f(next(value)) })
+    DeleteSnippetsByAccountId(account_id: account_id, next: next) ->
+      DeleteSnippetsByAccountId(
+        account_id: account_id,
+        next: fn(value) { f(next(value)) },
+      )
     CreateSnippet(snippet, next) ->
       CreateSnippet(snippet, next: fn(value) { f(next(value)) })
     UpdateSnippet(snippet, next) ->
@@ -44,6 +54,7 @@ pub type EffectName {
   GetSnippetByIdEffectName
   GetSnippetBySlugEffectName
   DeleteSnippetEffectName
+  DeleteSnippetsByAccountIdEffectName
   CreateSnippetEffectName
   UpdateSnippetEffectName
 }
@@ -53,6 +64,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     GetSnippetByIdEffectName -> "get_snippet_by_id"
     GetSnippetBySlugEffectName -> "get_snippet_by_slug"
     DeleteSnippetEffectName -> "delete_snippet"
+    DeleteSnippetsByAccountIdEffectName -> "delete_snippets_by_account_id"
     CreateSnippetEffectName -> "create_snippet"
     UpdateSnippetEffectName -> "update_snippet"
   }

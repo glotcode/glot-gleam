@@ -8,6 +8,7 @@ SELECT
   accounts.account_state,
   accounts.account_state_reason,
   accounts.account_tier,
+  accounts.delete_job_id,
   users.last_login_at,
   users.created_at,
   users.updated_at

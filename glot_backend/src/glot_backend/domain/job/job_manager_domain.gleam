@@ -2,6 +2,7 @@ import gleam/int
 import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
+import glot_backend/domain/account/delete_account_domain
 import glot_backend/domain/email/send_email_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -63,6 +64,12 @@ fn delegate_job(
         job.payload,
       ))
       send_email_domain.send_email(ctx, email)
+    }
+    job_model.DeleteAccountJob -> {
+      use account_id <- program.and_then(delete_account_domain.account_id_from_json(
+        job.payload,
+      ))
+      delete_account_domain.delete_account(ctx, account_id)
     }
   }
 }

@@ -151,6 +151,14 @@ fn rate_limits_config_from_dict(
       api_action.UpdateAccountAction,
       lookup_rate_limits(values, "UPDATE_ACCOUNT"),
     ),
+    #(
+      api_action.ScheduleDeleteAccountAction,
+      lookup_rate_limits(values, "SCHEDULE_DELETE_ACCOUNT"),
+    ),
+    #(
+      api_action.CancelDeleteAccountAction,
+      lookup_rate_limits(values, "CANCEL_DELETE_ACCOUNT"),
+    ),
     #(api_action.GetSnippetAction, lookup_rate_limits(values, "GET_SNIPPET")),
     #(
       api_action.SendLoginTokenAction,

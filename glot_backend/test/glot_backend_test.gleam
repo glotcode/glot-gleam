@@ -280,8 +280,10 @@ fn test_handlers() -> handlers.Handlers {
       get_next_job: fn(_: timestamp.Timestamp, _: job_model.Status) {
         Ok(option.None)
       },
+      get_job_by_id: fn(_) { Ok(option.None) },
       create_job: fn(_) { Ok(Nil) },
       update_job: fn(_) { Ok(Nil) },
+      delete_job: fn(_) { Ok(Nil) },
     ),
     auth: auth_handlers.AuthHandlers(
       get_user_by_email: fn(_, _) { Ok(option.None) },
@@ -289,7 +291,11 @@ fn test_handlers() -> handlers.Handlers {
       get_session_by_token: fn(_, _) { Ok(option.None) },
       create_user: fn(_) { Ok(Nil) },
       create_account: fn(_) { Ok(Nil) },
+      update_account: fn(_) { Ok(Nil) },
       update_user: fn(_) { Ok(Nil) },
+      delete_sessions_by_account_id: fn(_) { Ok(Nil) },
+      delete_users_by_account_id: fn(_) { Ok(Nil) },
+      delete_account: fn(_) { Ok(Nil) },
       create_session: fn(_) { Ok(Nil) },
       delete_session: fn(_) { Ok(Nil) },
       create_login_token: fn(_) { Ok(Nil) },
@@ -299,6 +305,7 @@ fn test_handlers() -> handlers.Handlers {
       get_snippet_by_id: fn(_) { Ok(option.None) },
       get_snippet_by_slug: fn(_) { Ok(option.None) },
       delete_snippet: fn(_) { Ok(Nil) },
+      delete_snippets_by_account_id: fn(_) { Ok(Nil) },
       create_snippet: fn(_) { Ok(Nil) },
       update_snippet: fn(_) { Ok(Nil) },
     ),

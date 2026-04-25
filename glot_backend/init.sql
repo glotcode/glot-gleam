@@ -1,3 +1,24 @@
+-- JOBS
+
+CREATE TABLE IF NOT EXISTS jobs (
+  id UUID PRIMARY KEY, -- Job id.
+  request_id UUID NULL, -- Originating request id for logging correlation. Has a value if the job was enqueued during request processing.
+  job_type TEXT NOT NULL, -- Handler discriminator.
+  payload JSONB NOT NULL, -- Encoded job input.
+  status TEXT NOT NULL, -- Job status.
+  attempts INT NOT NULL DEFAULT 0, -- Attempts so far.
+  max_attempts INT NOT NULL, -- Retry limit.
+  timeout_seconds INT NOT NULL, -- Max run time in seconds.
+  run_at TIMESTAMPTZ NOT NULL, -- Eligible to run at.
+  started_at TIMESTAMPTZ NULL, -- Started processing at.
+  completed_at TIMESTAMPTZ NULL, -- Completed successfully at.
+  last_error TEXT NULL, -- Last failure message.
+  created_at TIMESTAMPTZ NOT NULL, -- Inserted at.
+  updated_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_jobs_status_run_at ON jobs(status, run_at);
+
 -- ACCOUNTS
 
 CREATE TABLE IF NOT EXISTS accounts (
@@ -5,6 +26,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   account_state TEXT NOT NULL,
   account_state_reason TEXT,
   account_tier TEXT NOT NULL,
+  delete_job_id UUID NULL REFERENCES jobs(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL
 );
@@ -142,24 +164,3 @@ CREATE TABLE IF NOT EXISTS job_log (
 
 CREATE INDEX idx_job_log_created_at ON job_log(created_at);
 CREATE INDEX idx_job_log_job_id ON job_log(job_id);
-
--- JOBS
-
-CREATE TABLE IF NOT EXISTS jobs (
-  id UUID PRIMARY KEY, -- Job id.
-  request_id UUID NULL, -- Originating request id for logging correlation. Has a value if the job was enqueued during request processing.
-  job_type TEXT NOT NULL, -- Handler discriminator.
-  payload JSONB NOT NULL, -- Encoded job input.
-  status TEXT NOT NULL, -- Job status.
-  attempts INT NOT NULL DEFAULT 0, -- Attempts so far.
-  max_attempts INT NOT NULL, -- Retry limit.
-  timeout_seconds INT NOT NULL, -- Max run time in seconds.
-  run_at TIMESTAMPTZ NOT NULL, -- Eligible to run at.
-  started_at TIMESTAMPTZ NULL, -- Started processing at.
-  completed_at TIMESTAMPTZ NULL, -- Completed successfully at.
-  last_error TEXT NULL, -- Last failure message.
-  created_at TIMESTAMPTZ NOT NULL, -- Inserted at.
-  updated_at TIMESTAMPTZ NOT NULL
-);
-
-CREATE INDEX idx_jobs_status_run_at ON jobs(status, run_at);

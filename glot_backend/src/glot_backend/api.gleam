@@ -7,7 +7,9 @@ import gleam/json
 import gleam/option
 import gleam/string
 import glot_backend/context
+import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/get_account_domain
+import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/account/update_account_domain
 import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
@@ -98,6 +100,12 @@ fn handle_api_request(
       update_account_domain.update_account(ctx, request)
       |> program.map(AccountResponse)
     }
+    api_action.ScheduleDeleteAccountAction ->
+      schedule_delete_account_domain.schedule_delete_account(ctx)
+      |> program.map(fn(_) { NoContentResponse })
+    api_action.CancelDeleteAccountAction ->
+      cancel_delete_account_domain.cancel_delete_account(ctx)
+      |> program.map(fn(_) { NoContentResponse })
     api_action.GetSnippetAction -> {
       use request <- program.and_then(get_snippet_domain.request_from_dynamic(
         api_request.data,

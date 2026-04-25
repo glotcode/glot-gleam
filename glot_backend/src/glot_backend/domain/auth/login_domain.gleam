@@ -217,6 +217,7 @@ fn new_account(id: Uuid, now: timestamp.Timestamp) -> account_model.Account {
     account_state: account_model.Active,
     account_state_reason: option.None,
     account_tier: account_model.FreeTier,
+    delete_job_id: option.None,
     created_at: now,
     updated_at: now,
   )

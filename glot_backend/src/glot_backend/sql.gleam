@@ -127,6 +127,80 @@ pub fn insert_user_action(
   ])
 }
 
+pub type GetJobById {
+  GetJobById(
+    id: BitArray,
+    request_id: Option(BitArray),
+    job_type: String,
+    payload: String,
+    status: String,
+    attempts: Int,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    run_at: Timestamp,
+    started_at: Option(Timestamp),
+    completed_at: Option(Timestamp),
+    last_error: Option(String),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn get_job_by_id(id id: BitArray) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  run_at,
+  started_at,
+  completed_at,
+  last_error,
+  created_at,
+  updated_at
+FROM jobs
+WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)], get_job_by_id_decoder())
+}
+
+pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use job_type <- decode.field(2, decode.string)
+  use payload <- decode.field(3, decode.string)
+  use status <- decode.field(4, decode.string)
+  use attempts <- decode.field(5, decode.int)
+  use max_attempts <- decode.field(6, decode.int)
+  use timeout_seconds <- decode.field(7, decode.int)
+  use run_at <- decode.field(8, dev.datetime_decoder())
+  use started_at <- decode.field(9, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(11, decode.optional(decode.string))
+  use created_at <- decode.field(12, dev.datetime_decoder())
+  use updated_at <- decode.field(13, dev.datetime_decoder())
+  decode.success(GetJobById(
+    id:,
+    request_id:,
+    job_type:,
+    payload:,
+    status:,
+    attempts:,
+    max_attempts:,
+    timeout_seconds:,
+    run_at:,
+    started_at:,
+    completed_at:,
+    last_error:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
 pub type ListSnippetsByUser {
   ListSnippetsByUser(
     id: BitArray,
@@ -225,6 +299,7 @@ pub type GetUserByEmail {
     account_state: String,
     account_state_reason: Option(String),
     account_tier: String,
+    delete_job_id: Option(BitArray),
     last_login_at: Timestamp,
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -242,6 +317,7 @@ pub fn get_user_by_email(email email: String) {
   accounts.account_state,
   accounts.account_state_reason,
   accounts.account_tier,
+  accounts.delete_job_id,
   users.last_login_at,
   users.created_at,
   users.updated_at
@@ -260,9 +336,10 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
   use account_state <- decode.field(5, decode.string)
   use account_state_reason <- decode.field(6, decode.optional(decode.string))
   use account_tier <- decode.field(7, decode.string)
-  use last_login_at <- decode.field(8, dev.datetime_decoder())
-  use created_at <- decode.field(9, dev.datetime_decoder())
-  use updated_at <- decode.field(10, dev.datetime_decoder())
+  use delete_job_id <- decode.field(8, decode.optional(decode.bit_array))
+  use last_login_at <- decode.field(9, dev.datetime_decoder())
+  use created_at <- decode.field(10, dev.datetime_decoder())
+  use updated_at <- decode.field(11, dev.datetime_decoder())
   decode.success(GetUserByEmail(
     id:,
     account_id:,
@@ -272,6 +349,7 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
     account_state:,
     account_state_reason:,
     account_tier:,
+    delete_job_id:,
     last_login_at:,
     created_at:,
     updated_at:,
@@ -288,6 +366,7 @@ pub type GetUserById {
     account_state: String,
     account_state_reason: Option(String),
     account_tier: String,
+    delete_job_id: Option(BitArray),
     last_login_at: Timestamp,
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -305,6 +384,7 @@ pub fn get_user_by_id(id id: BitArray) {
   accounts.account_state,
   accounts.account_state_reason,
   accounts.account_tier,
+  accounts.delete_job_id,
   users.last_login_at,
   users.created_at,
   users.updated_at
@@ -323,9 +403,10 @@ pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
   use account_state <- decode.field(5, decode.string)
   use account_state_reason <- decode.field(6, decode.optional(decode.string))
   use account_tier <- decode.field(7, decode.string)
-  use last_login_at <- decode.field(8, dev.datetime_decoder())
-  use created_at <- decode.field(9, dev.datetime_decoder())
-  use updated_at <- decode.field(10, dev.datetime_decoder())
+  use delete_job_id <- decode.field(8, decode.optional(decode.bit_array))
+  use last_login_at <- decode.field(9, dev.datetime_decoder())
+  use created_at <- decode.field(10, dev.datetime_decoder())
+  use updated_at <- decode.field(11, dev.datetime_decoder())
   decode.success(GetUserById(
     id:,
     account_id:,
@@ -335,6 +416,7 @@ pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
     account_state:,
     account_state_reason:,
     account_tier:,
+    delete_job_id:,
     last_login_at:,
     created_at:,
     updated_at:,
@@ -559,6 +641,17 @@ pub fn insert_job(
   ])
 }
 
+pub fn delete_snippets_by_account_id(account_id account_id: BitArray) {
+  let sql =
+    "DELETE FROM snippets
+WHERE user_id IN (
+  SELECT id
+  FROM users
+  WHERE account_id = $1
+)"
+  #(sql, [dev.ParamBitArray(account_id)])
+}
+
 pub fn insert_snippet(
   id id: BitArray,
   slug slug: String,
@@ -703,6 +796,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
   ])
 }
 
+pub fn delete_account(id id: BitArray) {
+  let sql =
+    "DELETE FROM accounts
+WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)])
+}
+
 pub type CountUserActionsByUser {
   CountUserActionsByUser(unit: String, count: Int)
 }
@@ -747,6 +847,17 @@ pub fn count_user_actions_by_user_decoder() -> decode.Decoder(
   decode.success(CountUserActionsByUser(unit:, count:))
 }
 
+pub fn delete_sessions_by_account_id(account_id account_id: BitArray) {
+  let sql =
+    "DELETE FROM sessions
+WHERE user_id IN (
+  SELECT id
+  FROM users
+  WHERE account_id = $1
+)"
+  #(sql, [dev.ParamBitArray(account_id)])
+}
+
 pub type GetSessionByToken {
   GetSessionByToken(
     id: BitArray,
@@ -762,6 +873,7 @@ pub type GetSessionByToken {
     user_account_state: String,
     user_account_state_reason: Option(String),
     user_account_tier: String,
+    user_account_delete_job_id: Option(BitArray),
     user_last_login_at: Timestamp,
     user_created_at: Timestamp,
     user_updated_at: Timestamp,
@@ -784,6 +896,7 @@ pub fn get_session_by_token(token token: String) {
   accounts.account_state AS user_account_state,
   accounts.account_state_reason AS user_account_state_reason,
   accounts.account_tier AS user_account_tier,
+  accounts.delete_job_id AS user_account_delete_job_id,
   users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at
@@ -811,9 +924,13 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
     decode.optional(decode.string),
   )
   use user_account_tier <- decode.field(12, decode.string)
-  use user_last_login_at <- decode.field(13, dev.datetime_decoder())
-  use user_created_at <- decode.field(14, dev.datetime_decoder())
-  use user_updated_at <- decode.field(15, dev.datetime_decoder())
+  use user_account_delete_job_id <- decode.field(
+    13,
+    decode.optional(decode.bit_array),
+  )
+  use user_last_login_at <- decode.field(14, dev.datetime_decoder())
+  use user_created_at <- decode.field(15, dev.datetime_decoder())
+  use user_updated_at <- decode.field(16, dev.datetime_decoder())
   decode.success(GetSessionByToken(
     id:,
     token:,
@@ -828,6 +945,7 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
     user_account_state:,
     user_account_state_reason:,
     user_account_tier:,
+    user_account_delete_job_id:,
     user_last_login_at:,
     user_created_at:,
     user_updated_at:,
@@ -851,6 +969,51 @@ pub fn insert_session(
     dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
+  ])
+}
+
+pub fn delete_users_by_account_id(account_id account_id: BitArray) {
+  let sql =
+    "DELETE FROM users
+WHERE account_id = $1"
+  #(sql, [dev.ParamBitArray(account_id)])
+}
+
+pub fn delete_job(id id: BitArray) {
+  let sql =
+    "DELETE FROM jobs
+WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)])
+}
+
+pub fn update_account(
+  id id: BitArray,
+  account_state account_state: String,
+  account_state_reason account_state_reason: Option(String),
+  account_tier account_tier: String,
+  delete_job_id delete_job_id: Option(BitArray),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "UPDATE accounts
+SET account_state = $2,
+    account_state_reason = $3,
+    account_tier = $4,
+    delete_job_id = $5,
+    created_at = $6,
+    updated_at = $7
+WHERE id = $1"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(account_state),
+    dev.ParamNullable(
+      option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamString(account_tier),
+    dev.ParamNullable(option.map(delete_job_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
   ])
 }
 
@@ -894,11 +1057,12 @@ pub fn insert_account(
   account_state account_state: String,
   account_state_reason account_state_reason: Option(String),
   account_tier account_tier: String,
+  delete_job_id delete_job_id: Option(BitArray),
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
 ) {
   let sql =
-    "INSERT INTO accounts (id, account_state, account_state_reason, account_tier, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)"
+    "INSERT INTO accounts (id, account_state, account_state_reason, account_tier, delete_job_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamString(account_state),
@@ -906,6 +1070,7 @@ pub fn insert_account(
       option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
     ),
     dev.ParamString(account_tier),
+    dev.ParamNullable(option.map(delete_job_id, fn(v) { dev.ParamBitArray(v) })),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
   ])

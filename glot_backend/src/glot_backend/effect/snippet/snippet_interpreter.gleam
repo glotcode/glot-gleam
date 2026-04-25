@@ -52,6 +52,21 @@ pub fn run(
         ),
       )
     }
+    snippet_algebra.DeleteSnippetsByAccountId(account_id:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.snippet.delete_snippets_by_account_id(account_id)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.SnippetEffectName(
+            snippet_algebra.DeleteSnippetsByAccountIdEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     snippet_algebra.CreateSnippet(snippet_value, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.create_snippet(snippet_value)

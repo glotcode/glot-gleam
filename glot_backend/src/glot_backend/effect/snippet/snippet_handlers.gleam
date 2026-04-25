@@ -21,6 +21,7 @@ pub type SnippetHandlers {
     get_snippet_by_slug: fn(String) ->
       Result(option.Option(HydratedSnippet), error.DbQueryError),
     delete_snippet: fn(BitArray) -> Result(Nil, error.DbCommandError),
+    delete_snippets_by_account_id: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
     create_snippet: fn(Snippet) -> Result(Nil, error.DbCommandError),
     update_snippet: fn(Snippet) -> Result(Nil, error.DbCommandError),
   )
@@ -31,6 +32,9 @@ pub fn new(db: pog.Connection) -> SnippetHandlers {
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
     get_snippet_by_slug: fn(slug) { get_snippet_by_slug(db, slug) },
     delete_snippet: fn(id) { delete_snippet(db, id) },
+    delete_snippets_by_account_id: fn(account_id) {
+      delete_snippets_by_account_id(db, account_id)
+    },
     create_snippet: fn(snippet) { create_snippet(db, snippet) },
     update_snippet: fn(snippet) { update_snippet(db, snippet) },
   )
@@ -109,6 +113,20 @@ pub fn delete_snippet(
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(db, sql.delete_snippet(id), to_error)
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_snippets_by_account_id(
+  db: pog.Connection,
+  account_id: uuid.Uuid,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_snippets_by_account_id(uuid.to_bit_array(account_id)),
+    to_error,
+  )
   |> result.map(fn(_) { Nil })
 }
 

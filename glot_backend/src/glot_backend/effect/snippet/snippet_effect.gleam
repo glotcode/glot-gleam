@@ -38,6 +38,12 @@ pub fn delete(id: uuid.Uuid) -> program_types.Program(Nil) {
   program_types.Impure(program_types.DbEffect(delete_effect(id, command_next)))
 }
 
+pub fn delete_by_account_id(id id: uuid.Uuid) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_by_account_id_effect(id, command_next)),
+  )
+}
+
 fn command_next(
   result: Result(Nil, error.DbCommandError),
 ) -> program_types.Program(Nil) {
@@ -73,6 +79,12 @@ pub fn create_tx(
 
 pub fn delete_tx(id: uuid.Uuid) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(delete_effect(id, tx_command_next))
+}
+
+pub fn delete_by_account_id_tx(
+  id id: uuid.Uuid,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_by_account_id_effect(id, tx_command_next))
 }
 
 pub fn update_tx(
@@ -135,6 +147,16 @@ fn delete_effect(
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.DeleteSnippet(
     id: uuid.to_bit_array(id),
+    next: next,
+  ))
+}
+
+fn delete_by_account_id_effect(
+  id: uuid.Uuid,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.SnippetEffect(snippet_algebra.DeleteSnippetsByAccountId(
+    account_id: id,
     next: next,
   ))
 }

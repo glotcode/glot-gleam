@@ -13,6 +13,7 @@ SELECT
   accounts.account_state AS user_account_state,
   accounts.account_state_reason AS user_account_state_reason,
   accounts.account_tier AS user_account_tier,
+  accounts.delete_job_id AS user_account_delete_job_id,
   users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at

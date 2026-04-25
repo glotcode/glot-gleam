@@ -14,8 +14,11 @@ pub type JobHandlers {
   JobHandlers(
     get_next_job: fn(Timestamp, job_model.Status) ->
       Result(option.Option(job_model.Job), error.DbQueryError),
+    get_job_by_id: fn(uuid.Uuid) ->
+      Result(option.Option(job_model.Job), error.DbQueryError),
     create_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
     update_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
+    delete_job: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
   )
 }
 
@@ -24,8 +27,10 @@ pub fn new(db: pog.Connection) -> JobHandlers {
     get_next_job: fn(now, pending_status) {
       get_next_job(db, now, pending_status)
     },
+    get_job_by_id: fn(id) { get_job_by_id(db, id) },
     create_job: fn(job) { create_job(db, job) },
     update_job: fn(job) { update_job(db, job) },
+    delete_job: fn(id) { delete_job(db, id) },
   )
 }
 
@@ -44,7 +49,24 @@ pub fn get_next_job(
 
   case returned.rows {
     [] -> Ok(option.None)
-    [row] -> get_job_from_row(row) |> result.map(option.Some)
+    [row] -> get_job_from_next_job_row(row) |> result.map(option.Some)
+    _ -> Error(error.DbQueryError("Expected at most one job row"))
+  }
+}
+
+pub fn get_job_by_id(
+  db: pog.Connection,
+  id: uuid.Uuid,
+) -> Result(option.Option(job_model.Job), error.DbQueryError) {
+  use returned <- result.try(
+    db_helpers.query(db, sql.get_job_by_id(uuid.to_bit_array(id)), fn(err) {
+      error.DbQueryError(string.inspect(err))
+    }),
+  )
+
+  case returned.rows {
+    [] -> Ok(option.None)
+    [row] -> get_job_from_job_by_id_row(row) |> result.map(option.Some)
     _ -> Error(error.DbQueryError("Expected at most one job row"))
   }
 }
@@ -107,32 +129,97 @@ pub fn update_job(
   |> result.map(fn(_) { Nil })
 }
 
-fn get_job_from_row(
+pub fn delete_job(
+  db: pog.Connection,
+  id: uuid.Uuid,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(db, sql.delete_job(uuid.to_bit_array(id)), to_error)
+  |> result.map(fn(_) { Nil })
+}
+
+fn get_job_from_next_job_row(
   row: sql.GetNextJob,
 ) -> Result(job_model.Job, error.DbQueryError) {
+  get_job(
+    row.id,
+    row.request_id,
+    row.job_type,
+    row.payload,
+    row.status,
+    row.attempts,
+    row.max_attempts,
+    row.timeout_seconds,
+    row.run_at,
+    row.started_at,
+    row.completed_at,
+    row.last_error,
+    row.created_at,
+    row.updated_at,
+  )
+}
+
+fn get_job_from_job_by_id_row(
+  row: sql.GetJobById,
+) -> Result(job_model.Job, error.DbQueryError) {
+  get_job(
+    row.id,
+    row.request_id,
+    row.job_type,
+    row.payload,
+    row.status,
+    row.attempts,
+    row.max_attempts,
+    row.timeout_seconds,
+    row.run_at,
+    row.started_at,
+    row.completed_at,
+    row.last_error,
+    row.created_at,
+    row.updated_at,
+  )
+}
+
+fn get_job(
+  id: BitArray,
+  request_id: option.Option(BitArray),
+  job_type_str: String,
+  payload: String,
+  status_str: String,
+  attempts: Int,
+  max_attempts: Int,
+  timeout_seconds: Int,
+  run_at: Timestamp,
+  started_at: option.Option(Timestamp),
+  completed_at: option.Option(Timestamp),
+  last_error: option.Option(String),
+  created_at: Timestamp,
+  updated_at: Timestamp,
+) -> Result(job_model.Job, error.DbQueryError) {
   use status <- result.try(
-    job_model.status_from_string(row.status)
+    job_model.status_from_string(status_str)
     |> result.map_error(error.DbQueryError),
   )
   use job_type <- result.try(
-    job_model.job_type_from_string(row.job_type)
+    job_model.job_type_from_string(job_type_str)
     |> result.map_error(error.DbQueryError),
   )
 
   Ok(job_model.Job(
-    id: uuid_helpers.from_bit_array(row.id),
-    request_id: row.request_id |> option.map(uuid_helpers.from_bit_array),
+    id: uuid_helpers.from_bit_array(id),
+    request_id: request_id |> option.map(uuid_helpers.from_bit_array),
     job_type: job_type,
-    payload: row.payload,
+    payload: payload,
     status: status,
-    attempts: row.attempts,
-    max_attempts: row.max_attempts,
-    timeout_seconds: row.timeout_seconds,
-    run_at: row.run_at,
-    started_at: row.started_at,
-    completed_at: row.completed_at,
-    last_error: row.last_error,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
+    attempts: attempts,
+    max_attempts: max_attempts,
+    timeout_seconds: timeout_seconds,
+    run_at: run_at,
+    started_at: started_at,
+    completed_at: completed_at,
+    last_error: last_error,
+    created_at: created_at,
+    updated_at: updated_at,
   ))
 }

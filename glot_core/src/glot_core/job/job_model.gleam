@@ -1,22 +1,27 @@
+import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/email/email_model
+import glot_core/helpers/uuid_helpers
 import youid/uuid.{type Uuid}
 
 pub type JobType {
   SendEmailJob
+  DeleteAccountJob
 }
 
 pub fn job_type_to_string(job_type: JobType) -> String {
   case job_type {
     SendEmailJob -> "send_email"
+    DeleteAccountJob -> "delete_account"
   }
 }
 
 pub fn job_type_from_string(value: String) -> Result(JobType, String) {
   case value {
     "send_email" -> Ok(SendEmailJob)
+    "delete_account" -> Ok(DeleteAccountJob)
     _ -> Error("Invalid job type: " <> value)
   }
 }
@@ -66,6 +71,10 @@ pub type Job {
   )
 }
 
+pub type DeleteAccountJobPayload {
+  DeleteAccountJobPayload(account_id: Uuid)
+}
+
 fn new(
   id: Uuid,
   request_id: Option(Uuid),
@@ -107,6 +116,45 @@ pub fn send_email_job(
       |> email_model.encode
       |> json.to_string,
   )
+}
+
+pub fn delete_account_job(
+  id: Uuid,
+  request_id: Option(Uuid),
+  now: Timestamp,
+  run_at: Timestamp,
+  account_id: Uuid,
+) -> Job {
+  let payload =
+    DeleteAccountJobPayload(account_id:)
+    |> encode_delete_account_job_payload
+    |> json.to_string
+
+  Job(
+    ..new(
+      id,
+      request_id,
+      DeleteAccountJob,
+      now,
+      payload,
+    ),
+    run_at: run_at,
+  )
+}
+
+pub fn encode_delete_account_job_payload(
+  payload: DeleteAccountJobPayload,
+) -> json.Json {
+  json.object([
+    #("accountId", json.string(uuid.to_string(payload.account_id))),
+  ])
+}
+
+pub fn delete_account_job_payload_decoder() -> decode.Decoder(
+  DeleteAccountJobPayload,
+) {
+  use account_id <- decode.field("accountId", uuid_helpers.decoder())
+  decode.success(DeleteAccountJobPayload(account_id:))
 }
 
 pub fn done(job: Job, now: Timestamp) -> Job {

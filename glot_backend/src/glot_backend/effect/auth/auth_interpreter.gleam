@@ -125,6 +125,19 @@ pub fn run(
         ),
       )
     }
+    auth_algebra.UpdateAccount(account: account, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.update_account(account)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(auth_algebra.UpdateAccountEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     auth_algebra.UpdateUser(user: user, next: next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.auth.update_user(user)
@@ -133,6 +146,51 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.UpdateUserEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    auth_algebra.DeleteSessionsByAccountId(account_id: account_id, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.delete_sessions_by_account_id(account_id)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.DeleteSessionsByAccountIdEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    auth_algebra.DeleteUsersByAccountId(account_id: account_id, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.delete_users_by_account_id(account_id)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.DeleteUsersByAccountIdEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    auth_algebra.DeleteAccount(account_id: account_id, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.delete_account(account_id)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.DeleteAccountEffectName,
+          ),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

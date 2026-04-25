@@ -24,7 +24,12 @@ pub type AuthHandlers {
       Result(option.Option(session_model.HydratedSession), error.DbQueryError),
     create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
     create_account: fn(account_model.Account) -> Result(Nil, error.DbCommandError),
+    update_account: fn(account_model.Account) -> Result(Nil, error.DbCommandError),
     update_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
+    delete_sessions_by_account_id: fn(uuid.Uuid) ->
+      Result(Nil, error.DbCommandError),
+    delete_users_by_account_id: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
+    delete_account: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
     create_session: fn(session_model.Session) -> Result(Nil, error.DbCommandError),
     delete_session: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
     create_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
@@ -43,7 +48,15 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
     },
     create_user: fn(user) { create_user(db, user) },
     create_account: fn(account) { create_account(db, account) },
+    update_account: fn(account) { update_account(db, account) },
     update_user: fn(user) { update_user(db, user) },
+    delete_sessions_by_account_id: fn(account_id) {
+      delete_sessions_by_account_id(db, account_id)
+    },
+    delete_users_by_account_id: fn(account_id) {
+      delete_users_by_account_id(db, account_id)
+    },
+    delete_account: fn(account_id) { delete_account(db, account_id) },
     create_session: fn(session) {
       create_session(db, session)
     },
@@ -132,6 +145,31 @@ pub fn create_account(
       ),
       account_state_reason: account.account_state_reason,
       account_tier: account_model.account_tier_to_string(account.account_tier),
+      delete_job_id: account.delete_job_id |> option.map(uuid.to_bit_array),
+      created_at: account.created_at,
+      updated_at: account.updated_at,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn update_account(
+  db: pog.Connection,
+  account: account_model.Account,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.update_account(
+      id: uuid.to_bit_array(account.id),
+      account_state: account_model.account_state_to_string(
+        account.account_state,
+      ),
+      account_state_reason: account.account_state_reason,
+      account_tier: account_model.account_tier_to_string(account.account_tier),
+      delete_job_id: account.delete_job_id |> option.map(uuid.to_bit_array),
       created_at: account.created_at,
       updated_at: account.updated_at,
     ),
@@ -214,6 +252,48 @@ pub fn delete_session(
   |> result.map(fn(_) { Nil })
 }
 
+pub fn delete_sessions_by_account_id(
+  db: pog.Connection,
+  account_id: uuid.Uuid,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_sessions_by_account_id(uuid.to_bit_array(account_id)),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_users_by_account_id(
+  db: pog.Connection,
+  account_id: uuid.Uuid,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_users_by_account_id(uuid.to_bit_array(account_id)),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_account(
+  db: pog.Connection,
+  account_id: uuid.Uuid,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_account(uuid.to_bit_array(account_id)),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
 pub fn update_login_token(
   db: pog.Connection,
   login_token: login_token_model.LoginToken,
@@ -288,6 +368,7 @@ fn user_from_row(
       account_state: account_state,
       account_state_reason: row.account_state_reason,
       account_tier: account_tier,
+      delete_job_id: row.delete_job_id |> option.map(uuid_helpers.from_bit_array),
       created_at: row.created_at,
       updated_at: row.updated_at,
     ),
@@ -393,6 +474,8 @@ fn session_from_row(
         account_state: account_state,
         account_state_reason: row.user_account_state_reason,
         account_tier: account_tier,
+        delete_job_id:
+          row.user_account_delete_job_id |> option.map(uuid_helpers.from_bit_array),
         created_at: row.user_created_at,
         updated_at: row.user_updated_at,
       ),

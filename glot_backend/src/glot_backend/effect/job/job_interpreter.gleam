@@ -38,6 +38,31 @@ pub fn run(
         )
       }
     }
+    job_algebra.GetJobById(id:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.job.get_job_by_id(id)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.JobEffectName(job_algebra.GetJobByIdEffectName),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.JobEffectName(job_algebra.GetJobByIdEffectName),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     job_algebra.CreateJob(job, next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.job.create_job(job)
@@ -59,6 +84,19 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.JobEffectName(job_algebra.UpdateJobEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    job_algebra.DeleteJob(id, next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.job.delete_job(id)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.JobEffectName(job_algebra.DeleteJobEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

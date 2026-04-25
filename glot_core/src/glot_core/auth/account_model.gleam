@@ -18,9 +18,18 @@ pub type Account {
     account_state: AccountState,
     account_state_reason: option.Option(String),
     account_tier: AccountTier,
+    delete_job_id: option.Option(Uuid),
     created_at: Timestamp,
     updated_at: Timestamp,
   )
+}
+
+pub fn set_delete_job_id(
+  account: Account,
+  delete_job_id: option.Option(Uuid),
+  updated_at: Timestamp,
+) -> Account {
+  Account(..account, delete_job_id: delete_job_id, updated_at: updated_at)
 }
 
 pub fn account_state_to_string(account_state: AccountState) -> String {

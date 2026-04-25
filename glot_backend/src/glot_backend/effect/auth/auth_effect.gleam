@@ -55,9 +55,35 @@ pub fn create_account(
   )
 }
 
+pub fn update_account(
+  account account: account_model.Account,
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(update_account_effect(account, command_next)),
+  )
+}
+
 pub fn update_user(user user: user_model.User) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(update_user_effect(user, command_next)),
+  )
+}
+
+pub fn delete_sessions_by_account_id(id id: Uuid) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_sessions_by_account_id_effect(id, command_next)),
+  )
+}
+
+pub fn delete_users_by_account_id(id id: Uuid) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_users_by_account_id_effect(id, command_next)),
+  )
+}
+
+pub fn delete_account(id id: Uuid) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_account_effect(id, command_next)),
   )
 }
 
@@ -131,10 +157,34 @@ pub fn create_account_tx(
   program_types.TxImpure(create_account_effect(account, tx_command_next))
 }
 
+pub fn update_account_tx(
+  account account: account_model.Account,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(update_account_effect(account, tx_command_next))
+}
+
 pub fn update_user_tx(
   user user: user_model.User,
 ) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(update_user_effect(user, tx_command_next))
+}
+
+pub fn delete_sessions_by_account_id_tx(
+  id id: Uuid,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_sessions_by_account_id_effect(id, tx_command_next))
+}
+
+pub fn delete_users_by_account_id_tx(
+  id id: Uuid,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_users_by_account_id_effect(id, tx_command_next))
+}
+
+pub fn delete_account_tx(
+  id id: Uuid,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_account_effect(id, tx_command_next))
 }
 
 pub fn create_session_tx(
@@ -217,11 +267,48 @@ fn create_account_effect(
   program_types.AuthEffect(auth_algebra.CreateAccount(account:, next: next))
 }
 
+fn update_account_effect(
+  account: account_model.Account,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.UpdateAccount(account:, next: next))
+}
+
 fn update_user_effect(
   user: user_model.User,
   next: fn(Result(Nil, error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.UpdateUser(user: user, next: next))
+}
+
+fn delete_sessions_by_account_id_effect(
+  id: Uuid,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.DeleteSessionsByAccountId(
+    account_id: id,
+    next: next,
+  ))
+}
+
+fn delete_users_by_account_id_effect(
+  id: Uuid,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.DeleteUsersByAccountId(
+    account_id: id,
+    next: next,
+  ))
+}
+
+fn delete_account_effect(
+  id: Uuid,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.DeleteAccount(
+    account_id: id,
+    next: next,
+  ))
 }
 
 fn create_session_effect(
