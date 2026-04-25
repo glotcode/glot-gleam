@@ -104,6 +104,25 @@ pub fn get_snippet(
   )
 }
 
+pub fn list_public_snippets(
+  request: snippet_dto.ListPublicSnippetsRequest,
+  to_msg: fn(ApiResponse(snippet_dto.ListPublicSnippetsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.ListPublicSnippetsAction, request)
+
+  send_api_request(
+    req,
+    fn(list_request) {
+      json.object([
+        #("cursor", json.nullable(list_request.cursor, json.string)),
+        #("limit", json.int(list_request.limit)),
+      ])
+    },
+    snippet_dto.list_public_response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn update_snippet(
   request: snippet_dto.UpdateSnippetRequest,
   to_msg: fn(ApiResponse(snippet_dto.SnippetResponse)) -> msg,

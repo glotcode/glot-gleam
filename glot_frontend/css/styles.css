@@ -289,6 +289,27 @@ body {
   .home-languages__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .snippets-page__header {
+    flex-direction: column;
+  }
+
+  .snippets-page__pagination {
+    width: 100%;
+  }
+
+  .snippets-table__head {
+    display: none;
+  }
+
+  .snippets-table__row {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .snippets-table__cell--title {
+    white-space: normal;
+  }
 }
 
 @media (max-width: 460px) {
@@ -451,6 +472,123 @@ body {
   width: fit-content;
   color: #2853a6;
   font-weight: 700;
+}
+
+.snippets-page {
+  gap: 1.25rem;
+}
+
+.snippets-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.snippets-page__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.snippets-page__status {
+  margin: 0.35rem 0 0;
+  color: #51627f;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.snippets-page__status--error {
+  color: #8a1f11;
+}
+
+.snippets-page__pagination {
+  display: flex;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+}
+
+.snippets-page__button {
+  padding: 0.45rem 0.85rem;
+  border: 1px solid #c8d7ef;
+  background: #f8fbff;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.snippets-page__button:hover {
+  background: #e8f0ff;
+}
+
+.snippets-page__button:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.snippets-table {
+  border: 1px solid #d9e5f6;
+  background: #ffffff;
+}
+
+.snippets-table__head,
+.snippets-table__row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 0.9fr) minmax(0, 2.2fr) minmax(12rem, 1.2fr) minmax(8rem, 1fr);
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+}
+
+.snippets-table__head {
+  border-bottom: 1px solid #d9e5f6;
+  background: #f8fbff;
+}
+
+.snippets-table__heading {
+  color: #66789f;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.snippets-table__body {
+  display: grid;
+}
+
+.snippets-table__row {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid #eef4ff;
+}
+
+.snippets-table__row:last-child {
+  border-bottom: 0;
+}
+
+.snippets-table__row:hover {
+  background: #f8fbff;
+}
+
+.snippets-table__cell {
+  min-width: 0;
+  color: #172033;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.snippets-table__cell--language {
+  color: #2853a6;
+  font-weight: 700;
+}
+
+.snippets-table__cell--title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editor-page {

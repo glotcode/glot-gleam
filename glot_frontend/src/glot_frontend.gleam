@@ -8,6 +8,7 @@ import glot_frontend/editor_page
 import glot_frontend/home_page
 import glot_frontend/login_page
 import glot_frontend/route
+import glot_frontend/snippets_page
 import glot_frontend/string_helpers
 import lustre
 import lustre/effect.{type Effect}
@@ -31,6 +32,7 @@ type PageModel {
   HomePageModel(home_page.Model)
   LoginPage(login_page.Model)
   AccountPage(account_page.Model)
+  SnippetsPage(snippets_page.Model)
   EditorPage(editor_page.Model)
   EmptyPageModel
 }
@@ -57,6 +59,11 @@ fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
     route.Account -> {
       let #(m, eff) = account_page.init()
       #(AccountPage(m), effect.map(eff, AccountPageMsg))
+    }
+
+    route.Snippets -> {
+      let #(m, eff) = snippets_page.init()
+      #(SnippetsPage(m), effect.map(eff, SnippetsPageMsg))
     }
 
     route.NewSnippet(language) -> {
@@ -105,6 +112,7 @@ type Msg {
   HomePageMsg(home_page.Msg)
   LoginPageMsg(login_page.Msg)
   AccountPageMsg(account_page.Msg)
+  SnippetsPageMsg(snippets_page.Msg)
   EditorPageMsg(editor_page.Msg)
 }
 
@@ -143,6 +151,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let mapped_effect = effect.map(page_effect, AccountPageMsg)
       let effects = apply_app_event(mapped_effect, app_event)
       #(new_model, effects)
+    }
+
+    SnippetsPageMsg(page_msg), SnippetsPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        snippets_page.update(page_model, page_msg)
+      let new_model = Model(..model, page_model: SnippetsPage(new_page_model))
+      #(new_model, effect.map(page_effect, SnippetsPageMsg))
     }
 
     EditorPageMsg(page_msg), EditorPage(page_model) -> {
@@ -197,6 +212,16 @@ fn view(model: Model) -> Element(Msg) {
           current_user_route(model.session),
         )
       element.map(elem, AccountPageMsg)
+    }
+
+    SnippetsPage(page_model) -> {
+      let elem =
+        snippets_page.view(
+          page_model,
+          current_user_label(model.session),
+          current_user_route(model.session),
+        )
+      element.map(elem, SnippetsPageMsg)
     }
 
     EditorPage(page_model) -> {
