@@ -242,9 +242,9 @@ pub fn view(
     html.div([attribute.class("app-page__screen-glow")], []),
     top_bar.view(current_user_label, account_route),
     html.main([attribute.class("app-shell app-shell--narrow")], [
-      html.section([attribute.class("app-panel account-page")], [
+      html.section([attribute.class("account-page")], [
         html.h2([attribute.class("account-page__title")], [
-          html.text("Account settings"),
+          html.text("Account"),
         ]),
         content(model),
       ]),
@@ -288,17 +288,45 @@ fn account_form(
   model: Model,
   account: account_dto.AccountResponse,
 ) -> Element(Msg) {
+  html.div([attribute.class("account-page__panels")], [
+    html.section([attribute.class("app-panel")], [
+      html.h3([attribute.class("account-page__section-title")], [
+        html.text("Account Info"),
+      ]),
+      account_row("Email", email_address_model.to_string(account.email)),
+      account_row(
+        "Joined",
+        timestamp.to_rfc3339(account.joined_at, calendar.utc_offset),
+      ),
+    ]),
+    html.section([attribute.class("app-panel")], [
+      html.h3([attribute.class("account-page__section-title")], [
+        html.text("Account Settings"),
+      ]),
+      account_settings_form(model),
+    ]),
+    html.section([attribute.class("app-panel")], [
+      html.h3([attribute.class("account-page__section-title")], [
+        html.text("Danger Zone"),
+      ]),
+      delete_account_section(account, model.status),
+    ]),
+    html.section([attribute.class("app-panel")], [
+      html.h3([attribute.class("account-page__section-title")], [
+        html.text("Session"),
+      ]),
+      logout_section(model.status),
+    ]),
+  ])
+}
+
+fn account_settings_form(model: Model) -> Element(Msg) {
   html.form(
     [
       attribute.class("account-page__form"),
       event.on_submit(fn(_) { UsernameSubmitted }),
     ],
     [
-      account_row("Email", email_address_model.to_string(account.email)),
-      account_row(
-        "Joined",
-        timestamp.to_rfc3339(account.joined_at, calendar.utc_offset),
-      ),
       html.label(
         [
           attribute.for("account-username"),
@@ -326,8 +354,6 @@ fn account_form(
         ],
         [html.text(button_text(model.status))],
       ),
-      delete_account_section(account, model.status),
-      logout_section(model.status),
     ],
   )
 }
@@ -396,8 +422,8 @@ fn delete_account_section(
         )
     }
 
-  html.section([attribute.class("account-page__danger-zone")], [
-    html.h3([attribute.class("account-page__section-title")], [html.text(title)]),
+  html.div([attribute.class("account-page__danger-zone")], [
+    html.p([attribute.class("account-page__label")], [html.text(title)]),
     html.p([attribute.class("account-page__status")], [html.text(description)]),
     html.button(
       [
@@ -423,10 +449,7 @@ fn delete_account_description(account: account_dto.AccountResponse) -> String {
 }
 
 fn logout_section(status: Status) -> Element(Msg) {
-  html.section([attribute.class("account-page__logout")], [
-    html.h3([attribute.class("account-page__section-title")], [
-      html.text("Session"),
-    ]),
+  html.div([attribute.class("account-page__logout")], [
     html.p([attribute.class("account-page__status")], [
       html.text("End your current session on this device."),
     ]),
@@ -445,7 +468,7 @@ fn logout_section(status: Status) -> Element(Msg) {
 fn button_text(status: Status) -> String {
   case status {
     Saving -> "Saving..."
-    _ -> "Save username"
+    _ -> "Update account"
   }
 }
 

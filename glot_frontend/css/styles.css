@@ -66,6 +66,16 @@ body {
   text-transform: uppercase;
 }
 
+.account-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.account-page__panels {
+  display: grid;
+  gap: 1rem;
+}
+
 .home-page__link {
   display: inline-flex;
   align-items: center;
@@ -420,18 +430,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #d9e5f6;
 }
 
 .account-page__danger-zone {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid #d9e5f6;
 }
 
 .account-page__section-title {
