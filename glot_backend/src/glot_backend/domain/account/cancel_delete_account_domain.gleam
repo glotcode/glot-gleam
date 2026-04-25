@@ -23,7 +23,7 @@ pub fn cancel_delete_account(ctx: context.Context) -> program_types.Program(Nil)
       log.from_list([
         log.uuid("session_id", session.identity.id),
         log.uuid("user_id", session.user.identity.id),
-        log.uuid("account_id", session.user.account.id),
+        log.uuid("account_id", session.user.account.identity.id),
       ]),
     ),
   )
@@ -36,7 +36,7 @@ pub fn cancel_delete_account(ctx: context.Context) -> program_types.Program(Nil)
 
   use delete_job_id <- program.and_then(
     program.from_option(
-      session.user.account.delete_job_id,
+      session.user.account.identity.delete_job_id,
       error.ValidationError("Account deletion is not scheduled"),
     ),
   )
@@ -44,7 +44,7 @@ pub fn cancel_delete_account(ctx: context.Context) -> program_types.Program(Nil)
 
   let updated_account =
     account_model.set_delete_job_id(
-      session.user.account,
+      session.user.account.identity,
       option.None,
       ctx.timestamp,
     )

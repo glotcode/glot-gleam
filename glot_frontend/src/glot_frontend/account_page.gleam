@@ -29,6 +29,8 @@ pub type Status {
   Idle
   Saving
   LoggingOut
+  SchedulingDelete
+  CancelingDelete
   Saved
   Error(String)
 }
@@ -39,6 +41,10 @@ pub type Msg {
   UsernameSubmitted
   AccountUpdated(api.ApiResponse(account_dto.AccountResponse))
   LogoutSubmitted
+  ScheduleDeleteSubmitted
+  DeleteScheduled(api.ApiResponse(Nil))
+  CancelDeleteSubmitted
+  DeleteCanceled(api.ApiResponse(Nil))
   LoggedOut(api.ApiResponse(Nil))
 }
 
@@ -117,6 +123,64 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEven
         api.logout(LoggedOut),
         app_event.NoAppEvent,
       )
+
+    ScheduleDeleteSubmitted ->
+      #(
+        Model(..model, status: SchedulingDelete),
+        api.schedule_delete_account(DeleteScheduled),
+        app_event.NoAppEvent,
+      )
+
+    DeleteScheduled(result) ->
+      case result {
+        api.ApiSuccess(_) ->
+          #(
+            Model(..model, status: Idle),
+            api.get_account(AccountLoaded),
+            app_event.NoAppEvent,
+          )
+
+        api.ApiFailure(error) -> #(
+          Model(..model, status: Error(error.message)),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(..model, status: Error("Could not schedule account deletion.")),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    CancelDeleteSubmitted ->
+      #(
+        Model(..model, status: CancelingDelete),
+        api.cancel_delete_account(DeleteCanceled),
+        app_event.NoAppEvent,
+      )
+
+    DeleteCanceled(result) ->
+      case result {
+        api.ApiSuccess(_) ->
+          #(
+            Model(..model, status: Idle),
+            api.get_account(AccountLoaded),
+            app_event.NoAppEvent,
+          )
+
+        api.ApiFailure(error) -> #(
+          Model(..model, status: Error(error.message)),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(..model, status: Error("Could not cancel account deletion.")),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
 
     AccountUpdated(result) ->
       case result {
@@ -262,6 +326,7 @@ fn account_form(
         ],
         [html.text(button_text(model.status))],
       ),
+      delete_account_section(account, model.status),
       logout_section(model.status),
     ],
   )
@@ -285,6 +350,14 @@ fn status_view(status: Status) -> Element(Msg) {
       html.p([attribute.class("account-page__status")], [
         html.text("Logging out..."),
       ])
+    SchedulingDelete ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Scheduling account deletion..."),
+      ])
+    CancelingDelete ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Canceling account deletion..."),
+      ])
     Saved ->
       html.p([attribute.class("account-page__status")], [
         html.text("Account updated."),
@@ -296,6 +369,56 @@ fn status_view(status: Status) -> Element(Msg) {
           html.text(message),
         ],
       )
+  }
+}
+
+fn delete_account_section(
+  account: account_dto.AccountResponse,
+  status: Status,
+) -> Element(Msg) {
+  let #(description, button_msg, button_class, title, button_label) =
+    case account.delete_scheduled {
+      True ->
+        #(
+          delete_account_description(account),
+          CancelDeleteSubmitted,
+          "account-page__button account-page__button--secondary",
+          "Delete scheduled",
+          delete_button_text(status, account.delete_scheduled),
+        )
+      False ->
+        #(
+          "Delete your account and all associated data. This action schedules permanent deletion of everything stored for this account.",
+          ScheduleDeleteSubmitted,
+          "account-page__button account-page__button--danger",
+          "Delete account",
+          delete_button_text(status, account.delete_scheduled),
+        )
+    }
+
+  html.section([attribute.class("account-page__danger-zone")], [
+    html.h3([attribute.class("account-page__section-title")], [html.text(title)]),
+    html.p([attribute.class("account-page__status")], [html.text(description)]),
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(is_busy(status)),
+        attribute.class(button_class),
+        event.on_click(button_msg),
+      ],
+      [html.text(button_label)],
+    ),
+  ])
+}
+
+fn delete_account_description(account: account_dto.AccountResponse) -> String {
+  case account.delete_scheduled_at {
+    option.Some(delete_scheduled_at) ->
+      "Your account is scheduled for deletion at "
+      <> timestamp.to_rfc3339(delete_scheduled_at, calendar.utc_offset)
+      <> ". Cancel this if you want to keep your data."
+    option.None ->
+      "Your account is scheduled for deletion. Cancel this if you want to keep your data."
   }
 }
 
@@ -333,9 +456,21 @@ fn logout_button_text(status: Status) -> String {
   }
 }
 
+fn delete_button_text(status: Status, delete_scheduled: Bool) -> String {
+  case status {
+    SchedulingDelete -> "Scheduling..."
+    CancelingDelete -> "Canceling..."
+    _ ->
+      case delete_scheduled {
+        True -> "Cancel deletion"
+        False -> "Delete account"
+      }
+  }
+}
+
 fn is_busy(status: Status) -> Bool {
   case status {
-    Saving | LoggingOut -> True
+    Saving | LoggingOut | SchedulingDelete | CancelingDelete -> True
     Loading | Idle | Saved | Error(_) -> False
   }
 }

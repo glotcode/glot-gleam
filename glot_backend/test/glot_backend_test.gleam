@@ -806,7 +806,13 @@ fn find_user_by_email(
       |> dict.get(uuid_key(user.account_id))
       |> option.from_result()
       |> option.map(fn(account) {
-        user_model.HydratedUser(identity: user, account: account)
+        user_model.HydratedUser(
+          identity: user,
+          account: account_model.HydratedAccount(
+            identity: account,
+            delete_scheduled_at: option.None,
+          ),
+        )
       })
     }
     option.None -> option.None
@@ -834,7 +840,10 @@ fn find_hydrated_session(
                     identity: session,
                     user: user_model.HydratedUser(
                       identity: user,
-                      account: account,
+                      account: account_model.HydratedAccount(
+                        identity: account,
+                        delete_scheduled_at: option.None,
+                      ),
                     ),
                   ))
                 Error(_) -> option.None

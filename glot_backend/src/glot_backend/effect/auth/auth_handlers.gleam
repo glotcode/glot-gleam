@@ -363,14 +363,17 @@ fn user_from_row(
       created_at: row.created_at,
       updated_at: row.updated_at,
     ),
-    account: account_model.Account(
-      id: uuid_helpers.from_bit_array(row.account_id),
-      account_state: account_state,
-      account_state_reason: row.account_state_reason,
-      account_tier: account_tier,
-      delete_job_id: row.delete_job_id |> option.map(uuid_helpers.from_bit_array),
-      created_at: row.created_at,
-      updated_at: row.updated_at,
+    account: account_model.HydratedAccount(
+      identity: account_model.Account(
+        id: uuid_helpers.from_bit_array(row.account_id),
+        account_state: account_state,
+        account_state_reason: row.account_state_reason,
+        account_tier: account_tier,
+        delete_job_id: row.delete_job_id |> option.map(uuid_helpers.from_bit_array),
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      ),
+      delete_scheduled_at: row.delete_scheduled_at,
     ),
   ))
 }
@@ -469,15 +472,18 @@ fn session_from_row(
         created_at: row.user_created_at,
         updated_at: row.user_updated_at,
       ),
-      account: account_model.Account(
-        id: uuid_helpers.from_bit_array(row.user_account_id),
-        account_state: account_state,
-        account_state_reason: row.user_account_state_reason,
-        account_tier: account_tier,
-        delete_job_id:
-          row.user_account_delete_job_id |> option.map(uuid_helpers.from_bit_array),
-        created_at: row.user_created_at,
-        updated_at: row.user_updated_at,
+      account: account_model.HydratedAccount(
+        identity: account_model.Account(
+          id: uuid_helpers.from_bit_array(row.user_account_id),
+          account_state: account_state,
+          account_state_reason: row.user_account_state_reason,
+          account_tier: account_tier,
+          delete_job_id:
+            row.user_account_delete_job_id |> option.map(uuid_helpers.from_bit_array),
+          created_at: row.user_created_at,
+          updated_at: row.user_updated_at,
+        ),
+        delete_scheduled_at: row.user_account_delete_scheduled_at,
       ),
     ),
   ))

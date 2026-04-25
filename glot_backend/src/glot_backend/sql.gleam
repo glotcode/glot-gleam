@@ -300,6 +300,7 @@ pub type GetUserByEmail {
     account_state_reason: Option(String),
     account_tier: String,
     delete_job_id: Option(BitArray),
+    delete_scheduled_at: Option(Timestamp),
     last_login_at: Timestamp,
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -318,11 +319,13 @@ pub fn get_user_by_email(email email: String) {
   accounts.account_state_reason,
   accounts.account_tier,
   accounts.delete_job_id,
+  jobs.run_at AS delete_scheduled_at,
   users.last_login_at,
   users.created_at,
   users.updated_at
 FROM users
 INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
 WHERE users.email = $1"
   #(sql, [dev.ParamString(email)], get_user_by_email_decoder())
 }
@@ -337,9 +340,13 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
   use account_state_reason <- decode.field(6, decode.optional(decode.string))
   use account_tier <- decode.field(7, decode.string)
   use delete_job_id <- decode.field(8, decode.optional(decode.bit_array))
-  use last_login_at <- decode.field(9, dev.datetime_decoder())
-  use created_at <- decode.field(10, dev.datetime_decoder())
-  use updated_at <- decode.field(11, dev.datetime_decoder())
+  use delete_scheduled_at <- decode.field(
+    9,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use last_login_at <- decode.field(10, dev.datetime_decoder())
+  use created_at <- decode.field(11, dev.datetime_decoder())
+  use updated_at <- decode.field(12, dev.datetime_decoder())
   decode.success(GetUserByEmail(
     id:,
     account_id:,
@@ -350,6 +357,7 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
     account_state_reason:,
     account_tier:,
     delete_job_id:,
+    delete_scheduled_at:,
     last_login_at:,
     created_at:,
     updated_at:,
@@ -367,6 +375,7 @@ pub type GetUserById {
     account_state_reason: Option(String),
     account_tier: String,
     delete_job_id: Option(BitArray),
+    delete_scheduled_at: Option(Timestamp),
     last_login_at: Timestamp,
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -385,11 +394,13 @@ pub fn get_user_by_id(id id: BitArray) {
   accounts.account_state_reason,
   accounts.account_tier,
   accounts.delete_job_id,
+  jobs.run_at AS delete_scheduled_at,
   users.last_login_at,
   users.created_at,
   users.updated_at
 FROM users
 INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
 WHERE users.id = $1"
   #(sql, [dev.ParamBitArray(id)], get_user_by_id_decoder())
 }
@@ -404,9 +415,13 @@ pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
   use account_state_reason <- decode.field(6, decode.optional(decode.string))
   use account_tier <- decode.field(7, decode.string)
   use delete_job_id <- decode.field(8, decode.optional(decode.bit_array))
-  use last_login_at <- decode.field(9, dev.datetime_decoder())
-  use created_at <- decode.field(10, dev.datetime_decoder())
-  use updated_at <- decode.field(11, dev.datetime_decoder())
+  use delete_scheduled_at <- decode.field(
+    9,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use last_login_at <- decode.field(10, dev.datetime_decoder())
+  use created_at <- decode.field(11, dev.datetime_decoder())
+  use updated_at <- decode.field(12, dev.datetime_decoder())
   decode.success(GetUserById(
     id:,
     account_id:,
@@ -417,6 +432,7 @@ pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
     account_state_reason:,
     account_tier:,
     delete_job_id:,
+    delete_scheduled_at:,
     last_login_at:,
     created_at:,
     updated_at:,
@@ -874,6 +890,7 @@ pub type GetSessionByToken {
     user_account_state_reason: Option(String),
     user_account_tier: String,
     user_account_delete_job_id: Option(BitArray),
+    user_account_delete_scheduled_at: Option(Timestamp),
     user_last_login_at: Timestamp,
     user_created_at: Timestamp,
     user_updated_at: Timestamp,
@@ -897,12 +914,14 @@ pub fn get_session_by_token(token token: String) {
   accounts.account_state_reason AS user_account_state_reason,
   accounts.account_tier AS user_account_tier,
   accounts.delete_job_id AS user_account_delete_job_id,
+  jobs.run_at AS user_account_delete_scheduled_at,
   users.last_login_at AS user_last_login_at,
   users.created_at AS user_created_at,
   users.updated_at AS user_updated_at
 FROM sessions
 INNER JOIN users ON users.id = sessions.user_id
 INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
 WHERE sessions.token = $1"
   #(sql, [dev.ParamString(token)], get_session_by_token_decoder())
 }
@@ -928,9 +947,13 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
     13,
     decode.optional(decode.bit_array),
   )
-  use user_last_login_at <- decode.field(14, dev.datetime_decoder())
-  use user_created_at <- decode.field(15, dev.datetime_decoder())
-  use user_updated_at <- decode.field(16, dev.datetime_decoder())
+  use user_account_delete_scheduled_at <- decode.field(
+    14,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
   decode.success(GetSessionByToken(
     id:,
     token:,
@@ -946,6 +969,7 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
     user_account_state_reason:,
     user_account_tier:,
     user_account_delete_job_id:,
+    user_account_delete_scheduled_at:,
     user_last_login_at:,
     user_created_at:,
     user_updated_at:,

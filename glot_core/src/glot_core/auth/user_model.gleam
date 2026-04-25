@@ -2,7 +2,7 @@ import gleam/list
 import gleam/option
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_core/auth/account_model.{type Account}
+import glot_core/auth/account_model.{type HydratedAccount}
 import glot_core/email/email_address_model
 import youid/uuid.{type Uuid}
 
@@ -25,7 +25,7 @@ pub type User {
 }
 
 pub type HydratedUser {
-  HydratedUser(identity: User, account: Account)
+  HydratedUser(identity: User, account: HydratedAccount)
 }
 
 pub fn mark_last_login(user: User, timestamp: Timestamp) -> User {

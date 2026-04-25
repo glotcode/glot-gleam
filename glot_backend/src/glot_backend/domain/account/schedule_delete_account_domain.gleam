@@ -30,7 +30,7 @@ pub fn schedule_delete_account(
       log.from_list([
         log.uuid("session_id", session.identity.id),
         log.uuid("user_id", session.user.identity.id),
-        log.uuid("account_id", session.user.account.id),
+        log.uuid("account_id", session.user.account.identity.id),
       ]),
     ),
   )
@@ -50,12 +50,12 @@ pub fn schedule_delete_account(
       option.Some(ctx.request_id),
       ctx.timestamp,
       add_seconds(ctx.timestamp, delete_delay_seconds),
-      session.user.account.id,
+      session.user.account.identity.id,
       session.user.identity.email,
     )
   let updated_account =
     account_model.set_delete_job_id(
-      session.user.account,
+      session.user.account.identity,
       option.Some(job_id),
       ctx.timestamp,
     )
@@ -69,15 +69,15 @@ pub fn schedule_delete_account(
 
 fn require_no_pending_delete(
   ctx: context.Context,
-  account: account_model.Account,
+  account: account_model.HydratedAccount,
 ) -> program_types.Program(Nil) {
-  case account.delete_job_id {
+  case account.identity.delete_job_id {
     option.None -> program.succeed(Nil)
     option.Some(job_id) -> {
       use maybe_job <- program.and_then(job_effect.get_job_by_id(job_id))
       case maybe_job {
         option.Some(job) -> {
-          case is_pending_delete_job_for_account(job, account.id) {
+          case is_pending_delete_job_for_account(job, account.identity.id) {
             True ->
               program.fail(
                 error.ValidationError("Account deletion already scheduled"),
@@ -85,7 +85,7 @@ fn require_no_pending_delete(
             False -> {
               let repaired_account =
                 account_model.set_delete_job_id(
-                  account,
+                  account.identity,
                   option.None,
                   ctx.timestamp,
                 )
@@ -95,7 +95,7 @@ fn require_no_pending_delete(
         }
         _ -> {
           let repaired_account =
-            account_model.set_delete_job_id(account, option.None, ctx.timestamp)
+            account_model.set_delete_job_id(account.identity, option.None, ctx.timestamp)
           auth_effect.update_account(repaired_account)
         }
       }

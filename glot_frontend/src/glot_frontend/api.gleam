@@ -158,6 +158,22 @@ pub fn logout(
   send_api_request(req, fn(_) { json.null() }, nil_decoder(), to_msg)
 }
 
+pub fn schedule_delete_account(
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.ScheduleDeleteAccountAction, Nil)
+
+  send_api_request(req, fn(_) { json.null() }, nil_decoder(), to_msg)
+}
+
+pub fn cancel_delete_account(
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.CancelDeleteAccountAction, Nil)
+
+  send_api_request(req, fn(_) { json.null() }, nil_decoder(), to_msg)
+}
+
 pub fn update_account(
   request: account_dto.UpdateAccountRequest,
   to_msg: fn(ApiResponse(account_dto.AccountResponse)) -> msg,

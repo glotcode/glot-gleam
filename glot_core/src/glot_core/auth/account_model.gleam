@@ -24,6 +24,10 @@ pub type Account {
   )
 }
 
+pub type HydratedAccount {
+  HydratedAccount(identity: Account, delete_scheduled_at: option.Option(Timestamp))
+}
+
 pub fn set_delete_job_id(
   account: Account,
   delete_job_id: option.Option(Uuid),

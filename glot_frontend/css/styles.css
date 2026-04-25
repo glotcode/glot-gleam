@@ -365,6 +365,24 @@ body {
   background: #ffe8e3;
 }
 
+.account-page__button--secondary {
+  border-color: #c9d4e8;
+  background: #f3f6fb;
+}
+
+.account-page__button--secondary:hover {
+  background: #e7edf7;
+}
+
+.account-page__button--danger {
+  border-color: #e4b7b0;
+  background: #fff1ef;
+}
+
+.account-page__button--danger:hover {
+  background: #ffdeda;
+}
+
 .login-page__button:disabled,
 .login-page__input:disabled,
 .account-page__button:disabled,
@@ -399,6 +417,15 @@ body {
 }
 
 .account-page__logout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #d9e5f6;
+}
+
+.account-page__danger-zone {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;

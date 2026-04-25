@@ -87,9 +87,9 @@ pub fn login(
   use _ <- program.and_then(
     transaction_effect.run_all([
       auth_effect.update_login_token_tx(used_login_token),
+      user_outcome.persist_fn(user),
       auth_effect.create_session_tx(session),
       user_action_effect.create_user_action_tx(user_action),
-      user_outcome.persist_fn(user),
     ]),
   )
 
@@ -115,7 +115,6 @@ pub fn request_from_dynamic(
 type UserOutcome {
   UserOutcome(
     user: user_model.User,
-    account: account_model.Account,
     is_new_user: Bool,
     persist_fn: fn(user_model.User) -> program_types.TransactionProgram(Nil),
   )
@@ -132,7 +131,6 @@ fn get_or_create_user(
       program.succeed(
         UserOutcome(
           user: existing_user.identity,
-          account: existing_user.account,
           is_new_user: False,
           persist_fn: fn(user) { auth_effect.update_user_tx(user) },
         ),
@@ -147,7 +145,6 @@ fn get_or_create_user(
       program.succeed(
         UserOutcome(
           user: new_user,
-          account: new_account,
           is_new_user: True,
           persist_fn: fn(user) {
             use _ <- transaction_program.and_then(auth_effect.create_account_tx(

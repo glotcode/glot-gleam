@@ -13,6 +13,7 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/auth/account_model
 import glot_core/auth/account_dto
 import glot_core/auth/user_model
 
@@ -61,7 +62,10 @@ pub fn update_account(
   program.succeed(
     account_dto.from_hydrated_user(user_model.HydratedUser(
       identity: user,
-      account: session.user.account,
+      account: account_model.HydratedAccount(
+        identity: session.user.account.identity,
+        delete_scheduled_at: session.user.account.delete_scheduled_at,
+      ),
     )),
   )
 }
