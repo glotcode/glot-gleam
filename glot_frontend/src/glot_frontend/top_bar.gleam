@@ -98,6 +98,11 @@ fn quick_actions_dialog(model: ViewModel(msg)) -> Element(msg) {
               html.p([attribute.class("app-dialog__label")], [
                 html.text("Quick actions"),
               ]),
+              html.p([attribute.class("app-quick-actions__hint")], [
+                html.code([], [html.text("cmd+k")]),
+                html.text("|"),
+                html.code([], [html.text("ctrl+k")]),
+              ]),
               html.button(
                 [
                   attribute.type_("button"),

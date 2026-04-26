@@ -946,6 +946,19 @@ a.snippets-table__cell:hover {
   box-sizing: border-box;
 }
 
+.app-quick-actions__hint {
+  margin: 0 auto 0 0;
+  color: #4f6489;
+  line-height: 1.45;
+}
+
+.app-quick-actions__hint code {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid #d7e4f7;
+  background: #ffffff;
+  color: #23406f;
+}
+
 .app-quick-actions__sections {
   display: grid;
   gap: 1rem;
