@@ -2,6 +2,7 @@ import gleam/option
 import gleam/time/timestamp
 import gleeunit
 import glot_core/auth/user_model
+import glot_core/language
 import glot_core/pagination_model
 import glot_core/snippet/snippet_model
 
@@ -50,6 +51,80 @@ pub fn validate_username_rejects_invalid_values_test() {
   assert user_model.validate_username("abc_123") == error
   assert user_model.validate_username("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
     == error
+}
+
+pub fn validate_snippet_fields_rejects_empty_files_test() {
+  assert snippet_model.validate_fields("Snippet", "", option.None, [])
+    == Error("files must contain at least one file")
+}
+
+pub fn validate_snippet_fields_rejects_empty_title_test() {
+  assert snippet_model.validate_fields(
+      "   ",
+      "",
+      option.None,
+      [snippet_model.File(name: "main.py", content: "print(1)")],
+    )
+    == Error("title must not be empty")
+}
+
+pub fn validate_snippet_fields_rejects_empty_file_name_test() {
+  assert snippet_model.validate_fields(
+      "Snippet",
+      "",
+      option.None,
+      [snippet_model.File(name: "  ", content: "print(1)")],
+    )
+    == Error("files[0].name must not be empty")
+}
+
+pub fn validate_snippet_fields_rejects_empty_run_command_test() {
+  assert snippet_model.validate_fields(
+      "Snippet",
+      "",
+      option.Some(
+        language.RunInstructions(build_commands: [], run_command: " "),
+      ),
+      [snippet_model.File(name: "main.py", content: "print(1)")],
+    )
+    == Error("runInstructions.runCommand must not be empty")
+}
+
+pub fn validate_snippet_fields_rejects_empty_build_command_test() {
+  assert snippet_model.validate_fields(
+      "Snippet",
+      "",
+      option.Some(
+        language.RunInstructions(build_commands: [" "], run_command: "python main.py"),
+      ),
+      [snippet_model.File(name: "main.py", content: "print(1)")],
+    )
+    == Error("runInstructions.buildCommands[0] must not be empty")
+}
+
+pub fn validate_snippet_fields_rejects_too_long_title_test() {
+  assert snippet_model.validate_fields(
+      repeat_string("a", 201),
+      "",
+      option.None,
+      [snippet_model.File(name: "main.py", content: "print(1)")],
+    )
+    == Error("title must be at most 200 characters")
+}
+
+pub fn validate_snippet_fields_rejects_too_long_file_content_test() {
+  assert snippet_model.validate_fields(
+      "Snippet",
+      "",
+      option.None,
+      [
+        snippet_model.File(
+          name: "main.py",
+          content: repeat_string("a", 100_001),
+        ),
+      ],
+    )
+    == Error("files[0].content must be at most 100000 characters")
 }
 
 pub fn pagination_validate_accepts_valid_limit_test() {
@@ -143,6 +218,13 @@ pub fn paginate_empty_after_page_reuses_request_cursor_test() {
       previous_cursor: pagination_model.from_string("x"),
       next_cursor: option.None,
     )
+}
+
+fn repeat_string(value: String, count: Int) -> String {
+  case count <= 0 {
+    True -> ""
+    False -> value <> repeat_string(value, count - 1)
+  }
 }
 
 pub fn paginate_empty_before_page_reuses_request_cursor_test() {

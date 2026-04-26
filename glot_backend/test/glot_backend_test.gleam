@@ -10,7 +10,9 @@ import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/job/job_manager_domain
+import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/shared/session_domain
+import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
@@ -249,6 +251,109 @@ pub fn snippet_spam_filter_blocks_obvious_spam_test() {
 
   let assert Error(message) = result
   assert message != ""
+}
+
+pub fn create_snippet_rejects_empty_files_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [must_uuid("00000000-0000-0000-0000-000000000701")],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let request =
+    snippet_dto.CreateSnippetRequest(
+      data: snippet_dto.SnippetData(
+        title: "Snippet",
+        language: language.Python,
+        visibility: snippet_model.Public,
+        stdin: "",
+        run_instructions: option.None,
+        files: [],
+      ),
+    )
+
+  let #(run_result, db) =
+    run_test_program(
+      create_snippet_domain.create_snippet(fixture.ctx, request),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result
+    == Error(error.ValidationError("files must contain at least one file"))
+  assert db.write_steps == []
+}
+
+pub fn create_snippet_rejects_too_long_title_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [must_uuid("00000000-0000-0000-0000-000000000702")],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let request =
+    snippet_dto.CreateSnippetRequest(
+      data: snippet_dto.SnippetData(
+        title: repeat_string("a", 201),
+        language: language.Python,
+        visibility: snippet_model.Public,
+        stdin: "",
+        run_instructions: option.None,
+        files: [snippet_model.File(name: "main.py", content: "print(1)")],
+      ),
+    )
+
+  let #(run_result, db) =
+    run_test_program(
+      create_snippet_domain.create_snippet(fixture.ctx, request),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result
+    == Error(error.ValidationError("title must be at most 200 characters"))
+  assert db.write_steps == []
+}
+
+pub fn update_snippet_rejects_too_long_file_content_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let request =
+    snippet_dto.UpdateSnippetRequest(
+      slug: fixture.snippet.slug,
+      data: snippet_dto.SnippetData(
+        title: "Snippet",
+        language: language.Python,
+        visibility: snippet_model.Public,
+        stdin: "",
+        run_instructions: option.None,
+        files: [
+          snippet_model.File(
+            name: "main.py",
+            content: repeat_string("a", 100_001),
+          ),
+        ],
+      ),
+    )
+
+  let #(run_result, db) =
+    run_test_program(
+      update_snippet_domain.update_snippet(fixture.ctx, request),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result
+    == Error(
+      error.ValidationError(
+        "files[0].content must be at most 100000 characters",
+      ),
+    )
+  assert db.write_steps == []
 }
 
 pub fn schedule_delete_account_sets_delete_job_id_test() {
@@ -564,6 +669,13 @@ fn empty_test_db() -> TestDb {
     next_uuids: [],
     system_time: test_system_time(),
   )
+}
+
+fn repeat_string(value: String, count: Int) -> String {
+  case count <= 0 {
+    True -> ""
+    False -> value <> repeat_string(value, count - 1)
+  }
 }
 
 fn run_test_program(

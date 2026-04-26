@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/result
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
@@ -39,10 +40,22 @@ pub fn create_snippet(
     ),
   ))
 
-  use _ <- program.and_then(case snippet_spam.ensure_clean(request.data) {
-    Ok(_) -> program.succeed(Nil)
-    Error(message) -> program.fail(error.ValidationError(message))
-  })
+  use _ <- program.and_then(
+    snippet_model.validate_fields(
+      request.data.title,
+      request.data.stdin,
+      request.data.run_instructions,
+      request.data.files,
+    )
+    |> result.map_error(error.ValidationError)
+    |> program.from_result,
+  )
+
+  use _ <- program.and_then(
+    snippet_spam.ensure_clean(request.data)
+    |> result.map_error(error.ValidationError)
+    |> program.from_result,
+  )
 
   use snippet_id <- program.and_then(basic_effect.uuid_v7())
   let new_snippet =
