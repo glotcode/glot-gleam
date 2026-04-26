@@ -12,8 +12,8 @@ import glot_core/language
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
+import glot_frontend/app_dialog
 import glot_frontend/api
-import glot_frontend/editor_dialog
 import glot_frontend/editor_settings
 import glot_frontend/icons
 import glot_frontend/route
@@ -26,6 +26,20 @@ import lustre/element/html
 import lustre/event
 import modem
 import youid/uuid.{type Uuid}
+
+const title_dialog_id = "editor-page-title-dialog"
+
+const add_entry_dialog_id = "editor-page-add-entry-dialog"
+
+const edit_entry_dialog_id = "editor-page-edit-entry-dialog"
+
+const settings_dialog_id = "editor-page-settings-dialog"
+
+const save_dialog_id = "editor-page-save-dialog"
+
+const snippet_info_dialog_id = "editor-page-snippet-info-dialog"
+
+const editor_id = "editor-page-codemirror"
 
 pub type Model {
   UnsupportedLanguage(String)
@@ -281,7 +295,7 @@ pub fn update_helper(
 
     TitleClicked -> #(
       RealModel(..model, title_draft: model.title),
-      editor_dialog.open_title_dialog(),
+      app_dialog.open(title_dialog_id),
     )
 
     TitleDraftChanged(title_draft) -> #(
@@ -291,17 +305,17 @@ pub fn update_helper(
 
     TitleEditCancelled -> #(
       RealModel(..model, title_draft: model.title),
-      editor_dialog.close_title_dialog(),
+      app_dialog.close(title_dialog_id),
     )
 
     TitleEditSubmitted -> #(
       RealModel(..model, title: model.title_draft),
-      editor_dialog.close_title_dialog(),
+      app_dialog.close(title_dialog_id),
     )
 
     TitleDialogClosed -> #(
       RealModel(..model, title_draft: model.title),
-      editor_dialog.focus_editor(),
+      focus_editor(),
     )
 
     AddEntryClicked -> #(
@@ -310,7 +324,7 @@ pub fn update_helper(
         add_entry_kind: default_add_entry_kind(model.stdin),
         add_entry_filename: "",
       ),
-      editor_dialog.open_add_entry_dialog(),
+      app_dialog.open(add_entry_dialog_id),
     )
 
     AddEntryKindSelected(kind) -> #(
@@ -325,14 +339,14 @@ pub fn update_helper(
 
     AddEntryCancelled -> #(
       reset_add_entry_draft(model),
-      editor_dialog.close_add_entry_dialog(),
+      app_dialog.close(add_entry_dialog_id),
     )
 
     AddEntrySubmitted -> {
       case add_entry(model) {
         option.Some(next_model) -> #(
           next_model,
-          editor_dialog.close_add_entry_dialog(),
+          app_dialog.close(add_entry_dialog_id),
         )
 
         option.None -> #(model, effect.none())
@@ -341,7 +355,7 @@ pub fn update_helper(
 
     AddEntryDialogClosed -> #(
       reset_add_entry_draft(model),
-      editor_dialog.focus_editor(),
+      focus_editor(),
     )
 
     SelectedTabActionClicked -> #(
@@ -349,7 +363,7 @@ pub fn update_helper(
         ..model,
         edit_entry_filename: default_file_name(model.files, model.selected_tab),
       ),
-      editor_dialog.open_edit_entry_dialog(),
+      app_dialog.open(edit_entry_dialog_id),
     )
 
     EditEntryFilenameChanged(filename) -> #(
@@ -359,14 +373,14 @@ pub fn update_helper(
 
     EditEntryCancelled -> #(
       reset_edit_entry_draft(model),
-      editor_dialog.close_edit_entry_dialog(),
+      app_dialog.close(edit_entry_dialog_id),
     )
 
     EditEntrySubmitted -> {
       case rename_selected_file(model) {
         option.Some(next_model) -> #(
           next_model,
-          editor_dialog.close_edit_entry_dialog(),
+          app_dialog.close(edit_entry_dialog_id),
         )
 
         option.None -> #(model, effect.none())
@@ -377,7 +391,7 @@ pub fn update_helper(
       case delete_selected_entry(model) {
         option.Some(next_model) -> #(
           next_model,
-          editor_dialog.close_edit_entry_dialog(),
+          app_dialog.close(edit_entry_dialog_id),
         )
 
         option.None -> #(model, effect.none())
@@ -386,7 +400,7 @@ pub fn update_helper(
 
     EditEntryDialogClosed -> #(
       reset_edit_entry_draft(model),
-      editor_dialog.focus_editor(),
+      focus_editor(),
     )
 
     SettingsClicked -> #(
@@ -398,7 +412,7 @@ pub fn update_helper(
           effective_run_instructions(model),
         ),
       ),
-      editor_dialog.open_settings_dialog(),
+      app_dialog.open(settings_dialog_id),
     )
 
     KeyboardBindingsDraftSelected(bindings) -> #(
@@ -454,7 +468,7 @@ pub fn update_helper(
           effective_run_instructions(model),
         ),
       ),
-      editor_dialog.close_settings_dialog(),
+      app_dialog.close(settings_dialog_id),
     )
 
     SettingsSubmitted -> #(
@@ -464,7 +478,7 @@ pub fn update_helper(
         run_instructions_override: run_instructions_override_from_draft(model),
       ),
       effect.batch([
-        editor_dialog.close_settings_dialog(),
+        app_dialog.close(settings_dialog_id),
         editor_settings.save(model.editor_settings_draft),
       ]),
     )
@@ -478,12 +492,12 @@ pub fn update_helper(
           effective_run_instructions(model),
         ),
       ),
-      editor_dialog.focus_editor(),
+      focus_editor(),
     )
 
     SaveClicked -> #(
       RealModel(..model, save_visibility_draft: model.visibility),
-      editor_dialog.open_save_dialog(),
+      app_dialog.open(save_dialog_id),
     )
 
     SaveVisibilityDraftSelected(visibility) -> #(
@@ -493,19 +507,19 @@ pub fn update_helper(
 
     SaveCancelled -> #(
       reset_save_dialog_draft(model),
-      editor_dialog.close_save_dialog(),
+      app_dialog.close(save_dialog_id),
     )
 
     SaveDialogClosed -> #(
       reset_save_dialog_draft(model),
-      editor_dialog.focus_editor(),
+      focus_editor(),
     )
 
-    SnippetInfoClicked -> #(model, editor_dialog.open_snippet_info_dialog())
+    SnippetInfoClicked -> #(model, app_dialog.open(snippet_info_dialog_id))
 
-    SnippetInfoDismissed -> #(model, editor_dialog.close_snippet_info_dialog())
+    SnippetInfoDismissed -> #(model, app_dialog.close(snippet_info_dialog_id))
 
-    SnippetInfoClosed -> #(model, editor_dialog.focus_editor())
+    SnippetInfoClosed -> #(model, focus_editor())
 
     TabSelected(tab) -> #(
       RealModel(
@@ -607,7 +621,7 @@ pub fn update_helper(
 
       #(
         RealModel(..model, visibility: visibility, save_state: Saving),
-        effect.batch([editor_dialog.close_save_dialog(), save_effect]),
+        effect.batch([app_dialog.close(save_dialog_id), save_effect]),
       )
     }
 
@@ -740,7 +754,7 @@ fn view_helper(
         element.element(
           "glot-codemirror",
           [
-            attribute.id(editor_dialog.editor_id),
+            attribute.id(editor_id),
             attribute.class("editor-shell__codemirror"),
             attribute.attribute("language", language.to_string(model.language)),
             attribute.attribute("value", selected_tab_content(model)),
@@ -883,7 +897,7 @@ fn action_button(
 fn title_dialog_view(model: RealModel) -> Element(Msg) {
   html.dialog(
     [
-      attribute.id(editor_dialog.title_dialog_id),
+      attribute.id(title_dialog_id),
       attribute.class("editor-page__dialog"),
       event.on("close", decode.success(TitleDialogClosed)),
     ],
@@ -938,7 +952,7 @@ fn title_dialog_view(model: RealModel) -> Element(Msg) {
 fn add_entry_dialog_view(model: RealModel) -> Element(Msg) {
   html.dialog(
     [
-      attribute.id(editor_dialog.add_entry_dialog_id),
+      attribute.id(add_entry_dialog_id),
       attribute.class("editor-page__dialog"),
       event.on("close", decode.success(AddEntryDialogClosed)),
     ],
@@ -991,7 +1005,7 @@ fn add_entry_dialog_view(model: RealModel) -> Element(Msg) {
 fn edit_entry_dialog_view(model: RealModel) -> Element(Msg) {
   html.dialog(
     [
-      attribute.id(editor_dialog.edit_entry_dialog_id),
+      attribute.id(edit_entry_dialog_id),
       attribute.class("editor-page__dialog"),
       event.on("close", decode.success(EditEntryDialogClosed)),
     ],
@@ -1013,7 +1027,7 @@ fn settings_dialog_view(model: RealModel) -> Element(Msg) {
 
   html.dialog(
     [
-      attribute.id(editor_dialog.settings_dialog_id),
+      attribute.id(settings_dialog_id),
       attribute.class("editor-page__dialog"),
       event.on("close", decode.success(SettingsDialogClosed)),
     ],
@@ -1179,7 +1193,7 @@ fn save_dialog_view(
 
   html.dialog(
     [
-      attribute.id(editor_dialog.save_dialog_id),
+      attribute.id(save_dialog_id),
       attribute.class("editor-page__dialog"),
       event.on("close", decode.success(SaveDialogClosed)),
     ],
@@ -1298,7 +1312,7 @@ fn save_dialog_children(
 fn snippet_info_dialog_view(model: RealModel) -> Element(Msg) {
   html.dialog(
     [
-      attribute.id(editor_dialog.snippet_info_dialog_id),
+      attribute.id(snippet_info_dialog_id),
       attribute.class("editor-page__dialog"),
       event.on("close", decode.success(SnippetInfoClosed)),
     ],
@@ -1765,6 +1779,10 @@ fn save_action_name(
 
 fn reset_save_dialog_draft(model: RealModel) -> RealModel {
   RealModel(..model, save_visibility_draft: model.visibility)
+}
+
+fn focus_editor() -> Effect(msg) {
+  app_dialog.focus(editor_id)
 }
 
 fn run_button_text(run_state: RunState) -> String {

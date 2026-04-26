@@ -44,3 +44,13 @@ export function closeDialog(id) {
 
   dialog.close();
 }
+
+export function focusElement(id) {
+  const element = document.getElementById(id);
+
+  if (!(element instanceof HTMLElement)) {
+    return;
+  }
+
+  element.focus();
+}
