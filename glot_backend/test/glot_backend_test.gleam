@@ -858,6 +858,7 @@ fn run_test_snippet_effect(
     }
     snippet_algebra.ListSnippets(
       visibilities: _,
+      usernames: _,
       skip_user_ids: _,
       after_slug: _,
       before_slug: _,
@@ -898,6 +899,7 @@ fn run_test_snippet_tx_effect(
     }
     snippet_algebra.ListSnippets(
       visibilities: _,
+      usernames: _,
       skip_user_ids: _,
       after_slug: _,
       before_slug: _,

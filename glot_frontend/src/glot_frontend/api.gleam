@@ -116,6 +116,7 @@ pub fn list_public_snippets(
       json.object([
         #("after", json.nullable(list_request.after, json.string)),
         #("before", json.nullable(list_request.before, json.string)),
+        #("usernames", json.array(list_request.usernames, json.string)),
         #("limit", json.int(list_request.limit)),
       ])
     },

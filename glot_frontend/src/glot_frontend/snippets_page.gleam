@@ -14,13 +14,14 @@ import lustre/element/html
 import lustre/event
 import modem
 
-const page_limit = 20
+const page_limit = 10
 
 pub type Model {
   Model(
     snippets: List(snippet_dto.SnippetResponse),
     after: option.Option(String),
     before: option.Option(String),
+    username: option.Option(String),
     previous_cursor: option.Option(String),
     next_cursor: option.Option(String),
     state: State,
@@ -36,24 +37,28 @@ pub type State {
 pub fn init(
   after after: option.Option(String),
   before before: option.Option(String),
+  username username: option.Option(String),
 ) -> #(Model, Effect(Msg)) {
   let model =
     Model(
       snippets: [],
       after: after,
       before: before,
+      username: username,
       previous_cursor: option.None,
       next_cursor: option.None,
       state: Loading,
     )
 
-  #(model, load_page(after, before))
+  #(model, load_page(after, before, username))
 }
 
 pub type Msg {
   SnippetsLoaded(api.ApiResponse(snippet_dto.ListPublicSnippetsResponse))
   NextPageClicked
   PreviousPageClicked
+  UsernameClicked(String)
+  ClearUsernameFilterClicked
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
@@ -84,7 +89,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.next_cursor {
         option.Some(next_cursor) -> #(
           model,
-          navigate_to(option.Some(next_cursor), option.None),
+          navigate_to(option.Some(next_cursor), option.None, model.username),
         )
         option.None -> #(model, effect.none())
       }
@@ -93,10 +98,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.previous_cursor {
         option.Some(previous_cursor) -> #(
           model,
-          navigate_to(option.None, option.Some(previous_cursor)),
+          navigate_to(option.None, option.Some(previous_cursor), model.username),
         )
         option.None -> #(model, effect.none())
       }
+
+    UsernameClicked(username) ->
+      #(model, navigate_to(option.None, option.None, option.Some(username)))
+
+    ClearUsernameFilterClicked ->
+      #(model, navigate_to(option.None, option.None, option.None))
   }
 }
 
@@ -115,6 +126,7 @@ pub fn view(
             html.h2([attribute.class("snippets-page__title")], [
               html.text("Public snippets"),
             ]),
+            active_filter_view(model.username),
           ]),
           html.div([attribute.class("snippets-page__pagination")], [
             pagination_button(
@@ -135,9 +147,15 @@ pub fn view(
 fn load_page(
   after: option.Option(String),
   before: option.Option(String),
+  username: option.Option(String),
 ) -> Effect(Msg) {
   api.list_public_snippets(
-    snippet_dto.ListPublicSnippetsRequest(after:, before:, limit: page_limit),
+    snippet_dto.ListPublicSnippetsRequest(
+      after:,
+      before:,
+      usernames: usernames_from_filter(username),
+      limit: page_limit,
+    ),
     SnippetsLoaded,
   )
 }
@@ -185,6 +203,26 @@ fn status_view(model: Model) -> Element(Msg) {
   }
 }
 
+fn active_filter_view(username: option.Option(String)) -> Element(Msg) {
+  case username {
+    option.Some(username) ->
+      html.div([attribute.class("snippets-page__filters")], [
+        html.span([attribute.class("snippets-page__filter")], [
+          html.text("Filtered by @" <> username),
+        ]),
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class("snippets-page__filter-clear"),
+            event.on_click(ClearUsernameFilterClicked),
+          ],
+          [html.text("Clear")],
+        ),
+      ])
+    option.None -> html.div([], [])
+  }
+}
+
 fn snippets_table(snippets: List(snippet_dto.SnippetResponse)) -> Element(Msg) {
   html.div([attribute.class("snippets-table")], [
     html.div([attribute.class("snippets-table__head")], [
@@ -208,32 +246,39 @@ fn snippets_table(snippets: List(snippet_dto.SnippetResponse)) -> Element(Msg) {
 }
 
 fn snippet_row(snippet: snippet_dto.SnippetResponse) -> Element(Msg) {
-  html.a(
-    [
-      attribute.class("snippets-table__row"),
-      route.href(route.Snippet(snippet.slug)),
-    ],
-    [
-      html.span(
-        [attribute.class("snippets-table__cell snippets-table__cell--language")],
-        [
-          html.text(language.name(snippet.data.language)),
-        ],
-      ),
-      html.span(
-        [attribute.class("snippets-table__cell snippets-table__cell--title")],
-        [
-          html.text(snippet.data.title),
-        ],
-      ),
-      html.span([attribute.class("snippets-table__cell")], [
-        html.text(timestamp_label(snippet.created_at)),
-      ]),
-      html.span([attribute.class("snippets-table__cell")], [
-        html.text(snippet.user.username),
-      ]),
-    ],
-  )
+  html.div([attribute.class("snippets-table__row")], [
+    snippet_cell_link(
+      "snippets-table__cell snippets-table__cell--language",
+      route.Snippet(snippet.slug),
+      language.name(snippet.data.language),
+    ),
+    snippet_cell_link(
+      "snippets-table__cell snippets-table__cell--title",
+      route.Snippet(snippet.slug),
+      snippet.data.title,
+    ),
+    snippet_cell_link(
+      "snippets-table__cell",
+      route.Snippet(snippet.slug),
+      timestamp_label(snippet.created_at),
+    ),
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.class("snippets-table__cell snippets-table__username"),
+        event.on_click(UsernameClicked(snippet.user.username)),
+      ],
+      [html.text(snippet.user.username)],
+    ),
+  ])
+}
+
+fn snippet_cell_link(
+  class_name: String,
+  destination: route.Route,
+  label: String,
+) -> Element(Msg) {
+  html.a([attribute.class(class_name), route.href(destination)], [html.text(label)])
 }
 
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
@@ -251,9 +296,18 @@ fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
 fn navigate_to(
   after: option.Option(String),
   before: option.Option(String),
+  username: option.Option(String),
 ) -> Effect(Msg) {
-  let #(path, query) = route.path_and_query(route.Snippets(after:, before:))
+  let #(path, query) =
+    route.path_and_query(route.Snippets(after:, before:, username:))
   modem.push(path, query, option.None)
+}
+
+fn usernames_from_filter(username: option.Option(String)) -> List(String) {
+  case username {
+    option.Some(username) -> [username]
+    option.None -> []
+  }
 }
 
 fn timestamp_label(value: timestamp.Timestamp) -> String {

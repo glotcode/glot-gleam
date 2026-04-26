@@ -52,6 +52,7 @@ pub fn list_public_snippets(
 
   use snippets <- program.and_then(snippet_effect.list(
     visibilities: [snippet_model.Public],
+    usernames: request.usernames,
     skip_user_ids: [],
     after_slug: request.after,
     before_slug: request.before,

@@ -61,8 +61,8 @@ fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
       #(AccountPage(m), effect.map(eff, AccountPageMsg))
     }
 
-    route.Snippets(after:, before:) -> {
-      let #(m, eff) = snippets_page.init(after:, before:)
+    route.Snippets(after:, before:, username:) -> {
+      let #(m, eff) = snippets_page.init(after:, before:, username:)
       #(SnippetsPage(m), effect.map(eff, SnippetsPageMsg))
     }
 

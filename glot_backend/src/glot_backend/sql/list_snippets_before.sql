@@ -25,6 +25,10 @@ WHERE
     cardinality(sqlc.arg(visibilities)::text[]) = 0
     OR snippets.visibility = ANY(sqlc.arg(visibilities)::text[])
   )
+  AND (
+    cardinality(sqlc.arg(usernames)::text[]) = 0
+    OR users.username = ANY(sqlc.arg(usernames)::text[])
+  )
   AND NOT users.id = ANY(sqlc.arg(skip_user_ids)::uuid[])
   AND (
     sqlc.narg(before_slug)::text IS NULL

@@ -310,6 +310,7 @@ pub type ListSnippetsBefore {
 
 pub fn list_snippets_before(
   visibilities visibilities: List(String),
+  usernames usernames: List(String),
   skip_user_ids skip_user_ids: List(BitArray),
   before_slug before_slug: Option(String),
   page_limit page_limit: Int,
@@ -341,17 +342,22 @@ WHERE
     cardinality($1::text[]) = 0
     OR snippets.visibility = ANY($1::text[])
   )
-  AND NOT users.id = ANY($2::uuid[])
   AND (
-    $3::text IS NULL
-    OR snippets.slug > $3::text
+    cardinality($2::text[]) = 0
+    OR users.username = ANY($2::text[])
+  )
+  AND NOT users.id = ANY($3::uuid[])
+  AND (
+    $4::text IS NULL
+    OR snippets.slug > $4::text
   )
 ORDER BY snippets.slug ASC
-LIMIT $4"
+LIMIT $5"
   #(
     sql,
     [
       dev.ParamList(list.map(visibilities, dev.ParamString)),
+      dev.ParamList(list.map(usernames, dev.ParamString)),
       dev.ParamList(list.map(skip_user_ids, dev.ParamBitArray)),
       dev.ParamNullable(option.map(before_slug, fn(v) { dev.ParamString(v) })),
       dev.ParamInt(page_limit),
@@ -431,6 +437,7 @@ pub type ListSnippetsAfter {
 
 pub fn list_snippets_after(
   visibilities visibilities: List(String),
+  usernames usernames: List(String),
   skip_user_ids skip_user_ids: List(BitArray),
   after_slug after_slug: Option(String),
   page_limit page_limit: Int,
@@ -462,17 +469,22 @@ WHERE
     cardinality($1::text[]) = 0
     OR snippets.visibility = ANY($1::text[])
   )
-  AND NOT users.id = ANY($2::uuid[])
   AND (
-    $3::text IS NULL
-    OR snippets.slug < $3::text
+    cardinality($2::text[]) = 0
+    OR users.username = ANY($2::text[])
+  )
+  AND NOT users.id = ANY($3::uuid[])
+  AND (
+    $4::text IS NULL
+    OR snippets.slug < $4::text
   )
 ORDER BY snippets.slug DESC
-LIMIT $4"
+LIMIT $5"
   #(
     sql,
     [
       dev.ParamList(list.map(visibilities, dev.ParamString)),
+      dev.ParamList(list.map(usernames, dev.ParamString)),
       dev.ParamList(list.map(skip_user_ids, dev.ParamBitArray)),
       dev.ParamNullable(option.map(after_slug, fn(v) { dev.ParamString(v) })),
       dev.ParamInt(page_limit),

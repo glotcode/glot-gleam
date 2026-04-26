@@ -1,4 +1,6 @@
 import gleeunit
+import gleam/option
+import glot_frontend/route
 import glot_frontend/string_helpers
 
 pub fn main() -> Nil {
@@ -26,4 +28,14 @@ pub fn truncate_stem_middle_truncates_to_requested_length_test() {
 pub fn truncate_stem_middle_handles_tiny_lengths_test() {
   assert string_helpers.truncate_stem_middle("abcdef", 4) == "abcd"
   assert string_helpers.truncate_stem_middle("abcdef", 2) == "ab"
+}
+
+pub fn snippets_route_to_string_includes_username_query_test() {
+  assert route.to_string(
+    route.Snippets(
+      after: option.Some("after-1"),
+      before: option.None,
+      username: option.Some("alice"),
+    ),
+  ) == "/snippets?after=after-1&username=alice"
 }

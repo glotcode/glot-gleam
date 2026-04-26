@@ -23,6 +23,7 @@ pub type SnippetHandlers {
       Result(option.Option(HydratedSnippet), error.DbQueryError),
     list_snippets: fn(
       List(Visibility),
+      List(String),
       List(uuid.Uuid),
       option.Option(String),
       option.Option(String),
@@ -39,10 +40,11 @@ pub fn new(db: pog.Connection) -> SnippetHandlers {
   SnippetHandlers(
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
     get_snippet_by_slug: fn(slug) { get_snippet_by_slug(db, slug) },
-    list_snippets: fn(visibilities, skip_user_ids, after_slug, before_slug, limit) {
+    list_snippets: fn(visibilities, usernames, skip_user_ids, after_slug, before_slug, limit) {
       list_snippets(
         db,
         visibilities,
+        usernames,
         skip_user_ids,
         after_slug,
         before_slug,
@@ -95,6 +97,7 @@ pub fn get_snippet_by_slug(
 pub fn list_snippets(
   db: pog.Connection,
   visibilities: List(Visibility),
+  usernames: List(String),
   skip_user_ids: List(uuid.Uuid),
   after_slug: option.Option(String),
   before_slug: option.Option(String),
@@ -113,6 +116,7 @@ pub fn list_snippets(
         db,
         sql.list_snippets_before(
           visibility_strings,
+          usernames,
           skip_user_id_bits,
           option.Some(before_slug),
           limit,
@@ -131,6 +135,7 @@ pub fn list_snippets(
         db,
         sql.list_snippets_after(
           visibility_strings,
+          usernames,
           skip_user_id_bits,
           after_slug,
           limit,

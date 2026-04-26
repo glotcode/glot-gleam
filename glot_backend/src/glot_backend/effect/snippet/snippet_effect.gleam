@@ -21,6 +21,7 @@ pub fn get_by_slug(
 
 pub fn list(
   visibilities visibilities: List(Visibility),
+  usernames usernames: List(String),
   skip_user_ids skip_user_ids: List(uuid.Uuid),
   after_slug after_slug: option.Option(String),
   before_slug before_slug: option.Option(String),
@@ -29,6 +30,7 @@ pub fn list(
   program_types.Impure(
     program_types.DbEffect(list_effect(
       visibilities,
+      usernames,
       skip_user_ids,
       after_slug,
       before_slug,
@@ -161,6 +163,7 @@ fn get_by_slug_effect(
 
 fn list_effect(
   visibilities: List(Visibility),
+  usernames: List(String),
   skip_user_ids: List(uuid.Uuid),
   after_slug: option.Option(String),
   before_slug: option.Option(String),
@@ -169,6 +172,7 @@ fn list_effect(
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.ListSnippets(
     visibilities: visibilities,
+    usernames: usernames,
     skip_user_ids: skip_user_ids,
     after_slug: after_slug,
     before_slug: before_slug,

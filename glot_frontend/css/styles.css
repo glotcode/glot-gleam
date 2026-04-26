@@ -493,6 +493,34 @@ body {
   text-transform: uppercase;
 }
 
+.snippets-page__filters {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.6rem;
+}
+
+.snippets-page__filter {
+  color: #2853a6;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.snippets-page__filter-clear {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2853a6;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.snippets-page__filter-clear:hover {
+  text-decoration: underline;
+}
+
 .snippets-page__status {
   margin: 0.35rem 0 0;
   color: #51627f;
@@ -580,6 +608,15 @@ body {
   line-height: 1.45;
 }
 
+a.snippets-table__cell {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.snippets-table__cell:hover {
+  text-decoration: underline;
+}
+
 .snippets-table__cell--language {
   color: #2853a6;
   font-weight: 700;
@@ -589,6 +626,21 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.snippets-table__username {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #2853a6;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.snippets-table__username:hover {
+  text-decoration: underline;
 }
 
 .editor-page {

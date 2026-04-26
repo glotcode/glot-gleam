@@ -41,6 +41,7 @@ pub fn run(
     }
     snippet_algebra.ListSnippets(
       visibilities: visibilities,
+      usernames: usernames,
       skip_user_ids: skip_user_ids,
       after_slug: after_slug,
       before_slug: before_slug,
@@ -51,6 +52,7 @@ pub fn run(
       let result =
         handlers.snippet.list_snippets(
           visibilities,
+          usernames,
           skip_user_ids,
           after_slug,
           before_slug,

@@ -7,7 +7,11 @@ pub type Route {
   Home
   Login
   Account
-  Snippets(after: option.Option(String), before: option.Option(String))
+  Snippets(
+    after: option.Option(String),
+    before: option.Option(String),
+    username: option.Option(String),
+  )
   NewSnippet(language: String)
   Snippet(slug: String)
   NotFound(uri: Uri)
@@ -19,8 +23,8 @@ pub fn from_uri(uri: Uri) -> Route {
     ["login"] -> Login
     ["account"] -> Account
     ["snippets"] -> {
-      let #(after, before) = snippet_query_params(uri)
-      Snippets(after:, before:)
+      let #(after, before, username) = snippet_query_params(uri)
+      Snippets(after:, before:, username:)
     }
     ["new", language] -> NewSnippet(language: language)
     ["snippets", slug] -> Snippet(slug: slug)
@@ -33,8 +37,8 @@ pub fn to_string(route: Route) -> String {
     Home -> "/"
     Login -> "/login"
     Account -> "/account"
-    Snippets(after:, before:) -> {
-      let query = snippet_query_string(after, before)
+    Snippets(after:, before:, username:) -> {
+      let query = snippet_query_string(after, before, username)
       case query {
         option.Some(query) -> "/snippets?" <> query
         option.None -> "/snippets"
@@ -52,12 +56,15 @@ pub fn href(route: Route) -> Attribute(msg) {
 
 pub fn path_and_query(route: Route) -> #(String, option.Option(String)) {
   case route {
-    Snippets(after:, before:) -> #("/snippets", snippet_query_string(after, before))
+    Snippets(after:, before:, username:) ->
+      #("/snippets", snippet_query_string(after, before, username))
     _ -> #(to_string(route), option.None)
   }
 }
 
-fn snippet_query_params(uri: Uri) -> #(option.Option(String), option.Option(String)) {
+fn snippet_query_params(
+  uri: Uri,
+) -> #(option.Option(String), option.Option(String), option.Option(String)) {
   case uri.query {
     option.Some(query) ->
       case uri.parse_query(query) {
@@ -65,10 +72,11 @@ fn snippet_query_params(uri: Uri) -> #(option.Option(String), option.Option(Stri
           #(
             query_param(params, "after"),
             query_param(params, "before"),
+            query_param(params, "username"),
           )
-        Error(_) -> #(option.None, option.None)
+        Error(_) -> #(option.None, option.None, option.None)
       }
-    option.None -> #(option.None, option.None)
+    option.None -> #(option.None, option.None, option.None)
   }
 }
 
@@ -85,11 +93,13 @@ fn query_param(
 fn snippet_query_string(
   after: option.Option(String),
   before: option.Option(String),
+  username: option.Option(String),
 ) -> option.Option(String) {
   let pairs =
     []
-    |> prepend_query_param("before", before)
     |> prepend_query_param("after", after)
+    |> prepend_query_param("before", before)
+    |> prepend_query_param("username", username)
     |> list.reverse
 
   case pairs {
