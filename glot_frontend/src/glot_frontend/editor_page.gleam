@@ -802,7 +802,7 @@ fn quick_actions_for_model(
       msg: SaveClicked,
     ),
     top_bar.Action(
-      label: "New file / stdin",
+      label: "New file",
       description: "Add a new file or stdin input entry.",
       msg: AddEntryClicked,
     ),
@@ -1752,8 +1752,8 @@ fn save_action_name(
   current_user_id: option.Option(Uuid),
 ) -> String {
   case save_operation(model, current_user_id) {
-    CreateSnippet -> api_action.to_string(api_action.CreateSnippetAction)
-    UpdateSnippet(_) -> api_action.to_string(api_action.UpdateSnippetAction)
+    CreateSnippet -> "Create snippet"
+    UpdateSnippet(_) -> "Update snippet"
   }
 }
 

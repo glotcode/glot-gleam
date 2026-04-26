@@ -205,6 +205,9 @@ pub fn view(model: Model) -> Element(Msg) {
     html.main([attribute.class("app-shell app-shell--narrow")], [
       html.section([attribute.class("app-panel")], [
         html.h2([attribute.class("login-page__title")], [html.text("Login")]),
+        html.p([attribute.class("login-page__status")], [
+          html.text("No account yet? We’ll create one when you sign in."),
+        ]),
         html.form(
           [
             event.on_submit(fn(_) { submit_msg(model.step) }),

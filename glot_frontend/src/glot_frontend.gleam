@@ -383,6 +383,7 @@ fn top_bar_model(model: Model) -> top_bar.ViewModel(Msg) {
 fn navigation_actions(
   session: SessionState,
   current_route: route.Route,
+  query: String,
 ) -> List(top_bar.Action(Msg)) {
   let shared = [
     top_bar.Action(
@@ -417,13 +418,29 @@ fn navigation_actions(
       ])
 
     AnonymousSession | SessionError ->
-      list.append(shared, [
-        top_bar.Action(
-          label: "Login",
-          description: "Sign in to save and manage snippets.",
-          msg: QuickActionSelected(NavigateTo(route.Login)),
-        ),
-      ])
+      case query == "" {
+        True ->
+          list.append(shared, [
+            top_bar.Action(
+              label: "Login",
+              description: "Sign in to save and manage snippets.",
+              msg: QuickActionSelected(NavigateTo(route.Login)),
+            ),
+          ])
+        False ->
+          list.append(shared, [
+            top_bar.Action(
+              label: "Login",
+              description: "Sign in to save and manage snippets.",
+              msg: QuickActionSelected(NavigateTo(route.Login)),
+            ),
+            top_bar.Action(
+              label: "Register",
+              description: "Create an account or sign in with email.",
+              msg: QuickActionSelected(NavigateTo(route.Login)),
+            ),
+          ])
+      }
   }
   |> list.filter(fn(action) {
     !is_current_navigation_action(action, current_route)
@@ -517,7 +534,7 @@ fn filtered_quick_action_sections(model: Model) -> List(top_bar.Section(Msg)) {
         0,
         top_bar.Section(
           title: "Navigation",
-          actions: navigation_actions(model.session, model.route)
+          actions: navigation_actions(model.session, model.route, query)
             |> list.filter(action_matches(_, query)),
         ),
       ),
