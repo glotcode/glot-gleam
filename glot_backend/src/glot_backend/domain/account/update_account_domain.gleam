@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/result
 import gleam/string
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
@@ -41,13 +42,11 @@ pub fn update_account(
     ),
   ))
 
-  use _ <- program.and_then(case user_model.is_valid_username(username) {
-    True -> program.succeed(Nil)
-    False ->
-      program.fail(error.ValidationError(
-        "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens",
-      ))
-  })
+  use _ <- program.and_then(
+    user_model.validate_username(username)
+    |> result.map_error(error.ValidationError)
+    |> program.from_result,
+  )
 
   let user =
     user_model.change_username(session.user.identity, username, ctx.timestamp)

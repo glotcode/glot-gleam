@@ -51,13 +51,19 @@ pub fn role_from_string(role: String) -> option.Option(UserRole) {
   }
 }
 
-pub fn is_valid_username(username: String) -> Bool {
+pub fn validate_username(username: String) -> Result(Nil, String) {
   let chars = username |> string.to_graphemes()
   let length = list.length(chars)
+  let error =
+    "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens"
 
   case length < 3 || length > 40 {
-    True -> False
-    False -> validate_username_chars(chars, False, True)
+    True -> Error(error)
+    False ->
+      case validate_username_chars(chars, False, True) {
+        True -> Ok(Nil)
+        False -> Error(error)
+      }
   }
 }
 

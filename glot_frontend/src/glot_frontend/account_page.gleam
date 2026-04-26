@@ -96,8 +96,8 @@ pub fn update(
     UsernameSubmitted -> {
       let username = string.trim(model.username)
 
-      case user_model.is_valid_username(username) {
-        True -> {
+      case user_model.validate_username(username) {
+        Ok(_) -> {
           let request = account_dto.UpdateAccountRequest(username:)
           #(
             Model(..model, username: username, status: Saving),
@@ -106,13 +106,11 @@ pub fn update(
           )
         }
 
-        False -> #(
+        Error(message) -> #(
           Model(
             ..model,
             username: username,
-            status: Error(
-              "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens",
-            ),
+            status: Error(message),
           ),
           effect.none(),
           app_event.NoAppEvent,

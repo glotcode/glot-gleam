@@ -23,26 +23,33 @@ pub fn new_slug_truncates_to_microseconds_test() {
   assert snippet_model.new_slug(a) == snippet_model.new_slug(b)
 }
 
-pub fn is_valid_username_accepts_valid_values_test() {
-  assert user_model.is_valid_username("abc")
-  assert user_model.is_valid_username("abc-123")
-  assert user_model.is_valid_username("a.b-c9")
-  assert user_model.is_valid_username("aaa")
-  assert user_model.is_valid_username("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+pub fn validate_username_accepts_valid_values_test() {
+  assert user_model.validate_username("abc") == Ok(Nil)
+  assert user_model.validate_username("abc-123") == Ok(Nil)
+  assert user_model.validate_username("a.b-c9") == Ok(Nil)
+  assert user_model.validate_username("aaa") == Ok(Nil)
+  assert user_model.validate_username("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    == Ok(Nil)
 }
 
-pub fn is_valid_username_rejects_invalid_values_test() {
-  assert !user_model.is_valid_username("")
-  assert !user_model.is_valid_username("ab")
-  assert !user_model.is_valid_username(".abc")
-  assert !user_model.is_valid_username("-abc")
-  assert !user_model.is_valid_username("ab..cd")
-  assert !user_model.is_valid_username("ab--cd")
-  assert !user_model.is_valid_username("ab.-cd")
-  assert !user_model.is_valid_username("ab-.cd")
-  assert !user_model.is_valid_username("Abc")
-  assert !user_model.is_valid_username("abc_123")
-  assert !user_model.is_valid_username("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+pub fn validate_username_rejects_invalid_values_test() {
+  let error =
+    Error(
+      "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens",
+    )
+
+  assert user_model.validate_username("") == error
+  assert user_model.validate_username("ab") == error
+  assert user_model.validate_username(".abc") == error
+  assert user_model.validate_username("-abc") == error
+  assert user_model.validate_username("ab..cd") == error
+  assert user_model.validate_username("ab--cd") == error
+  assert user_model.validate_username("ab.-cd") == error
+  assert user_model.validate_username("ab-.cd") == error
+  assert user_model.validate_username("Abc") == error
+  assert user_model.validate_username("abc_123") == error
+  assert user_model.validate_username("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+    == error
 }
 
 pub fn pagination_validate_accepts_valid_limit_test() {
