@@ -9,15 +9,6 @@ import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import youid/uuid.{type Uuid}
 
-pub type ListSnippetsFilter {
-  ListSnippetsFilter(
-    visibilities: List(Visibility),
-    usernames: List(String),
-    user_ids: List(Uuid),
-    skip_user_ids: List(Uuid),
-  )
-}
-
 pub type Snippet {
   Snippet(
     id: Uuid,
@@ -104,4 +95,50 @@ pub fn default_file(lang: language.Language) -> File {
 
 pub fn empty_file() -> File {
   File(name: "", content: "")
+}
+
+pub type ListSnippetsFilter {
+  ListSnippetsFilter(
+    visibilities: List(Visibility),
+    usernames: List(String),
+    user_ids: List(Uuid),
+    skip_user_ids: List(Uuid),
+  )
+}
+
+pub fn new_filter() -> ListSnippetsFilter {
+  ListSnippetsFilter(
+    visibilities: [],
+    usernames: [],
+    user_ids: [],
+    skip_user_ids: [],
+  )
+}
+
+pub fn only_visibilities(
+  filter: ListSnippetsFilter,
+  visibilities: List(Visibility),
+) -> ListSnippetsFilter {
+  ListSnippetsFilter(..filter, visibilities: visibilities)
+}
+
+pub fn only_usernames(
+  filter: ListSnippetsFilter,
+  usernames: List(String),
+) -> ListSnippetsFilter {
+  ListSnippetsFilter(..filter, usernames: usernames)
+}
+
+pub fn only_user_ids(
+  filter: ListSnippetsFilter,
+  user_ids: List(Uuid),
+) -> ListSnippetsFilter {
+  ListSnippetsFilter(..filter, user_ids: user_ids)
+}
+
+pub fn skip_user_ids(
+  filter: ListSnippetsFilter,
+  skip_user_ids: List(Uuid),
+) -> ListSnippetsFilter {
+  ListSnippetsFilter(..filter, skip_user_ids: skip_user_ids)
 }

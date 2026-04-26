@@ -51,12 +51,9 @@ pub fn list_public_snippets(
   ))
 
   use snippets <- program.and_then(snippet_effect.list(
-    filter: snippet_model.ListSnippetsFilter(
-      visibilities: [snippet_model.Public],
-      usernames: request.usernames,
-      user_ids: [],
-      skip_user_ids: [],
-    ),
+    filter: snippet_model.new_filter()
+      |> snippet_model.only_visibilities([snippet_model.Public])
+      |> snippet_model.only_usernames(request.usernames),
     pagination: pagination_model.increment_limit(pagination),
   ))
 

@@ -46,12 +46,8 @@ pub fn list_session_snippets(
   ))
 
   use snippets <- program.and_then(snippet_effect.list(
-    filter: snippet_model.ListSnippetsFilter(
-      visibilities: [],
-      usernames: [],
-      user_ids: [session.user.identity.id],
-      skip_user_ids: [],
-    ),
+    filter: snippet_model.new_filter()
+      |> snippet_model.only_user_ids([session.user.identity.id]),
     pagination: pagination_model.increment_limit(pagination),
   ))
 
