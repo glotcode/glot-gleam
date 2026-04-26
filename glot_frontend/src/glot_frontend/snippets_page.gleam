@@ -6,6 +6,7 @@ import glot_core/language
 import glot_core/snippet/snippet_dto
 import glot_frontend/api
 import glot_frontend/route
+import glot_frontend/string_helpers
 import glot_frontend/top_bar
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -208,7 +209,7 @@ fn active_filter_view(username: option.Option(String)) -> Element(Msg) {
     option.Some(username) ->
       html.div([attribute.class("snippets-page__filters")], [
         html.span([attribute.class("snippets-page__filter")], [
-          html.text("Filtered by @" <> username),
+          html.text("Filtered by @" <> truncate_username(username)),
         ]),
         html.button(
           [
@@ -268,7 +269,7 @@ fn snippet_row(snippet: snippet_dto.SnippetResponse) -> Element(Msg) {
         attribute.class("snippets-table__cell snippets-table__username"),
         event.on_click(UsernameClicked(snippet.user.username)),
       ],
-      [html.text(snippet.user.username)],
+      [html.text(truncate_username(snippet.user.username))],
     ),
   ])
 }
@@ -308,6 +309,10 @@ fn usernames_from_filter(username: option.Option(String)) -> List(String) {
     option.Some(username) -> [username]
     option.None -> []
   }
+}
+
+fn truncate_username(username: String) -> String {
+  string_helpers.truncate_stem_middle(username, 20)
 }
 
 fn timestamp_label(value: timestamp.Timestamp) -> String {
