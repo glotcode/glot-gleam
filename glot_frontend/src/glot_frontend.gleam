@@ -582,14 +582,18 @@ fn filtered_quick_action_sections(model: Model) -> List(top_bar.Section(Msg)) {
     |> list.filter(fn(section) { section_has_actions(section.1) })
 
   case query == "" {
-    True -> list.map(sections, fn(section) { section.1 })
+    True ->
+      sections
+      |> list.map(fn(section) {
+        section.1
+        |> cap_section_actions(5)
+      })
     False ->
       sections
       |> list.sort(by: compare_sections(query))
       |> list.map(fn(section) {
         section.1
         |> sort_section_actions(query)
-        |> cap_section_actions(5)
       })
   }
 }
