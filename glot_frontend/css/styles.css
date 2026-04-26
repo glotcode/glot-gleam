@@ -7,6 +7,10 @@ body {
   font-family: "Lucida Console", Monaco, "Courier New", monospace;
 }
 
+a {
+  color: inherit;
+}
+
 .app-page {
   position: relative;
   min-height: calc(100vh - 3.2rem);
@@ -275,6 +279,35 @@ body {
   white-space: nowrap;
 }
 
+.site-footer {
+  border-top: 1px solid #d8e1f1;
+  background: rgba(248, 251, 255, 0.94);
+}
+
+.site-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.75rem 1.1rem;
+  width: min(72rem, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding: 0.9rem 0 1rem;
+  box-sizing: border-box;
+}
+
+.site-footer__nav a {
+  color: #5f6f8d;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.site-footer__nav a:hover {
+  color: #2853a6;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 @media (max-width: 760px) {
   .home-section {
     padding-right: 1rem;
@@ -313,6 +346,11 @@ body {
 
   .snippets-table__cell--title {
     white-space: normal;
+  }
+
+  .site-footer__nav {
+    padding-right: 0;
+    padding-left: 0;
   }
 }
 

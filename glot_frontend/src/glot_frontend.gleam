@@ -20,6 +20,7 @@ import glot_frontend/snippets_page
 import glot_frontend/string_helpers
 import glot_frontend/top_bar
 import lustre
+import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
@@ -347,6 +348,7 @@ fn view(model: Model) -> Element(Msg) {
         element.map(elem, EditorPageMsg)
       }
     },
+    site_footer(model.session),
   ])
 }
 
@@ -374,6 +376,25 @@ fn current_user_route(session: SessionState) -> route.Route {
     AuthenticatedSession(_) | LoadingSession -> route.Account
     AnonymousSession | SessionError -> route.Login
   }
+}
+
+fn site_footer(session: SessionState) -> Element(Msg) {
+  html.footer([attribute.class("site-footer")], [
+    html.nav(
+      [
+        attribute.class("site-footer__nav"),
+        attribute.attribute("aria-label", "Footer"),
+      ],
+      [
+        html.a([route.href(route.Home)], [html.text("Home")]),
+        html.a(
+          [route.href(route.Snippets(option.None, option.None, option.None))],
+          [html.text("Public snippets")],
+        ),
+        html.a([route.href(current_user_route(session))], [html.text("Account")]),
+      ],
+    ),
+  ])
 }
 
 fn top_bar_model(model: Model) -> top_bar.ViewModel(Msg) {
