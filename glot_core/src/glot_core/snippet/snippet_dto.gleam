@@ -27,12 +27,27 @@ pub type ListPublicSnippetsRequest {
   )
 }
 
+pub type ListSessionSnippetsRequest {
+  ListSessionSnippetsRequest(
+    after: option.Option(String),
+    before: option.Option(String),
+    limit: Int,
+  )
+}
+
 pub fn list_public_decoder() -> decode.Decoder(ListPublicSnippetsRequest) {
   use after <- decode.field("after", decode.optional(decode.string))
   use before <- decode.field("before", decode.optional(decode.string))
   use usernames <- decode.field("usernames", decode.list(decode.string))
   use limit <- decode.field("limit", decode.int)
   decode.success(ListPublicSnippetsRequest(after:, before:, usernames:, limit:))
+}
+
+pub fn list_session_decoder() -> decode.Decoder(ListSessionSnippetsRequest) {
+  use after <- decode.field("after", decode.optional(decode.string))
+  use before <- decode.field("before", decode.optional(decode.string))
+  use limit <- decode.field("limit", decode.int)
+  decode.success(ListSessionSnippetsRequest(after:, before:, limit:))
 }
 
 pub type DeleteSnippetRequest {

@@ -150,6 +150,11 @@ fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
         account_model.Active,
         account_model.ReadOnly,
       ])
+    api_action.ListSessionSnippetsAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
     api_action.CreateSnippetAction ->
       AllowedAccountStates([account_model.Active])
     api_action.UpdateSnippetAction ->

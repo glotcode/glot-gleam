@@ -25,6 +25,7 @@ pub type SnippetHandlers {
       List(Visibility),
       List(String),
       List(uuid.Uuid),
+      List(uuid.Uuid),
       option.Option(String),
       option.Option(String),
       Int,
@@ -40,11 +41,12 @@ pub fn new(db: pog.Connection) -> SnippetHandlers {
   SnippetHandlers(
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
     get_snippet_by_slug: fn(slug) { get_snippet_by_slug(db, slug) },
-    list_snippets: fn(visibilities, usernames, skip_user_ids, after_slug, before_slug, limit) {
+    list_snippets: fn(visibilities, usernames, user_ids, skip_user_ids, after_slug, before_slug, limit) {
       list_snippets(
         db,
         visibilities,
         usernames,
+        user_ids,
         skip_user_ids,
         after_slug,
         before_slug,
@@ -98,6 +100,7 @@ pub fn list_snippets(
   db: pog.Connection,
   visibilities: List(Visibility),
   usernames: List(String),
+  user_ids: List(uuid.Uuid),
   skip_user_ids: List(uuid.Uuid),
   after_slug: option.Option(String),
   before_slug: option.Option(String),
@@ -109,6 +112,9 @@ pub fn list_snippets(
   let skip_user_id_bits =
     skip_user_ids
     |> list.map(uuid.to_bit_array)
+  let user_id_bits =
+    user_ids
+    |> list.map(uuid.to_bit_array)
 
   case before_slug {
     option.Some(before_slug) ->
@@ -117,6 +123,7 @@ pub fn list_snippets(
         sql.list_snippets_before(
           visibility_strings,
           usernames,
+          user_id_bits,
           skip_user_id_bits,
           option.Some(before_slug),
           limit,
@@ -136,6 +143,7 @@ pub fn list_snippets(
         sql.list_snippets_after(
           visibility_strings,
           usernames,
+          user_id_bits,
           skip_user_id_bits,
           after_slug,
           limit,

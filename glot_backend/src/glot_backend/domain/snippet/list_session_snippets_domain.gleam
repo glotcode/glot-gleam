@@ -1,5 +1,4 @@
 import gleam/dynamic
-import gleam/option
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
@@ -12,45 +11,40 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
 import glot_core/snippet/snippet_dto
-import glot_core/snippet/snippet_model
 
-pub fn list_public_snippets(
+pub fn list_session_snippets(
   ctx: context.Context,
-  request: snippet_dto.ListPublicSnippetsRequest,
+  request: snippet_dto.ListSessionSnippetsRequest,
 ) -> program_types.Program(snippet_dto.ListPublicSnippetsResponse) {
   use _ <- program.and_then(snippet_list_domain.validate_page_request(
     after: request.after,
     before: request.before,
     limit: request.limit,
   ))
-  use maybe_session <- program.and_then(session_domain.get_session(ctx))
-  let maybe_session_id = option.map(maybe_session, fn(session) { session.identity.id })
-  let maybe_user_id = option.map(maybe_session, fn(session) { session.user.identity.id })
+  use session <- program.and_then(session_domain.require_session(ctx))
 
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
-        log.optional_uuid("session_id", maybe_session_id),
-        log.optional_uuid("user_id", maybe_user_id),
+        log.uuid("session_id", session.identity.id),
+        log.uuid("user_id", session.user.identity.id),
       ]),
     ),
   )
 
-  let actor =
-    maybe_session
-    |> option.map(fn(session) { session.user })
-    |> api_action_policy_domain.actor_from_user
-
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.ListPublicSnippetsAction,
-    actor: actor,
+    action: api_action.ListSessionSnippetsAction,
+    actor: api_action_policy_domain.KnownUser(
+      user_id: session.user.identity.id,
+      account_state: session.user.account.identity.account_state,
+    ),
   ))
 
   use snippets <- program.and_then(snippet_effect.list(
-    visibilities: [snippet_model.Public],
-    usernames: request.usernames,
-    user_ids: [],
+    visibilities: [],
+    usernames: [],
+    user_ids: [session.user.identity.id],
     skip_user_ids: [],
     after_slug: request.after,
     before_slug: request.before,
@@ -74,6 +68,6 @@ pub fn list_public_snippets(
 
 pub fn request_from_dynamic(
   data: dynamic.Dynamic,
-) -> program_types.Program(snippet_dto.ListPublicSnippetsRequest) {
-  program.decode_dynamic(data, snippet_dto.list_public_decoder())
+) -> program_types.Program(snippet_dto.ListSessionSnippetsRequest) {
+  program.decode_dynamic(data, snippet_dto.list_session_decoder())
 }

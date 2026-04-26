@@ -29,6 +29,10 @@ WHERE
     cardinality(sqlc.arg(usernames)::text[]) = 0
     OR users.username = ANY(sqlc.arg(usernames)::text[])
   )
+  AND (
+    cardinality(sqlc.arg(user_ids)::uuid[]) = 0
+    OR users.id = ANY(sqlc.arg(user_ids)::uuid[])
+  )
   AND NOT users.id = ANY(sqlc.arg(skip_user_ids)::uuid[])
   AND (
     sqlc.narg(before_slug)::text IS NULL

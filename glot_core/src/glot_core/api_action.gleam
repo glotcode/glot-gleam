@@ -11,6 +11,7 @@ pub type ApiAction {
   CancelDeleteAccountAction
   GetSnippetAction
   ListPublicSnippetsAction
+  ListSessionSnippetsAction
   CreateSnippetAction
   UpdateSnippetAction
   DeleteSnippetAction
@@ -30,6 +31,7 @@ pub fn decoder() -> decode.Decoder(ApiAction) {
     "cancel_delete_account" -> decode.success(CancelDeleteAccountAction)
     "get_snippet" -> decode.success(GetSnippetAction)
     "list_public_snippets" -> decode.success(ListPublicSnippetsAction)
+    "list_session_snippets" -> decode.success(ListSessionSnippetsAction)
     "create_snippet" -> decode.success(CreateSnippetAction)
     "update_snippet" -> decode.success(UpdateSnippetAction)
     "delete_snippet" -> decode.success(DeleteSnippetAction)
@@ -54,6 +56,7 @@ pub fn to_string(action: ApiAction) -> String {
     CancelDeleteAccountAction -> "cancel_delete_account"
     GetSnippetAction -> "get_snippet"
     ListPublicSnippetsAction -> "list_public_snippets"
+    ListSessionSnippetsAction -> "list_session_snippets"
     CreateSnippetAction -> "create_snippet"
     UpdateSnippetAction -> "update_snippet"
     DeleteSnippetAction -> "delete_snippet"

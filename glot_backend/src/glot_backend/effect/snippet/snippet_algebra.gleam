@@ -15,6 +15,7 @@ pub type SnippetEffect(next) {
   ListSnippets(
     visibilities: List(Visibility),
     usernames: List(String),
+    user_ids: List(Uuid),
     skip_user_ids: List(Uuid),
     after_slug: option.Option(String),
     before_slug: option.Option(String),
@@ -48,6 +49,7 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
     ListSnippets(
       visibilities:,
       usernames:,
+      user_ids:,
       skip_user_ids:,
       after_slug:,
       before_slug:,
@@ -57,6 +59,7 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
       ListSnippets(
         visibilities: visibilities,
         usernames: usernames,
+        user_ids: user_ids,
         skip_user_ids: skip_user_ids,
         after_slug: after_slug,
         before_slug: before_slug,

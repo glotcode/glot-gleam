@@ -311,6 +311,7 @@ pub type ListSnippetsBefore {
 pub fn list_snippets_before(
   visibilities visibilities: List(String),
   usernames usernames: List(String),
+  user_ids user_ids: List(BitArray),
   skip_user_ids skip_user_ids: List(BitArray),
   before_slug before_slug: Option(String),
   page_limit page_limit: Int,
@@ -346,18 +347,23 @@ WHERE
     cardinality($2::text[]) = 0
     OR users.username = ANY($2::text[])
   )
-  AND NOT users.id = ANY($3::uuid[])
   AND (
-    $4::text IS NULL
-    OR snippets.slug > $4::text
+    cardinality($3::uuid[]) = 0
+    OR users.id = ANY($3::uuid[])
+  )
+  AND NOT users.id = ANY($4::uuid[])
+  AND (
+    $5::text IS NULL
+    OR snippets.slug > $5::text
   )
 ORDER BY snippets.slug ASC
-LIMIT $5"
+LIMIT $6"
   #(
     sql,
     [
       dev.ParamList(list.map(visibilities, dev.ParamString)),
       dev.ParamList(list.map(usernames, dev.ParamString)),
+      dev.ParamList(list.map(user_ids, dev.ParamBitArray)),
       dev.ParamList(list.map(skip_user_ids, dev.ParamBitArray)),
       dev.ParamNullable(option.map(before_slug, fn(v) { dev.ParamString(v) })),
       dev.ParamInt(page_limit),
@@ -438,6 +444,7 @@ pub type ListSnippetsAfter {
 pub fn list_snippets_after(
   visibilities visibilities: List(String),
   usernames usernames: List(String),
+  user_ids user_ids: List(BitArray),
   skip_user_ids skip_user_ids: List(BitArray),
   after_slug after_slug: Option(String),
   page_limit page_limit: Int,
@@ -473,18 +480,23 @@ WHERE
     cardinality($2::text[]) = 0
     OR users.username = ANY($2::text[])
   )
-  AND NOT users.id = ANY($3::uuid[])
   AND (
-    $4::text IS NULL
-    OR snippets.slug < $4::text
+    cardinality($3::uuid[]) = 0
+    OR users.id = ANY($3::uuid[])
+  )
+  AND NOT users.id = ANY($4::uuid[])
+  AND (
+    $5::text IS NULL
+    OR snippets.slug < $5::text
   )
 ORDER BY snippets.slug DESC
-LIMIT $5"
+LIMIT $6"
   #(
     sql,
     [
       dev.ParamList(list.map(visibilities, dev.ParamString)),
       dev.ParamList(list.map(usernames, dev.ParamString)),
+      dev.ParamList(list.map(user_ids, dev.ParamBitArray)),
       dev.ParamList(list.map(skip_user_ids, dev.ParamBitArray)),
       dev.ParamNullable(option.map(after_slug, fn(v) { dev.ParamString(v) })),
       dev.ParamInt(page_limit),
