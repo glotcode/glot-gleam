@@ -10,7 +10,7 @@ import lustre/event
 pub const quick_actions_dialog_id = "app-quick-actions-dialog"
 
 pub type Action(msg) {
-  Action(label: String, description: String, msg: msg)
+  Action(label: String, description: String, shortcut: List(String), msg: msg)
 }
 
 pub type Section(msg) {
@@ -34,8 +34,8 @@ pub type ViewModel(msg) {
 
 pub fn map_action(action: Action(a), mapper: fn(a) -> b) -> Action(b) {
   case action {
-    Action(label:, description:, msg:) ->
-      Action(label:, description:, msg: mapper(msg))
+    Action(label:, description:, shortcut:, msg:) ->
+      Action(label:, description:, shortcut:, msg: mapper(msg))
   }
 }
 
@@ -208,7 +208,7 @@ fn action_button(
   selected: Bool,
 ) -> Element(msg) {
   case action {
-    Action(label:, description:, msg:) -> {
+    Action(label:, description:, shortcut:, msg:) -> {
       let class_name = case selected {
         True -> "app-quick-actions__item app-quick-actions__item--selected"
         False -> "app-quick-actions__item"
@@ -222,8 +222,18 @@ fn action_button(
           event.on_click(msg),
         ],
         [
-          html.span([attribute.class("app-quick-actions__item-label")], [
-            html.text(label),
+          html.div([attribute.class("app-quick-actions__item-header")], [
+            html.span([attribute.class("app-quick-actions__item-label")], [
+              html.text(label),
+            ]),
+            case shortcut {
+              [_, ..] ->
+                html.span(
+                  [attribute.class("app-quick-actions__item-shortcut")],
+                  render_shortcut(shortcut),
+                )
+              [] -> html.div([], [])
+            },
           ]),
           html.span([attribute.class("app-quick-actions__item-copy")], [
             html.text(description),
@@ -238,5 +248,17 @@ fn has_any_actions(model: ViewModel(msg)) -> Bool {
   case model.sections {
     [] -> False
     _ -> True
+  }
+}
+
+fn render_shortcut(shortcut: List(String)) -> List(Element(msg)) {
+  case shortcut {
+    [] -> []
+    [combo] -> [html.code([], [html.text(combo)])]
+    [combo, ..rest] -> [
+      html.code([], [html.text(combo)]),
+      html.text("|"),
+      ..render_shortcut(rest)
+    ]
   }
 }

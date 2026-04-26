@@ -134,7 +134,8 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
     })
 
   let session_effect = api.get_session(SessionLoaded)
-  let shortcut_effect = keyboard_shortcuts.bind(QuickActionsOpened)
+  let shortcut_effect =
+    keyboard_shortcuts.bind(QuickActionsOpened, EditorRunShortcutPressed)
   let effects =
     effect.batch([eff, page_effect, session_effect, shortcut_effect])
 
@@ -160,6 +161,7 @@ type Msg {
   QuickActionsKeyPressed(String)
   QuickActionsSubmitted
   QuickActionSelected(QuickActionTarget)
+  EditorRunShortcutPressed
   HomePageMsg(home_page.Msg)
   LoginPageMsg(login_page.Msg)
   AccountPageMsg(account_page.Msg)
@@ -229,6 +231,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     QuickActionSelected(target), _ ->
       handle_quick_action(Model(..model, quick_action_query: ""), target)
+
+    EditorRunShortcutPressed, EditorPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        editor_page.update(
+          page_model,
+          editor_page.RunSubmitted,
+          current_user_id(model.session),
+        )
+      let new_model = Model(..model, page_model: EditorPage(new_page_model))
+      #(new_model, effect.map(page_effect, EditorPageMsg))
+    }
 
     HomePageMsg(page_msg), HomePageModel(page_model) -> {
       let #(new_page_model, page_effect) =
@@ -389,11 +402,13 @@ fn navigation_actions(
     top_bar.Action(
       label: "Home",
       description: "Go to the front page.",
+      shortcut: [],
       msg: QuickActionSelected(NavigateTo(route.Home)),
     ),
     top_bar.Action(
       label: "Public snippets",
       description: "Browse public code snippets.",
+      shortcut: [],
       msg: QuickActionSelected(
         NavigateTo(route.Snippets(option.None, option.None, option.None)),
       ),
@@ -406,6 +421,7 @@ fn navigation_actions(
         top_bar.Action(
           label: "My snippets",
           description: "Manage snippets in your account.",
+          shortcut: [],
           msg: QuickActionSelected(
             NavigateTo(route.AccountSnippets(option.None, option.None)),
           ),
@@ -413,6 +429,7 @@ fn navigation_actions(
         top_bar.Action(
           label: "Account",
           description: "Open your account settings.",
+          shortcut: [],
           msg: QuickActionSelected(NavigateTo(route.Account)),
         ),
       ])
@@ -424,6 +441,7 @@ fn navigation_actions(
             top_bar.Action(
               label: "Login",
               description: "Sign in to save and manage snippets.",
+              shortcut: [],
               msg: QuickActionSelected(NavigateTo(route.Login)),
             ),
           ])
@@ -432,11 +450,13 @@ fn navigation_actions(
             top_bar.Action(
               label: "Login",
               description: "Sign in to save and manage snippets.",
+              shortcut: [],
               msg: QuickActionSelected(NavigateTo(route.Login)),
             ),
             top_bar.Action(
               label: "Register",
               description: "Create an account or sign in with email.",
+              shortcut: [],
               msg: QuickActionSelected(NavigateTo(route.Login)),
             ),
           ])
@@ -488,6 +508,7 @@ fn language_actions(query: String) -> List(top_bar.Action(Msg)) {
     top_bar.Action(
       label: name,
       description: "Create a new " <> name <> " snippet.",
+      shortcut: [],
       msg: QuickActionSelected(
         NavigateTo(route.NewSnippet(language.to_string(lang))),
       ),

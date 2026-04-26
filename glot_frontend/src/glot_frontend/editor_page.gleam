@@ -794,21 +794,25 @@ fn quick_actions_for_model(
     top_bar.Action(
       label: "Run code",
       description: "Execute the current snippet.",
+      shortcut: ["cmd+enter", "ctrl+enter"],
       msg: RunSubmitted,
     ),
     top_bar.Action(
       label: save_action_name(model, current_user_id),
       description: "Save the current snippet state.",
+      shortcut: [],
       msg: SaveClicked,
     ),
     top_bar.Action(
       label: "New file",
       description: "Add a new file or stdin input entry.",
+      shortcut: [],
       msg: AddEntryClicked,
     ),
     top_bar.Action(
       label: "Settings",
       description: "Open editor settings.",
+      shortcut: [],
       msg: SettingsClicked,
     ),
   ]
@@ -818,6 +822,7 @@ fn quick_actions_for_model(
       top_bar.Action(
         label: "Snippet info",
         description: "View snippet metadata.",
+        shortcut: [],
         msg: SnippetInfoClicked,
       ),
     ]
@@ -831,6 +836,7 @@ fn quick_actions_for_model(
       top_bar.Action(
         label: "Edit title",
         description: "Rename the current snippet.",
+        shortcut: [],
         msg: TitleClicked,
       ),
     ]

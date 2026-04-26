@@ -983,6 +983,13 @@ a.snippets-table__cell:hover {
   box-sizing: border-box;
 }
 
+.app-quick-actions__item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .app-quick-actions__item:hover {
   background: #eef4ff;
 }
@@ -996,6 +1003,20 @@ a.snippets-table__cell:hover {
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.app-quick-actions__item-shortcut {
+  flex: 0 0 auto;
+  color: #4f6489;
+  font-size: 0.88em;
+  white-space: nowrap;
+}
+
+.app-quick-actions__item-shortcut code {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid #d7e4f7;
+  background: #ffffff;
+  color: #23406f;
 }
 
 .app-quick-actions__item-copy,
