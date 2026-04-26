@@ -18,7 +18,7 @@ import glot_core/snippet/snippet_model
 pub fn list_session_snippets(
   ctx: context.Context,
   request: snippet_dto.ListSessionSnippetsRequest,
-) -> program_types.Program(snippet_dto.ListPublicSnippetsResponse) {
+) -> program_types.Program(snippet_dto.ListSnippetsResponse) {
   let pagination = request.pagination
   use _ <- program.and_then(
     pagination_model.validate(pagination, 100)
@@ -57,7 +57,7 @@ pub fn list_session_snippets(
 
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
-  program.succeed(snippet_dto.from_public_snippets(page))
+  program.succeed(snippet_dto.from_snippets(page))
 }
 
 pub fn request_from_dynamic(

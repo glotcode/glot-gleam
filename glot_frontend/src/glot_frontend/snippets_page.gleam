@@ -55,7 +55,7 @@ pub fn init(
 }
 
 pub type Msg {
-  SnippetsLoaded(api.ApiResponse(snippet_dto.ListPublicSnippetsResponse))
+  SnippetsLoaded(api.ApiResponse(snippet_dto.ListSnippetsResponse))
   NextPageClicked
   PreviousPageClicked
   UsernameClicked(String)

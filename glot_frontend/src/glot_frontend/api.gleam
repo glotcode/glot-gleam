@@ -108,7 +108,7 @@ pub fn get_snippet(
 
 pub fn list_public_snippets(
   request: snippet_dto.ListPublicSnippetsRequest,
-  to_msg: fn(ApiResponse(snippet_dto.ListPublicSnippetsResponse)) -> msg,
+  to_msg: fn(ApiResponse(snippet_dto.ListSnippetsResponse)) -> msg,
 ) -> effect.Effect(msg) {
   let req = ApiRequest(api_action.ListPublicSnippetsAction, request)
 
@@ -122,14 +122,14 @@ pub fn list_public_snippets(
         ),
       )
     },
-    snippet_dto.list_public_response_decoder(),
+    snippet_dto.list_response_decoder(),
     to_msg,
   )
 }
 
 pub fn list_session_snippets(
   request: snippet_dto.ListSessionSnippetsRequest,
-  to_msg: fn(ApiResponse(snippet_dto.ListPublicSnippetsResponse)) -> msg,
+  to_msg: fn(ApiResponse(snippet_dto.ListSnippetsResponse)) -> msg,
 ) -> effect.Effect(msg) {
   let req = ApiRequest(api_action.ListSessionSnippetsAction, request)
 
@@ -140,7 +140,7 @@ pub fn list_session_snippets(
         list_request.pagination,
       ))
     },
-    snippet_dto.list_public_response_decoder(),
+    snippet_dto.list_response_decoder(),
     to_msg,
   )
 }

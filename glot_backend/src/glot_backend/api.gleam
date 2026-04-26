@@ -121,14 +121,14 @@ fn handle_api_request(
         list_public_snippets_domain.request_from_dynamic(api_request.data),
       )
       list_public_snippets_domain.list_public_snippets(ctx, request)
-      |> program.map(PublicSnippetsResponse)
+      |> program.map(SnippetsResponse)
     }
     api_action.ListSessionSnippetsAction -> {
       use request <- program.and_then(
         list_session_snippets_domain.request_from_dynamic(api_request.data),
       )
       list_session_snippets_domain.list_session_snippets(ctx, request)
-      |> program.map(PublicSnippetsResponse)
+      |> program.map(SnippetsResponse)
     }
     api_action.CreateSnippetAction -> {
       use request <- program.and_then(
@@ -210,7 +210,7 @@ type ApiResult {
   SessionResponse(option.Option(session_dto.SessionResponse))
   AccountResponse(account_dto.AccountResponse)
   SnippetResponse(snippet_dto.SnippetResponse)
-  PublicSnippetsResponse(snippet_dto.ListPublicSnippetsResponse)
+  SnippetsResponse(snippet_dto.ListSnippetsResponse)
   LoginResponse(session_token: String)
   LogoutResponse
   NoContentResponse
@@ -230,8 +230,8 @@ fn api_result_to_response(
     AccountResponse(response) -> success_response(account_dto.encode(response))
     SnippetResponse(response) ->
       success_response(snippet_dto.encode_response(response))
-    PublicSnippetsResponse(response) ->
-      success_response(snippet_dto.encode_list_public_response(response))
+    SnippetsResponse(response) ->
+      success_response(snippet_dto.encode_list_response(response))
     LoginResponse(session_token) -> {
       success_response(json.null())
       |> wisp.set_cookie(

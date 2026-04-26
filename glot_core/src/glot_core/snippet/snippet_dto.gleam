@@ -79,8 +79,8 @@ pub type SnippetResponse {
   )
 }
 
-pub type ListPublicSnippetsResponse {
-  ListPublicSnippetsResponse(page: pagination_model.CursorPage(SnippetResponse))
+pub type ListSnippetsResponse {
+  ListSnippetsResponse(page: pagination_model.CursorPage(SnippetResponse))
 }
 
 pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
@@ -117,11 +117,11 @@ pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
   ))
 }
 
-pub fn list_public_response_decoder() -> decode.Decoder(
-  ListPublicSnippetsResponse,
+pub fn list_response_decoder() -> decode.Decoder(
+  ListSnippetsResponse,
 ) {
   pagination_model.page_decoder("snippets", response_decoder())
-  |> decode.map(fn(page) { ListPublicSnippetsResponse(page: page) })
+  |> decode.map(fn(page) { ListSnippetsResponse(page: page) })
 }
 
 pub fn from_snippet(snippet: snippet_model.HydratedSnippet) -> SnippetResponse {
@@ -156,14 +156,14 @@ pub fn encode_response(response: SnippetResponse) -> json.Json {
   ])
 }
 
-pub fn from_public_snippets(
+pub fn from_snippets(
   page page: pagination_model.CursorPage(snippet_model.HydratedSnippet),
-) -> ListPublicSnippetsResponse {
-  ListPublicSnippetsResponse(page: pagination_model.map_page(page, from_snippet))
+) -> ListSnippetsResponse {
+  ListSnippetsResponse(page: pagination_model.map_page(page, from_snippet))
 }
 
-pub fn encode_list_public_response(
-  response: ListPublicSnippetsResponse,
+pub fn encode_list_response(
+  response: ListSnippetsResponse,
 ) -> json.Json {
   pagination_model.encode_page(response.page, "snippets", encode_response)
 }
