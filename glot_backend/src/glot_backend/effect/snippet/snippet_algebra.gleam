@@ -15,7 +15,8 @@ pub type SnippetEffect(next) {
   ListSnippets(
     visibilities: List(Visibility),
     skip_user_ids: List(Uuid),
-    cursor_slug: option.Option(String),
+    after_slug: option.Option(String),
+    before_slug: option.Option(String),
     limit: Int,
     next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
   )
@@ -43,11 +44,19 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
       GetSnippetById(id, next: fn(value) { f(next(value)) })
     GetSnippetBySlug(slug, next) ->
       GetSnippetBySlug(slug, next: fn(value) { f(next(value)) })
-    ListSnippets(visibilities:, skip_user_ids:, cursor_slug:, limit:, next:) ->
+    ListSnippets(
+      visibilities:,
+      skip_user_ids:,
+      after_slug:,
+      before_slug:,
+      limit:,
+      next:,
+    ) ->
       ListSnippets(
         visibilities: visibilities,
         skip_user_ids: skip_user_ids,
-        cursor_slug: cursor_slug,
+        after_slug: after_slug,
+        before_slug: before_slug,
         limit: limit,
         next: fn(value) { f(next(value)) },
       )

@@ -12,14 +12,16 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
+import modem
 
 const page_limit = 20
 
 pub type Model {
   Model(
     snippets: List(snippet_dto.SnippetResponse),
-    current_cursor: option.Option(String),
-    previous_cursors: List(option.Option(String)),
+    after: option.Option(String),
+    before: option.Option(String),
+    previous_cursor: option.Option(String),
     next_cursor: option.Option(String),
     state: State,
   )
@@ -31,17 +33,21 @@ pub type State {
   Error(String)
 }
 
-pub fn init() -> #(Model, Effect(Msg)) {
+pub fn init(
+  after after: option.Option(String),
+  before before: option.Option(String),
+) -> #(Model, Effect(Msg)) {
   let model =
     Model(
       snippets: [],
-      current_cursor: option.None,
-      previous_cursors: [],
+      after: after,
+      before: before,
+      previous_cursor: option.None,
       next_cursor: option.None,
       state: Loading,
     )
 
-  #(model, load_page(option.None))
+  #(model, load_page(after, before))
 }
 
 pub type Msg {
@@ -58,6 +64,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             snippets: response.snippets,
+            previous_cursor: response.previous_cursor,
             next_cursor: response.next_cursor,
             state: Ready,
           ),
@@ -76,29 +83,19 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     NextPageClicked ->
       case model.next_cursor {
         option.Some(next_cursor) -> #(
-          Model(
-            ..model,
-            current_cursor: option.Some(next_cursor),
-            previous_cursors: [model.current_cursor, ..model.previous_cursors],
-            state: Loading,
-          ),
-          load_page(option.Some(next_cursor)),
+          model,
+          navigate_to(option.Some(next_cursor), option.None),
         )
         option.None -> #(model, effect.none())
       }
 
     PreviousPageClicked ->
-      case model.previous_cursors {
-        [previous_cursor, ..rest] -> #(
-          Model(
-            ..model,
-            current_cursor: previous_cursor,
-            previous_cursors: rest,
-            state: Loading,
-          ),
-          load_page(previous_cursor),
+      case model.previous_cursor {
+        option.Some(previous_cursor) -> #(
+          model,
+          navigate_to(option.None, option.Some(previous_cursor)),
         )
-        [] -> #(model, effect.none())
+        option.None -> #(model, effect.none())
       }
   }
 }
@@ -135,16 +132,19 @@ pub fn view(
   ])
 }
 
-fn load_page(cursor: option.Option(String)) -> Effect(Msg) {
+fn load_page(
+  after: option.Option(String),
+  before: option.Option(String),
+) -> Effect(Msg) {
   api.list_public_snippets(
-    snippet_dto.ListPublicSnippetsRequest(cursor: cursor, limit: page_limit),
+    snippet_dto.ListPublicSnippetsRequest(after:, before:, limit: page_limit),
     SnippetsLoaded,
   )
 }
 
 fn can_go_previous(model: Model) -> Bool {
-  case model.previous_cursors {
-    [] -> False
+  case model.previous_cursor {
+    option.None -> False
     _ -> state_allows_pagination(model.state)
   }
 }
@@ -246,6 +246,14 @@ fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
     ],
     [html.text(label)],
   )
+}
+
+fn navigate_to(
+  after: option.Option(String),
+  before: option.Option(String),
+) -> Effect(Msg) {
+  let #(path, query) = route.path_and_query(route.Snippets(after:, before:))
+  modem.push(path, query, option.None)
 }
 
 fn timestamp_label(value: timestamp.Timestamp) -> String {

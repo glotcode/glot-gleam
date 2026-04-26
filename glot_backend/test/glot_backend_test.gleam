@@ -859,7 +859,8 @@ fn run_test_snippet_effect(
     snippet_algebra.ListSnippets(
       visibilities: _,
       skip_user_ids: _,
-      cursor_slug: _,
+      after_slug: _,
+      before_slug: _,
       limit: _,
       next: next,
     ) -> run_test_program(next(Ok([])), ctx, db)
@@ -898,7 +899,8 @@ fn run_test_snippet_tx_effect(
     snippet_algebra.ListSnippets(
       visibilities: _,
       skip_user_ids: _,
-      cursor_slug: _,
+      after_slug: _,
+      before_slug: _,
       limit: _,
       next: next,
     ) -> run_test_tx_program(next(Ok([])), ctx, db)

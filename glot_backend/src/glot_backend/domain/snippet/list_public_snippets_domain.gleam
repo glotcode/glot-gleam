@@ -15,6 +15,12 @@ import glot_core/api_action
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 
+type PageDirection {
+  InitialPage
+  AfterPage
+  BeforePage
+}
+
 pub fn list_public_snippets(
   ctx: context.Context,
   request: snippet_dto.ListPublicSnippetsRequest,
@@ -47,16 +53,18 @@ pub fn list_public_snippets(
   use snippets <- program.and_then(snippet_effect.list(
     visibilities: [snippet_model.Public],
     skip_user_ids: [],
-    cursor_slug: request.cursor,
+    after_slug: request.after,
+    before_slug: request.before,
     limit: request.limit + 1,
   ))
 
-  let #(page, next_cursor) = paginate_snippets(snippets, request.limit)
+  let #(page, previous_cursor, next_cursor) =
+    paginate_snippets(snippets, request)
 
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
   program.succeed(
-    snippet_dto.from_public_snippets(page, next_cursor),
+    snippet_dto.from_public_snippets(page, previous_cursor, next_cursor),
   )
 }
 
@@ -77,6 +85,10 @@ fn validate_request(
     request.limit <= 100,
     "limit must be less than or equal to 100",
   ))
+  use _ <- program.and_then(require(
+    has_at_most_one_cursor(request),
+    "after and before cannot both be set",
+  ))
 
   program.succeed(Nil)
 }
@@ -88,31 +100,99 @@ fn require(condition: Bool, message: String) -> program_types.Program(Nil) {
   }
 }
 
-fn paginate_snippets(
-  snippets: List(snippet_model.HydratedSnippet),
-  limit: Int,
-) -> #(List(snippet_model.HydratedSnippet), option.Option(String)) {
-  paginate_snippets_loop(snippets, limit, [], option.None)
+fn has_at_most_one_cursor(
+  request: snippet_dto.ListPublicSnippetsRequest,
+) -> Bool {
+  case request.after, request.before {
+    option.Some(_), option.Some(_) -> False
+    _, _ -> True
+  }
 }
 
-fn paginate_snippets_loop(
+fn paginate_snippets(
+  snippets: List(snippet_model.HydratedSnippet),
+  request: snippet_dto.ListPublicSnippetsRequest,
+) -> #(
+  List(snippet_model.HydratedSnippet),
+  option.Option(String),
+  option.Option(String),
+) {
+  let direction = page_direction(request)
+  let #(page, has_more) = take_page(snippets, request.limit)
+
+  case direction {
+    InitialPage ->
+      #(page, option.None, maybe_last_slug(page, has_more))
+    AfterPage ->
+      #(page, maybe_first_slug(page), maybe_last_slug(page, has_more))
+    BeforePage ->
+      #(
+        page,
+        maybe_first_slug_when(page, has_more),
+        maybe_last_slug(page, True),
+      )
+  }
+}
+
+fn take_page(
+  snippets: List(snippet_model.HydratedSnippet),
+  limit: Int,
+) -> #(List(snippet_model.HydratedSnippet), Bool) {
+  take_page_loop(snippets, limit, [])
+}
+
+fn take_page_loop(
   snippets: List(snippet_model.HydratedSnippet),
   remaining: Int,
   acc: List(snippet_model.HydratedSnippet),
-  last_slug: option.Option(String),
-) -> #(List(snippet_model.HydratedSnippet), option.Option(String)) {
+) -> #(List(snippet_model.HydratedSnippet), Bool) {
   case snippets {
-    [] -> #(list.reverse(acc), option.None)
+    [] -> #(list.reverse(acc), False)
     [snippet, ..rest] ->
       case remaining > 0 {
         True ->
-          paginate_snippets_loop(
+          take_page_loop(
             rest,
             remaining - 1,
             [snippet, ..acc],
-            option.Some(snippet.identity.slug),
           )
-        False -> #(list.reverse(acc), last_slug)
+        False -> #(list.reverse(acc), True)
       }
+  }
+}
+
+fn page_direction(
+  request: snippet_dto.ListPublicSnippetsRequest,
+) -> PageDirection {
+  case request.after, request.before {
+    _, option.Some(_) -> BeforePage
+    option.Some(_), option.None -> AfterPage
+    option.None, option.None -> InitialPage
+  }
+}
+
+fn maybe_first_slug(
+  snippets: List(snippet_model.HydratedSnippet),
+) -> option.Option(String) {
+  maybe_first_slug_when(snippets, True)
+}
+
+fn maybe_first_slug_when(
+  snippets: List(snippet_model.HydratedSnippet),
+  when: Bool,
+) -> option.Option(String) {
+  case when, snippets {
+    True, [snippet, ..] -> option.Some(snippet.identity.slug)
+    _, _ -> option.None
+  }
+}
+
+fn maybe_last_slug(
+  snippets: List(snippet_model.HydratedSnippet),
+  when: Bool,
+) -> option.Option(String) {
+  case when, list.reverse(snippets) {
+    True, [snippet, ..] -> option.Some(snippet.identity.slug)
+    _, _ -> option.None
   }
 }

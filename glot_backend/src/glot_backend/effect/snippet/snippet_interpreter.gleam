@@ -42,7 +42,8 @@ pub fn run(
     snippet_algebra.ListSnippets(
       visibilities: visibilities,
       skip_user_ids: skip_user_ids,
-      cursor_slug: cursor_slug,
+      after_slug: after_slug,
+      before_slug: before_slug,
       limit: limit,
       next: next,
     ) -> {
@@ -51,7 +52,8 @@ pub fn run(
         handlers.snippet.list_snippets(
           visibilities,
           skip_user_ids,
-          cursor_slug,
+          after_slug,
+          before_slug,
           limit,
         )
       continue(

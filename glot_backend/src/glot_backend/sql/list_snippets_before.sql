@@ -1,4 +1,4 @@
--- name: ListSnippets :many
+-- name: ListSnippetsBefore :many
 SELECT
   snippets.id,
   snippets.slug,
@@ -27,8 +27,8 @@ WHERE
   )
   AND NOT users.id = ANY(sqlc.arg(skip_user_ids)::uuid[])
   AND (
-    sqlc.narg(cursor_slug)::text IS NULL
-    OR snippets.slug < sqlc.narg(cursor_slug)::text
+    sqlc.narg(before_slug)::text IS NULL
+    OR snippets.slug > sqlc.narg(before_slug)::text
   )
-ORDER BY snippets.slug DESC
+ORDER BY snippets.slug ASC
 LIMIT sqlc.arg(page_limit);

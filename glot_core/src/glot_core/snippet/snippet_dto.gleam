@@ -19,13 +19,18 @@ pub fn get_decoder() -> decode.Decoder(GetSnippetRequest) {
 }
 
 pub type ListPublicSnippetsRequest {
-  ListPublicSnippetsRequest(cursor: option.Option(String), limit: Int)
+  ListPublicSnippetsRequest(
+    after: option.Option(String),
+    before: option.Option(String),
+    limit: Int,
+  )
 }
 
 pub fn list_public_decoder() -> decode.Decoder(ListPublicSnippetsRequest) {
-  use cursor <- decode.field("cursor", decode.optional(decode.string))
+  use after <- decode.field("after", decode.optional(decode.string))
+  use before <- decode.field("before", decode.optional(decode.string))
   use limit <- decode.field("limit", decode.int)
-  decode.success(ListPublicSnippetsRequest(cursor:, limit:))
+  decode.success(ListPublicSnippetsRequest(after:, before:, limit:))
 }
 
 pub type DeleteSnippetRequest {
@@ -69,6 +74,7 @@ pub type SnippetResponse {
 pub type ListPublicSnippetsResponse {
   ListPublicSnippetsResponse(
     snippets: List(SnippetResponse),
+    previous_cursor: option.Option(String),
     next_cursor: option.Option(String),
   )
 }
@@ -111,9 +117,17 @@ pub fn list_public_response_decoder() -> decode.Decoder(
   ListPublicSnippetsResponse,
 ) {
   use snippets <- decode.field("snippets", decode.list(response_decoder()))
+  use previous_cursor <- decode.field(
+    "previousCursor",
+    decode.optional(decode.string),
+  )
   use next_cursor <- decode.field("nextCursor", decode.optional(decode.string))
 
-  decode.success(ListPublicSnippetsResponse(snippets:, next_cursor:))
+  decode.success(ListPublicSnippetsResponse(
+    snippets:,
+    previous_cursor:,
+    next_cursor:,
+  ))
 }
 
 pub fn from_snippet(snippet: snippet_model.HydratedSnippet) -> SnippetResponse {
@@ -150,10 +164,12 @@ pub fn encode_response(response: SnippetResponse) -> json.Json {
 
 pub fn from_public_snippets(
   snippets snippets: List(snippet_model.HydratedSnippet),
+  previous_cursor previous_cursor: option.Option(String),
   next_cursor next_cursor: option.Option(String),
 ) -> ListPublicSnippetsResponse {
   ListPublicSnippetsResponse(
     snippets: snippets |> list.map(from_snippet),
+    previous_cursor: previous_cursor,
     next_cursor: next_cursor,
   )
 }
@@ -163,6 +179,7 @@ pub fn encode_list_public_response(
 ) -> json.Json {
   json.object([
     #("snippets", json.array(response.snippets, encode_response)),
+    #("previousCursor", json.nullable(response.previous_cursor, json.string)),
     #("nextCursor", json.nullable(response.next_cursor, json.string)),
   ])
 }

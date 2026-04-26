@@ -25,6 +25,7 @@ pub type SnippetHandlers {
       List(Visibility),
       List(uuid.Uuid),
       option.Option(String),
+      option.Option(String),
       Int,
     ) -> Result(List(HydratedSnippet), error.DbQueryError),
     delete_snippet: fn(BitArray) -> Result(Nil, error.DbCommandError),
@@ -38,8 +39,15 @@ pub fn new(db: pog.Connection) -> SnippetHandlers {
   SnippetHandlers(
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
     get_snippet_by_slug: fn(slug) { get_snippet_by_slug(db, slug) },
-    list_snippets: fn(visibilities, skip_user_ids, cursor_slug, limit) {
-      list_snippets(db, visibilities, skip_user_ids, cursor_slug, limit)
+    list_snippets: fn(visibilities, skip_user_ids, after_slug, before_slug, limit) {
+      list_snippets(
+        db,
+        visibilities,
+        skip_user_ids,
+        after_slug,
+        before_slug,
+        limit,
+      )
     },
     delete_snippet: fn(id) { delete_snippet(db, id) },
     delete_snippets_by_account_id: fn(account_id) {
@@ -88,7 +96,8 @@ pub fn list_snippets(
   db: pog.Connection,
   visibilities: List(Visibility),
   skip_user_ids: List(uuid.Uuid),
-  cursor_slug: option.Option(String),
+  after_slug: option.Option(String),
+  before_slug: option.Option(String),
   limit: Int,
 ) -> Result(List(HydratedSnippet), error.DbQueryError) {
   let visibility_strings =
@@ -98,16 +107,64 @@ pub fn list_snippets(
     skip_user_ids
     |> list.map(uuid.to_bit_array)
 
-  db_helpers.query(
-    db,
-    sql.list_snippets(visibility_strings, skip_user_id_bits, cursor_slug, limit),
-    fn(err) { error.DbQueryError(string.inspect(err)) },
-  )
-  |> result.try(fn(returned) {
-    returned.rows
-    |> list.map(get_snippet_from_list_row)
-    |> result.all
-  })
+  case before_slug {
+    option.Some(before_slug) ->
+      db_helpers.query(
+        db,
+        sql.list_snippets_before(
+          visibility_strings,
+          skip_user_id_bits,
+          option.Some(before_slug),
+          limit,
+        ),
+        fn(err) { error.DbQueryError(string.inspect(err)) },
+      )
+      |> result.try(fn(returned) {
+        returned.rows
+        |> list.map(get_snippet_from_list_before_row)
+        |> result.all
+        |> result.map(reverse_before_page_rows(limit))
+      })
+
+    option.None ->
+      db_helpers.query(
+        db,
+        sql.list_snippets_after(
+          visibility_strings,
+          skip_user_id_bits,
+          after_slug,
+          limit,
+        ),
+        fn(err) { error.DbQueryError(string.inspect(err)) },
+      )
+      |> result.try(fn(returned) {
+        returned.rows
+        |> list.map(get_snippet_from_list_row)
+        |> result.all
+      })
+  }
+}
+
+fn reverse_before_page_rows(
+  limit: Int,
+) -> fn(List(HydratedSnippet)) -> List(HydratedSnippet) {
+  fn(snippets) { reverse_before_page_rows_loop(snippets, limit - 1, []) }
+}
+
+fn reverse_before_page_rows_loop(
+  snippets: List(HydratedSnippet),
+  remaining: Int,
+  acc: List(HydratedSnippet),
+) -> List(HydratedSnippet) {
+  case remaining <= 0 {
+    True -> list.append(list.reverse(acc), snippets)
+    False ->
+      case snippets {
+        [] -> list.reverse(acc)
+        [snippet, ..rest] ->
+          reverse_before_page_rows_loop(rest, remaining - 1, [snippet, ..acc])
+      }
+  }
 }
 
 pub fn create_snippet(
@@ -283,7 +340,65 @@ fn get_snippet_from_slug_row(
 }
 
 fn get_snippet_from_list_row(
-  row: sql.ListSnippets,
+  row: sql.ListSnippetsAfter,
+) -> Result(HydratedSnippet, error.DbQueryError) {
+  use language <- result.try(
+    language.from_string(row.language)
+    |> option.to_result(error.DbQueryError(
+      "Invalid snippet language: " <> row.language,
+    )),
+  )
+  use visibility <- result.try(
+    snippet_model.visibility_from_string(row.visibility)
+    |> option.to_result(error.DbQueryError(
+      "Invalid snippet visibility: " <> row.visibility,
+    )),
+  )
+  use files <- result.try(
+    json.parse(row.files, decode.list(snippet_model.file_decoder()))
+    |> result.map_error(fn(decode_errors) {
+      error.DbQueryError(
+        "Invalid snippet files: " <> string.inspect(decode_errors),
+      )
+    }),
+  )
+  use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
+  use role <- result.try(
+    user_model.role_from_string(row.user_role)
+    |> option.to_result(error.DbQueryError(
+      "Invalid user role: " <> row.user_role,
+    )),
+  )
+
+  Ok(snippet_model.HydratedSnippet(
+    identity: snippet_model.Snippet(
+      id: uuid_helpers.from_bit_array(row.id),
+      slug: row.slug,
+      user_id: uuid_helpers.from_bit_array(row.user_id),
+      title: row.title,
+      language: language,
+      visibility: visibility,
+      stdin: row.stdin,
+      run_instructions: run_instructions,
+      files: files,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+    ),
+    user: user_model.User(
+      id: uuid_helpers.from_bit_array(row.user_id),
+      account_id: uuid_helpers.from_bit_array(row.user_account_id),
+      email: email_address_model.EmailAddress(row.user_email),
+      username: row.user_username,
+      role: role,
+      last_login_at: row.user_last_login_at,
+      created_at: row.user_created_at,
+      updated_at: row.user_updated_at,
+    ),
+  ))
+}
+
+fn get_snippet_from_list_before_row(
+  row: sql.ListSnippetsBefore,
 ) -> Result(HydratedSnippet, error.DbQueryError) {
   use language <- result.try(
     language.from_string(row.language)
