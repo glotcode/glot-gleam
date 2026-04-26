@@ -1,6 +1,5 @@
 import gleam/dynamic/decode
 import gleam/json
-import gleam/list
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/user_dto
@@ -31,22 +30,15 @@ pub type ListSessionSnippetsRequest {
 }
 
 pub fn list_public_decoder() -> decode.Decoder(ListPublicSnippetsRequest) {
-  use after <- decode.field("after", decode.optional(decode.string))
-  use before <- decode.field("before", decode.optional(decode.string))
-  use usernames <- decode.field("usernames", decode.list(decode.string))
-  use limit <- decode.field("limit", decode.int)
-  let pagination =
-    pagination_model.CursorPagination(after:, before:, limit:)
-  decode.success(ListPublicSnippetsRequest(pagination:, usernames:))
+  decode.then(pagination_model.request_decoder(), fn(pagination) {
+    use usernames <- decode.field("usernames", decode.list(decode.string))
+    decode.success(ListPublicSnippetsRequest(pagination:, usernames:))
+  })
 }
 
 pub fn list_session_decoder() -> decode.Decoder(ListSessionSnippetsRequest) {
-  use after <- decode.field("after", decode.optional(decode.string))
-  use before <- decode.field("before", decode.optional(decode.string))
-  use limit <- decode.field("limit", decode.int)
-  let pagination =
-    pagination_model.CursorPagination(after:, before:, limit:)
-  decode.success(ListSessionSnippetsRequest(pagination:))
+  pagination_model.request_decoder()
+  |> decode.map(ListSessionSnippetsRequest)
 }
 
 pub type DeleteSnippetRequest {
@@ -88,11 +80,7 @@ pub type SnippetResponse {
 }
 
 pub type ListPublicSnippetsResponse {
-  ListPublicSnippetsResponse(
-    snippets: List(SnippetResponse),
-    previous_cursor: option.Option(String),
-    next_cursor: option.Option(String),
-  )
+  ListPublicSnippetsResponse(page: pagination_model.CursorPage(SnippetResponse))
 }
 
 pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
@@ -132,18 +120,8 @@ pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
 pub fn list_public_response_decoder() -> decode.Decoder(
   ListPublicSnippetsResponse,
 ) {
-  use snippets <- decode.field("snippets", decode.list(response_decoder()))
-  use previous_cursor <- decode.field(
-    "previousCursor",
-    decode.optional(decode.string),
-  )
-  use next_cursor <- decode.field("nextCursor", decode.optional(decode.string))
-
-  decode.success(ListPublicSnippetsResponse(
-    snippets:,
-    previous_cursor:,
-    next_cursor:,
-  ))
+  pagination_model.page_decoder("snippets", response_decoder())
+  |> decode.map(fn(page) { ListPublicSnippetsResponse(page: page) })
 }
 
 pub fn from_snippet(snippet: snippet_model.HydratedSnippet) -> SnippetResponse {
@@ -179,25 +157,15 @@ pub fn encode_response(response: SnippetResponse) -> json.Json {
 }
 
 pub fn from_public_snippets(
-  snippets snippets: List(snippet_model.HydratedSnippet),
-  previous_cursor previous_cursor: option.Option(String),
-  next_cursor next_cursor: option.Option(String),
+  page page: pagination_model.CursorPage(snippet_model.HydratedSnippet),
 ) -> ListPublicSnippetsResponse {
-  ListPublicSnippetsResponse(
-    snippets: snippets |> list.map(from_snippet),
-    previous_cursor: previous_cursor,
-    next_cursor: next_cursor,
-  )
+  ListPublicSnippetsResponse(page: pagination_model.map_page(page, from_snippet))
 }
 
 pub fn encode_list_public_response(
   response: ListPublicSnippetsResponse,
 ) -> json.Json {
-  json.object([
-    #("snippets", json.array(response.snippets, encode_response)),
-    #("previousCursor", json.nullable(response.previous_cursor, json.string)),
-    #("nextCursor", json.nullable(response.next_cursor, json.string)),
-  ])
+  pagination_model.encode_page(response.page, "snippets", encode_response)
 }
 
 pub type SnippetData {

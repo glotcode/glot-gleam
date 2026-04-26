@@ -20,12 +20,10 @@ const page_limit = 10
 
 pub type Model {
   Model(
-    snippets: List(snippet_dto.SnippetResponse),
+    page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
     after: option.Option(String),
     before: option.Option(String),
     username: option.Option(String),
-    previous_cursor: option.Option(String),
-    next_cursor: option.Option(String),
     state: State,
   )
 }
@@ -43,12 +41,13 @@ pub fn init(
 ) -> #(Model, Effect(Msg)) {
   let model =
     Model(
-      snippets: [],
+      page: pagination_model.InitialCursorPage(
+        items: [],
+        next_cursor: option.None,
+      ),
       after: after,
       before: before,
       username: username,
-      previous_cursor: option.None,
-      next_cursor: option.None,
       state: Loading,
     )
 
@@ -68,13 +67,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     SnippetsLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> #(
-          Model(
-            ..model,
-            snippets: response.snippets,
-            previous_cursor: response.previous_cursor,
-            next_cursor: response.next_cursor,
-            state: Ready,
-          ),
+          Model(..model, page: response.page, state: Ready),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
@@ -88,28 +81,40 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
 
     NextPageClicked ->
-      case model.next_cursor {
+      case pagination_model.next_cursor(model.page) {
         option.Some(next_cursor) -> #(
           model,
-          navigate_to(option.Some(next_cursor), option.None, model.username),
+          navigate_to(
+            option.Some(pagination_model.to_string(next_cursor)),
+            option.None,
+            model.username,
+          ),
         )
         option.None -> #(model, effect.none())
       }
 
     PreviousPageClicked ->
-      case model.previous_cursor {
+      case pagination_model.previous_cursor(model.page) {
         option.Some(previous_cursor) -> #(
           model,
-          navigate_to(option.None, option.Some(previous_cursor), model.username),
+          navigate_to(
+            option.None,
+            option.Some(pagination_model.to_string(previous_cursor)),
+            model.username,
+          ),
         )
         option.None -> #(model, effect.none())
       }
 
-    UsernameClicked(username) ->
-      #(model, navigate_to(option.None, option.None, option.Some(username)))
+    UsernameClicked(username) -> #(
+      model,
+      navigate_to(option.None, option.None, option.Some(username)),
+    )
 
-    ClearUsernameFilterClicked ->
-      #(model, navigate_to(option.None, option.None, option.None))
+    ClearUsernameFilterClicked -> #(
+      model,
+      navigate_to(option.None, option.None, option.None),
+    )
   }
 }
 
@@ -140,7 +145,7 @@ pub fn view(
           ]),
         ]),
         status_view(model),
-        snippets_table(model.snippets),
+        snippets_table(pagination_model.items(model.page)),
       ]),
     ]),
   ])
@@ -153,26 +158,43 @@ fn load_page(
 ) -> Effect(Msg) {
   api.list_public_snippets(
     snippet_dto.ListPublicSnippetsRequest(
-      pagination: pagination_model.CursorPagination(
-        after: after,
-        before: before,
-        limit: page_limit,
-      ),
+      pagination: pagination_from_cursors(after, before),
       usernames: usernames_from_filter(username),
     ),
     SnippetsLoaded,
   )
 }
 
+fn pagination_from_cursors(
+  after: option.Option(String),
+  before: option.Option(String),
+) -> pagination_model.CursorPagination {
+  case after, before {
+    option.Some(cursor), option.None ->
+      pagination_model.AfterPage(
+        cursor: pagination_model.from_string(cursor),
+        limit: page_limit,
+      )
+    option.None, option.Some(cursor) ->
+      pagination_model.BeforePage(
+        cursor: pagination_model.from_string(cursor),
+        limit: page_limit,
+      )
+    option.None, option.None -> pagination_model.InitialPage(limit: page_limit)
+    option.Some(_), option.Some(_) ->
+      pagination_model.InitialPage(limit: page_limit)
+  }
+}
+
 fn can_go_previous(model: Model) -> Bool {
-  case model.previous_cursor {
+  case pagination_model.previous_cursor(model.page) {
     option.None -> False
     _ -> state_allows_pagination(model.state)
   }
 }
 
 fn can_go_next(model: Model) -> Bool {
-  case model.next_cursor {
+  case pagination_model.next_cursor(model.page) {
     option.Some(_) -> state_allows_pagination(model.state)
     option.None -> False
   }
@@ -192,7 +214,7 @@ fn status_view(model: Model) -> Element(Msg) {
         html.text("Loading snippets..."),
       ])
     Ready ->
-      case model.snippets {
+      case pagination_model.items(model.page) {
         [] ->
           html.p([attribute.class("snippets-page__status")], [
             html.text("No public snippets found."),
@@ -282,7 +304,9 @@ fn snippet_cell_link(
   destination: route.Route,
   label: String,
 ) -> Element(Msg) {
-  html.a([attribute.class(class_name), route.href(destination)], [html.text(label)])
+  html.a([attribute.class(class_name), route.href(destination)], [
+    html.text(label),
+  ])
 }
 
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {

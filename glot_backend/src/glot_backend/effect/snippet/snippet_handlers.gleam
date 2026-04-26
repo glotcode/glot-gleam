@@ -98,11 +98,6 @@ pub fn list_snippets(
     user_ids: user_ids,
     skip_user_ids: skip_user_ids,
   ) = filter
-  let pagination_model.CursorPagination(
-    after: after_slug,
-    before: before_slug,
-    limit: limit,
-  ) = pagination
   let visibility_strings =
     visibilities
     |> list.map(snippet_model.visibility_to_string)
@@ -113,8 +108,8 @@ pub fn list_snippets(
     user_ids
     |> list.map(uuid.to_bit_array)
 
-  case before_slug {
-    option.Some(before_slug) ->
+  case pagination {
+    pagination_model.BeforePage(before_slug, limit) ->
       db_helpers.query(
         db,
         sql.list_snippets_before(
@@ -122,7 +117,7 @@ pub fn list_snippets(
           usernames,
           user_id_bits,
           skip_user_id_bits,
-          option.Some(before_slug),
+          option.Some(pagination_model.to_string(before_slug)),
           limit,
         ),
         fn(err) { error.DbQueryError(string.inspect(err)) },
@@ -133,8 +128,14 @@ pub fn list_snippets(
         |> result.all
         |> result.map(reverse_before_page_rows(limit))
       })
-
-    option.None ->
+    pagination_model.InitialPage(limit)
+    | pagination_model.AfterPage(_, limit) -> {
+      let after_slug = case pagination {
+        pagination_model.AfterPage(cursor, _) ->
+          option.Some(pagination_model.to_string(cursor))
+        pagination_model.InitialPage(_) -> option.None
+        pagination_model.BeforePage(_, _) -> option.None
+      }
       db_helpers.query(
         db,
         sql.list_snippets_after(
@@ -152,6 +153,7 @@ pub fn list_snippets(
         |> list.map(get_snippet_from_list_row)
         |> result.all
       })
+    }
   }
 }
 

@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/regexp
 import glot_core/api_action.{type ApiAction}
@@ -8,6 +9,7 @@ import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
 import glot_core/auth/session_dto
 import glot_core/email/email_address_model.{type EmailAddress}
+import glot_core/pagination_model
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import lustre/effect
@@ -113,13 +115,10 @@ pub fn list_public_snippets(
   send_api_request(
     req,
     fn(list_request) {
-      let pagination = list_request.pagination
-      json.object([
-        #("after", json.nullable(pagination.after, json.string)),
-        #("before", json.nullable(pagination.before, json.string)),
-        #("usernames", json.array(list_request.usernames, json.string)),
-        #("limit", json.int(pagination.limit)),
-      ])
+      json.object(list.append(
+        pagination_model.encode_request_fields(list_request.pagination),
+        [#("usernames", json.array(list_request.usernames, json.string))],
+      ))
     },
     snippet_dto.list_public_response_decoder(),
     to_msg,

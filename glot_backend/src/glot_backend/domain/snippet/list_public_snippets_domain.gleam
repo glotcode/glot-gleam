@@ -1,10 +1,11 @@
 import gleam/dynamic
 import gleam/option
+import gleam/result
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
-import glot_backend/domain/shared/snippet_list_domain
 import glot_backend/effect/basic/basic_effect
+import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
@@ -20,7 +21,11 @@ pub fn list_public_snippets(
   request: snippet_dto.ListPublicSnippetsRequest,
 ) -> program_types.Program(snippet_dto.ListPublicSnippetsResponse) {
   let pagination = request.pagination
-  use _ <- program.and_then(snippet_list_domain.validate_page_request(pagination))
+  use _ <- program.and_then(
+    pagination_model.validate(pagination, 100)
+    |> result.map_error(error.ValidationError)
+    |> program.from_result,
+  )
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
   let maybe_session_id = option.map(maybe_session, fn(session) { session.identity.id })
   let maybe_user_id = option.map(maybe_session, fn(session) { session.user.identity.id })
@@ -52,21 +57,16 @@ pub fn list_public_snippets(
       user_ids: [],
       skip_user_ids: [],
     ),
-    pagination: pagination_model.CursorPagination(
-      after: pagination.after,
-      before: pagination.before,
-      limit: pagination.limit + 1,
-    ),
+    pagination: pagination_model.increment_limit(pagination),
   ))
 
-  let #(page, previous_cursor, next_cursor) =
-    snippet_list_domain.paginate_snippets(snippets, pagination)
+  let page = pagination_model.paginate(snippets, pagination, fn(snippet) {
+    pagination_model.from_string(snippet.identity.slug)
+  })
 
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
-  program.succeed(
-    snippet_dto.from_public_snippets(page, previous_cursor, next_cursor),
-  )
+  program.succeed(snippet_dto.from_public_snippets(page))
 }
 
 pub fn request_from_dynamic(
