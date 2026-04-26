@@ -10,7 +10,6 @@ import glot_core/snippet/snippet_model
 import glot_frontend/api
 import glot_frontend/app_dialog
 import glot_frontend/route
-import glot_frontend/top_bar
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -177,14 +176,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(
-  model: Model,
-  current_user_label: String,
-  account_route: route.Route,
-) -> Element(Msg) {
+pub fn view(model: Model) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
-    top_bar.view(current_user_label, account_route),
     html.main([attribute.class("app-shell")], [
       html.section([attribute.class("app-panel snippets-page")], [
         html.div([attribute.class("snippets-page__header")], [

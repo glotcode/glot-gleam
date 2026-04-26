@@ -3,7 +3,6 @@ import glot_core/language.{type Language}
 import glot_frontend/icons
 import glot_frontend/logo
 import glot_frontend/route
-import glot_frontend/top_bar
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -31,13 +30,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(
-  _model: Model,
-  current_user_label: String,
-  account_route: route.Route,
-) -> Element(Msg) {
+pub fn view(_model: Model) -> Element(Msg) {
   html.div([attribute.class("app-page app-page--home")], [
-    top_bar.view(current_user_label, account_route),
     html.main([attribute.class("home-page")], [
       html.section([attribute.class("home-hero")], [
         html.div([attribute.class("home-hero__inner")], [

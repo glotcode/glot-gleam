@@ -9,7 +9,7 @@ body {
 
 .app-page {
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh - 3.2rem);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -693,7 +693,7 @@ a.snippets-table__cell:hover {
 
 .editor-page {
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh - 3.2rem);
   overflow: hidden;
 }
 
@@ -908,6 +908,91 @@ a.snippets-table__cell:hover {
 .app-dialog__button--danger {
   background: #fff1f1;
   color: #9f1d1d;
+}
+
+.app-quick-actions {
+  width: min(38rem, calc(100vw - 1.5rem));
+}
+
+.app-quick-actions__form {
+  gap: 1.1rem;
+}
+
+.app-quick-actions__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.app-quick-actions__close {
+  border: 1px solid #c8d7ef;
+  background: #f8fbff;
+  color: #35507f;
+  cursor: pointer;
+  font: inherit;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+}
+
+.app-quick-actions__search {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #c8d7ef;
+  background: #ffffff;
+  color: #172033;
+  font: inherit;
+  box-sizing: border-box;
+}
+
+.app-quick-actions__sections {
+  display: grid;
+  gap: 1rem;
+}
+
+.app-quick-actions__list {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.app-quick-actions__item {
+  display: grid;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #d7e4f7;
+  background: #f8fbff;
+  color: #172033;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.app-quick-actions__item:hover {
+  background: #eef4ff;
+}
+
+.app-quick-actions__item--selected {
+  border-color: #7aa5eb;
+  background: #e7f0ff;
+}
+
+.app-quick-actions__item-label {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-quick-actions__item-copy,
+.app-quick-actions__empty {
+  color: #4f6489;
+  line-height: 1.45;
+}
+
+.app-quick-actions__empty {
+  margin: 0;
 }
 
 .editor-page__dialog {

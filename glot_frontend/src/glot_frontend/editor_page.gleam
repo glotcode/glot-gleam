@@ -650,28 +650,20 @@ pub fn update_helper(
   }
 }
 
-pub fn view(
-  model: Model,
-  current_user_id: option.Option(Uuid),
-  current_user_label: String,
-  account_route: route.Route,
-) -> Element(Msg) {
+pub fn view(model: Model, current_user_id: option.Option(Uuid)) -> Element(Msg) {
   case model {
     UnsupportedLanguage(lang) ->
       html.div([], [html.text("Unsupported language: " <> lang)])
     LoadingSnippet(_slug, _settings) ->
       html.div([], [html.text("Loading snippet...")])
     LoadError(message) -> html.div([], [html.text(message)])
-    SupportedLanguage(model) ->
-      view_helper(model, current_user_id, current_user_label, account_route)
+    SupportedLanguage(model) -> view_helper(model, current_user_id)
   }
 }
 
 fn view_helper(
   model: RealModel,
   current_user_id: option.Option(Uuid),
-  current_user_label: String,
-  account_route: route.Route,
 ) -> Element(Msg) {
   let can_edit_title =
     model.slug == option.None || is_owner(model, current_user_id)
@@ -679,7 +671,6 @@ fn view_helper(
 
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
-    top_bar.view(current_user_label, account_route),
     html.main([attribute.class("editor-shell")], [
       html.div([attribute.class("editor-shell__bezel")], [
         html.div([attribute.class("editor-page__title-row")], [
@@ -783,6 +774,72 @@ fn view_helper(
       console_view(model.version_info, model.run_state, model.save_state),
     ]),
   ])
+}
+
+pub fn quick_actions(
+  model: Model,
+  current_user_id: option.Option(Uuid),
+) -> List(top_bar.Action(Msg)) {
+  case model {
+    SupportedLanguage(model) -> quick_actions_for_model(model, current_user_id)
+    UnsupportedLanguage(_) | LoadingSnippet(_, _) | LoadError(_) -> []
+  }
+}
+
+fn quick_actions_for_model(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+) -> List(top_bar.Action(Msg)) {
+  let base_actions = [
+    top_bar.Action(
+      label: "Run code",
+      description: "Execute the current snippet.",
+      msg: RunSubmitted,
+    ),
+    top_bar.Action(
+      label: save_action_name(model, current_user_id),
+      description: "Save the current snippet state.",
+      msg: SaveClicked,
+    ),
+    top_bar.Action(
+      label: "New file / stdin",
+      description: "Add a new file or stdin input entry.",
+      msg: AddEntryClicked,
+    ),
+    top_bar.Action(
+      label: "Settings",
+      description: "Open editor settings.",
+      msg: SettingsClicked,
+    ),
+  ]
+
+  let info_actions = case model.slug != option.None {
+    True -> [
+      top_bar.Action(
+        label: "Snippet info",
+        description: "View snippet metadata.",
+        msg: SnippetInfoClicked,
+      ),
+    ]
+    False -> []
+  }
+
+  let title_actions = case
+    model.slug == option.None || is_owner(model, current_user_id)
+  {
+    True -> [
+      top_bar.Action(
+        label: "Edit title",
+        description: "Rename the current snippet.",
+        msg: TitleClicked,
+      ),
+    ]
+    False -> []
+  }
+
+  base_actions
+  |> list.append(info_actions)
+  |> list.append(title_actions)
 }
 
 fn icon_action_button(

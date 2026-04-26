@@ -1,4 +1,5 @@
 import gleam/option
+import gleam/result
 import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp
@@ -8,7 +9,6 @@ import glot_core/email/email_address_model
 import glot_frontend/api
 import glot_frontend/app_event
 import glot_frontend/route
-import glot_frontend/top_bar
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -96,7 +96,9 @@ pub fn update(
     UsernameSubmitted -> {
       let username = string.trim(model.username)
 
-      case user_model.validate_username(username) {
+      let validation = user_model.validate_username(username)
+
+      case validation {
         Ok(_) -> {
           let request = account_dto.UpdateAccountRequest(username:)
           #(
@@ -106,11 +108,11 @@ pub fn update(
           )
         }
 
-        Error(message) -> #(
+        _ -> #(
           Model(
             ..model,
             username: username,
-            status: Error(message),
+            status: Error(result.unwrap_error(validation, "Invalid username.")),
           ),
           effect.none(),
           app_event.NoAppEvent,
@@ -228,14 +230,9 @@ pub fn update(
   }
 }
 
-pub fn view(
-  model: Model,
-  current_user_label: String,
-  account_route: route.Route,
-) -> Element(Msg) {
+pub fn view(model: Model) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
-    top_bar.view(current_user_label, account_route),
     html.main([attribute.class("app-shell app-shell--narrow")], [
       html.section([attribute.class("account-page")], [
         html.h2([attribute.class("account-page__title")], [
