@@ -7,6 +7,7 @@ import glot_frontend/app_event
 import glot_frontend/editor_page
 import glot_frontend/home_page
 import glot_frontend/login_page
+import glot_frontend/manage_snippets_page
 import glot_frontend/route
 import glot_frontend/snippets_page
 import glot_frontend/string_helpers
@@ -32,6 +33,7 @@ type PageModel {
   HomePageModel(home_page.Model)
   LoginPage(login_page.Model)
   AccountPage(account_page.Model)
+  ManageSnippetsPage(manage_snippets_page.Model)
   SnippetsPage(snippets_page.Model)
   EditorPage(editor_page.Model)
   EmptyPageModel
@@ -59,6 +61,11 @@ fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
     route.Account -> {
       let #(m, eff) = account_page.init()
       #(AccountPage(m), effect.map(eff, AccountPageMsg))
+    }
+
+    route.AccountSnippets(after:, before:) -> {
+      let #(m, eff) = manage_snippets_page.init(after:, before:)
+      #(ManageSnippetsPage(m), effect.map(eff, ManageSnippetsPageMsg))
     }
 
     route.Snippets(after:, before:, username:) -> {
@@ -112,6 +119,7 @@ type Msg {
   HomePageMsg(home_page.Msg)
   LoginPageMsg(login_page.Msg)
   AccountPageMsg(account_page.Msg)
+  ManageSnippetsPageMsg(manage_snippets_page.Msg)
   SnippetsPageMsg(snippets_page.Msg)
   EditorPageMsg(editor_page.Msg)
 }
@@ -151,6 +159,14 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let mapped_effect = effect.map(page_effect, AccountPageMsg)
       let effects = apply_app_event(mapped_effect, app_event)
       #(new_model, effects)
+    }
+
+    ManageSnippetsPageMsg(page_msg), ManageSnippetsPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        manage_snippets_page.update(page_model, page_msg)
+      let new_model =
+        Model(..model, page_model: ManageSnippetsPage(new_page_model))
+      #(new_model, effect.map(page_effect, ManageSnippetsPageMsg))
     }
 
     SnippetsPageMsg(page_msg), SnippetsPage(page_model) -> {
@@ -212,6 +228,16 @@ fn view(model: Model) -> Element(Msg) {
           current_user_route(model.session),
         )
       element.map(elem, AccountPageMsg)
+    }
+
+    ManageSnippetsPage(page_model) -> {
+      let elem =
+        manage_snippets_page.view(
+          page_model,
+          current_user_label(model.session),
+          current_user_route(model.session),
+        )
+      element.map(elem, ManageSnippetsPageMsg)
     }
 
     SnippetsPage(page_model) -> {

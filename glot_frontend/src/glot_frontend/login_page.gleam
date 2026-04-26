@@ -43,7 +43,10 @@ pub type Msg {
   LoggedIn(api.ApiResponse(Nil))
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEvent) {
+pub fn update(
+  model: Model,
+  msg: Msg,
+) -> #(Model, Effect(Msg), app_event.AppEvent) {
   case msg {
     EmailChanged(email) -> {
       #(
@@ -105,7 +108,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEven
 
             False -> {
               let next_model = Model(..model, status: LoggingIn)
-              #(next_model, api.login(email, token, LoggedIn), app_event.NoAppEvent)
+              #(
+                next_model,
+                api.login(email, token, LoggedIn),
+                app_event.NoAppEvent,
+              )
             }
           }
         }

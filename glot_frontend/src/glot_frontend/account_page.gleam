@@ -55,7 +55,10 @@ pub fn init() -> #(Model, Effect(Msg)) {
   )
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEvent) {
+pub fn update(
+  model: Model,
+  msg: Msg,
+) -> #(Model, Effect(Msg), app_event.AppEvent) {
   case msg {
     AccountLoaded(result) ->
       case result {
@@ -117,28 +120,25 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEven
       }
     }
 
-    LogoutSubmitted ->
-      #(
-        Model(..model, status: LoggingOut),
-        api.logout(LoggedOut),
-        app_event.NoAppEvent,
-      )
+    LogoutSubmitted -> #(
+      Model(..model, status: LoggingOut),
+      api.logout(LoggedOut),
+      app_event.NoAppEvent,
+    )
 
-    ScheduleDeleteSubmitted ->
-      #(
-        Model(..model, status: SchedulingDelete),
-        api.schedule_delete_account(DeleteScheduled),
-        app_event.NoAppEvent,
-      )
+    ScheduleDeleteSubmitted -> #(
+      Model(..model, status: SchedulingDelete),
+      api.schedule_delete_account(DeleteScheduled),
+      app_event.NoAppEvent,
+    )
 
     DeleteScheduled(result) ->
       case result {
-        api.ApiSuccess(_) ->
-          #(
-            Model(..model, status: Idle),
-            api.get_account(AccountLoaded),
-            app_event.NoAppEvent,
-          )
+        api.ApiSuccess(_) -> #(
+          Model(..model, status: Idle),
+          api.get_account(AccountLoaded),
+          app_event.NoAppEvent,
+        )
 
         api.ApiFailure(error) -> #(
           Model(..model, status: Error(error.message)),
@@ -153,21 +153,19 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEven
         )
       }
 
-    CancelDeleteSubmitted ->
-      #(
-        Model(..model, status: CancelingDelete),
-        api.cancel_delete_account(DeleteCanceled),
-        app_event.NoAppEvent,
-      )
+    CancelDeleteSubmitted -> #(
+      Model(..model, status: CancelingDelete),
+      api.cancel_delete_account(DeleteCanceled),
+      app_event.NoAppEvent,
+    )
 
     DeleteCanceled(result) ->
       case result {
-        api.ApiSuccess(_) ->
-          #(
-            Model(..model, status: Idle),
-            api.get_account(AccountLoaded),
-            app_event.NoAppEvent,
-          )
+        api.ApiSuccess(_) -> #(
+          Model(..model, status: Idle),
+          api.get_account(AccountLoaded),
+          app_event.NoAppEvent,
+        )
 
         api.ApiFailure(error) -> #(
           Model(..model, status: Error(error.message)),
@@ -211,12 +209,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg), app_event.AppEven
 
     LoggedOut(result) ->
       case result {
-        api.ApiSuccess(_) ->
-          #(
-            Model(..model, status: Idle),
-            modem.replace(route.to_string(route.Home), option.None, option.None),
-            app_event.RefreshSession,
-          )
+        api.ApiSuccess(_) -> #(
+          Model(..model, status: Idle),
+          modem.replace(route.to_string(route.Home), option.None, option.None),
+          app_event.RefreshSession,
+        )
 
         api.ApiFailure(error) -> #(
           Model(..model, status: Error(error.message)),
@@ -307,6 +304,12 @@ fn account_form(
     ]),
     html.section([attribute.class("app-panel")], [
       html.h3([attribute.class("account-page__section-title")], [
+        html.text("Snippets"),
+      ]),
+      snippets_section(),
+    ]),
+    html.section([attribute.class("app-panel")], [
+      html.h3([attribute.class("account-page__section-title")], [
         html.text("Danger Zone"),
       ]),
       delete_account_section(account, model.status),
@@ -358,6 +361,26 @@ fn account_settings_form(model: Model) -> Element(Msg) {
   )
 }
 
+fn snippets_section() -> Element(Msg) {
+  html.div([attribute.class("account-page__empty")], [
+    html.p([attribute.class("account-page__status")], [
+      html.text("Browse, edit, and delete snippets created with your account."),
+    ]),
+    html.a(
+      [
+        route.href(route.AccountSnippets(
+          after: option.None,
+          before: option.None,
+        )),
+        attribute.class("account-page__link"),
+      ],
+      [
+        html.text("Manage snippets"),
+      ],
+    ),
+  ])
+}
+
 fn account_row(label: String, value: String) -> Element(Msg) {
   html.div([attribute.class("account-page__row")], [
     html.span([attribute.class("account-page__row-label")], [html.text(label)]),
@@ -402,25 +425,24 @@ fn delete_account_section(
   account: account_dto.AccountResponse,
   status: Status,
 ) -> Element(Msg) {
-  let #(description, button_msg, button_class, title, button_label) =
-    case account.delete_scheduled {
-      True ->
-        #(
-          delete_account_description(account),
-          CancelDeleteSubmitted,
-          "account-page__button account-page__button--secondary",
-          "Delete scheduled",
-          delete_button_text(status, account.delete_scheduled),
-        )
-      False ->
-        #(
-          "Delete your account and all associated data. This action schedules permanent deletion of everything stored for this account.",
-          ScheduleDeleteSubmitted,
-          "account-page__button account-page__button--danger",
-          "Delete account",
-          delete_button_text(status, account.delete_scheduled),
-        )
-    }
+  let #(description, button_msg, button_class, title, button_label) = case
+    account.delete_scheduled
+  {
+    True -> #(
+      delete_account_description(account),
+      CancelDeleteSubmitted,
+      "account-page__button account-page__button--secondary",
+      "Delete scheduled",
+      delete_button_text(status, account.delete_scheduled),
+    )
+    False -> #(
+      "Delete your account and all associated data. This action schedules permanent deletion of everything stored for this account.",
+      ScheduleDeleteSubmitted,
+      "account-page__button account-page__button--danger",
+      "Delete account",
+      delete_button_text(status, account.delete_scheduled),
+    )
+  }
 
   html.div([attribute.class("account-page__danger-zone")], [
     html.p([attribute.class("account-page__label")], [html.text(title)]),

@@ -1,5 +1,5 @@
-import gleeunit
 import gleam/option
+import gleeunit
 import glot_frontend/route
 import glot_frontend/string_helpers
 
@@ -21,8 +21,8 @@ pub fn truncate_stem_middle_keeps_short_strings_test() {
 
 pub fn truncate_stem_middle_truncates_to_requested_length_test() {
   assert string_helpers.truncate_stem_middle("verylongname", 10) == "very...ame"
-  assert string_helpers.truncate_stem_middle("abcdefghijklmnopqrstu", 20) ==
-    "abcdefghi...nopqrstu"
+  assert string_helpers.truncate_stem_middle("abcdefghijklmnopqrstu", 20)
+    == "abcdefghi...nopqrstu"
 }
 
 pub fn truncate_stem_middle_handles_tiny_lengths_test() {
@@ -31,11 +31,10 @@ pub fn truncate_stem_middle_handles_tiny_lengths_test() {
 }
 
 pub fn snippets_route_to_string_includes_username_query_test() {
-  assert route.to_string(
-    route.Snippets(
+  assert route.to_string(route.Snippets(
       after: option.Some("after-1"),
       before: option.None,
       username: option.Some("alice"),
-    ),
-  ) == "/snippets?after=after-1&username=alice"
+    ))
+    == "/snippets?after=after-1&username=alice"
 }

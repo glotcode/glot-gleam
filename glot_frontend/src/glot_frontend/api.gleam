@@ -115,9 +115,29 @@ pub fn list_public_snippets(
   send_api_request(
     req,
     fn(list_request) {
-      json.object(list.append(
-        pagination_model.encode_request_fields(list_request.pagination),
-        [#("usernames", json.array(list_request.usernames, json.string))],
+      json.object(
+        list.append(
+          pagination_model.encode_request_fields(list_request.pagination),
+          [#("usernames", json.array(list_request.usernames, json.string))],
+        ),
+      )
+    },
+    snippet_dto.list_public_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn list_session_snippets(
+  request: snippet_dto.ListSessionSnippetsRequest,
+  to_msg: fn(ApiResponse(snippet_dto.ListPublicSnippetsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.ListSessionSnippetsAction, request)
+
+  send_api_request(
+    req,
+    fn(list_request) {
+      json.object(pagination_model.encode_request_fields(
+        list_request.pagination,
       ))
     },
     snippet_dto.list_public_response_decoder(),
@@ -140,6 +160,24 @@ pub fn update_snippet(
       ])
     },
     snippet_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn delete_snippet(
+  request: snippet_dto.DeleteSnippetRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.DeleteSnippetAction, request)
+
+  send_api_request(
+    req,
+    fn(delete_request) {
+      json.object([
+        #("slug", json.string(delete_request.slug)),
+      ])
+    },
+    nil_decoder(),
     to_msg,
   )
 }
@@ -171,9 +209,7 @@ pub fn get_account(
   )
 }
 
-pub fn logout(
-  to_msg: fn(ApiResponse(Nil)) -> msg,
-) -> effect.Effect(msg) {
+pub fn logout(to_msg: fn(ApiResponse(Nil)) -> msg) -> effect.Effect(msg) {
   let req = ApiRequest(api_action.LogoutAction, Nil)
 
   send_api_request(req, fn(_) { json.null() }, nil_decoder(), to_msg)

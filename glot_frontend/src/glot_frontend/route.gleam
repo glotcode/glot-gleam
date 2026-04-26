@@ -7,6 +7,7 @@ pub type Route {
   Home
   Login
   Account
+  AccountSnippets(after: option.Option(String), before: option.Option(String))
   Snippets(
     after: option.Option(String),
     before: option.Option(String),
@@ -22,6 +23,10 @@ pub fn from_uri(uri: Uri) -> Route {
     [] | [""] -> Home
     ["login"] -> Login
     ["account"] -> Account
+    ["account", "snippets"] -> {
+      let #(after, before, _) = snippet_query_params(uri)
+      AccountSnippets(after:, before:)
+    }
     ["snippets"] -> {
       let #(after, before, username) = snippet_query_params(uri)
       Snippets(after:, before:, username:)
@@ -37,6 +42,13 @@ pub fn to_string(route: Route) -> String {
     Home -> "/"
     Login -> "/login"
     Account -> "/account"
+    AccountSnippets(after:, before:) -> {
+      let query = snippet_query_string(after, before, option.None)
+      case query {
+        option.Some(query) -> "/account/snippets?" <> query
+        option.None -> "/account/snippets"
+      }
+    }
     Snippets(after:, before:, username:) -> {
       let query = snippet_query_string(after, before, username)
       case query {
@@ -56,8 +68,14 @@ pub fn href(route: Route) -> Attribute(msg) {
 
 pub fn path_and_query(route: Route) -> #(String, option.Option(String)) {
   case route {
-    Snippets(after:, before:, username:) ->
-      #("/snippets", snippet_query_string(after, before, username))
+    AccountSnippets(after:, before:) -> #(
+      "/account/snippets",
+      snippet_query_string(after, before, option.None),
+    )
+    Snippets(after:, before:, username:) -> #(
+      "/snippets",
+      snippet_query_string(after, before, username),
+    )
     _ -> #(to_string(route), option.None)
   }
 }
@@ -68,12 +86,11 @@ fn snippet_query_params(
   case uri.query {
     option.Some(query) ->
       case uri.parse_query(query) {
-        Ok(params) ->
-          #(
-            query_param(params, "after"),
-            query_param(params, "before"),
-            query_param(params, "username"),
-          )
+        Ok(params) -> #(
+          query_param(params, "after"),
+          query_param(params, "before"),
+          query_param(params, "username"),
+        )
         Error(_) -> #(option.None, option.None, option.None)
       }
     option.None -> #(option.None, option.None, option.None)
