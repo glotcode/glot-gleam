@@ -3,6 +3,7 @@ import gleam/option
 import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/language
+import glot_core/pagination_model
 import glot_core/snippet/snippet_dto
 import glot_frontend/api
 import glot_frontend/route
@@ -152,10 +153,12 @@ fn load_page(
 ) -> Effect(Msg) {
   api.list_public_snippets(
     snippet_dto.ListPublicSnippetsRequest(
-      after:,
-      before:,
+      pagination: pagination_model.CursorPagination(
+        after: after,
+        before: before,
+        limit: page_limit,
+      ),
       usernames: usernames_from_filter(username),
-      limit: page_limit,
     ),
     SnippetsLoaded,
   )

@@ -2,6 +2,7 @@ import gleam/option
 import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
+import glot_core/pagination_model.{type CursorPagination}
 import glot_core/snippet/snippet_model.{type HydratedSnippet, type ListSnippetsFilter, type Snippet}
 import youid/uuid
 
@@ -21,16 +22,12 @@ pub fn get_by_slug(
 
 pub fn list(
   filter filter: ListSnippetsFilter,
-  after_slug after_slug: option.Option(String),
-  before_slug before_slug: option.Option(String),
-  limit limit: Int,
+  pagination pagination: CursorPagination,
 ) -> program_types.Program(List(HydratedSnippet)) {
   program_types.Impure(
     program_types.DbEffect(list_effect(
       filter,
-      after_slug,
-      before_slug,
-      limit,
+      pagination,
       list_next,
     )),
   )
@@ -159,16 +156,12 @@ fn get_by_slug_effect(
 
 fn list_effect(
   filter: ListSnippetsFilter,
-  after_slug: option.Option(String),
-  before_slug: option.Option(String),
-  limit: Int,
+  pagination: CursorPagination,
   next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.ListSnippets(
     filter: filter,
-    after_slug: after_slug,
-    before_slug: before_slug,
-    limit: limit,
+    pagination: pagination,
     next: next,
   ))
 }

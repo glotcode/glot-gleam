@@ -6,6 +6,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/user_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
+import glot_core/pagination_model
 import glot_core/snippet/snippet_model
 import youid/uuid
 
@@ -20,19 +21,13 @@ pub fn get_decoder() -> decode.Decoder(GetSnippetRequest) {
 
 pub type ListPublicSnippetsRequest {
   ListPublicSnippetsRequest(
-    after: option.Option(String),
-    before: option.Option(String),
+    pagination: pagination_model.CursorPagination,
     usernames: List(String),
-    limit: Int,
   )
 }
 
 pub type ListSessionSnippetsRequest {
-  ListSessionSnippetsRequest(
-    after: option.Option(String),
-    before: option.Option(String),
-    limit: Int,
-  )
+  ListSessionSnippetsRequest(pagination: pagination_model.CursorPagination)
 }
 
 pub fn list_public_decoder() -> decode.Decoder(ListPublicSnippetsRequest) {
@@ -40,14 +35,18 @@ pub fn list_public_decoder() -> decode.Decoder(ListPublicSnippetsRequest) {
   use before <- decode.field("before", decode.optional(decode.string))
   use usernames <- decode.field("usernames", decode.list(decode.string))
   use limit <- decode.field("limit", decode.int)
-  decode.success(ListPublicSnippetsRequest(after:, before:, usernames:, limit:))
+  let pagination =
+    pagination_model.CursorPagination(after:, before:, limit:)
+  decode.success(ListPublicSnippetsRequest(pagination:, usernames:))
 }
 
 pub fn list_session_decoder() -> decode.Decoder(ListSessionSnippetsRequest) {
   use after <- decode.field("after", decode.optional(decode.string))
   use before <- decode.field("before", decode.optional(decode.string))
   use limit <- decode.field("limit", decode.int)
-  decode.success(ListSessionSnippetsRequest(after:, before:, limit:))
+  let pagination =
+    pagination_model.CursorPagination(after:, before:, limit:)
+  decode.success(ListSessionSnippetsRequest(pagination:))
 }
 
 pub type DeleteSnippetRequest {

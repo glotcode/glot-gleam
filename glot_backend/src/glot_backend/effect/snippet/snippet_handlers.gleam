@@ -7,6 +7,7 @@ import gleam/string
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
+import glot_core/pagination_model.{type CursorPagination}
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
@@ -23,9 +24,7 @@ pub type SnippetHandlers {
       Result(option.Option(HydratedSnippet), error.DbQueryError),
     list_snippets: fn(
       ListSnippetsFilter,
-      option.Option(String),
-      option.Option(String),
-      Int,
+      CursorPagination,
     ) -> Result(List(HydratedSnippet), error.DbQueryError),
     delete_snippet: fn(BitArray) -> Result(Nil, error.DbCommandError),
     delete_snippets_by_account_id: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
@@ -38,13 +37,11 @@ pub fn new(db: pog.Connection) -> SnippetHandlers {
   SnippetHandlers(
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
     get_snippet_by_slug: fn(slug) { get_snippet_by_slug(db, slug) },
-    list_snippets: fn(filter, after_slug, before_slug, limit) {
+    list_snippets: fn(filter, pagination) {
       list_snippets(
         db,
         filter,
-        after_slug,
-        before_slug,
-        limit,
+        pagination,
       )
     },
     delete_snippet: fn(id) { delete_snippet(db, id) },
@@ -93,9 +90,7 @@ pub fn get_snippet_by_slug(
 pub fn list_snippets(
   db: pog.Connection,
   filter: ListSnippetsFilter,
-  after_slug: option.Option(String),
-  before_slug: option.Option(String),
-  limit: Int,
+  pagination: CursorPagination,
 ) -> Result(List(HydratedSnippet), error.DbQueryError) {
   let snippet_model.ListSnippetsFilter(
     visibilities: visibilities,
@@ -103,6 +98,11 @@ pub fn list_snippets(
     user_ids: user_ids,
     skip_user_ids: skip_user_ids,
   ) = filter
+  let pagination_model.CursorPagination(
+    after: after_slug,
+    before: before_slug,
+    limit: limit,
+  ) = pagination
   let visibility_strings =
     visibilities
     |> list.map(snippet_model.visibility_to_string)

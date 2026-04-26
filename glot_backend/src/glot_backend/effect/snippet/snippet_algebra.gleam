@@ -1,5 +1,6 @@
 import gleam/option
 import glot_backend/effect/error
+import glot_core/pagination_model.{type CursorPagination}
 import glot_core/snippet/snippet_model.{type HydratedSnippet, type ListSnippetsFilter, type Snippet}
 import youid/uuid.{type Uuid}
 
@@ -14,9 +15,7 @@ pub type SnippetEffect(next) {
   )
   ListSnippets(
     filter: ListSnippetsFilter,
-    after_slug: option.Option(String),
-    before_slug: option.Option(String),
-    limit: Int,
+    pagination: CursorPagination,
     next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
   )
   DeleteSnippet(
@@ -43,12 +42,10 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
       GetSnippetById(id, next: fn(value) { f(next(value)) })
     GetSnippetBySlug(slug, next) ->
       GetSnippetBySlug(slug, next: fn(value) { f(next(value)) })
-    ListSnippets(filter:, after_slug:, before_slug:, limit:, next:) ->
+    ListSnippets(filter:, pagination:, next:) ->
       ListSnippets(
         filter: filter,
-        after_slug: after_slug,
-        before_slug: before_slug,
-        limit: limit,
+        pagination: pagination,
         next: fn(value) { f(next(value)) },
       )
     DeleteSnippet(id, next) ->

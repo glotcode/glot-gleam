@@ -3,6 +3,7 @@ import gleam/option
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
+import glot_core/pagination_model
 import glot_core/snippet/snippet_model
 
 type PageDirection {
@@ -12,10 +13,9 @@ type PageDirection {
 }
 
 pub fn validate_page_request(
-  after after: option.Option(String),
-  before before: option.Option(String),
-  limit limit: Int,
+  pagination: pagination_model.CursorPagination,
 ) -> program_types.Program(Nil) {
+  let pagination_model.CursorPagination(after:, before:, limit:) = pagination
   use _ <- program.and_then(require(
     limit > 0,
     "limit must be greater than 0",
@@ -34,14 +34,13 @@ pub fn validate_page_request(
 
 pub fn paginate_snippets(
   snippets: List(snippet_model.HydratedSnippet),
-  after after: option.Option(String),
-  before before: option.Option(String),
-  limit limit: Int,
+  pagination: pagination_model.CursorPagination,
 ) -> #(
   List(snippet_model.HydratedSnippet),
   option.Option(String),
   option.Option(String),
 ) {
+  let pagination_model.CursorPagination(after:, before:, limit:) = pagination
   let direction = page_direction(after, before)
   let #(page, has_more) = take_page(snippets, limit)
 

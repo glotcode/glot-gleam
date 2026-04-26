@@ -39,15 +39,9 @@ pub fn run(
         ),
       )
     }
-    snippet_algebra.ListSnippets(filter:, after_slug:, before_slug:, limit:, next:) -> {
+    snippet_algebra.ListSnippets(filter:, pagination:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.snippet.list_snippets(
-          filter,
-          after_slug,
-          before_slug,
-          limit,
-        )
+      let result = handlers.snippet.list_snippets(filter, pagination)
       continue(
         next(result),
         program_state.add_effect_measurement(

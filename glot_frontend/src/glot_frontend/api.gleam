@@ -113,11 +113,12 @@ pub fn list_public_snippets(
   send_api_request(
     req,
     fn(list_request) {
+      let pagination = list_request.pagination
       json.object([
-        #("after", json.nullable(list_request.after, json.string)),
-        #("before", json.nullable(list_request.before, json.string)),
+        #("after", json.nullable(pagination.after, json.string)),
+        #("before", json.nullable(pagination.before, json.string)),
         #("usernames", json.array(list_request.usernames, json.string)),
-        #("limit", json.int(list_request.limit)),
+        #("limit", json.int(pagination.limit)),
       ])
     },
     snippet_dto.list_public_response_decoder(),

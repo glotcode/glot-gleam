@@ -10,6 +10,7 @@ import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/pagination_model
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 
@@ -17,11 +18,8 @@ pub fn list_session_snippets(
   ctx: context.Context,
   request: snippet_dto.ListSessionSnippetsRequest,
 ) -> program_types.Program(snippet_dto.ListPublicSnippetsResponse) {
-  use _ <- program.and_then(snippet_list_domain.validate_page_request(
-    after: request.after,
-    before: request.before,
-    limit: request.limit,
-  ))
+  let pagination = request.pagination
+  use _ <- program.and_then(snippet_list_domain.validate_page_request(pagination))
   use session <- program.and_then(session_domain.require_session(ctx))
 
   use _ <- program.and_then(
@@ -49,18 +47,15 @@ pub fn list_session_snippets(
       user_ids: [session.user.identity.id],
       skip_user_ids: [],
     ),
-    after_slug: request.after,
-    before_slug: request.before,
-    limit: request.limit + 1,
+    pagination: pagination_model.CursorPagination(
+      after: pagination.after,
+      before: pagination.before,
+      limit: pagination.limit + 1,
+    ),
   ))
 
   let #(page, previous_cursor, next_cursor) =
-    snippet_list_domain.paginate_snippets(
-      snippets,
-      after: request.after,
-      before: request.before,
-      limit: request.limit,
-    )
+    snippet_list_domain.paginate_snippets(snippets, pagination)
 
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
