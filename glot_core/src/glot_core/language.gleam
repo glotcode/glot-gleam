@@ -999,17 +999,12 @@ begin
 end.
 "
 
-    Perl ->
-      "print \"Hello World!
-\";
-"
+    Perl -> "print \"Hello World!\";"
 
     Php ->
       "<?php
 
-echo \"Hello World!
-\";
-"
+echo \"Hello World!\";"
 
     Python ->
       "print(\"Hello World!\")
