@@ -14,6 +14,7 @@ import glot_frontend/home_page
 import glot_frontend/keyboard_shortcuts
 import glot_frontend/login_page
 import glot_frontend/manage_snippets_page
+import glot_frontend/quick_action_scroll
 import glot_frontend/route
 import glot_frontend/snippets_page
 import glot_frontend/string_helpers
@@ -201,8 +202,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     QuickActionsKeyPressed(key), _ ->
       case key {
-        "ArrowDown" -> #(move_quick_action_selection(model, 1), effect.none())
-        "ArrowUp" -> #(move_quick_action_selection(model, -1), effect.none())
+        "ArrowDown" -> move_and_scroll_quick_action_selection(model, 1)
+        "ArrowUp" -> move_and_scroll_quick_action_selection(model, -1)
         "Enter" ->
           case selected_quick_action(model) {
             option.Some(action) ->
@@ -697,6 +698,15 @@ fn move_quick_action_selection(model: Model, delta: Int) -> Model {
       Model(..model, quick_action_selected_index: wrapped)
     }
   }
+}
+
+fn move_and_scroll_quick_action_selection(
+  model: Model,
+  delta: Int,
+) -> #(Model, Effect(Msg)) {
+  let next_model = move_quick_action_selection(model, delta)
+  let selected_index = normalized_selected_index(next_model)
+  #(next_model, quick_action_scroll.ensure_visible(selected_index))
 }
 
 fn action_at(

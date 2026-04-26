@@ -1,4 +1,5 @@
 import gleam/dynamic/decode
+import gleam/int
 import gleam/list
 import glot_frontend/route
 import lustre/attribute
@@ -190,13 +191,17 @@ fn render_action_buttons(
   case actions {
     [] -> []
     [action, ..rest] -> [
-      action_button(action, offset == selected_index),
+      action_button(action, offset, offset == selected_index),
       ..render_action_buttons(rest, selected_index, offset + 1)
     ]
   }
 }
 
-fn action_button(action: Action(msg), selected: Bool) -> Element(msg) {
+fn action_button(
+  action: Action(msg),
+  index: Int,
+  selected: Bool,
+) -> Element(msg) {
   case action {
     Action(label:, description:, msg:) -> {
       let class_name = case selected {
@@ -208,6 +213,7 @@ fn action_button(action: Action(msg), selected: Bool) -> Element(msg) {
         [
           attribute.type_("button"),
           attribute.class(class_name),
+          attribute.attribute("data-quick-action-index", int.to_string(index)),
           event.on_click(msg),
         ],
         [
