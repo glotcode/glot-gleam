@@ -48,10 +48,12 @@ pub fn list_public_snippets(
   ))
 
   use snippets <- program.and_then(snippet_effect.list(
-    visibilities: [snippet_model.Public],
-    usernames: request.usernames,
-    user_ids: [],
-    skip_user_ids: [],
+    filter: snippet_model.ListSnippetsFilter(
+      visibilities: [snippet_model.Public],
+      usernames: request.usernames,
+      user_ids: [],
+      skip_user_ids: [],
+    ),
     after_slug: request.after,
     before_slug: request.before,
     limit: request.limit + 1,

@@ -11,6 +11,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
 import glot_core/snippet/snippet_dto
+import glot_core/snippet/snippet_model
 
 pub fn list_session_snippets(
   ctx: context.Context,
@@ -42,10 +43,12 @@ pub fn list_session_snippets(
   ))
 
   use snippets <- program.and_then(snippet_effect.list(
-    visibilities: [],
-    usernames: [],
-    user_ids: [session.user.identity.id],
-    skip_user_ids: [],
+    filter: snippet_model.ListSnippetsFilter(
+      visibilities: [],
+      usernames: [],
+      user_ids: [session.user.identity.id],
+      skip_user_ids: [],
+    ),
     after_slug: request.after,
     before_slug: request.before,
     limit: request.limit + 1,

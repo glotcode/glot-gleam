@@ -1,6 +1,6 @@
 import gleam/option
 import glot_backend/effect/error
-import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet, type Visibility}
+import glot_core/snippet/snippet_model.{type HydratedSnippet, type ListSnippetsFilter, type Snippet}
 import youid/uuid.{type Uuid}
 
 pub type SnippetEffect(next) {
@@ -13,10 +13,7 @@ pub type SnippetEffect(next) {
     next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
   )
   ListSnippets(
-    visibilities: List(Visibility),
-    usernames: List(String),
-    user_ids: List(Uuid),
-    skip_user_ids: List(Uuid),
+    filter: ListSnippetsFilter,
     after_slug: option.Option(String),
     before_slug: option.Option(String),
     limit: Int,
@@ -46,21 +43,9 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
       GetSnippetById(id, next: fn(value) { f(next(value)) })
     GetSnippetBySlug(slug, next) ->
       GetSnippetBySlug(slug, next: fn(value) { f(next(value)) })
-    ListSnippets(
-      visibilities:,
-      usernames:,
-      user_ids:,
-      skip_user_ids:,
-      after_slug:,
-      before_slug:,
-      limit:,
-      next:,
-    ) ->
+    ListSnippets(filter:, after_slug:, before_slug:, limit:, next:) ->
       ListSnippets(
-        visibilities: visibilities,
-        usernames: usernames,
-        user_ids: user_ids,
-        skip_user_ids: skip_user_ids,
+        filter: filter,
         after_slug: after_slug,
         before_slug: before_slug,
         limit: limit,

@@ -9,6 +9,15 @@ import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import youid/uuid.{type Uuid}
 
+pub type ListSnippetsFilter {
+  ListSnippetsFilter(
+    visibilities: List(Visibility),
+    usernames: List(String),
+    user_ids: List(Uuid),
+    skip_user_ids: List(Uuid),
+  )
+}
+
 pub type Snippet {
   Snippet(
     id: Uuid,

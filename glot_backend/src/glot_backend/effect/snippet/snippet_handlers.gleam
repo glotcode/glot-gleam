@@ -11,7 +11,7 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
 import glot_core/language
-import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet, type Visibility}
+import glot_core/snippet/snippet_model.{type HydratedSnippet, type ListSnippetsFilter, type Snippet}
 import pog
 import youid/uuid
 
@@ -22,10 +22,7 @@ pub type SnippetHandlers {
     get_snippet_by_slug: fn(String) ->
       Result(option.Option(HydratedSnippet), error.DbQueryError),
     list_snippets: fn(
-      List(Visibility),
-      List(String),
-      List(uuid.Uuid),
-      List(uuid.Uuid),
+      ListSnippetsFilter,
       option.Option(String),
       option.Option(String),
       Int,
@@ -41,13 +38,10 @@ pub fn new(db: pog.Connection) -> SnippetHandlers {
   SnippetHandlers(
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
     get_snippet_by_slug: fn(slug) { get_snippet_by_slug(db, slug) },
-    list_snippets: fn(visibilities, usernames, user_ids, skip_user_ids, after_slug, before_slug, limit) {
+    list_snippets: fn(filter, after_slug, before_slug, limit) {
       list_snippets(
         db,
-        visibilities,
-        usernames,
-        user_ids,
-        skip_user_ids,
+        filter,
         after_slug,
         before_slug,
         limit,
@@ -98,14 +92,17 @@ pub fn get_snippet_by_slug(
 
 pub fn list_snippets(
   db: pog.Connection,
-  visibilities: List(Visibility),
-  usernames: List(String),
-  user_ids: List(uuid.Uuid),
-  skip_user_ids: List(uuid.Uuid),
+  filter: ListSnippetsFilter,
   after_slug: option.Option(String),
   before_slug: option.Option(String),
   limit: Int,
 ) -> Result(List(HydratedSnippet), error.DbQueryError) {
+  let snippet_model.ListSnippetsFilter(
+    visibilities: visibilities,
+    usernames: usernames,
+    user_ids: user_ids,
+    skip_user_ids: skip_user_ids,
+  ) = filter
   let visibility_strings =
     visibilities
     |> list.map(snippet_model.visibility_to_string)

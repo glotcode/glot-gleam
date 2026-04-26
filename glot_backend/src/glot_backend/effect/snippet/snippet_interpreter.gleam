@@ -39,23 +39,11 @@ pub fn run(
         ),
       )
     }
-    snippet_algebra.ListSnippets(
-      visibilities: visibilities,
-      usernames: usernames,
-      user_ids: user_ids,
-      skip_user_ids: skip_user_ids,
-      after_slug: after_slug,
-      before_slug: before_slug,
-      limit: limit,
-      next: next,
-    ) -> {
+    snippet_algebra.ListSnippets(filter:, after_slug:, before_slug:, limit:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
         handlers.snippet.list_snippets(
-          visibilities,
-          usernames,
-          user_ids,
-          skip_user_ids,
+          filter,
           after_slug,
           before_slug,
           limit,

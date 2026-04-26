@@ -2,7 +2,7 @@ import gleam/option
 import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
-import glot_core/snippet/snippet_model.{type HydratedSnippet, type Snippet, type Visibility}
+import glot_core/snippet/snippet_model.{type HydratedSnippet, type ListSnippetsFilter, type Snippet}
 import youid/uuid
 
 pub fn get_by_id(
@@ -20,20 +20,14 @@ pub fn get_by_slug(
 }
 
 pub fn list(
-  visibilities visibilities: List(Visibility),
-  usernames usernames: List(String),
-  user_ids user_ids: List(uuid.Uuid),
-  skip_user_ids skip_user_ids: List(uuid.Uuid),
+  filter filter: ListSnippetsFilter,
   after_slug after_slug: option.Option(String),
   before_slug before_slug: option.Option(String),
   limit limit: Int,
 ) -> program_types.Program(List(HydratedSnippet)) {
   program_types.Impure(
     program_types.DbEffect(list_effect(
-      visibilities,
-      usernames,
-      user_ids,
-      skip_user_ids,
+      filter,
       after_slug,
       before_slug,
       limit,
@@ -164,20 +158,14 @@ fn get_by_slug_effect(
 }
 
 fn list_effect(
-  visibilities: List(Visibility),
-  usernames: List(String),
-  user_ids: List(uuid.Uuid),
-  skip_user_ids: List(uuid.Uuid),
+  filter: ListSnippetsFilter,
   after_slug: option.Option(String),
   before_slug: option.Option(String),
   limit: Int,
   next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.ListSnippets(
-    visibilities: visibilities,
-    usernames: usernames,
-    user_ids: user_ids,
-    skip_user_ids: skip_user_ids,
+    filter: filter,
     after_slug: after_slug,
     before_slug: before_slug,
     limit: limit,

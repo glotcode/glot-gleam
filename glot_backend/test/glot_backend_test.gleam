@@ -856,16 +856,8 @@ fn run_test_snippet_effect(
       let _ = slug
       run_test_program(next(Ok(option.None)), ctx, db)
     }
-    snippet_algebra.ListSnippets(
-      visibilities: _,
-      usernames: _,
-      user_ids: _,
-      skip_user_ids: _,
-      after_slug: _,
-      before_slug: _,
-      limit: _,
-      next: next,
-    ) -> run_test_program(next(Ok([])), ctx, db)
+    snippet_algebra.ListSnippets(filter: _, after_slug: _, before_slug: _, limit: _, next: next) ->
+      run_test_program(next(Ok([])), ctx, db)
     snippet_algebra.DeleteSnippet(id, next) ->
       run_test_program(next(Ok(Nil)), ctx, delete_snippet_by_id(db, id))
     snippet_algebra.DeleteSnippetsByAccountId(
@@ -898,16 +890,8 @@ fn run_test_snippet_tx_effect(
       let _ = slug
       run_test_tx_program(next(Ok(option.None)), ctx, db)
     }
-    snippet_algebra.ListSnippets(
-      visibilities: _,
-      usernames: _,
-      user_ids: _,
-      skip_user_ids: _,
-      after_slug: _,
-      before_slug: _,
-      limit: _,
-      next: next,
-    ) -> run_test_tx_program(next(Ok([])), ctx, db)
+    snippet_algebra.ListSnippets(filter: _, after_slug: _, before_slug: _, limit: _, next: next) ->
+      run_test_tx_program(next(Ok([])), ctx, db)
     snippet_algebra.DeleteSnippet(id, next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, delete_snippet_by_id(db, id))
     snippet_algebra.DeleteSnippetsByAccountId(
