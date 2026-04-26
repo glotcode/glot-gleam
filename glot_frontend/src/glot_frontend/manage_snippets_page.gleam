@@ -1,3 +1,4 @@
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option
 import gleam/time/calendar
@@ -7,6 +8,7 @@ import glot_core/pagination_model
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/api
+import glot_frontend/app_dialog
 import glot_frontend/route
 import glot_frontend/top_bar
 import lustre/attribute
@@ -18,12 +20,15 @@ import modem
 
 const page_limit = 10
 
+const delete_dialog_id = "manage-snippets-page-delete-dialog"
+
 pub type Model {
   Model(
     page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
     after: option.Option(String),
     before: option.Option(String),
     state: State,
+    pending_delete: option.Option(snippet_dto.SnippetResponse),
   )
 }
 
@@ -47,6 +52,7 @@ pub fn init(
       after: after,
       before: before,
       state: Loading,
+      pending_delete: option.None,
     )
 
   #(model, load_page(after, before))
@@ -57,6 +63,9 @@ pub type Msg {
   NextPageClicked
   PreviousPageClicked
   DeleteClicked(String)
+  DeleteCancelled
+  DeleteDialogClosed
+  DeleteConfirmed(String)
   DeleteFinished(String, api.ApiResponse(Nil))
 }
 
@@ -65,15 +74,28 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     SnippetsLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> #(
-          Model(..model, page: response.page, state: Ready),
+          Model(
+            ..model,
+            page: response.page,
+            state: Ready,
+            pending_delete: option.None,
+          ),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, state: Error(error.message)),
+          Model(
+            ..model,
+            state: Error(error.message),
+            pending_delete: option.None,
+          ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, state: Error("Could not load your snippets.")),
+          Model(
+            ..model,
+            state: Error("Could not load your snippets."),
+            pending_delete: option.None,
+          ),
           effect.none(),
         )
       }
@@ -102,26 +124,53 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         option.None -> #(model, effect.none())
       }
 
-    DeleteClicked(slug) -> #(
+    DeleteClicked(slug) ->
+      case find_snippet(model.page, slug) {
+        option.Some(snippet) -> #(
+          Model(..model, pending_delete: option.Some(snippet)),
+          app_dialog.open(delete_dialog_id),
+        )
+        option.None -> #(model, effect.none())
+      }
+
+    DeleteCancelled -> #(model, app_dialog.close(delete_dialog_id))
+
+    DeleteDialogClosed -> #(
+      Model(..model, pending_delete: option.None),
+      effect.none(),
+    )
+
+    DeleteConfirmed(slug) -> #(
       Model(..model, state: Deleting(slug)),
-      api.delete_snippet(
-        snippet_dto.DeleteSnippetRequest(slug: slug),
-        fn(result) { DeleteFinished(slug, result) },
-      ),
+      effect.batch([
+        app_dialog.close(delete_dialog_id),
+        api.delete_snippet(
+          snippet_dto.DeleteSnippetRequest(slug: slug),
+          fn(result) { DeleteFinished(slug, result) },
+        ),
+      ]),
     )
 
     DeleteFinished(_, result) ->
       case result {
         api.ApiSuccess(_) -> #(
-          Model(..model, state: Loading),
+          Model(..model, state: Loading, pending_delete: option.None),
           load_page(model.after, model.before),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, state: Error(error.message)),
+          Model(
+            ..model,
+            state: Error(error.message),
+            pending_delete: option.None,
+          ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, state: Error("Could not delete snippet.")),
+          Model(
+            ..model,
+            state: Error("Could not delete snippet."),
+            pending_delete: option.None,
+          ),
           effect.none(),
         )
       }
@@ -160,6 +209,7 @@ pub fn view(
         snippets_table(model),
       ]),
     ]),
+    delete_confirmation_dialog(model),
   ])
 }
 
@@ -332,6 +382,60 @@ fn snippet_row(
   )
 }
 
+fn delete_confirmation_dialog(model: Model) -> Element(Msg) {
+  html.dialog(
+    [
+      attribute.id(delete_dialog_id),
+      attribute.class("app-dialog"),
+      event.on("close", decode.success(DeleteDialogClosed)),
+    ],
+    delete_confirmation_dialog_children(model.pending_delete),
+  )
+}
+
+fn delete_confirmation_dialog_children(
+  pending_delete: option.Option(snippet_dto.SnippetResponse),
+) -> List(Element(Msg)) {
+  case pending_delete {
+    option.Some(snippet) -> [
+      html.form([attribute.class("app-dialog__form")], [
+        html.div([attribute.class("app-dialog__section")], [
+          html.p([attribute.class("app-dialog__label")], [
+            html.text("Delete snippet"),
+          ]),
+          html.p([attribute.class("app-dialog__copy")], [
+            html.text("Delete "),
+            html.code([], [html.text(snippet.data.title)]),
+            html.text("? This action cannot be undone."),
+          ]),
+        ]),
+        html.div([attribute.class("app-dialog__actions")], [
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.autofocus(True),
+              attribute.class(
+                "app-dialog__button app-dialog__button--secondary",
+              ),
+              event.on_click(DeleteCancelled),
+            ],
+            [html.text("Cancel")],
+          ),
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class("app-dialog__button app-dialog__button--danger"),
+              event.on_click(DeleteConfirmed(snippet.slug)),
+            ],
+            [html.text("Delete snippet")],
+          ),
+        ]),
+      ]),
+    ]
+    option.None -> []
+  }
+}
+
 fn snippet_cell_link(
   class_name: String,
   destination: route.Route,
@@ -367,6 +471,20 @@ fn deleting_slug(state: State) -> option.Option(String) {
   case state {
     Deleting(slug) -> option.Some(slug)
     Loading | Ready | Error(_) -> option.None
+  }
+}
+
+fn find_snippet(
+  page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
+  slug: String,
+) -> option.Option(snippet_dto.SnippetResponse) {
+  case
+    page
+    |> pagination_model.items
+    |> list.find(fn(snippet) { snippet.slug == slug })
+  {
+    Ok(snippet) -> option.Some(snippet)
+    _ -> option.None
   }
 }
 

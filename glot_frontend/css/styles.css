@@ -848,6 +848,68 @@ a.snippets-table__cell:hover {
   border: 1px solid #2853a6;
 }
 
+.app-dialog {
+  width: min(32rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid #d7e4f7;
+  background: #ffffff;
+  box-shadow: 0 22px 65px rgba(12, 26, 54, 0.18);
+}
+
+.app-dialog::backdrop {
+  background: rgba(16, 24, 40, 0.42);
+}
+
+.app-dialog__form {
+  display: grid;
+  gap: 1rem;
+  padding: 1.1rem;
+}
+
+.app-dialog__section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.app-dialog__label {
+  margin: 0;
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.app-dialog__copy {
+  margin: 0;
+  color: #35507f;
+  line-height: 1.6;
+}
+
+.app-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.app-dialog__button {
+  min-width: 6rem;
+  min-height: 2.25rem;
+  border: 1px solid #c8d7ef;
+  background: #2853a6;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-dialog__button--secondary {
+  background: #f8fbff;
+  color: #23406f;
+}
+
+.app-dialog__button--danger {
+  background: #fff1f1;
+  color: #9f1d1d;
+}
+
 .editor-page__dialog {
   width: min(28rem, calc(100vw - 2rem));
   padding: 0;
