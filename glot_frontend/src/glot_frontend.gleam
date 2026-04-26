@@ -11,6 +11,7 @@ import glot_frontend/app_dialog
 import glot_frontend/app_event
 import glot_frontend/editor_page
 import glot_frontend/home_page
+import glot_frontend/keyboard_shortcuts
 import glot_frontend/login_page
 import glot_frontend/manage_snippets_page
 import glot_frontend/route
@@ -132,7 +133,9 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
     })
 
   let session_effect = api.get_session(SessionLoaded)
-  let effects = effect.batch([eff, page_effect, session_effect])
+  let shortcut_effect = keyboard_shortcuts.bind(QuickActionsOpened)
+  let effects =
+    effect.batch([eff, page_effect, session_effect, shortcut_effect])
 
   #(
     Model(
