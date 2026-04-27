@@ -846,6 +846,21 @@ pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   ))
 }
 
+pub fn delete_before(
+  before before: Option(Timestamp),
+  statuses statuses: List(String),
+) {
+  let sql =
+    "DELETE FROM jobs
+WHERE completed_at IS NOT NULL
+  AND completed_at < $1
+  AND status = ANY($2::text[])"
+  #(sql, [
+    dev.ParamNullable(option.map(before, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamList(list.map(statuses, dev.ParamString)),
+  ])
+}
+
 pub fn update_snippet(
   slug slug: String,
   user_id user_id: BitArray,

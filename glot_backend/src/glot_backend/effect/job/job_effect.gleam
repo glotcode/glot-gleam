@@ -45,6 +45,19 @@ pub fn delete_job(id id: Uuid) -> program_types.Program(Nil) {
   )
 }
 
+pub fn delete_before(
+  before: Timestamp,
+  statuses: List(job_model.Status),
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_before_effect(
+      before,
+      statuses,
+      command_next,
+    )),
+  )
+}
+
 fn command_next(
   result: Result(Nil, error.DbCommandError),
 ) -> program_types.Program(Nil) {
@@ -85,6 +98,17 @@ pub fn update_job_tx(
 
 pub fn delete_job_tx(id id: Uuid) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(delete_job_effect(id, tx_command_next))
+}
+
+pub fn delete_before_tx(
+  before: Timestamp,
+  statuses: List(job_model.Status),
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_before_effect(
+    before,
+    statuses,
+    tx_command_next,
+  ))
 }
 
 fn tx_command_next(
@@ -134,4 +158,16 @@ fn delete_job_effect(
   next: fn(Result(Nil, error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.JobEffect(job_algebra.DeleteJob(id, next))
+}
+
+fn delete_before_effect(
+  before: Timestamp,
+  statuses: List(job_model.Status),
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.JobEffect(job_algebra.DeleteBefore(
+    before: before,
+    statuses: statuses,
+    next: next,
+  ))
 }

@@ -102,5 +102,18 @@ pub fn run(
         ),
       )
     }
+    job_algebra.DeleteBefore(before:, statuses:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.job.delete_before(before, statuses)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.JobEffectName(job_algebra.DeleteBeforeEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
   }
 }

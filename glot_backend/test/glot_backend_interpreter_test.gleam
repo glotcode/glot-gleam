@@ -181,6 +181,7 @@ fn test_handlers() -> handlers.Handlers {
       create_job: fn(_) { Ok(Nil) },
       update_job: fn(_) { Ok(Nil) },
       delete_job: fn(_) { Ok(Nil) },
+      delete_before: fn(_, _) { Ok(Nil) },
     ),
     job_log: job_log_handlers.JobLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     periodic_job: periodic_job_handlers.PeriodicJobHandlers(
@@ -256,6 +257,7 @@ fn test_context() -> context.Context {
       cleanup: context.CleanupConfig(
         api_log_retention_days: 30,
         job_log_retention_days: 30,
+        jobs_retention_days: 30,
       ),
       rate_limits: dict.new(),
     ),

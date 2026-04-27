@@ -10,6 +10,7 @@ import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
+import glot_backend/domain/job/clean_jobs_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
 import glot_backend/domain/snippet/create_snippet_domain
@@ -594,6 +595,58 @@ pub fn enqueue_next_due_periodic_job_returns_false_when_no_jobs_are_due_test() {
     == Ok(periodic_job)
 }
 
+pub fn clean_jobs_deletes_only_done_jobs_before_cutoff_test() {
+  let old_done_job =
+    job_model.Job(
+      id: must_uuid("00000000-0000-0000-0000-000000000a01"),
+      request_id: option.None,
+      periodic_job_id: option.None,
+      job_type: job_model.CleanApiLogJob,
+      payload: option.None,
+      status: job_model.Done,
+      attempts: 1,
+      max_attempts: 5,
+      timeout_seconds: 120,
+      run_at: timestamp.from_unix_seconds_and_nanoseconds(1_650_000_000, 0),
+      started_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(1_650_000_010, 0)),
+      completed_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0)),
+      last_error: option.None,
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_650_000_000, 0),
+      updated_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),
+    )
+  let old_failed_job =
+    job_model.Job(..old_done_job, id: must_uuid("00000000-0000-0000-0000-000000000a02"), status: job_model.Failed)
+  let recent_done_job =
+    job_model.Job(
+      ..old_done_job,
+      id: must_uuid("00000000-0000-0000-0000-000000000a03"),
+      completed_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(1_699_900_000, 0)),
+      updated_at: timestamp.from_unix_seconds_and_nanoseconds(1_699_900_000, 0),
+    )
+  let ctx =
+    context.Context(
+      ..test_context(),
+      timestamp: timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0),
+    )
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      jobs: dict.from_list([
+        #(uuid_key(old_done_job.id), old_done_job),
+        #(uuid_key(old_failed_job.id), old_failed_job),
+        #(uuid_key(recent_done_job.id), recent_done_job),
+      ]),
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(clean_jobs_domain.clean_jobs(ctx), ctx, db)
+
+  assert run_result == Ok(Nil)
+  assert dict.get(updated_db.jobs, uuid_key(old_done_job.id)) == Error(Nil)
+  assert dict.get(updated_db.jobs, uuid_key(old_failed_job.id)) == Ok(old_failed_job)
+  assert dict.get(updated_db.jobs, uuid_key(recent_done_job.id)) == Ok(recent_done_job)
+}
+
 type TestFixture {
   TestFixture(
     ctx: context.Context,
@@ -1084,6 +1137,12 @@ fn run_test_job_effect(
       run_test_program(next(Ok(Nil)), ctx, put_job(db, job))
     job_algebra.DeleteJob(id, next) ->
       run_test_program(next(Ok(Nil)), ctx, delete_job_by_id(db, id))
+    job_algebra.DeleteBefore(before:, statuses:, next:) ->
+      run_test_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_jobs_before_by_statuses(db, before, statuses),
+      )
   }
 }
 
@@ -1117,6 +1176,12 @@ fn run_test_job_tx_effect(
       run_test_tx_program(next(Ok(Nil)), ctx, put_job(db, job))
     job_algebra.DeleteJob(id, next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, delete_job_by_id(db, id))
+    job_algebra.DeleteBefore(before:, statuses:, next:) ->
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_jobs_before_by_statuses(db, before, statuses),
+      )
   }
 }
 
@@ -1444,6 +1509,38 @@ fn put_job(db: TestDb, job: job_model.Job) -> TestDb {
   TestDb(..db, jobs: dict.insert(db.jobs, uuid_key(job.id), job))
 }
 
+fn delete_jobs_before_by_statuses(
+  db: TestDb,
+  before: timestamp.Timestamp,
+  statuses: List(job_model.Status),
+) -> TestDb {
+  let before_microseconds = timestamp_helpers.to_microseconds(before)
+  let kept_jobs =
+    db.jobs
+    |> dict.to_list
+    |> list.filter(fn(entry) {
+      let #(_, job) = entry
+      let completed_at_microseconds =
+        job.completed_at
+        |> option.map(timestamp_helpers.to_microseconds)
+
+      case completed_at_microseconds {
+        option.Some(completed_at) ->
+          case
+            completed_at < before_microseconds
+            && list.contains(statuses, job.status)
+          {
+            True -> False
+            False -> True
+          }
+        _ -> True
+      }
+    })
+    |> dict.from_list
+
+  TestDb(..db, jobs: kept_jobs)
+}
+
 fn put_periodic_job(
   db: TestDb,
   periodic_job: periodic_job_model.PeriodicJob,
@@ -1647,6 +1744,7 @@ fn test_context() -> context.Context {
       cleanup: context.CleanupConfig(
         api_log_retention_days: 30,
         job_log_retention_days: 30,
+        jobs_retention_days: 30,
       ),
       rate_limits: dict.new(),
     ),

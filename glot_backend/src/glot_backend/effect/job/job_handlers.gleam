@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
@@ -19,6 +20,8 @@ pub type JobHandlers {
     create_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
     update_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
     delete_job: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
+    delete_before: fn(Timestamp, List(job_model.Status)) ->
+      Result(Nil, error.DbCommandError),
   )
 }
 
@@ -31,6 +34,9 @@ pub fn new(db: pog.Connection) -> JobHandlers {
     create_job: fn(job) { create_job(db, job) },
     update_job: fn(job) { update_job(db, job) },
     delete_job: fn(id) { delete_job(db, id) },
+    delete_before: fn(before, statuses) {
+      delete_before(db, before, statuses)
+    },
   )
 }
 
@@ -138,6 +144,24 @@ pub fn delete_job(
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(db, sql.delete_job(uuid.to_bit_array(id)), to_error)
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_before(
+  db: pog.Connection,
+  before: Timestamp,
+  statuses: List(job_model.Status),
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_before(
+      before: option.Some(before),
+      statuses: list.map(statuses, job_model.status_to_string),
+    ),
+    to_error,
+  )
   |> result.map(fn(_) { Nil })
 }
 

@@ -26,6 +26,11 @@ pub type JobEffect(next) {
     id: Uuid,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
+  DeleteBefore(
+    before: Timestamp,
+    statuses: List(job_model.Status),
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
 }
 
 pub fn map(effect: JobEffect(a), f: fn(a) -> b) -> JobEffect(b) {
@@ -41,6 +46,12 @@ pub fn map(effect: JobEffect(a), f: fn(a) -> b) -> JobEffect(b) {
     CreateJob(job, next) -> CreateJob(job, next: fn(value) { f(next(value)) })
     UpdateJob(job, next) -> UpdateJob(job, next: fn(value) { f(next(value)) })
     DeleteJob(id, next) -> DeleteJob(id, next: fn(value) { f(next(value)) })
+    DeleteBefore(before:, statuses:, next:) ->
+      DeleteBefore(
+        before: before,
+        statuses: statuses,
+        next: fn(value) { f(next(value)) },
+      )
   }
 }
 
@@ -50,6 +61,7 @@ pub type EffectName {
   CreateJobEffectName
   UpdateJobEffectName
   DeleteJobEffectName
+  DeleteBeforeEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
@@ -59,5 +71,6 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     CreateJobEffectName -> "create_job"
     UpdateJobEffectName -> "update_job"
     DeleteJobEffectName -> "delete_job"
+    DeleteBeforeEffectName -> "delete_before"
   }
 }
