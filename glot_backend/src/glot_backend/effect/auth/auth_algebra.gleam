@@ -5,6 +5,7 @@ import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import gleam/time/timestamp.{type Timestamp}
 import youid/uuid.{type Uuid}
 
 pub type AuthEffect(next) {
@@ -65,6 +66,10 @@ pub type AuthEffect(next) {
     login_token: login_token_model.LoginToken,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
+  DeleteLoginTokensBefore(
+    before: Timestamp,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
 }
 
 pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
@@ -114,6 +119,11 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
         login_token: login_token,
         next: fn(value) { f(next(value)) },
       )
+    DeleteLoginTokensBefore(before: before, next: next) ->
+      DeleteLoginTokensBefore(
+        before: before,
+        next: fn(value) { f(next(value)) },
+      )
   }
 }
 
@@ -132,6 +142,7 @@ pub type EffectName {
   DeleteSessionEffectName
   CreateLoginTokenEffectName
   UpdateLoginTokenEffectName
+  DeleteLoginTokensBeforeEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
@@ -150,5 +161,6 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     DeleteSessionEffectName -> "delete_session"
     CreateLoginTokenEffectName -> "create_login_token"
     UpdateLoginTokenEffectName -> "update_login_token"
+    DeleteLoginTokensBeforeEffectName -> "delete_login_tokens_before"
   }
 }

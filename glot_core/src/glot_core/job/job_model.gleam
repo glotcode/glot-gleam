@@ -14,6 +14,7 @@ pub type JobType {
   CleanApiLogJob
   CleanJobLogJob
   CleanJobsJob
+  CleanLoginTokensJob
   CleanUserActionsJob
 }
 
@@ -24,6 +25,7 @@ pub fn job_type_to_string(job_type: JobType) -> String {
     CleanApiLogJob -> "clean_api_log"
     CleanJobLogJob -> "clean_job_log"
     CleanJobsJob -> "clean_jobs"
+    CleanLoginTokensJob -> "clean_login_tokens"
     CleanUserActionsJob -> "clean_user_actions"
   }
 }
@@ -35,6 +37,7 @@ pub fn job_type_from_string(value: String) -> Result(JobType, String) {
     "clean_api_log" -> Ok(CleanApiLogJob)
     "clean_job_log" -> Ok(CleanJobLogJob)
     "clean_jobs" -> Ok(CleanJobsJob)
+    "clean_login_tokens" -> Ok(CleanLoginTokensJob)
     "clean_user_actions" -> Ok(CleanUserActionsJob)
     _ -> Error("Invalid job type: " <> value)
   }

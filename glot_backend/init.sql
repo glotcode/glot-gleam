@@ -230,6 +230,17 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 ), (
+  'c0302520-085a-4d33-a0f7-b32c52800f79',
+  'clean_login_tokens',
+  NULL,
+  86400,
+  TRUE,
+  CURRENT_TIMESTAMP,
+  NULL,
+  NULL,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
   '22796a72-e861-4032-881d-cdbd8c07f420',
   'clean_user_actions',
   NULL,

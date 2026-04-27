@@ -1,4 +1,5 @@
 import gleam/option
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/error
 import glot_backend/effect/program_types
@@ -117,6 +118,17 @@ pub fn update_login_token(
   )
 }
 
+pub fn delete_login_tokens_before(
+  before before: Timestamp,
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_login_tokens_before_effect(
+      before,
+      command_next,
+    )),
+  )
+}
+
 pub fn get_user_by_email_tx(
   email email: email_address_model.EmailAddress,
 ) -> program_types.TransactionProgram(option.Option(user_model.HydratedUser)) {
@@ -207,6 +219,12 @@ pub fn update_login_token_tx(
   login_token login_token: login_token_model.LoginToken,
 ) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(update_login_token_effect(login_token, tx_command_next))
+}
+
+pub fn delete_login_tokens_before_tx(
+  before before: Timestamp,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_login_tokens_before_effect(before, tx_command_next))
 }
 
 fn command_next(
@@ -341,6 +359,16 @@ fn update_login_token_effect(
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.UpdateLoginToken(
     login_token:,
+    next: next,
+  ))
+}
+
+fn delete_login_tokens_before_effect(
+  before: Timestamp,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.DeleteLoginTokensBefore(
+    before: before,
     next: next,
   ))
 }

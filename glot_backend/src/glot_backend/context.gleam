@@ -144,6 +144,7 @@ pub type CleanupConfig {
     api_log_retention_days: Int,
     job_log_retention_days: Int,
     jobs_retention_days: Int,
+    login_tokens_retention_days: Int,
     user_actions_retention_days: Int,
   )
 }
@@ -159,6 +160,12 @@ fn cleanup_config_from_dict(values: Dict(String, String)) -> CleanupConfig {
     jobs_retention_days: lookup(values, "CLEANUP_JOBS_RETENTION_DAYS")
       |> result.try(string_to_int)
       |> result.unwrap(90),
+    login_tokens_retention_days: lookup(
+      values,
+      "CLEANUP_LOGIN_TOKENS_RETENTION_DAYS",
+    )
+      |> result.try(string_to_int)
+      |> result.unwrap(30),
     user_actions_retention_days: lookup(
       values,
       "CLEANUP_USER_ACTIONS_RETENTION_DAYS",

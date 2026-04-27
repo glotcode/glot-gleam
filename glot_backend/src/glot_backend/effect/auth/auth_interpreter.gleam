@@ -248,5 +248,20 @@ pub fn run(
         ),
       )
     }
+    auth_algebra.DeleteLoginTokensBefore(before: before, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.delete_login_tokens_before(before)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.DeleteLoginTokensBeforeEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
   }
 }

@@ -204,6 +204,7 @@ fn test_handlers() -> handlers.Handlers {
       delete_session: fn(_) { Ok(Nil) },
       create_login_token: fn(_) { Ok(Nil) },
       update_login_token: fn(_) { Ok(Nil) },
+      delete_login_tokens_before: fn(_) { Ok(Nil) },
     ),
     snippet: snippet_handlers.SnippetHandlers(
       get_snippet_by_id: fn(_) { Ok(option.None) },
@@ -259,6 +260,7 @@ fn test_context() -> context.Context {
         api_log_retention_days: 30,
         job_log_retention_days: 30,
         jobs_retention_days: 30,
+        login_tokens_retention_days: 30,
         user_actions_retention_days: 30,
       ),
       rate_limits: dict.new(),

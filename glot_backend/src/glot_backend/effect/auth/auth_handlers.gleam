@@ -13,6 +13,7 @@ import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
 import pog
 import youid/uuid
+import gleam/time/timestamp.{type Timestamp}
 
 pub type AuthHandlers {
   AuthHandlers(
@@ -34,6 +35,7 @@ pub type AuthHandlers {
     delete_session: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
     create_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
     update_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
+    delete_login_tokens_before: fn(Timestamp) -> Result(Nil, error.DbCommandError),
   )
 }
 
@@ -66,6 +68,9 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
     },
     update_login_token: fn(login_token) {
       update_login_token(db, login_token)
+    },
+    delete_login_tokens_before: fn(before) {
+      delete_login_tokens_before(db, before)
     },
   )
 }
@@ -309,6 +314,20 @@ pub fn update_login_token(
       used_at: login_token.used_at,
       id: uuid.to_bit_array(login_token.id),
     ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_login_tokens_before(
+  db: pog.Connection,
+  before: Timestamp,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_login_tokens_before(before),
     to_error,
   )
   |> result.map(fn(_) { Nil })

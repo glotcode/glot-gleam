@@ -11,6 +11,7 @@ import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/cleanup/clean_jobs_domain
+import glot_backend/domain/cleanup/clean_login_tokens_domain
 import glot_backend/domain/cleanup/clean_user_actions_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
@@ -688,6 +689,50 @@ pub fn clean_user_actions_deletes_only_old_rows_test() {
     == Ok(recent_action)
 }
 
+pub fn clean_login_tokens_deletes_only_old_rows_test() {
+  let old_login_token =
+    login_token_model.LoginToken(
+      id: must_uuid("00000000-0000-0000-0000-000000000c01"),
+      email: test_email_address(),
+      token: "old-login-token",
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),
+      used_at: option.None,
+    )
+  let recent_login_token =
+    login_token_model.LoginToken(
+      ..old_login_token,
+      id: must_uuid("00000000-0000-0000-0000-000000000c02"),
+      token: "recent-login-token",
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_699_900_000, 0),
+    )
+  let ctx =
+    context.Context(
+      ..test_context(),
+      timestamp: timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0),
+    )
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      login_tokens: dict.from_list([
+        #(uuid_key(old_login_token.id), old_login_token),
+        #(uuid_key(recent_login_token.id), recent_login_token),
+      ]),
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      clean_login_tokens_domain.clean_login_tokens(ctx),
+      ctx,
+      db,
+    )
+
+  assert run_result == Ok(Nil)
+  assert dict.get(updated_db.login_tokens, uuid_key(old_login_token.id))
+    == Error(Nil)
+  assert dict.get(updated_db.login_tokens, uuid_key(recent_login_token.id))
+    == Ok(recent_login_token)
+}
+
 type TestFixture {
   TestFixture(
     ctx: context.Context,
@@ -1097,6 +1142,12 @@ fn run_test_auth_effect(
     }
     auth_algebra.UpdateLoginToken(login_token:, next:) ->
       run_test_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
+    auth_algebra.DeleteLoginTokensBefore(before:, next:) ->
+      run_test_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_login_tokens_before(db, before),
+      )
   }
 }
 
@@ -1158,6 +1209,12 @@ fn run_test_auth_tx_effect(
         next(Ok(Nil)),
         ctx,
         upsert_login_token(db, login_token),
+      )
+    auth_algebra.DeleteLoginTokensBefore(before:, next:) ->
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_login_tokens_before(db, before),
       )
   }
 }
@@ -1553,6 +1610,24 @@ fn upsert_login_token(
   )
 }
 
+fn delete_login_tokens_before(
+  db: TestDb,
+  before: timestamp.Timestamp,
+) -> TestDb {
+  let before_microseconds = timestamp_helpers.to_microseconds(before)
+  let kept_login_tokens =
+    db.login_tokens
+    |> dict.to_list
+    |> list.filter(fn(entry) {
+      let #(_, login_token) = entry
+      timestamp_helpers.to_microseconds(login_token.created_at)
+      >= before_microseconds
+    })
+    |> dict.from_list
+
+  TestDb(..db, login_tokens: kept_login_tokens)
+}
+
 fn put_job(db: TestDb, job: job_model.Job) -> TestDb {
   TestDb(..db, jobs: dict.insert(db.jobs, uuid_key(job.id), job))
 }
@@ -1811,6 +1886,7 @@ fn test_context() -> context.Context {
         api_log_retention_days: 30,
         job_log_retention_days: 30,
         jobs_retention_days: 30,
+        login_tokens_retention_days: 30,
         user_actions_retention_days: 30,
       ),
       rate_limits: dict.new(),
