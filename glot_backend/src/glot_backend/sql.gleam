@@ -1253,6 +1253,13 @@ pub fn count_user_actions_by_user_decoder() -> decode.Decoder(
   decode.success(CountUserActionsByUser(unit:, count:))
 }
 
+pub fn delete_job_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM job_log
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
 pub fn delete_sessions_by_account_id(account_id account_id: BitArray) {
   let sql =
     "DELETE FROM sessions

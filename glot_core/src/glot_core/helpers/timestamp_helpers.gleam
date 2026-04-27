@@ -28,6 +28,11 @@ pub fn one_day_ago(now: Timestamp) -> Timestamp {
   timestamp.from_unix_seconds_and_nanoseconds(seconds - 86_400, nanos)
 }
 
+pub fn days_ago(now: Timestamp, days: Int) -> Timestamp {
+  let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(now)
+  timestamp.from_unix_seconds_and_nanoseconds(seconds - days * 86_400, nanos)
+}
+
 pub fn one_hour_ago(now: Timestamp) -> Timestamp {
   let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(now)
   timestamp.from_unix_seconds_and_nanoseconds(seconds - 3600, nanos)

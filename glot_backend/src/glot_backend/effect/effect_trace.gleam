@@ -6,6 +6,7 @@ import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
 import glot_backend/effect/job/job_algebra
+import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/transaction/transaction_algebra
@@ -16,6 +17,7 @@ pub type EffectName {
   BasicEffectName(basic_algebra.EffectName)
   EmailEffectName(email_algebra.EffectName)
   JobEffectName(job_algebra.EffectName)
+  JobLogEffectName(job_log_algebra.EffectName)
   PeriodicJobEffectName(periodic_job_algebra.EffectName)
   AuthEffectName(auth_algebra.EffectName)
   SnippetEffectName(snippet_algebra.EffectName)
@@ -34,6 +36,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     BasicEffectName(name) -> basic_algebra.effect_name_to_string(name)
     EmailEffectName(name) -> email_algebra.effect_name_to_string(name)
     JobEffectName(name) -> job_algebra.effect_name_to_string(name)
+    JobLogEffectName(name) -> job_log_algebra.effect_name_to_string(name)
     PeriodicJobEffectName(name) ->
       periodic_job_algebra.effect_name_to_string(name)
     AuthEffectName(name) -> auth_algebra.effect_name_to_string(name)
@@ -52,6 +55,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     BasicEffectName(_) -> "basic"
     EmailEffectName(_) -> "email"
     JobEffectName(_) -> "job"
+    JobLogEffectName(_) -> "job_log"
     PeriodicJobEffectName(_) -> "periodic_job"
     AuthEffectName(_) -> "auth"
     SnippetEffectName(_) -> "snippet"

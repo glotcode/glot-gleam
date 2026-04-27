@@ -22,6 +22,7 @@ import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
 import glot_backend/effect/error
 import glot_backend/effect/job/job_algebra
+import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
@@ -864,6 +865,8 @@ fn run_test_db_effect(
       run_test_auth_effect(auth_effect, ctx, db)
     program_types.JobEffect(job_effect) ->
       run_test_job_effect(job_effect, ctx, db)
+    program_types.JobLogEffect(job_log_effect) ->
+      run_test_job_log_effect(job_log_effect, ctx, db)
     program_types.PeriodicJobEffect(periodic_job_effect) ->
       run_test_periodic_job_effect(periodic_job_effect, ctx, db)
     program_types.SnippetEffect(snippet_effect) ->
@@ -885,6 +888,8 @@ fn run_test_tx_db_effect(
       run_test_auth_tx_effect(auth_effect, ctx, db)
     program_types.JobEffect(job_effect) ->
       run_test_job_tx_effect(job_effect, ctx, db)
+    program_types.JobLogEffect(job_log_effect) ->
+      run_test_job_log_tx_effect(job_log_effect, ctx, db)
     program_types.PeriodicJobEffect(periodic_job_effect) ->
       run_test_periodic_job_tx_effect(periodic_job_effect, ctx, db)
     program_types.SnippetEffect(snippet_effect) ->
@@ -1082,6 +1087,17 @@ fn run_test_job_effect(
   }
 }
 
+fn run_test_job_log_effect(
+  effect: job_log_algebra.JobLogEffect(program_types.Program(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    job_log_algebra.DeleteJobLogBefore(before: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
 fn run_test_job_tx_effect(
   effect: job_algebra.JobEffect(program_types.TransactionProgram(a)),
   ctx: context.Context,
@@ -1101,6 +1117,17 @@ fn run_test_job_tx_effect(
       run_test_tx_program(next(Ok(Nil)), ctx, put_job(db, job))
     job_algebra.DeleteJob(id, next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, delete_job_by_id(db, id))
+  }
+}
+
+fn run_test_job_log_tx_effect(
+  effect: job_log_algebra.JobLogEffect(program_types.TransactionProgram(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    job_log_algebra.DeleteJobLogBefore(before: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
   }
 }
 
@@ -1619,6 +1646,7 @@ fn test_context() -> context.Context {
       ),
       cleanup: context.CleanupConfig(
         api_log_retention_days: 30,
+        job_log_retention_days: 30,
       ),
       rate_limits: dict.new(),
     ),

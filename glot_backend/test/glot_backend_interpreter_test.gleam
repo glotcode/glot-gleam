@@ -19,6 +19,7 @@ import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
+import glot_backend/effect/job_log/job_log_handlers
 import glot_backend/effect/periodic_job/periodic_job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/runtime
@@ -181,6 +182,7 @@ fn test_handlers() -> handlers.Handlers {
       update_job: fn(_) { Ok(Nil) },
       delete_job: fn(_) { Ok(Nil) },
     ),
+    job_log: job_log_handlers.JobLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     periodic_job: periodic_job_handlers.PeriodicJobHandlers(
       get_next_periodic_job: fn(_) { Ok(option.None) },
       create_periodic_job: fn(_) { Ok(Nil) },
@@ -253,6 +255,7 @@ fn test_context() -> context.Context {
       ),
       cleanup: context.CleanupConfig(
         api_log_retention_days: 30,
+        job_log_retention_days: 30,
       ),
       rate_limits: dict.new(),
     ),

@@ -140,9 +140,7 @@ fn auth_config_from_dict(
 }
 
 pub type CleanupConfig {
-  CleanupConfig(
-    api_log_retention_days: Int,
-  )
+  CleanupConfig(api_log_retention_days: Int, job_log_retention_days: Int)
 }
 
 fn cleanup_config_from_dict(values: Dict(String, String)) -> CleanupConfig {
@@ -150,6 +148,9 @@ fn cleanup_config_from_dict(values: Dict(String, String)) -> CleanupConfig {
     api_log_retention_days: lookup(values, "CLEANUP_API_LOG_RETENTION_DAYS")
       |> result.try(string_to_int)
       |> result.unwrap(30),
+    job_log_retention_days: lookup(values, "CLEANUP_JOB_LOG_RETENTION_DAYS")
+      |> result.try(string_to_int)
+      |> result.unwrap(90),
   )
 }
 

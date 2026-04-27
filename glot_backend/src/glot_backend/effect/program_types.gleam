@@ -5,6 +5,7 @@ import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
 import glot_backend/effect/error
 import glot_backend/effect/job/job_algebra
+import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
@@ -33,6 +34,7 @@ pub type DbEffect(next) {
   ApiLogEffect(api_log_algebra.ApiLogEffect(next))
   AuthEffect(auth_algebra.AuthEffect(next))
   JobEffect(job_algebra.JobEffect(next))
+  JobLogEffect(job_log_algebra.JobLogEffect(next))
   PeriodicJobEffect(periodic_job_algebra.PeriodicJobEffect(next))
   SnippetEffect(snippet_algebra.SnippetEffect(next))
   UserActionEffect(user_action_algebra.UserActionEffect(next))

@@ -4,6 +4,7 @@ import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/domain/account/delete_account_domain
 import glot_backend/domain/job/clean_api_log_domain
+import glot_backend/domain/job/clean_job_log_domain
 import glot_backend/domain/email/send_email_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -75,6 +76,7 @@ fn delegate_job(
       delete_account_domain.delete_account(ctx, payload)
     }
     job_model.CleanApiLogJob -> clean_api_log_domain.clean_api_log(ctx)
+    job_model.CleanJobLogJob -> clean_job_log_domain.clean_job_log(ctx)
   }
 }
 

@@ -12,6 +12,7 @@ pub type JobType {
   SendEmailJob
   DeleteAccountJob
   CleanApiLogJob
+  CleanJobLogJob
 }
 
 pub fn job_type_to_string(job_type: JobType) -> String {
@@ -19,6 +20,7 @@ pub fn job_type_to_string(job_type: JobType) -> String {
     SendEmailJob -> "send_email"
     DeleteAccountJob -> "delete_account"
     CleanApiLogJob -> "clean_api_log"
+    CleanJobLogJob -> "clean_job_log"
   }
 }
 
@@ -27,6 +29,7 @@ pub fn job_type_from_string(value: String) -> Result(JobType, String) {
     "send_email" -> Ok(SendEmailJob)
     "delete_account" -> Ok(DeleteAccountJob)
     "clean_api_log" -> Ok(CleanApiLogJob)
+    "clean_job_log" -> Ok(CleanJobLogJob)
     _ -> Error("Invalid job type: " <> value)
   }
 }
