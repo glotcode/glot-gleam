@@ -10,7 +10,7 @@ import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
-import glot_backend/domain/job/clean_jobs_domain
+import glot_backend/domain/cleanup/clean_jobs_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
 import glot_backend/domain/snippet/create_snippet_domain

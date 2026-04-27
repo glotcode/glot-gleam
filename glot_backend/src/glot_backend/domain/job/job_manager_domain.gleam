@@ -3,9 +3,9 @@ import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/domain/account/delete_account_domain
-import glot_backend/domain/job/clean_api_log_domain
-import glot_backend/domain/job/clean_jobs_domain
-import glot_backend/domain/job/clean_job_log_domain
+import glot_backend/domain/cleanup/clean_api_log_domain
+import glot_backend/domain/cleanup/clean_jobs_domain
+import glot_backend/domain/cleanup/clean_job_log_domain
 import glot_backend/domain/email/send_email_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
