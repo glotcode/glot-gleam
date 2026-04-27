@@ -2,6 +2,7 @@ import gleam/json
 import gleam/option
 import gleam/result
 import gleam/string
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
@@ -17,6 +18,7 @@ pub type UserActionHandlers {
       Result(List(rate_limit.WindowCount), error.DbQueryError),
     create_user_action: fn(user_action.UserAction) ->
       Result(Nil, error.DbCommandError),
+    delete_before: fn(Timestamp) -> Result(Nil, error.DbCommandError),
   )
 }
 
@@ -24,6 +26,7 @@ pub fn new(db: pog.Connection) -> UserActionHandlers {
   UserActionHandlers(
     count_user_actions: fn(filter) { count_user_actions(db, filter) },
     create_user_action: fn(user_action) { create_user_action(db, user_action) },
+    delete_before: fn(before) { delete_before(db, before) },
   )
 }
 
@@ -77,6 +80,16 @@ pub fn create_user_action(
     ),
     to_error,
   )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_before(
+  db: pog.Connection,
+  before: Timestamp,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(db, sql.delete_user_actions_before(before), to_error)
   |> result.map(fn(_) { Nil })
 }
 

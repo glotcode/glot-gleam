@@ -1152,6 +1152,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
   ])
 }
 
+pub fn delete_user_actions_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM user_actions
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
 pub fn delete_account(id id: BitArray) {
   let sql =
     "DELETE FROM accounts

@@ -1,3 +1,4 @@
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_algebra
@@ -20,6 +21,12 @@ pub fn create_user_action(
   )
 }
 
+pub fn delete_before(before: Timestamp) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_before_effect(before, command_next)),
+  )
+}
+
 fn command_next(
   result: Result(Nil, error.DbCommandError),
 ) -> program_types.Program(Nil) {
@@ -39,6 +46,12 @@ pub fn create_user_action_tx(
   user_action user_action: UserAction,
 ) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(create_user_action_effect(user_action, tx_command_next))
+}
+
+pub fn delete_before_tx(
+  before: Timestamp,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_before_effect(before, tx_command_next))
 }
 
 fn tx_command_next(
@@ -66,6 +79,16 @@ fn create_user_action_effect(
 ) -> program_types.DbEffect(next) {
   program_types.UserActionEffect(user_action_algebra.CreateUserAction(
     user_action: user_action,
+    next: next,
+  ))
+}
+
+fn delete_before_effect(
+  before: Timestamp,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.UserActionEffect(user_action_algebra.DeleteBefore(
+    before: before,
     next: next,
   ))
 }

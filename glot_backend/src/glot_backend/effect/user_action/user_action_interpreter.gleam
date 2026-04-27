@@ -60,5 +60,20 @@ pub fn run(
         ),
       )
     }
+    user_action_algebra.DeleteBefore(before:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.user_action.delete_before(before)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.UserActionEffectName(
+            user_action_algebra.DeleteBeforeEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
   }
 }

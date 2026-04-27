@@ -11,6 +11,7 @@ import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/cleanup/clean_jobs_domain
+import glot_backend/domain/cleanup/clean_user_actions_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
 import glot_backend/domain/snippet/create_snippet_domain
@@ -43,6 +44,7 @@ import glot_core/periodic_job/periodic_job_model
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_core/snippet/snippet_spam
+import glot_core/user_action
 import youid/uuid
 
 pub fn main() -> Nil {
@@ -647,6 +649,45 @@ pub fn clean_jobs_deletes_only_done_jobs_before_cutoff_test() {
   assert dict.get(updated_db.jobs, uuid_key(recent_done_job.id)) == Ok(recent_done_job)
 }
 
+pub fn clean_user_actions_deletes_only_old_rows_test() {
+  let old_action =
+    user_action.UserAction(
+      id: must_uuid("00000000-0000-0000-0000-000000000b01"),
+      request_id: test_request_id(),
+      action: api_action.LoginAction,
+      ip: option.Some("127.0.0.1"),
+      user_id: option.None,
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),
+    )
+  let recent_action =
+    user_action.UserAction(
+      ..old_action,
+      id: must_uuid("00000000-0000-0000-0000-000000000b02"),
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_699_900_000, 0),
+    )
+  let ctx =
+    context.Context(
+      ..test_context(),
+      timestamp: timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0),
+    )
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      user_actions: dict.from_list([
+        #(uuid_key(old_action.id), old_action),
+        #(uuid_key(recent_action.id), recent_action),
+      ]),
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(clean_user_actions_domain.clean_user_actions(ctx), ctx, db)
+
+  assert run_result == Ok(Nil)
+  assert dict.get(updated_db.user_actions, uuid_key(old_action.id)) == Error(Nil)
+  assert dict.get(updated_db.user_actions, uuid_key(recent_action.id))
+    == Ok(recent_action)
+}
+
 type TestFixture {
   TestFixture(
     ctx: context.Context,
@@ -668,6 +709,7 @@ type TestDb {
     jobs: Dict(String, job_model.Job),
     periodic_jobs: Dict(String, periodic_job_model.PeriodicJob),
     snippets: Dict(String, snippet_model.Snippet),
+    user_actions: Dict(String, user_action.UserAction),
     user_action_count: Int,
     write_steps: List(String),
     deletion_steps: List(String),
@@ -737,6 +779,7 @@ fn integration_fixture(
       jobs: dict.from_list(list.map(jobs, fn(job) { #(uuid_key(job.id), job) })),
       periodic_jobs: dict.new(),
       snippets: dict.from_list([#(uuid_key(snippet.id), snippet)]),
+      user_actions: dict.new(),
       user_action_count: 0,
       write_steps: [],
       deletion_steps: [],
@@ -805,6 +848,7 @@ fn empty_test_db() -> TestDb {
     jobs: dict.new(),
     periodic_jobs: dict.new(),
     snippets: dict.new(),
+    user_actions: dict.new(),
     user_action_count: 0,
     write_steps: [],
     deletion_steps: [],
@@ -1278,6 +1322,8 @@ fn run_test_user_action_effect(
       let _ = user_action
       run_test_program(next(Ok(Nil)), ctx, increment_user_action_count(db))
     }
+    user_action_algebra.DeleteBefore(before:, next:) ->
+      run_test_program(next(Ok(Nil)), ctx, delete_user_actions_before(db, before))
   }
 }
 
@@ -1297,6 +1343,8 @@ fn run_test_user_action_tx_effect(
       let _ = user_action
       run_test_tx_program(next(Ok(Nil)), ctx, increment_user_action_count(db))
     }
+    user_action_algebra.DeleteBefore(before:, next:) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, delete_user_actions_before(db, before))
   }
 }
 
@@ -1641,6 +1689,24 @@ fn increment_user_action_count(db: TestDb) -> TestDb {
   ])
 }
 
+fn delete_user_actions_before(
+  db: TestDb,
+  before: timestamp.Timestamp,
+) -> TestDb {
+  let before_microseconds = timestamp_helpers.to_microseconds(before)
+  let kept_user_actions =
+    db.user_actions
+    |> dict.to_list
+    |> list.filter(fn(entry) {
+      let #(_, user_action) = entry
+      timestamp_helpers.to_microseconds(user_action.created_at)
+      >= before_microseconds
+    })
+    |> dict.from_list
+
+  TestDb(..db, user_actions: kept_user_actions)
+}
+
 fn remove_users_by_account_id(
   users: Dict(String, user_model.User),
   account_id: uuid.Uuid,
@@ -1745,6 +1811,7 @@ fn test_context() -> context.Context {
         api_log_retention_days: 30,
         job_log_retention_days: 30,
         jobs_retention_days: 30,
+        user_actions_retention_days: 30,
       ),
       rate_limits: dict.new(),
     ),

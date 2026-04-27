@@ -220,6 +220,7 @@ fn test_handlers() -> handlers.Handlers {
     user_action: user_action_handlers.UserActionHandlers(
       count_user_actions: fn(_) { Ok([]) },
       create_user_action: fn(_) { Ok(Nil) },
+      delete_before: fn(_) { Ok(Nil) },
     ),
     transaction: transaction_handlers.none(),
   )
@@ -258,6 +259,7 @@ fn test_context() -> context.Context {
         api_log_retention_days: 30,
         job_log_retention_days: 30,
         jobs_retention_days: 30,
+        user_actions_retention_days: 30,
       ),
       rate_limits: dict.new(),
     ),
