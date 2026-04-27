@@ -3,6 +3,7 @@ import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/domain/account/delete_account_domain
+import glot_backend/domain/job/clean_api_log_domain
 import glot_backend/domain/email/send_email_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -59,18 +60,32 @@ fn delegate_job(
 ) -> program_types.Program(Nil) {
   case job.job_type {
     job_model.SendEmailJob -> {
+      use payload <- program.and_then(require_payload(job))
       use email <- program.and_then(send_email_domain.email_from_json(
         ctx,
-        job.payload,
+        payload,
       ))
       send_email_domain.send_email(ctx, email)
     }
     job_model.DeleteAccountJob -> {
+      use payload <- program.and_then(require_payload(job))
       use payload <- program.and_then(delete_account_domain.payload_from_json(
-        job.payload,
+        payload,
       ))
       delete_account_domain.delete_account(ctx, payload)
     }
+    job_model.CleanApiLogJob -> clean_api_log_domain.clean_api_log(ctx)
+  }
+}
+
+fn require_payload(job: job_model.Job) -> program_types.Program(String) {
+  case job.payload {
+    option.Some(payload) -> program.succeed(payload)
+    option.None ->
+      program.fail(error.ValidationError(
+        "Missing payload for job type: "
+        <> job_model.job_type_to_string(job.job_type),
+      ))
   }
 }
 

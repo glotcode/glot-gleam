@@ -11,12 +11,14 @@ import youid/uuid.{type Uuid}
 pub type JobType {
   SendEmailJob
   DeleteAccountJob
+  CleanApiLogJob
 }
 
 pub fn job_type_to_string(job_type: JobType) -> String {
   case job_type {
     SendEmailJob -> "send_email"
     DeleteAccountJob -> "delete_account"
+    CleanApiLogJob -> "clean_api_log"
   }
 }
 
@@ -24,6 +26,7 @@ pub fn job_type_from_string(value: String) -> Result(JobType, String) {
   case value {
     "send_email" -> Ok(SendEmailJob)
     "delete_account" -> Ok(DeleteAccountJob)
+    "clean_api_log" -> Ok(CleanApiLogJob)
     _ -> Error("Invalid job type: " <> value)
   }
 }
@@ -58,8 +61,9 @@ pub type Job {
   Job(
     id: Uuid,
     request_id: Option(Uuid),
+    periodic_job_id: Option(Uuid),
     job_type: JobType,
-    payload: String,
+    payload: Option(String),
     status: Status,
     attempts: Int,
     max_attempts: Int,
@@ -83,14 +87,16 @@ pub type DeleteAccountJobPayload {
 fn new(
   id: Uuid,
   request_id: Option(Uuid),
+  periodic_job_id: Option(Uuid),
   job_type: JobType,
   now: Timestamp,
-  payload: String,
+  payload: Option(String),
 ) -> Job {
   // TODO: we could make JobType a union type and deserialize the payload here
   Job(
     id: id,
     request_id: request_id,
+    periodic_job_id: periodic_job_id,
     job_type: job_type,
     payload: payload,
     status: Pending,
@@ -115,11 +121,14 @@ pub fn send_email_job(
   new(
     id,
     request_id,
+    option.None,
     SendEmailJob,
     now,
-    email
-      |> email_model.encode
-      |> json.to_string,
+    option.Some(
+      email
+        |> email_model.encode
+        |> json.to_string,
+    ),
   )
 }
 
@@ -140,9 +149,10 @@ pub fn delete_account_job(
     ..new(
       id,
       request_id,
+      option.None,
       DeleteAccountJob,
       now,
-      payload,
+      option.Some(payload),
     ),
     run_at: run_at,
   )
@@ -164,6 +174,23 @@ pub fn delete_account_job_payload_decoder() -> decode.Decoder(
   use account_id <- decode.field("accountId", uuid_helpers.decoder())
   use email <- decode.field("email", email_address_model.decoder(is_email))
   decode.success(DeleteAccountJobPayload(account_id:, email:))
+}
+
+pub fn periodic_job_execution(
+  id: Uuid,
+  now: Timestamp,
+  periodic_job_id: Uuid,
+  job_type: JobType,
+  payload: Option(String),
+) -> Job {
+  new(
+    id,
+    option.None,
+    option.Some(periodic_job_id),
+    job_type,
+    now,
+    payload,
+  )
 }
 
 pub fn done(job: Job, now: Timestamp) -> Job {

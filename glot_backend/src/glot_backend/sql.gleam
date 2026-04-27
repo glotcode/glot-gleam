@@ -29,8 +29,9 @@ pub type GetNextJob {
   GetNextJob(
     id: BitArray,
     request_id: Option(BitArray),
+    periodic_job_id: Option(BitArray),
     job_type: String,
-    payload: String,
+    payload: Option(String),
     status: String,
     attempts: Int,
     max_attempts: Int,
@@ -49,6 +50,7 @@ pub fn get_next_job(pending_status pending_status: String, now now: Timestamp) {
     "SELECT
   id,
   request_id,
+  periodic_job_id,
   job_type,
   payload,
   status,
@@ -78,21 +80,23 @@ FOR UPDATE SKIP LOCKED"
 pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
   use id <- decode.field(0, decode.bit_array)
   use request_id <- decode.field(1, decode.optional(decode.bit_array))
-  use job_type <- decode.field(2, decode.string)
-  use payload <- decode.field(3, decode.string)
-  use status <- decode.field(4, decode.string)
-  use attempts <- decode.field(5, decode.int)
-  use max_attempts <- decode.field(6, decode.int)
-  use timeout_seconds <- decode.field(7, decode.int)
-  use run_at <- decode.field(8, dev.datetime_decoder())
-  use started_at <- decode.field(9, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(11, decode.optional(decode.string))
-  use created_at <- decode.field(12, dev.datetime_decoder())
-  use updated_at <- decode.field(13, dev.datetime_decoder())
+  use periodic_job_id <- decode.field(2, decode.optional(decode.bit_array))
+  use job_type <- decode.field(3, decode.string)
+  use payload <- decode.field(4, decode.optional(decode.string))
+  use status <- decode.field(5, decode.string)
+  use attempts <- decode.field(6, decode.int)
+  use max_attempts <- decode.field(7, decode.int)
+  use timeout_seconds <- decode.field(8, decode.int)
+  use run_at <- decode.field(9, dev.datetime_decoder())
+  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(12, decode.optional(decode.string))
+  use created_at <- decode.field(13, dev.datetime_decoder())
+  use updated_at <- decode.field(14, dev.datetime_decoder())
   decode.success(GetNextJob(
     id:,
     request_id:,
+    periodic_job_id:,
     job_type:,
     payload:,
     status:,
@@ -132,8 +136,9 @@ pub type GetJobById {
   GetJobById(
     id: BitArray,
     request_id: Option(BitArray),
+    periodic_job_id: Option(BitArray),
     job_type: String,
-    payload: String,
+    payload: Option(String),
     status: String,
     attempts: Int,
     max_attempts: Int,
@@ -152,6 +157,7 @@ pub fn get_job_by_id(id id: BitArray) {
     "SELECT
   id,
   request_id,
+  periodic_job_id,
   job_type,
   payload,
   status,
@@ -172,21 +178,23 @@ WHERE id = $1"
 pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
   use id <- decode.field(0, decode.bit_array)
   use request_id <- decode.field(1, decode.optional(decode.bit_array))
-  use job_type <- decode.field(2, decode.string)
-  use payload <- decode.field(3, decode.string)
-  use status <- decode.field(4, decode.string)
-  use attempts <- decode.field(5, decode.int)
-  use max_attempts <- decode.field(6, decode.int)
-  use timeout_seconds <- decode.field(7, decode.int)
-  use run_at <- decode.field(8, dev.datetime_decoder())
-  use started_at <- decode.field(9, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(11, decode.optional(decode.string))
-  use created_at <- decode.field(12, dev.datetime_decoder())
-  use updated_at <- decode.field(13, dev.datetime_decoder())
+  use periodic_job_id <- decode.field(2, decode.optional(decode.bit_array))
+  use job_type <- decode.field(3, decode.string)
+  use payload <- decode.field(4, decode.optional(decode.string))
+  use status <- decode.field(5, decode.string)
+  use attempts <- decode.field(6, decode.int)
+  use max_attempts <- decode.field(7, decode.int)
+  use timeout_seconds <- decode.field(8, decode.int)
+  use run_at <- decode.field(9, dev.datetime_decoder())
+  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(12, decode.optional(decode.string))
+  use created_at <- decode.field(13, dev.datetime_decoder())
+  use updated_at <- decode.field(14, dev.datetime_decoder())
   decode.success(GetJobById(
     id:,
     request_id:,
+    periodic_job_id:,
     job_type:,
     payload:,
     status:,
@@ -200,6 +208,13 @@ pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
     created_at:,
     updated_at:,
   ))
+}
+
+pub fn delete_api_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM api_log
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
 }
 
 pub type ListSnippetsByUser {
@@ -866,8 +881,9 @@ pub fn update_snippet(
 pub fn insert_job(
   id id: BitArray,
   request_id request_id: Option(BitArray),
+  periodic_job_id periodic_job_id: Option(BitArray),
   job_type job_type: String,
-  payload payload: String,
+  payload payload: Option(String),
   status status: String,
   attempts attempts: Int,
   max_attempts max_attempts: Int,
@@ -883,6 +899,7 @@ pub fn insert_job(
     "INSERT INTO jobs (
   id,
   request_id,
+  periodic_job_id,
   job_type,
   payload,
   status,
@@ -895,12 +912,15 @@ pub fn insert_job(
   last_error,
   created_at,
   updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)"
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamNullable(
+      option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
+    ),
     dev.ParamString(job_type),
-    dev.ParamString(payload),
+    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
     dev.ParamString(status),
     dev.ParamInt(attempts),
     dev.ParamInt(max_attempts),
@@ -981,6 +1001,49 @@ pub fn insert_user(
   ])
 }
 
+pub fn insert_periodic_job(
+  id id: BitArray,
+  job_type job_type: String,
+  payload payload: Option(String),
+  interval_seconds interval_seconds: Int,
+  enabled enabled: Bool,
+  next_run_at next_run_at: Timestamp,
+  last_enqueued_at last_enqueued_at: Option(Timestamp),
+  last_enqueue_error last_enqueue_error: Option(String),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO periodic_jobs (
+  id,
+  job_type,
+  payload,
+  interval_seconds,
+  enabled,
+  next_run_at,
+  last_enqueued_at,
+  last_enqueue_error,
+  created_at,
+  updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(job_type),
+    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
+    dev.ParamInt(interval_seconds),
+    dev.ParamBool(enabled),
+    dev.ParamTimestamp(next_run_at),
+    dev.ParamNullable(
+      option.map(last_enqueued_at, fn(v) { dev.ParamTimestamp(v) }),
+    ),
+    dev.ParamNullable(
+      option.map(last_enqueue_error, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
 pub fn delete_session(id id: BitArray) {
   let sql = "DELETE FROM sessions WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)])
@@ -989,8 +1052,9 @@ pub fn delete_session(id id: BitArray) {
 pub fn update_job(
   id id: BitArray,
   request_id request_id: Option(BitArray),
+  periodic_job_id periodic_job_id: Option(BitArray),
   job_type job_type: String,
-  payload payload: String,
+  payload payload: Option(String),
   status status: String,
   attempts attempts: Int,
   max_attempts max_attempts: Int,
@@ -1005,24 +1069,28 @@ pub fn update_job(
   let sql =
     "UPDATE jobs
 SET request_id = $2,
-    job_type = $3,
-    payload = $4,
-    status = $5,
-    attempts = $6,
-    max_attempts = $7,
-    timeout_seconds = $8,
-    run_at = $9,
-    started_at = $10,
-    completed_at = $11,
-    last_error = $12,
-    created_at = $13,
-    updated_at = $14
+    periodic_job_id = $3,
+    job_type = $4,
+    payload = $5,
+    status = $6,
+    attempts = $7,
+    max_attempts = $8,
+    timeout_seconds = $9,
+    run_at = $10,
+    started_at = $11,
+    completed_at = $12,
+    last_error = $13,
+    created_at = $14,
+    updated_at = $15
 WHERE id = $1"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamNullable(
+      option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
+    ),
     dev.ParamString(job_type),
-    dev.ParamString(payload),
+    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
     dev.ParamString(status),
     dev.ParamInt(attempts),
     dev.ParamInt(max_attempts),
@@ -1074,6 +1142,71 @@ pub fn delete_account(id id: BitArray) {
     "DELETE FROM accounts
 WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)])
+}
+
+pub type GetNextPeriodicJob {
+  GetNextPeriodicJob(
+    id: BitArray,
+    job_type: String,
+    payload: Option(String),
+    interval_seconds: Int,
+    enabled: Bool,
+    next_run_at: Timestamp,
+    last_enqueued_at: Option(Timestamp),
+    last_enqueue_error: Option(String),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn get_next_periodic_job(now now: Timestamp) {
+  let sql =
+    "SELECT
+  id,
+  job_type,
+  payload,
+  interval_seconds,
+  enabled,
+  next_run_at,
+  last_enqueued_at,
+  last_enqueue_error,
+  created_at,
+  updated_at
+FROM periodic_jobs
+WHERE enabled = TRUE
+  AND next_run_at <= $1
+ORDER BY next_run_at ASC, created_at ASC
+LIMIT 1
+FOR UPDATE SKIP LOCKED"
+  #(sql, [dev.ParamTimestamp(now)], get_next_periodic_job_decoder())
+}
+
+pub fn get_next_periodic_job_decoder() -> decode.Decoder(GetNextPeriodicJob) {
+  use id <- decode.field(0, decode.bit_array)
+  use job_type <- decode.field(1, decode.string)
+  use payload <- decode.field(2, decode.optional(decode.string))
+  use interval_seconds <- decode.field(3, decode.int)
+  use enabled <- decode.field(4, dev.bool_decoder())
+  use next_run_at <- decode.field(5, dev.datetime_decoder())
+  use last_enqueued_at <- decode.field(
+    6,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use last_enqueue_error <- decode.field(7, decode.optional(decode.string))
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  decode.success(GetNextPeriodicJob(
+    id:,
+    job_type:,
+    payload:,
+    interval_seconds:,
+    enabled:,
+    next_run_at:,
+    last_enqueued_at:,
+    last_enqueue_error:,
+    created_at:,
+    updated_at:,
+  ))
 }
 
 pub type CountUserActionsByUser {
@@ -1387,6 +1520,48 @@ WHERE id = $8"
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
     dev.ParamBitArray(id),
+  ])
+}
+
+pub fn update_periodic_job(
+  id id: BitArray,
+  job_type job_type: String,
+  payload payload: Option(String),
+  interval_seconds interval_seconds: Int,
+  enabled enabled: Bool,
+  next_run_at next_run_at: Timestamp,
+  last_enqueued_at last_enqueued_at: Option(Timestamp),
+  last_enqueue_error last_enqueue_error: Option(String),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "UPDATE periodic_jobs
+SET job_type = $2,
+    payload = $3,
+    interval_seconds = $4,
+    enabled = $5,
+    next_run_at = $6,
+    last_enqueued_at = $7,
+    last_enqueue_error = $8,
+    created_at = $9,
+    updated_at = $10
+WHERE id = $1"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(job_type),
+    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
+    dev.ParamInt(interval_seconds),
+    dev.ParamBool(enabled),
+    dev.ParamTimestamp(next_run_at),
+    dev.ParamNullable(
+      option.map(last_enqueued_at, fn(v) { dev.ParamTimestamp(v) }),
+    ),
+    dev.ParamNullable(
+      option.map(last_enqueue_error, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
   ])
 }
 

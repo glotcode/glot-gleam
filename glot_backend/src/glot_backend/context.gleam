@@ -29,6 +29,7 @@ pub type Config {
     postgres: PostgresConfig,
     docker_run: DockerRunConfig,
     auth: AuthConfig,
+    cleanup: CleanupConfig,
     rate_limits: RateLimitsConfig,
   )
 }
@@ -52,6 +53,7 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
     postgres: postgres,
     docker_run: docker_run,
     auth: auth,
+    cleanup: cleanup_config_from_dict(values),
     rate_limits: rate_limits_config_from_dict(values),
   ))
 }
@@ -135,6 +137,20 @@ fn auth_config_from_dict(
     session_token_max_age: session_token_max_age,
     session_cookie_max_age: session_cookie_max_age,
   ))
+}
+
+pub type CleanupConfig {
+  CleanupConfig(
+    api_log_retention_days: Int,
+  )
+}
+
+fn cleanup_config_from_dict(values: Dict(String, String)) -> CleanupConfig {
+  CleanupConfig(
+    api_log_retention_days: lookup(values, "CLEANUP_API_LOG_RETENTION_DAYS")
+      |> result.try(string_to_int)
+      |> result.unwrap(30),
+  )
 }
 
 pub type RateLimitsConfig =

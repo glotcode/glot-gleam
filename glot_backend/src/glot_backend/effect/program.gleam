@@ -1,3 +1,4 @@
+import glot_backend/effect/api_log/api_log_algebra
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/json
@@ -9,6 +10,7 @@ import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
 import glot_backend/effect/error
 import glot_backend/effect/job/job_algebra
+import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/transaction/transaction_algebra
@@ -127,10 +129,14 @@ fn map_db_effect(
   f: fn(a) -> b,
 ) -> program_types.DbEffect(b) {
   case effect {
+    program_types.ApiLogEffect(effect) ->
+      program_types.ApiLogEffect(api_log_algebra.map(effect, f))
     program_types.AuthEffect(effect) ->
       program_types.AuthEffect(auth_algebra.map(effect, f))
     program_types.JobEffect(effect) ->
       program_types.JobEffect(job_algebra.map(effect, f))
+    program_types.PeriodicJobEffect(effect) ->
+      program_types.PeriodicJobEffect(periodic_job_algebra.map(effect, f))
     program_types.SnippetEffect(effect) ->
       program_types.SnippetEffect(snippet_algebra.map(effect, f))
     program_types.UserActionEffect(effect) ->

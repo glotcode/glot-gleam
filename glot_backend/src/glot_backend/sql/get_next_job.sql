@@ -2,6 +2,7 @@
 SELECT
   id,
   request_id,
+  periodic_job_id,
   job_type,
   payload,
   status,

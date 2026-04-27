@@ -120,11 +120,18 @@ fn is_pending_delete_job_for_account(
     && job.completed_at == option.None
   {
     True ->
-      case
-        json.parse(job.payload, job_model.delete_account_job_payload_decoder())
-      {
-        Ok(payload) -> payload.account_id == account_id
-        Error(_) -> False
+      case job.payload {
+        option.Some(payload_json) ->
+          case
+            json.parse(
+              payload_json,
+              job_model.delete_account_job_payload_decoder(),
+            )
+          {
+            Ok(payload) -> payload.account_id == account_id
+            Error(_) -> False
+          }
+        option.None -> False
       }
     False -> False
   }

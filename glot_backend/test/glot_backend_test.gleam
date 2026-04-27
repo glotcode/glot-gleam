@@ -1,6 +1,7 @@
 import gleam/dict.{type Dict}
 import gleam/list
 import gleam/option
+import gleam/order
 import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
@@ -10,15 +11,18 @@ import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/job/job_manager_domain
+import glot_backend/domain/job/periodic_job_manager_domain
 import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/domain/snippet/update_snippet_domain
+import glot_backend/effect/api_log/api_log_algebra
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
 import glot_backend/effect/error
 import glot_backend/effect/job/job_algebra
+import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
@@ -32,6 +36,8 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/job/job_model
 import glot_core/language
+import glot_core/helpers/timestamp_helpers
+import glot_core/periodic_job/periodic_job_model
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_core/snippet/snippet_spam
@@ -508,6 +514,85 @@ pub fn delete_account_job_execution_removes_data_in_order_test() {
     ]
 }
 
+pub fn enqueue_next_due_periodic_job_creates_job_and_advances_schedule_test() {
+  let periodic_job_id = must_uuid("00000000-0000-0000-0000-000000000801")
+  let enqueued_job_id = must_uuid("00000000-0000-0000-0000-000000000802")
+  let periodic_job =
+    periodic_job_model.PeriodicJob(
+      id: periodic_job_id,
+      job_type: job_model.CleanApiLogJob,
+      payload: option.None,
+      interval_seconds: 86_400,
+      enabled: True,
+      next_run_at: test_timestamp(),
+      last_enqueued_at: option.None,
+      last_enqueue_error: option.None,
+      created_at: test_timestamp(),
+      updated_at: test_timestamp(),
+    )
+  let ctx = context.Context(..test_context(), timestamp: test_timestamp())
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      periodic_jobs: dict.from_list([#(uuid_key(periodic_job_id), periodic_job)]),
+      next_uuids: [enqueued_job_id],
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      periodic_job_manager_domain.enqueue_next_due_periodic_job(ctx),
+      ctx,
+      db,
+    )
+
+  assert run_result == Ok(True)
+  let assert Ok(enqueued_job) = dict.get(updated_db.jobs, uuid_key(enqueued_job_id))
+  let assert Ok(updated_periodic_job) =
+    dict.get(updated_db.periodic_jobs, uuid_key(periodic_job_id))
+
+  assert enqueued_job.periodic_job_id == option.Some(periodic_job_id)
+  assert enqueued_job.job_type == job_model.CleanApiLogJob
+  assert enqueued_job.status == job_model.Pending
+  assert updated_periodic_job.last_enqueued_at == option.Some(test_timestamp())
+  assert updated_periodic_job.last_enqueue_error == option.None
+  assert updated_periodic_job.next_run_at
+    == timestamp.from_unix_seconds_and_nanoseconds(1_700_086_400, 0)
+}
+
+pub fn enqueue_next_due_periodic_job_returns_false_when_no_jobs_are_due_test() {
+  let periodic_job =
+    periodic_job_model.PeriodicJob(
+      id: must_uuid("00000000-0000-0000-0000-000000000901"),
+      job_type: job_model.CleanApiLogJob,
+      payload: option.None,
+      interval_seconds: 86_400,
+      enabled: True,
+      next_run_at: timestamp.from_unix_seconds_and_nanoseconds(1_700_000_060, 0),
+      last_enqueued_at: option.None,
+      last_enqueue_error: option.None,
+      created_at: test_timestamp(),
+      updated_at: test_timestamp(),
+    )
+  let ctx = context.Context(..test_context(), timestamp: test_timestamp())
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      periodic_jobs: dict.from_list([#(uuid_key(periodic_job.id), periodic_job)]),
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      periodic_job_manager_domain.enqueue_next_due_periodic_job(ctx),
+      ctx,
+      db,
+    )
+
+  assert run_result == Ok(False)
+  assert dict.to_list(updated_db.jobs) == []
+  assert dict.get(updated_db.periodic_jobs, uuid_key(periodic_job.id))
+    == Ok(periodic_job)
+}
+
 type TestFixture {
   TestFixture(
     ctx: context.Context,
@@ -527,6 +612,7 @@ type TestDb {
     sessions: Dict(String, session_model.Session),
     session_ids_by_token: Dict(String, String),
     jobs: Dict(String, job_model.Job),
+    periodic_jobs: Dict(String, periodic_job_model.PeriodicJob),
     snippets: Dict(String, snippet_model.Snippet),
     user_action_count: Int,
     write_steps: List(String),
@@ -595,6 +681,7 @@ fn integration_fixture(
         #(session.token, uuid_key(session.id)),
       ]),
       jobs: dict.from_list(list.map(jobs, fn(job) { #(uuid_key(job.id), job) })),
+      periodic_jobs: dict.new(),
       snippets: dict.from_list([#(uuid_key(snippet.id), snippet)]),
       user_action_count: 0,
       write_steps: [],
@@ -662,6 +749,7 @@ fn empty_test_db() -> TestDb {
     sessions: dict.new(),
     session_ids_by_token: dict.new(),
     jobs: dict.new(),
+    periodic_jobs: dict.new(),
     snippets: dict.new(),
     user_action_count: 0,
     write_steps: [],
@@ -770,10 +858,14 @@ fn run_test_db_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    program_types.ApiLogEffect(api_log_effect) ->
+      run_test_api_log_effect(api_log_effect, ctx, db)
     program_types.AuthEffect(auth_effect) ->
       run_test_auth_effect(auth_effect, ctx, db)
     program_types.JobEffect(job_effect) ->
       run_test_job_effect(job_effect, ctx, db)
+    program_types.PeriodicJobEffect(periodic_job_effect) ->
+      run_test_periodic_job_effect(periodic_job_effect, ctx, db)
     program_types.SnippetEffect(snippet_effect) ->
       run_test_snippet_effect(snippet_effect, ctx, db)
     program_types.UserActionEffect(user_action_effect) ->
@@ -787,14 +879,72 @@ fn run_test_tx_db_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    program_types.ApiLogEffect(api_log_effect) ->
+      run_test_api_log_tx_effect(api_log_effect, ctx, db)
     program_types.AuthEffect(auth_effect) ->
       run_test_auth_tx_effect(auth_effect, ctx, db)
     program_types.JobEffect(job_effect) ->
       run_test_job_tx_effect(job_effect, ctx, db)
+    program_types.PeriodicJobEffect(periodic_job_effect) ->
+      run_test_periodic_job_tx_effect(periodic_job_effect, ctx, db)
     program_types.SnippetEffect(snippet_effect) ->
       run_test_snippet_tx_effect(snippet_effect, ctx, db)
     program_types.UserActionEffect(user_action_effect) ->
       run_test_user_action_tx_effect(user_action_effect, ctx, db)
+  }
+}
+
+fn run_test_api_log_effect(
+  effect: api_log_algebra.ApiLogEffect(program_types.Program(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    api_log_algebra.DeleteApiLogBefore(before: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_api_log_tx_effect(
+  effect: api_log_algebra.ApiLogEffect(program_types.TransactionProgram(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    api_log_algebra.DeleteApiLogBefore(before: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_periodic_job_effect(
+  effect: periodic_job_algebra.PeriodicJobEffect(program_types.Program(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    periodic_job_algebra.GetNextPeriodicJob(now:, next:) ->
+      run_test_program(next(find_next_periodic_job(db, now)), ctx, db)
+    periodic_job_algebra.CreatePeriodicJob(periodic_job, next) ->
+      run_test_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
+    periodic_job_algebra.UpdatePeriodicJob(periodic_job, next) ->
+      run_test_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
+  }
+}
+
+fn run_test_periodic_job_tx_effect(
+  effect: periodic_job_algebra.PeriodicJobEffect(
+    program_types.TransactionProgram(a),
+  ),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    periodic_job_algebra.GetNextPeriodicJob(now:, next:) ->
+      run_test_tx_program(next(find_next_periodic_job(db, now)), ctx, db)
+    periodic_job_algebra.CreatePeriodicJob(periodic_job, next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
+    periodic_job_algebra.UpdatePeriodicJob(periodic_job, next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
   }
 }
 
@@ -1071,6 +1221,55 @@ fn find_job(db: TestDb, id: uuid.Uuid) -> option.Option(job_model.Job) {
   |> option.from_result()
 }
 
+fn find_next_periodic_job(
+  db: TestDb,
+  now: timestamp.Timestamp,
+) -> option.Option(periodic_job_model.PeriodicJob) {
+  db.periodic_jobs
+  |> dict.to_list
+  |> list.map(fn(entry) {
+    let #(_, periodic_job) = entry
+    periodic_job
+  })
+  |> list.filter(fn(periodic_job) {
+    periodic_job.enabled
+    && timestamp_helpers.to_microseconds(periodic_job.next_run_at)
+      <= timestamp_helpers.to_microseconds(now)
+  })
+  |> list.sort(fn(a, b) {
+    case
+      timestamp_helpers.to_microseconds(a.next_run_at)
+      < timestamp_helpers.to_microseconds(b.next_run_at)
+    {
+      True -> order.Lt
+      False ->
+        case
+          timestamp_helpers.to_microseconds(a.next_run_at)
+          > timestamp_helpers.to_microseconds(b.next_run_at)
+        {
+          True -> order.Gt
+          False ->
+            case
+              timestamp_helpers.to_microseconds(a.created_at)
+              < timestamp_helpers.to_microseconds(b.created_at)
+            {
+              True -> order.Lt
+              False ->
+                case
+                  timestamp_helpers.to_microseconds(a.created_at)
+                  > timestamp_helpers.to_microseconds(b.created_at)
+                {
+                  True -> order.Gt
+                  False -> order.Eq
+                }
+            }
+        }
+    }
+  })
+  |> list.first
+  |> option.from_result
+}
+
 fn find_user_by_email(
   db: TestDb,
   email: email_address_model.EmailAddress,
@@ -1216,6 +1415,20 @@ fn upsert_login_token(
 
 fn put_job(db: TestDb, job: job_model.Job) -> TestDb {
   TestDb(..db, jobs: dict.insert(db.jobs, uuid_key(job.id), job))
+}
+
+fn put_periodic_job(
+  db: TestDb,
+  periodic_job: periodic_job_model.PeriodicJob,
+) -> TestDb {
+  TestDb(
+    ..db,
+    periodic_jobs: dict.insert(
+      db.periodic_jobs,
+      uuid_key(periodic_job.id),
+      periodic_job,
+    ),
+  )
 }
 
 fn insert_snippet(db: TestDb, snippet: snippet_model.Snippet) -> TestDb {
@@ -1403,6 +1616,9 @@ fn test_context() -> context.Context {
         login_token_max_age: 900,
         session_token_max_age: 86_400,
         session_cookie_max_age: 86_400,
+      ),
+      cleanup: context.CleanupConfig(
+        api_log_retention_days: 30,
       ),
       rate_limits: dict.new(),
     ),

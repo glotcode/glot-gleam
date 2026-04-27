@@ -82,6 +82,7 @@ pub fn create_job(
     sql.insert_job(
       id: uuid.to_bit_array(j.id),
       request_id: j.request_id |> option.map(uuid.to_bit_array),
+      periodic_job_id: j.periodic_job_id |> option.map(uuid.to_bit_array),
       job_type: job_model.job_type_to_string(j.job_type),
       payload: j.payload,
       status: job_model.status_to_string(j.status),
@@ -111,6 +112,7 @@ pub fn update_job(
     sql.update_job(
       id: uuid.to_bit_array(j.id),
       request_id: j.request_id |> option.map(uuid.to_bit_array),
+      periodic_job_id: j.periodic_job_id |> option.map(uuid.to_bit_array),
       job_type: job_model.job_type_to_string(j.job_type),
       payload: j.payload,
       status: job_model.status_to_string(j.status),
@@ -145,6 +147,7 @@ fn get_job_from_next_job_row(
   get_job(
     row.id,
     row.request_id,
+    row.periodic_job_id,
     row.job_type,
     row.payload,
     row.status,
@@ -166,6 +169,7 @@ fn get_job_from_job_by_id_row(
   get_job(
     row.id,
     row.request_id,
+    row.periodic_job_id,
     row.job_type,
     row.payload,
     row.status,
@@ -184,8 +188,9 @@ fn get_job_from_job_by_id_row(
 fn get_job(
   id: BitArray,
   request_id: option.Option(BitArray),
+  periodic_job_id: option.Option(BitArray),
   job_type_str: String,
-  payload: String,
+  payload: option.Option(String),
   status_str: String,
   attempts: Int,
   max_attempts: Int,
@@ -209,6 +214,7 @@ fn get_job(
   Ok(job_model.Job(
     id: uuid_helpers.from_bit_array(id),
     request_id: request_id |> option.map(uuid_helpers.from_bit_array),
+    periodic_job_id: periodic_job_id |> option.map(uuid_helpers.from_bit_array),
     job_type: job_type,
     payload: payload,
     status: status,

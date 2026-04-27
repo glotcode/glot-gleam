@@ -7,6 +7,7 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
 import glot_backend/crypto_token
+import glot_backend/effect/api_log/api_log_handlers
 import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/basic/basic_effect
@@ -18,6 +19,7 @@ import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
+import glot_backend/effect/periodic_job/periodic_job_handlers
 import glot_backend/effect/program
 import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_handlers
@@ -161,6 +163,7 @@ pub fn rolled_back_transaction_effect_is_marked_test() {
 
 fn test_handlers() -> handlers.Handlers {
   handlers.Handlers(
+    api_log: api_log_handlers.ApiLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     basic: basic_handlers.BasicHandlers(
       new_token: fn(_, _) { "random" },
       system_time: timestamp.system_time,
@@ -177,6 +180,11 @@ fn test_handlers() -> handlers.Handlers {
       create_job: fn(_) { Ok(Nil) },
       update_job: fn(_) { Ok(Nil) },
       delete_job: fn(_) { Ok(Nil) },
+    ),
+    periodic_job: periodic_job_handlers.PeriodicJobHandlers(
+      get_next_periodic_job: fn(_) { Ok(option.None) },
+      create_periodic_job: fn(_) { Ok(Nil) },
+      update_periodic_job: fn(_) { Ok(Nil) },
     ),
     auth: auth_handlers.AuthHandlers(
       get_user_by_email: fn(_, _) { Ok(option.None) },
@@ -242,6 +250,9 @@ fn test_context() -> context.Context {
         login_token_max_age: 900,
         session_token_max_age: 86_400,
         session_cookie_max_age: 86_400,
+      ),
+      cleanup: context.CleanupConfig(
+        api_log_retention_days: 30,
       ),
       rate_limits: dict.new(),
     ),

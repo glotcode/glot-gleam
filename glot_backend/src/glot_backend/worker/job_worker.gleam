@@ -8,6 +8,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/domain/job/job_manager_domain
+import glot_backend/domain/job/periodic_job_manager_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -98,6 +99,25 @@ fn run_once(state: State) -> job_model.Outcome {
   let effect_runtime = runtime.new(state.db)
   let ctx = context_from_state(state, option.None)
 
+  let #(periodic_result, _) =
+    periodic_job_manager_domain.enqueue_next_due_periodic_job(ctx)
+    |> interpreter.run(effect_runtime, ctx)
+
+  case periodic_result {
+    Ok(True) -> job_model.JobProcessed
+    Ok(False) -> claim_and_process_job(state, effect_runtime, ctx)
+    Error(err) -> {
+      wisp.log_error("Failed to enqueue periodic job: " <> string.inspect(err))
+      claim_and_process_job(state, effect_runtime, ctx)
+    }
+  }
+}
+
+fn claim_and_process_job(
+  state: State,
+  effect_runtime: runtime.Runtime,
+  ctx: context.Context,
+) -> job_model.Outcome {
   let #(result, _) =
     job_manager_domain.claim_next_job(ctx)
     |> interpreter.run(effect_runtime, ctx)
