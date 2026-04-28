@@ -70,6 +70,20 @@ pub fn run_code(
   )
 }
 
+pub fn get_language_version(
+  request: run.GetLanguageVersionRequest,
+  to_msg: fn(ApiResponse(run.RunResult)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetLanguageVersionAction, request)
+
+  send_api_request(
+    req,
+    run.encode_get_language_version_request,
+    run.run_result_decoder(),
+    to_msg,
+  )
+}
+
 pub fn create_snippet(
   request: snippet_dto.CreateSnippetRequest,
   to_msg: fn(ApiResponse(snippet_dto.SnippetResponse)) -> msg,

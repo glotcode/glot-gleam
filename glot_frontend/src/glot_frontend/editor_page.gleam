@@ -1928,15 +1928,8 @@ fn version_run_effect_for_model(model: Model) -> Effect(Msg) {
 }
 
 fn version_run_effect(lang: language.Language) -> Effect(Msg) {
-  api.run_code(
-    run.RunRequest(
-      image: language.container_image(lang),
-      payload: run.RunRequestPayload(
-        run_instructions: language.version_run_instructions(lang),
-        files: [],
-        stdin: option.None,
-      ),
-    ),
+  api.get_language_version(
+    run.GetLanguageVersionRequest(language: lang),
     VersionRunFinished,
   )
 }

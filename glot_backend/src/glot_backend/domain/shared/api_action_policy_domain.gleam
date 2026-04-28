@@ -107,6 +107,7 @@ fn forbidden_account_state_error(
 
 fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
   case action {
+    api_action.GetLanguageVersionAction -> NoAccountStateRequirement
     api_action.SendLoginTokenAction ->
       AllowedAccountStates([
         account_model.Active,

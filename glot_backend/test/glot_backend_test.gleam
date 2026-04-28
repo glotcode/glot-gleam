@@ -15,6 +15,7 @@ import glot_backend/domain/cleanup/clean_login_tokens_domain
 import glot_backend/domain/cleanup/clean_user_actions_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
+import glot_backend/domain/run_code/get_language_version_domain
 import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/domain/snippet/update_snippet_domain
@@ -40,6 +41,7 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/job/job_model
 import glot_core/language
+import glot_core/run
 import glot_core/helpers/timestamp_helpers
 import glot_core/periodic_job/periodic_job_model
 import glot_core/snippet/snippet_dto
@@ -102,6 +104,22 @@ pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
     run_test_program(session_domain.require_session(ctx), ctx, empty_test_db())
 
   assert run_result == Error(error.SessionError(error.SessionNotFoundError))
+}
+
+pub fn get_language_version_without_session_reaches_docker_run_test() {
+  let ctx = test_context()
+  let request = run.GetLanguageVersionRequest(language: language.Python)
+
+  let #(run_result, db) =
+    run_test_program(
+      get_language_version_domain.get_language_version(ctx, request),
+      ctx,
+      empty_test_db(),
+    )
+
+  assert run_result
+    == Error(error.RunError(error.InternalRunRequestError("unused in test")))
+  assert db.write_steps == []
 }
 
 pub fn login_creates_account_user_and_session_in_foreign_key_order_test() {

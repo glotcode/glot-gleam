@@ -8,6 +8,10 @@ pub type RunRequest {
   RunRequest(image: String, payload: RunRequestPayload)
 }
 
+pub type GetLanguageVersionRequest {
+  GetLanguageVersionRequest(language: language.Language)
+}
+
 pub type RunRequestPayload {
   RunRequestPayload(
     run_instructions: language.RunInstructions,
@@ -56,6 +60,20 @@ pub fn run_request_decoder() -> decode.Decoder(RunRequest) {
   use image <- decode.field("image", decode.string)
   use payload <- decode.field("payload", run_request_payload_decoder())
   decode.success(RunRequest(image:, payload:))
+}
+
+pub fn encode_get_language_version_request(
+  request: GetLanguageVersionRequest,
+) -> json.Json {
+  json.object([
+    #("language", language.encode(request.language)),
+  ])
+}
+
+pub fn get_language_version_request_decoder(
+) -> decode.Decoder(GetLanguageVersionRequest) {
+  use language <- decode.field("language", language.decoder())
+  decode.success(GetLanguageVersionRequest(language:))
 }
 
 pub fn run_request_payload_decoder() -> decode.Decoder(RunRequestPayload) {

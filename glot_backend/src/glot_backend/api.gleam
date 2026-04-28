@@ -15,6 +15,7 @@ import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/logout_domain
 import glot_backend/domain/auth/send_login_token_domain
+import glot_backend/domain/run_code/get_language_version_domain
 import glot_backend/domain/run_code/run_domain
 import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/snippet/delete_snippet_domain
@@ -83,6 +84,13 @@ fn handle_api_request(
         api_request.data,
       ))
       run_domain.run(ctx, request)
+      |> program.map(RunResultResponse)
+    }
+    api_action.GetLanguageVersionAction -> {
+      use request <- program.and_then(
+        get_language_version_domain.request_from_dynamic(api_request.data),
+      )
+      get_language_version_domain.get_language_version(ctx, request)
       |> program.map(RunResultResponse)
     }
     api_action.GetSessionAction -> {

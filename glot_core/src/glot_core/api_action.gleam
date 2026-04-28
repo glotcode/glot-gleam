@@ -3,6 +3,7 @@ import gleam/json
 
 pub type ApiAction {
   RunAction
+  GetLanguageVersionAction
   GetSessionAction
   LogoutAction
   GetAccountAction
@@ -23,6 +24,7 @@ pub fn decoder() -> decode.Decoder(ApiAction) {
   use action <- decode.then(decode.string)
   case action {
     "run" -> decode.success(RunAction)
+    "get_language_version" -> decode.success(GetLanguageVersionAction)
     "get_session" -> decode.success(GetSessionAction)
     "logout" -> decode.success(LogoutAction)
     "get_account" -> decode.success(GetAccountAction)
@@ -48,6 +50,7 @@ pub fn encode(action: ApiAction) -> json.Json {
 pub fn to_string(action: ApiAction) -> String {
   case action {
     RunAction -> "run"
+    GetLanguageVersionAction -> "get_language_version"
     GetSessionAction -> "get_session"
     LogoutAction -> "logout"
     GetAccountAction -> "get_account"
