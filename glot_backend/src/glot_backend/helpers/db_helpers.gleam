@@ -6,7 +6,8 @@ import pog
 
 pub fn parrot_to_pog(param: dev.Param) -> pog.Value {
   case param {
-    dev.ParamDynamic(_) -> todo
+    dev.ParamDynamic(_) ->
+      panic as "Got a dynamic parrot value, this should not happen"
     dev.ParamBool(x) -> pog.bool(x)
     dev.ParamFloat(x) -> pog.float(x)
     dev.ParamInt(x) -> pog.int(x)
