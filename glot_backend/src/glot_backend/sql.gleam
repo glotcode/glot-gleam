@@ -217,52 +217,6 @@ WHERE created_at < $1"
   #(sql, [dev.ParamTimestamp(created_at)])
 }
 
-pub type ListSnippetsByUser {
-  ListSnippetsByUser(
-    id: BitArray,
-    slug: String,
-    user_id: BitArray,
-    language: String,
-    title: String,
-    visibility: String,
-    stdin: String,
-    run_instructions: Option(String),
-    created_at: Timestamp,
-    updated_at: Timestamp,
-  )
-}
-
-pub fn list_snippets_by_user(user_id user_id: BitArray) {
-  let sql =
-    "SELECT id, slug, user_id, language, title, visibility, stdin, run_instructions, created_at, updated_at FROM snippets WHERE user_id = $1"
-  #(sql, [dev.ParamBitArray(user_id)], list_snippets_by_user_decoder())
-}
-
-pub fn list_snippets_by_user_decoder() -> decode.Decoder(ListSnippetsByUser) {
-  use id <- decode.field(0, decode.bit_array)
-  use slug <- decode.field(1, decode.string)
-  use user_id <- decode.field(2, decode.bit_array)
-  use language <- decode.field(3, decode.string)
-  use title <- decode.field(4, decode.string)
-  use visibility <- decode.field(5, decode.string)
-  use stdin <- decode.field(6, decode.string)
-  use run_instructions <- decode.field(7, decode.optional(decode.string))
-  use created_at <- decode.field(8, dev.datetime_decoder())
-  use updated_at <- decode.field(9, dev.datetime_decoder())
-  decode.success(ListSnippetsByUser(
-    id:,
-    slug:,
-    user_id:,
-    language:,
-    title:,
-    visibility:,
-    stdin:,
-    run_instructions:,
-    created_at:,
-    updated_at:,
-  ))
-}
-
 pub type ListLoginTokensByEmail {
   ListLoginTokensByEmail(
     id: BitArray,
@@ -620,81 +574,6 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
   use created_at <- decode.field(11, dev.datetime_decoder())
   use updated_at <- decode.field(12, dev.datetime_decoder())
   decode.success(GetUserByEmail(
-    id:,
-    account_id:,
-    email:,
-    username:,
-    role:,
-    account_state:,
-    account_state_reason:,
-    account_tier:,
-    delete_job_id:,
-    delete_scheduled_at:,
-    last_login_at:,
-    created_at:,
-    updated_at:,
-  ))
-}
-
-pub type GetUserById {
-  GetUserById(
-    id: BitArray,
-    account_id: BitArray,
-    email: String,
-    username: String,
-    role: String,
-    account_state: String,
-    account_state_reason: Option(String),
-    account_tier: String,
-    delete_job_id: Option(BitArray),
-    delete_scheduled_at: Option(Timestamp),
-    last_login_at: Timestamp,
-    created_at: Timestamp,
-    updated_at: Timestamp,
-  )
-}
-
-pub fn get_user_by_id(id id: BitArray) {
-  let sql =
-    "SELECT
-  users.id,
-  users.account_id,
-  users.email,
-  users.username,
-  users.role,
-  accounts.account_state,
-  accounts.account_state_reason,
-  accounts.account_tier,
-  accounts.delete_job_id,
-  jobs.run_at AS delete_scheduled_at,
-  users.last_login_at,
-  users.created_at,
-  users.updated_at
-FROM users
-INNER JOIN accounts ON accounts.id = users.account_id
-LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
-WHERE users.id = $1"
-  #(sql, [dev.ParamBitArray(id)], get_user_by_id_decoder())
-}
-
-pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
-  use id <- decode.field(0, decode.bit_array)
-  use account_id <- decode.field(1, decode.bit_array)
-  use email <- decode.field(2, decode.string)
-  use username <- decode.field(3, decode.string)
-  use role <- decode.field(4, decode.string)
-  use account_state <- decode.field(5, decode.string)
-  use account_state_reason <- decode.field(6, decode.optional(decode.string))
-  use account_tier <- decode.field(7, decode.string)
-  use delete_job_id <- decode.field(8, decode.optional(decode.bit_array))
-  use delete_scheduled_at <- decode.field(
-    9,
-    decode.optional(dev.datetime_decoder()),
-  )
-  use last_login_at <- decode.field(10, dev.datetime_decoder())
-  use created_at <- decode.field(11, dev.datetime_decoder())
-  use updated_at <- decode.field(12, dev.datetime_decoder())
-  decode.success(GetUserById(
     id:,
     account_id:,
     email:,
