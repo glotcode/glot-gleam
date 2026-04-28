@@ -5,6 +5,7 @@ import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
+import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
@@ -22,6 +23,7 @@ pub type EffectName {
   AuthEffectName(auth_algebra.EffectName)
   SnippetEffectName(snippet_algebra.EffectName)
   DockerRunEffectName(docker_run_algebra.EffectName)
+  GetLanguageVersionEffectName(get_language_version_algebra.EffectName)
   UserActionEffectName(user_action_algebra.EffectName)
   TransactionEffectName(
     transaction_algebra.EffectName,
@@ -42,6 +44,8 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     AuthEffectName(name) -> auth_algebra.effect_name_to_string(name)
     SnippetEffectName(name) -> snippet_algebra.effect_name_to_string(name)
     DockerRunEffectName(name) -> docker_run_algebra.effect_name_to_string(name)
+    GetLanguageVersionEffectName(name) ->
+      get_language_version_algebra.effect_name_to_string(name)
     UserActionEffectName(name) ->
       user_action_algebra.effect_name_to_string(name)
     TransactionEffectName(name, _, _) ->
@@ -60,6 +64,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     AuthEffectName(_) -> "auth"
     SnippetEffectName(_) -> "snippet"
     DockerRunEffectName(_) -> "docker_run"
+    GetLanguageVersionEffectName(_) -> "get_language_version"
     UserActionEffectName(_) -> "user_action"
     TransactionEffectName(_, _, _) -> "transaction"
   }

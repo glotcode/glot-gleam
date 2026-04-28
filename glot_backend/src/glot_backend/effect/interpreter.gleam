@@ -5,6 +5,7 @@ import glot_backend/effect/db_interpreter
 import glot_backend/effect/docker_run/docker_run_interpreter
 import glot_backend/effect/email/email_interpreter
 import glot_backend/effect/error
+import glot_backend/effect/get_language_version/get_language_version_interpreter
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
@@ -47,6 +48,8 @@ pub fn run_with_state(
           email_interpreter.run(effect, ctx, runtime.handlers, state, continue)
         program_types.DockerRunEffect(effect) ->
           docker_run_interpreter.run(effect, runtime.handlers, state, continue)
+        program_types.GetLanguageVersionEffect(effect) ->
+          get_language_version_interpreter.run(effect, runtime, state, continue)
         program_types.DbEffect(effect) ->
           db_interpreter.run(effect, ctx, runtime.handlers, state, continue)
         program_types.TransactionEffect(effect) ->

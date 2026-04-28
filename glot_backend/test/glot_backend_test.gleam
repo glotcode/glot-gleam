@@ -25,6 +25,7 @@ import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
 import glot_backend/effect/error
+import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
@@ -943,6 +944,8 @@ fn run_test_program(
           run_test_email_effect(email_effect, ctx, db)
         program_types.DockerRunEffect(docker_run_effect) ->
           run_test_docker_run_effect(docker_run_effect, db)
+        program_types.GetLanguageVersionEffect(get_language_version_effect) ->
+          run_test_get_language_version_effect(get_language_version_effect, db)
         program_types.DbEffect(db_effect) ->
           run_test_db_effect(db_effect, ctx, db)
         program_types.TransactionEffect(program_types.Run(program: tx_program)) ->
@@ -1007,6 +1010,20 @@ fn run_test_docker_run_effect(
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
     docker_run_algebra.RunCode(_, _, _) -> #(
+      Error(error.RunError(error.InternalRunRequestError("unused in test"))),
+      db,
+    )
+  }
+}
+
+fn run_test_get_language_version_effect(
+  effect: get_language_version_algebra.GetLanguageVersionEffect(
+    program_types.Program(a),
+  ),
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    get_language_version_algebra.GetLanguageVersion(_, _, _) -> #(
       Error(error.RunError(error.InternalRunRequestError("unused in test"))),
       db,
     )

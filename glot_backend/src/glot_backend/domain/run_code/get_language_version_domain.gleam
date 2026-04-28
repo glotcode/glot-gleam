@@ -1,27 +1,15 @@
 import gleam/dynamic
-import gleam/option
 import glot_backend/context
-import glot_backend/effect/docker_run/docker_run_effect
+import glot_backend/effect/get_language_version/get_language_version_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
-import glot_core/language
 import glot_core/run
 
 pub fn get_language_version(
   ctx: context.Context,
   request: run.GetLanguageVersionRequest,
 ) -> program_types.Program(run.RunResult) {
-  let run_request =
-    run.RunRequest(
-      image: language.container_image(request.language),
-      payload: run.RunRequestPayload(
-        run_instructions: language.version_run_instructions(request.language),
-        files: [],
-        stdin: option.None,
-      ),
-    )
-
-  docker_run_effect.run_code(ctx.config, run_request)
+  get_language_version_effect.get_language_version(ctx.config, request.language)
 }
 
 pub fn request_from_dynamic(

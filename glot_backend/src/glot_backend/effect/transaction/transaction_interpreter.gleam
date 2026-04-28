@@ -57,7 +57,11 @@ fn run_in_transaction(
   program_state.State,
 ) {
   transaction_handlers.run(runtime.handlers.transaction, fn(tx) {
-    let transaction_runtime = runtime.from_handlers(handlers.new(tx))
+    let transaction_runtime =
+      runtime.from_parts(
+        handlers.new(tx),
+        runtime.language_version_cache_subject,
+      )
 
     case
       transaction_program_interpreter.run_with_state(

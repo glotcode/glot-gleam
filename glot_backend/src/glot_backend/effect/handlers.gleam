@@ -3,6 +3,7 @@ import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/email/email_handlers
+import glot_backend/effect/get_language_version/get_language_version_handlers
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/job_log/job_log_handlers
 import glot_backend/effect/periodic_job/periodic_job_handlers
@@ -16,6 +17,7 @@ pub type Handlers {
     api_log: api_log_handlers.ApiLogHandlers,
     basic: basic_handlers.BasicHandlers,
     email: email_handlers.EmailHandlers,
+    get_language_version: get_language_version_handlers.GetLanguageVersionHandlers,
     job: job_handlers.JobHandlers,
     job_log: job_log_handlers.JobLogHandlers,
     periodic_job: periodic_job_handlers.PeriodicJobHandlers,
@@ -32,6 +34,7 @@ pub fn new(db: pog.Connection) -> Handlers {
     api_log: api_log_handlers.new(db),
     basic: basic_handlers.new(),
     email: email_handlers.new(),
+    get_language_version: get_language_version_handlers.new(),
     job: job_handlers.new(db),
     job_log: job_log_handlers.new(db),
     periodic_job: periodic_job_handlers.new(db),

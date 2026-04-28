@@ -22,6 +22,7 @@ import glot_backend/request_tracker
 import glot_backend/server_mode
 import glot_backend/worker/db_monitor
 import glot_backend/worker/job_worker
+import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_core/email/email_address_model
 import lustre/attribute
@@ -82,6 +83,10 @@ pub fn main() {
   let request_tracker_subject = process.named_subject(request_tracker_name)
   let server_mode_name = process.new_name("server_mode")
   let server_mode_subject = process.named_subject(server_mode_name)
+  let language_version_cache_worker_name =
+    process.new_name("language_version_cache_worker")
+  let language_version_cache_subject =
+    process.named_subject(language_version_cache_worker_name)
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
     wisp_mist.handler(
       fn(req: request.Request(wisp.Connection)) {
@@ -98,6 +103,7 @@ pub fn main() {
         handle_request(
           db,
           ctx,
+          language_version_cache_subject,
           log_worker_subject,
           request_tracker_subject,
           server_mode_subject,
@@ -122,6 +128,7 @@ pub fn main() {
       job_tracker_name,
       request_tracker_name,
       server_mode_name,
+      language_version_cache_worker_name,
       mist_builder,
     )
 
@@ -205,6 +212,9 @@ fn drain_work(
 pub fn handle_request(
   db: pog.Connection,
   ctx: context.Context,
+  language_version_cache_subject: process.Subject(
+    language_version_cache_worker.Message,
+  ),
   log_worker_subject: process.Subject(log_worker.Message),
   request_tracker_subject: process.Subject(request_tracker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
@@ -221,7 +231,13 @@ pub fn handle_request(
     //Get, [] -> home_page.home_page()
     http.Get, _ -> serve_spa_page()
     http.Post, ["api", "mux"] ->
-      api.handle_request(db, ctx, log_worker_subject, req)
+      api.handle_request(
+        db,
+        ctx,
+        language_version_cache_subject,
+        log_worker_subject,
+        req,
+      )
     _, _ -> wisp.not_found()
   }
 }
@@ -336,6 +352,9 @@ fn start_supervisor_tree(
   job_tracker_name: process.Name(job_tracker.Message),
   request_tracker_name: process.Name(request_tracker.Message),
   server_mode_name: process.Name(server_mode.Message),
+  language_version_cache_worker_name: process.Name(
+    language_version_cache_worker.Message,
+  ),
   mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
 ) {
   static_supervisor.new(static_supervisor.OneForAll)
@@ -345,6 +364,13 @@ fn start_supervisor_tree(
     db_monitor.supervised(db, process.named_subject(server_mode_name)),
   )
   |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
+  |> static_supervisor.add(
+    language_version_cache_worker.supervised(
+      language_version_cache_worker_name,
+      config,
+      process.named_subject(server_mode_name),
+    ),
+  )
   |> static_supervisor.add(request_tracker.supervised(request_tracker_name))
   |> static_supervisor.add(job_tracker.supervised(job_tracker_name))
   |> static_supervisor.add(
@@ -354,6 +380,7 @@ fn start_supervisor_tree(
       regexes,
       process.named_subject(job_tracker_name),
       process.named_subject(server_mode_name),
+      process.named_subject(language_version_cache_worker_name),
     ),
   )
   |> static_supervisor.add(mist.supervised(mist_builder))

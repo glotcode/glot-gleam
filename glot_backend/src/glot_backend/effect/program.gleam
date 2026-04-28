@@ -9,6 +9,7 @@ import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
 import glot_backend/effect/error
+import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
@@ -118,6 +119,10 @@ fn map_effect(
       program_types.EmailEffect(email_algebra.map(effect, f))
     program_types.DockerRunEffect(effect) ->
       program_types.DockerRunEffect(docker_run_algebra.map(effect, f))
+    program_types.GetLanguageVersionEffect(effect) ->
+      program_types.GetLanguageVersionEffect(
+        get_language_version_algebra.map(effect, f),
+      )
     program_types.DbEffect(effect) ->
       program_types.DbEffect(map_db_effect(effect, f))
     program_types.TransactionEffect(effect) ->

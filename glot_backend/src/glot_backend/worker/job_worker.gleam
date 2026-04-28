@@ -21,6 +21,7 @@ import glot_backend/helpers/db_helpers
 import glot_backend/log
 import glot_backend/server_mode
 import glot_backend/sql
+import glot_backend/worker/language_version_cache_worker
 import glot_core/helpers/dict_helpers
 import glot_core/helpers/list_helpers
 import glot_core/job/job_model
@@ -42,6 +43,9 @@ type State {
     regexes: context.Regexes,
     job_tracker_subject: process.Subject(job_tracker.Message),
     server_mode_subject: process.Subject(server_mode.Message),
+    language_version_cache_subject: process.Subject(
+      language_version_cache_worker.Message,
+    ),
   )
 }
 
@@ -51,10 +55,21 @@ pub fn start(
   regexes: context.Regexes,
   job_tracker_subject: process.Subject(job_tracker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
+  language_version_cache_subject: process.Subject(
+    language_version_cache_worker.Message,
+  ),
 ) {
   actor.new_with_initialiser(1000, fn(subject) {
     let initial_state =
-      State(subject:, db:, config:, regexes:, job_tracker_subject:, server_mode_subject:)
+      State(
+        subject: subject,
+        db: db,
+        config: config,
+        regexes: regexes,
+        job_tracker_subject: job_tracker_subject,
+        server_mode_subject: server_mode_subject,
+        language_version_cache_subject: language_version_cache_subject,
+      )
     let _ = process.send(subject, Tick)
     let initialised = actor.initialised(initial_state)
     Ok(actor.returning(initialised, Nil))
@@ -69,9 +84,19 @@ pub fn supervised(
   regexes: context.Regexes,
   job_tracker_subject: process.Subject(job_tracker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
+  language_version_cache_subject: process.Subject(
+    language_version_cache_worker.Message,
+  ),
 ) {
   supervision.worker(fn() {
-    start(db, config, regexes, job_tracker_subject, server_mode_subject)
+    start(
+      db,
+      config,
+      regexes,
+      job_tracker_subject,
+      server_mode_subject,
+      language_version_cache_subject,
+    )
   })
 }
 
@@ -96,7 +121,7 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 }
 
 fn run_once(state: State) -> job_model.Outcome {
-  let effect_runtime = runtime.new(state.db)
+  let effect_runtime = runtime.new(state.db, state.language_version_cache_subject)
   let ctx = context_from_state(state, option.None)
 
   let #(periodic_result, _) =
@@ -145,7 +170,7 @@ fn process_job(state: State, job: job_model.Job) -> Nil {
     job_tracker.job_finished(state.job_tracker_subject)
   })
 
-  let effect_runtime = runtime.new(state.db)
+  let effect_runtime = runtime.new(state.db, state.language_version_cache_subject)
   let ctx = context_from_state(state, job.request_id)
   let #(result, program_state) =
     job_manager_domain.process_job(ctx, job)

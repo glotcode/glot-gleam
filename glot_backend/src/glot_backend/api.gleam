@@ -33,6 +33,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/server_timing
+import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_core/api_action
 import glot_core/auth/account_dto
@@ -46,11 +47,14 @@ import wisp
 pub fn handle_request(
   db: pog.Connection,
   ctx: context.Context,
+  language_version_cache_subject: process.Subject(
+    language_version_cache_worker.Message,
+  ),
   log_worker_subject: process.Subject(log_worker.Message),
   req: wisp.Request,
 ) -> wisp.Response {
   use api_request <- require_api_request(req)
-  let effect_runtime = runtime.new(db)
+  let effect_runtime = runtime.new(db, language_version_cache_subject)
 
   let #(api_result, state) =
     handle_api_request(ctx, api_request)
