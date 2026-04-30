@@ -7,12 +7,14 @@ import gleam/string
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
-import glot_core/pagination_model.{type CursorPagination}
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
 import glot_core/language
-import glot_core/snippet/snippet_model.{type HydratedSnippet, type ListSnippetsFilter, type Snippet}
+import glot_core/pagination_model.{type CursorPagination}
+import glot_core/snippet/snippet_model.{
+  type HydratedSnippet, type ListSnippetsFilter, type Snippet,
+}
 import pog
 import youid/uuid
 
@@ -22,12 +24,11 @@ pub type SnippetHandlers {
       Result(option.Option(HydratedSnippet), error.DbQueryError),
     get_snippet_by_slug: fn(String) ->
       Result(option.Option(HydratedSnippet), error.DbQueryError),
-    list_snippets: fn(
-      ListSnippetsFilter,
-      CursorPagination,
-    ) -> Result(List(HydratedSnippet), error.DbQueryError),
+    list_snippets: fn(ListSnippetsFilter, CursorPagination) ->
+      Result(List(HydratedSnippet), error.DbQueryError),
     delete_snippet: fn(BitArray) -> Result(Nil, error.DbCommandError),
-    delete_snippets_by_account_id: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
+    delete_snippets_by_account_id: fn(uuid.Uuid) ->
+      Result(Nil, error.DbCommandError),
     create_snippet: fn(Snippet) -> Result(Nil, error.DbCommandError),
     update_snippet: fn(Snippet) -> Result(Nil, error.DbCommandError),
   )
@@ -38,11 +39,7 @@ pub fn new(db: pog.Connection) -> SnippetHandlers {
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
     get_snippet_by_slug: fn(slug) { get_snippet_by_slug(db, slug) },
     list_snippets: fn(filter, pagination) {
-      list_snippets(
-        db,
-        filter,
-        pagination,
-      )
+      list_snippets(db, filter, pagination)
     },
     delete_snippet: fn(id) { delete_snippet(db, id) },
     delete_snippets_by_account_id: fn(account_id) {
@@ -126,10 +123,9 @@ pub fn list_snippets(
         returned.rows
         |> list.map(get_snippet_from_list_before_row)
         |> result.all
-        |> result.map(reverse_before_page_rows(limit))
+        |> result.map(list.reverse)
       })
-    pagination_model.InitialPage(limit)
-    | pagination_model.AfterPage(_, limit) -> {
+    pagination_model.InitialPage(limit) | pagination_model.AfterPage(_, limit) -> {
       let after_slug = case pagination {
         pagination_model.AfterPage(cursor, _) ->
           option.Some(pagination_model.to_string(cursor))
@@ -154,28 +150,6 @@ pub fn list_snippets(
         |> result.all
       })
     }
-  }
-}
-
-fn reverse_before_page_rows(
-  limit: Int,
-) -> fn(List(HydratedSnippet)) -> List(HydratedSnippet) {
-  fn(snippets) { reverse_before_page_rows_loop(snippets, limit - 1, []) }
-}
-
-fn reverse_before_page_rows_loop(
-  snippets: List(HydratedSnippet),
-  remaining: Int,
-  acc: List(HydratedSnippet),
-) -> List(HydratedSnippet) {
-  case remaining <= 0 {
-    True -> list.append(list.reverse(acc), snippets)
-    False ->
-      case snippets {
-        [] -> list.reverse(acc)
-        [snippet, ..rest] ->
-          reverse_before_page_rows_loop(rest, remaining - 1, [snippet, ..acc])
-      }
   }
 }
 
@@ -258,7 +232,9 @@ fn get_snippet_from_row(
       )
     }),
   )
-  use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
+  use run_instructions <- result.try(decode_run_instructions(
+    row.run_instructions,
+  ))
   use role <- result.try(
     user_model.role_from_string(row.user_role)
     |> option.to_result(error.DbQueryError(
@@ -316,7 +292,9 @@ fn get_snippet_from_slug_row(
       )
     }),
   )
-  use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
+  use run_instructions <- result.try(decode_run_instructions(
+    row.run_instructions,
+  ))
   use role <- result.try(
     user_model.role_from_string(row.user_role)
     |> option.to_result(error.DbQueryError(
@@ -374,7 +352,9 @@ fn get_snippet_from_list_row(
       )
     }),
   )
-  use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
+  use run_instructions <- result.try(decode_run_instructions(
+    row.run_instructions,
+  ))
   use role <- result.try(
     user_model.role_from_string(row.user_role)
     |> option.to_result(error.DbQueryError(
@@ -432,7 +412,9 @@ fn get_snippet_from_list_before_row(
       )
     }),
   )
-  use run_instructions <- result.try(decode_run_instructions(row.run_instructions))
+  use run_instructions <- result.try(decode_run_instructions(
+    row.run_instructions,
+  ))
   use role <- result.try(
     user_model.role_from_string(row.user_role)
     |> option.to_result(error.DbQueryError(
