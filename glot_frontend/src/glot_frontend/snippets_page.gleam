@@ -132,10 +132,16 @@ pub fn view(model: Model) -> Element(Msg) {
           html.div([attribute.class("snippets-page__pagination")], [
             pagination_button(
               "Previous",
+              previous_page_route(model),
               PreviousPageClicked,
               can_go_previous(model),
             ),
-            pagination_button("Next", NextPageClicked, can_go_next(model)),
+            pagination_button(
+              "Next",
+              next_page_route(model),
+              NextPageClicked,
+              can_go_next(model),
+            ),
           ]),
         ]),
         status_view(model),
@@ -191,6 +197,30 @@ fn can_go_next(model: Model) -> Bool {
   case pagination_model.next_cursor(model.page) {
     option.Some(_) -> state_allows_pagination(model.state)
     option.None -> False
+  }
+}
+
+fn previous_page_route(model: Model) -> option.Option(route.Route) {
+  case pagination_model.previous_cursor(model.page) {
+    option.Some(previous_cursor) ->
+      option.Some(route.Snippets(
+        after: option.None,
+        before: option.Some(pagination_model.to_string(previous_cursor)),
+        username: model.username,
+      ))
+    option.None -> option.None
+  }
+}
+
+fn next_page_route(model: Model) -> option.Option(route.Route) {
+  case pagination_model.next_cursor(model.page) {
+    option.Some(next_cursor) ->
+      option.Some(route.Snippets(
+        after: option.Some(pagination_model.to_string(next_cursor)),
+        before: option.None,
+        username: model.username,
+      ))
+    option.None -> option.None
   }
 }
 
@@ -303,16 +333,32 @@ fn snippet_cell_link(
   ])
 }
 
-fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  html.button(
-    [
-      attribute.type_("button"),
-      attribute.class("snippets-page__button"),
-      attribute.disabled(!enabled),
-      event.on_click(msg),
-    ],
-    [html.text(label)],
-  )
+fn pagination_button(
+  label: String,
+  destination: option.Option(route.Route),
+  msg: Msg,
+  enabled: Bool,
+) -> Element(Msg) {
+  case destination, enabled {
+    option.Some(destination), True ->
+      html.a(
+        [
+          attribute.class("snippets-page__button"),
+          route.href(destination),
+          event.prevent_default(event.on_click(msg)),
+        ],
+        [html.text(label)],
+      )
+    _, _ ->
+      html.button(
+        [
+          attribute.type_("button"),
+          attribute.class("snippets-page__button"),
+          attribute.disabled(True),
+        ],
+        [html.text(label)],
+      )
+  }
 }
 
 fn navigate_to(
