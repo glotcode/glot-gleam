@@ -280,6 +280,25 @@ export class GlotCodeMirror extends HTMLElement {
   private _languageName = "javascript";
   private _keyboardBindingsName: KeyboardBindingsName = "default";
   private _updatingFromOutside = false;
+  private _handleRunShortcut = (event: KeyboardEvent) => {
+    if (
+      event.key !== "Enter" ||
+      event.altKey ||
+      event.shiftKey ||
+      !(event.metaKey || event.ctrlKey)
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    this.dispatchEvent(
+      new CustomEvent("editor-run", {
+        bubbles: true,
+        composed: true
+      })
+    );
+  };
 
   private _language = new Compartment();
   private _editable = new Compartment();
@@ -350,6 +369,9 @@ export class GlotCodeMirror extends HTMLElement {
     if (this._view) return;
 
     const editableExt = EditorView.editable.of(!this.hasAttribute("disabled"));
+    this._container.addEventListener("keydown", this._handleRunShortcut, {
+      capture: true
+    });
 
     const state = EditorState.create({
       doc: this._valueCache,
@@ -395,6 +417,10 @@ export class GlotCodeMirror extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._container.removeEventListener("keydown", this._handleRunShortcut, {
+      capture: true
+    });
+
     if (this._view) {
       this._view.destroy();
       this._view = null;

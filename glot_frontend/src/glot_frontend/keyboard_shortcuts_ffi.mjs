@@ -41,6 +41,10 @@ export function bindShortcuts(onQuickActions, onEditorRun) {
   }
 
   document.addEventListener("keydown", (event) => {
+    if (event.defaultPrevented) {
+      return;
+    }
+
     if (
       event.key.toLowerCase() === "k" &&
       !event.altKey &&

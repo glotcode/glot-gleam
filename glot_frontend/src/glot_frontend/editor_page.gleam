@@ -806,6 +806,7 @@ fn view_helper(
               use value <- decode.subfield(["detail", "value"], decode.string)
               decode.success(SourceCodeChanged(value))
             }),
+            event.on("editor-run", decode.success(RunSubmitted)),
           ],
           [],
         ),
