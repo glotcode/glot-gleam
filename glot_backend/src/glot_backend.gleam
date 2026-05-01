@@ -26,6 +26,7 @@ import glot_backend/worker/job_worker
 import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_core/email/email_address_model
+import glot_core/route
 import lustre/attribute
 import lustre/element
 import lustre/element/html
@@ -229,8 +230,6 @@ pub fn handle_request(
   )
 
   case req.method, wisp.path_segments(req) {
-    http.Get, [] -> home_page.home_page()
-    http.Get, _ -> serve_spa_page()
     http.Post, ["api", "mux"] ->
       api.handle_request(
         db,
@@ -239,7 +238,24 @@ pub fn handle_request(
         log_worker_subject,
         req,
       )
+    http.Get, _ ->
+      request.to_uri(req)
+      |> route.from_uri
+      |> handle_frontend_route
     _, _ -> wisp.not_found()
+  }
+}
+
+fn handle_frontend_route(current_route: route.Route) -> wisp.Response {
+  case current_route {
+    route.Home -> home_page.home_page()
+    route.Login -> serve_spa_page()
+    route.Account -> serve_spa_page()
+    route.AccountSnippets(_, _) -> serve_spa_page()
+    route.Snippets(_, _, _) -> serve_spa_page()
+    route.NewSnippet(_) -> serve_spa_page()
+    route.Snippet(_) -> serve_spa_page()
+    route.NotFound(_) -> wisp.not_found()
   }
 }
 
