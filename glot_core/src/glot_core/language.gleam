@@ -649,7 +649,7 @@ pub fn run_instructions(
     Pascal ->
       RunInstructions(
         build_commands: [
-          "fpc -o a.out "
+          "fpc -oa.out "
           <> string.join(
             [main_file, ..filter_by_extension("pas", other_files)],
             with: " ",
@@ -775,8 +775,15 @@ fn titlecase_ascii(s: String) -> String {
   }
 }
 
+fn trim_final_newline(s: String) -> String {
+  case string.slice(s, -1, 1) {
+    "\n" -> string.slice(s, 0, string.length(s) - 1)
+    _ -> s
+  }
+}
+
 pub fn example_code(lang: Language) -> String {
-  string.trim(case lang {
+  trim_final_newline(case lang {
     Assembly ->
       "section .data
     msg db \"Hello World!\", 0ah
@@ -954,7 +961,7 @@ main = putStrLn \"Hello World!\"
 "
 
     Kotlin ->
-      "fun main(args : Array<String>){
+      "fun main(args : Array<String>) {
     println(\"Hello World!\")
 }
 "

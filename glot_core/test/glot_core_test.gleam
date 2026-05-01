@@ -29,7 +29,9 @@ pub fn validate_username_accepts_valid_values_test() {
   assert user_model.validate_username("abc-123") == Ok(Nil)
   assert user_model.validate_username("a.b-c9") == Ok(Nil)
   assert user_model.validate_username("aaa") == Ok(Nil)
-  assert user_model.validate_username("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+  assert user_model.validate_username(
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    )
     == Ok(Nil)
 }
 
@@ -49,7 +51,9 @@ pub fn validate_username_rejects_invalid_values_test() {
   assert user_model.validate_username("ab-.cd") == error
   assert user_model.validate_username("Abc") == error
   assert user_model.validate_username("abc_123") == error
-  assert user_model.validate_username("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+  assert user_model.validate_username(
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    )
     == error
 }
 
@@ -59,22 +63,16 @@ pub fn validate_snippet_fields_rejects_empty_files_test() {
 }
 
 pub fn validate_snippet_fields_rejects_empty_title_test() {
-  assert snippet_model.validate_fields(
-      "   ",
-      "",
-      option.None,
-      [snippet_model.File(name: "main.py", content: "print(1)")],
-    )
+  assert snippet_model.validate_fields("   ", "", option.None, [
+      snippet_model.File(name: "main.py", content: "print(1)"),
+    ])
     == Error("title must not be empty")
 }
 
 pub fn validate_snippet_fields_rejects_empty_file_name_test() {
-  assert snippet_model.validate_fields(
-      "Snippet",
-      "",
-      option.None,
-      [snippet_model.File(name: "  ", content: "print(1)")],
-    )
+  assert snippet_model.validate_fields("Snippet", "", option.None, [
+      snippet_model.File(name: "  ", content: "print(1)"),
+    ])
     == Error("files[0].name must not be empty")
 }
 
@@ -82,9 +80,7 @@ pub fn validate_snippet_fields_rejects_empty_run_command_test() {
   assert snippet_model.validate_fields(
       "Snippet",
       "",
-      option.Some(
-        language.RunInstructions(build_commands: [], run_command: " "),
-      ),
+      option.Some(language.RunInstructions(build_commands: [], run_command: " ")),
       [snippet_model.File(name: "main.py", content: "print(1)")],
     )
     == Error("runInstructions.runCommand must not be empty")
@@ -94,12 +90,24 @@ pub fn validate_snippet_fields_rejects_empty_build_command_test() {
   assert snippet_model.validate_fields(
       "Snippet",
       "",
-      option.Some(
-        language.RunInstructions(build_commands: [" "], run_command: "python main.py"),
-      ),
+      option.Some(language.RunInstructions(
+        build_commands: [" "],
+        run_command: "python main.py",
+      )),
       [snippet_model.File(name: "main.py", content: "print(1)")],
     )
     == Error("runInstructions.buildCommands[0] must not be empty")
+}
+
+pub fn cobol_example_code_preserves_fixed_format_indentation_test() {
+  assert language.example_code(language.Cobol)
+    == "       IDENTIFICATION DIVISION.
+       PROGRAM-ID. hello.
+
+       PROCEDURE DIVISION.
+           DISPLAY 'Hello World!'
+           GOBACK
+           ."
 }
 
 pub fn validate_snippet_fields_rejects_too_long_title_test() {
@@ -113,39 +121,28 @@ pub fn validate_snippet_fields_rejects_too_long_title_test() {
 }
 
 pub fn validate_snippet_fields_rejects_too_long_file_content_test() {
-  assert snippet_model.validate_fields(
-      "Snippet",
-      "",
-      option.None,
-      [
-        snippet_model.File(
-          name: "main.py",
-          content: repeat_string("a", 100_001),
-        ),
-      ],
-    )
+  assert snippet_model.validate_fields("Snippet", "", option.None, [
+      snippet_model.File(name: "main.py", content: repeat_string("a", 100_001)),
+    ])
     == Error("files[0].content must be at most 100000 characters")
 }
 
 pub fn pagination_validate_accepts_valid_limit_test() {
-  assert pagination_model.validate(
-    pagination_model.InitialPage(limit: 10),
-    100,
-  ) == Ok(Nil)
+  assert pagination_model.validate(pagination_model.InitialPage(limit: 10), 100)
+    == Ok(Nil)
 }
 
 pub fn pagination_validate_rejects_zero_limit_test() {
-  assert pagination_model.validate(
-    pagination_model.InitialPage(limit: 0),
-    100,
-  ) == Error("limit must be greater than 0")
+  assert pagination_model.validate(pagination_model.InitialPage(limit: 0), 100)
+    == Error("limit must be greater than 0")
 }
 
 pub fn pagination_validate_rejects_limit_above_max_test() {
   assert pagination_model.validate(
-    pagination_model.InitialPage(limit: 101),
-    100,
-  ) == Error("limit must be less than or equal to 100")
+      pagination_model.InitialPage(limit: 101),
+      100,
+    )
+    == Error("limit must be less than or equal to 100")
 }
 
 pub fn paginate_initial_page_test() {
