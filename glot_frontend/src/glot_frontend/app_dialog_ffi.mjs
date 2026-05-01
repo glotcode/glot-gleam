@@ -20,9 +20,24 @@ function bindBackdropClose(dialog) {
 }
 
 export function openDialog(id) {
+  openDialogNowOrOnNextFrame(id);
+}
+
+export function openDialogNextFrame(id) {
+  window.requestAnimationFrame(() => {
+    openDialogNowOrOnNextFrame(id);
+  });
+}
+
+function openDialogNowOrOnNextFrame(id, retried = false) {
   const dialog = document.getElementById(id);
 
   if (!(dialog instanceof HTMLDialogElement)) {
+    if (!retried) {
+      window.requestAnimationFrame(() => {
+        openDialogNowOrOnNextFrame(id, true);
+      });
+    }
     return;
   }
 

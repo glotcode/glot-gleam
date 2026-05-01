@@ -8,12 +8,14 @@ import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/api_action
+import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/app_dialog
 import glot_frontend/api
+import glot_frontend/editor_draft
 import glot_frontend/editor_settings
 import glot_frontend/icons
 import glot_frontend/route
@@ -38,6 +40,8 @@ const settings_dialog_id = "editor-page-settings-dialog"
 const save_dialog_id = "editor-page-save-dialog"
 
 const snippet_info_dialog_id = "editor-page-snippet-info-dialog"
+
+const restore_draft_dialog_id = "editor-page-restore-draft-dialog"
 
 const editor_id = "editor-page-codemirror"
 
@@ -71,6 +75,7 @@ pub type RealModel {
     run_instructions_mode_draft: RunInstructionsMode,
     run_instructions_draft: RunInstructionsDraft,
     save_visibility_draft: snippet_model.Visibility,
+    pending_restore_draft: option.Option(editor_draft.StoredEditorDraft),
     version_info: option.Option(String),
     run_state: RunState,
     save_state: SaveState,
@@ -119,41 +124,14 @@ pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
   let settings = editor_settings.load()
   let model = case language.from_string(language) {
     option.Some(lang) -> {
-      let default_file = snippet_model.default_file(lang)
-      SupportedLanguage(RealModel(
-        slug: option.None,
-        owner_user_id: option.None,
-        owner_username: option.None,
-        title: "Hello World",
-        title_draft: "Hello World",
-        language: lang,
-        visibility: snippet_model.Unlisted,
-        created_at: option.None,
-        updated_at: option.None,
-        files: [default_file],
-        stdin: option.None,
-        selected_tab: FileTab(0),
-        add_entry_kind: AddFileEntry,
-        add_entry_filename: "",
-        edit_entry_filename: default_file_name([default_file], FileTab(0)),
-        editor_settings: settings,
-        editor_settings_draft: settings,
-        run_instructions_override: option.None,
-        run_instructions_mode_draft: DefaultRunInstructions,
-        run_instructions_draft: run_instructions_to_draft(
-          default_run_instructions(lang, [default_file]),
-        ),
-        save_visibility_draft: snippet_model.Unlisted,
-        version_info: option.None,
-        run_state: Idle,
-        save_state: SaveIdle,
-      ))
+      let draft = editor_draft.load_new_snippet(language)
+      SupportedLanguage(new_editor_model(lang, settings, draft))
     }
 
     option.None -> UnsupportedLanguage(language)
   }
 
-  #(model, version_run_effect_for_model(model))
+  #(model, init_new_effect_for_model(model))
 }
 
 pub fn init_existing(slug: String) -> #(Model, Effect(Msg)) {
@@ -196,6 +174,9 @@ pub type Msg {
   SaveCancelled
   SaveConfirmed
   SaveDialogClosed
+  RestoreDraftAccepted
+  RestoreDraftDeclined
+  RestoreDraftClosed
   SnippetInfoClicked
   SnippetInfoDismissed
   SnippetInfoClosed
@@ -233,7 +214,10 @@ pub fn update(
               ))
           }
 
-          #(
+          let #(pending_restore_draft, draft_effect) =
+            load_existing_restore_draft(response.slug, response.updated_at)
+
+          let next_model =
             SupportedLanguage(RealModel(
               slug: option.Some(response.slug),
               owner_user_id: option.Some(response.user.id),
@@ -259,11 +243,19 @@ pub fn update(
               run_instructions_mode_draft: run_instructions_mode_draft,
               run_instructions_draft: run_instructions_draft,
               save_visibility_draft: response.data.visibility,
+              pending_restore_draft: pending_restore_draft,
               version_info: option.None,
               run_state: Idle,
               save_state: SaveIdle,
-            )),
-            version_run_effect(response.data.language),
+            ))
+
+          #(
+            next_model,
+            effect.batch([
+              version_run_effect(response.data.language),
+              draft_effect,
+              restore_draft_effect(next_model),
+            ]),
           )
         }
 
@@ -308,10 +300,16 @@ pub fn update_helper(
       app_dialog.close(title_dialog_id),
     )
 
-    TitleEditSubmitted -> #(
-      RealModel(..model, title: model.title_draft),
-      app_dialog.close(title_dialog_id),
-    )
+    TitleEditSubmitted -> {
+      let next_model = RealModel(..model, title: model.title_draft)
+      #(
+        next_model,
+        effect.batch([
+          app_dialog.close(title_dialog_id),
+          save_editor_draft(next_model),
+        ]),
+      )
+    }
 
     TitleDialogClosed -> #(
       RealModel(..model, title_draft: model.title),
@@ -346,7 +344,10 @@ pub fn update_helper(
       case add_entry(model) {
         option.Some(next_model) -> #(
           next_model,
-          app_dialog.close(add_entry_dialog_id),
+          effect.batch([
+            app_dialog.close(add_entry_dialog_id),
+            save_editor_draft(next_model),
+          ]),
         )
 
         option.None -> #(model, effect.none())
@@ -380,7 +381,10 @@ pub fn update_helper(
       case rename_selected_file(model) {
         option.Some(next_model) -> #(
           next_model,
-          app_dialog.close(edit_entry_dialog_id),
+          effect.batch([
+            app_dialog.close(edit_entry_dialog_id),
+            save_editor_draft(next_model),
+          ]),
         )
 
         option.None -> #(model, effect.none())
@@ -391,7 +395,10 @@ pub fn update_helper(
       case delete_selected_entry(model) {
         option.Some(next_model) -> #(
           next_model,
-          app_dialog.close(edit_entry_dialog_id),
+          effect.batch([
+            app_dialog.close(edit_entry_dialog_id),
+            save_editor_draft(next_model),
+          ]),
         )
 
         option.None -> #(model, effect.none())
@@ -471,17 +478,23 @@ pub fn update_helper(
       app_dialog.close(settings_dialog_id),
     )
 
-    SettingsSubmitted -> #(
-      RealModel(
-        ..model,
-        editor_settings: model.editor_settings_draft,
-        run_instructions_override: run_instructions_override_from_draft(model),
-      ),
-      effect.batch([
-        app_dialog.close(settings_dialog_id),
-        editor_settings.save(model.editor_settings_draft),
-      ]),
-    )
+    SettingsSubmitted -> {
+      let next_model =
+        RealModel(
+          ..model,
+          editor_settings: model.editor_settings_draft,
+          run_instructions_override: run_instructions_override_from_draft(model),
+        )
+
+      #(
+        next_model,
+        effect.batch([
+          app_dialog.close(settings_dialog_id),
+          editor_settings.save(model.editor_settings_draft),
+          save_editor_draft(next_model),
+        ]),
+      )
+    }
 
     SettingsDialogClosed -> #(
       RealModel(
@@ -515,6 +528,30 @@ pub fn update_helper(
       focus_editor(),
     )
 
+    RestoreDraftAccepted -> {
+      case model.pending_restore_draft {
+        option.Some(draft) -> #(
+          apply_editor_draft(model, draft.draft),
+          app_dialog.close(restore_draft_dialog_id),
+        )
+
+        option.None -> #(model, effect.none())
+      }
+    }
+
+    RestoreDraftDeclined -> #(
+      RealModel(..model, pending_restore_draft: option.None),
+      effect.batch([
+        app_dialog.close(restore_draft_dialog_id),
+        clear_editor_draft(model),
+      ]),
+    )
+
+    RestoreDraftClosed -> #(
+      RealModel(..model, pending_restore_draft: option.None),
+      focus_editor(),
+    )
+
     SnippetInfoClicked -> #(model, app_dialog.open(snippet_info_dialog_id))
 
     SnippetInfoDismissed -> #(model, app_dialog.close(snippet_info_dialog_id))
@@ -530,10 +567,10 @@ pub fn update_helper(
       effect.none(),
     )
 
-    SourceCodeChanged(source_code) -> #(
-      update_selected_tab_content(model, source_code),
-      effect.none(),
-    )
+    SourceCodeChanged(source_code) -> {
+      let next_model = update_selected_tab_content(model, source_code)
+      #(next_model, save_editor_draft(next_model))
+    }
 
     RunSubmitted -> {
       let request =
@@ -629,8 +666,9 @@ pub fn update_helper(
       case result {
         api.ApiSuccess(response) -> {
           let next_model = RealModel(..model, save_state: Saved(response.slug))
+          let clear_draft_effect = clear_editor_draft(next_model)
           case save_operation(model, current_user_id) {
-            UpdateSnippet(_) -> #(next_model, effect.none())
+            UpdateSnippet(_) -> #(next_model, clear_draft_effect)
             CreateSnippet -> {
               let navigate =
                 modem.push(
@@ -638,7 +676,7 @@ pub fn update_helper(
                   option.None,
                   option.None,
                 )
-              #(next_model, navigate)
+              #(next_model, effect.batch([clear_draft_effect, navigate]))
             }
           }
         }
@@ -745,6 +783,7 @@ fn view_helper(
       edit_entry_dialog_view(model),
       settings_dialog_view(model),
       save_dialog_view(model, current_user_id),
+      restore_draft_dialog_view(model),
       snippet_info_dialog_view(model),
       html.div(
         [attribute.class("editor-shell__tabbar")],
@@ -1309,6 +1348,59 @@ fn save_dialog_children(
   }
 }
 
+fn restore_draft_dialog_view(model: RealModel) -> Element(Msg) {
+  let restore_copy = case model.slug {
+    option.None ->
+      "A local draft from the last 24 hours was found for this new snippet. Do you want to restore it?"
+    option.Some(_) ->
+      "A newer local draft was found for this snippet. Do you want to restore your unsaved local changes?"
+  }
+
+  let children = case model.pending_restore_draft {
+    option.Some(_) -> [
+      html.div([attribute.class("editor-page__dialog-form")], [
+        html.label([attribute.class("editor-page__dialog-label")], [
+          html.text("Restore draft"),
+        ]),
+        html.p([attribute.class("editor-page__dialog-copy")], [
+          html.text(restore_copy),
+        ]),
+        html.div([attribute.class("editor-page__dialog-actions")], [
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class(
+                "editor-page__dialog-button editor-page__dialog-button--secondary",
+              ),
+              event.on_click(RestoreDraftDeclined),
+            ],
+            [html.text("No")],
+          ),
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class("editor-page__dialog-button"),
+              event.on_click(RestoreDraftAccepted),
+            ],
+            [html.text("Yes")],
+          ),
+        ]),
+      ]),
+    ]
+
+    option.None -> []
+  }
+
+  html.dialog(
+    [
+      attribute.id(restore_draft_dialog_id),
+      attribute.class("editor-page__dialog"),
+      event.on("close", decode.success(RestoreDraftClosed)),
+    ],
+    children,
+  )
+}
+
 fn snippet_info_dialog_view(model: RealModel) -> Element(Msg) {
   html.dialog(
     [
@@ -1779,6 +1871,146 @@ fn save_action_name(
 
 fn reset_save_dialog_draft(model: RealModel) -> RealModel {
   RealModel(..model, save_visibility_draft: model.visibility)
+}
+
+fn new_editor_model(
+  lang: language.Language,
+  settings: editor_settings.EditorSettings,
+  pending_restore_draft: option.Option(editor_draft.StoredEditorDraft),
+) -> RealModel {
+  let default_file = snippet_model.default_file(lang)
+
+  RealModel(
+    slug: option.None,
+    owner_user_id: option.None,
+    owner_username: option.None,
+    title: "Hello World",
+    title_draft: "Hello World",
+    language: lang,
+    visibility: snippet_model.Unlisted,
+    created_at: option.None,
+    updated_at: option.None,
+    files: [default_file],
+    stdin: option.None,
+    selected_tab: FileTab(0),
+    add_entry_kind: AddFileEntry,
+    add_entry_filename: "",
+    edit_entry_filename: default_file_name([default_file], FileTab(0)),
+    editor_settings: settings,
+    editor_settings_draft: settings,
+    run_instructions_override: option.None,
+    run_instructions_mode_draft: DefaultRunInstructions,
+    run_instructions_draft: run_instructions_to_draft(
+      default_run_instructions(lang, [default_file]),
+    ),
+    save_visibility_draft: snippet_model.Unlisted,
+    pending_restore_draft: pending_restore_draft,
+    version_info: option.None,
+    run_state: Idle,
+    save_state: SaveIdle,
+  )
+}
+
+fn init_new_effect_for_model(model: Model) -> Effect(Msg) {
+  effect.batch([version_run_effect_for_model(model), restore_draft_effect(model)])
+}
+
+fn restore_draft_effect(model: Model) -> Effect(Msg) {
+  case model {
+    SupportedLanguage(real_model) ->
+      case real_model.pending_restore_draft {
+        option.Some(_) -> app_dialog.open_next_frame(restore_draft_dialog_id)
+        option.None -> effect.none()
+      }
+
+    _ -> effect.none()
+  }
+}
+
+fn apply_editor_draft(
+  model: RealModel,
+  draft: editor_draft.EditorDraft,
+) -> RealModel {
+  let files = draft.files
+  let stdin = draft.stdin
+  let selected_tab = initial_selected_tab(files, stdin)
+  let run_instructions_override = draft.run_instructions_override
+  let run_instructions = case run_instructions_override {
+    option.Some(instructions) -> instructions
+    option.None -> default_run_instructions(draft.language, files)
+  }
+
+  RealModel(
+    ..model,
+    title: draft.title,
+    title_draft: draft.title,
+    language: draft.language,
+    files: files,
+    stdin: stdin,
+    selected_tab: selected_tab,
+    add_entry_kind: default_add_entry_kind(stdin),
+    edit_entry_filename: default_file_name(files, selected_tab),
+    run_instructions_override: run_instructions_override,
+    run_instructions_mode_draft: case run_instructions_override {
+      option.Some(_) -> CustomRunInstructions
+      option.None -> DefaultRunInstructions
+    },
+    run_instructions_draft: run_instructions_to_draft(run_instructions),
+    pending_restore_draft: option.None,
+  )
+}
+
+fn new_snippet_draft_from_model(
+  model: RealModel,
+) -> editor_draft.EditorDraft {
+  editor_draft.EditorDraft(
+    title: model.title,
+    language: model.language,
+    files: model.files,
+    stdin: model.stdin,
+    run_instructions_override: model.run_instructions_override,
+  )
+}
+
+fn save_editor_draft(model: RealModel) -> Effect(msg) {
+  case model.slug {
+    option.None ->
+      editor_draft.save_new_snippet(
+        model.language,
+        new_snippet_draft_from_model(model),
+      )
+    option.Some(slug) ->
+      editor_draft.save_existing_snippet(
+        slug,
+        new_snippet_draft_from_model(model),
+      )
+  }
+}
+
+fn clear_editor_draft(model: RealModel) -> Effect(msg) {
+  case model.slug {
+    option.None -> editor_draft.clear_new_snippet(model.language)
+    option.Some(slug) -> editor_draft.clear_existing_snippet(slug)
+  }
+}
+
+fn load_existing_restore_draft(
+  slug: String,
+  updated_at: Timestamp,
+) -> #(option.Option(editor_draft.StoredEditorDraft), Effect(msg)) {
+  case editor_draft.load_existing_snippet(slug) {
+    option.Some(draft) ->
+      case is_newer_than_saved_snippet(draft.saved_at_ms, updated_at) {
+        True -> #(option.Some(draft), effect.none())
+        False -> #(option.None, editor_draft.clear_existing_snippet(slug))
+      }
+
+    option.None -> #(option.None, effect.none())
+  }
+}
+
+fn is_newer_than_saved_snippet(saved_at_ms: Int, updated_at: Timestamp) -> Bool {
+  saved_at_ms > timestamp_helpers.to_microseconds(updated_at) / 1000
 }
 
 fn focus_editor() -> Effect(msg) {
