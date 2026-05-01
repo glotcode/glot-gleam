@@ -11,6 +11,7 @@ import glot_core/api_action
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/page/icons
+import glot_core/page/top_bar
 import glot_core/route
 import glot_core/run
 import glot_core/snippet/snippet_dto
@@ -20,7 +21,6 @@ import glot_frontend/api
 import glot_frontend/editor_draft
 import glot_frontend/editor_settings
 import glot_frontend/string_helpers
-import glot_frontend/top_bar
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -849,24 +849,28 @@ fn quick_actions_for_model(
       label: "Run code",
       description: "Execute the current snippet.",
       shortcut: ["cmd+enter", "ctrl+enter"],
+      target_route: option.None,
       msg: RunSubmitted,
     ),
     top_bar.Action(
       label: save_action_name(model, current_user_id),
       description: "Save the current snippet state.",
       shortcut: [],
+      target_route: option.None,
       msg: SaveClicked,
     ),
     top_bar.Action(
       label: "New file",
       description: "Add a new file or stdin input entry.",
       shortcut: [],
+      target_route: option.None,
       msg: AddEntryClicked,
     ),
     top_bar.Action(
       label: "Settings",
       description: "Open editor settings.",
       shortcut: [],
+      target_route: option.None,
       msg: SettingsClicked,
     ),
   ]
@@ -877,6 +881,7 @@ fn quick_actions_for_model(
         label: "Snippet info",
         description: "View snippet metadata.",
         shortcut: [],
+        target_route: option.None,
         msg: SnippetInfoClicked,
       ),
     ]
@@ -891,6 +896,7 @@ fn quick_actions_for_model(
         label: "Edit title",
         description: "Rename the current snippet.",
         shortcut: [],
+        target_route: option.None,
         msg: TitleClicked,
       ),
     ]

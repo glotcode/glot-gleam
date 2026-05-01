@@ -17,6 +17,7 @@ import glot_backend/api
 import glot_backend/context
 import glot_backend/erlang
 import glot_backend/helpers/response_helpers
+import glot_backend/home_page
 import glot_backend/job_tracker
 import glot_backend/request_tracker
 import glot_backend/server_mode
@@ -228,7 +229,7 @@ pub fn handle_request(
   )
 
   case req.method, wisp.path_segments(req) {
-    //Get, [] -> home_page.home_page()
+    http.Get, [] -> home_page.home_page()
     http.Get, _ -> serve_spa_page()
     http.Post, ["api", "mux"] ->
       api.handle_request(
@@ -318,6 +319,10 @@ fn serve_spa_page() -> wisp.Response {
     html.html([], [
       html.head([], [
         html.title([], "glot.io"),
+        html.link([
+          attribute.rel("stylesheet"),
+          attribute.href("/static/styles.css"),
+        ]),
         html.script(
           [
             attribute.type_("module"),
