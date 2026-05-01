@@ -1,8 +1,8 @@
 import gleam/list
 import glot_core/language.{type Language}
+import glot_core/route
 import glot_frontend/icons
 import glot_frontend/logo
-import glot_frontend/route
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}

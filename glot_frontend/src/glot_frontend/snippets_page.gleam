@@ -4,9 +4,9 @@ import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/language
 import glot_core/pagination_model
+import glot_core/route
 import glot_core/snippet/snippet_dto
 import glot_frontend/api
-import glot_frontend/route
 import glot_frontend/string_helpers
 import lustre/attribute
 import lustre/effect.{type Effect}

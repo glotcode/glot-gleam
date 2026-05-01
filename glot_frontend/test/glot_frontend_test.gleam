@@ -1,6 +1,6 @@
 import gleam/option
 import gleeunit
-import glot_frontend/route
+import glot_core/route
 import glot_frontend/string_helpers
 
 pub fn main() -> Nil {

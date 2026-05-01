@@ -1,7 +1,7 @@
 import gleam/dynamic/decode
 import gleam/int
 import gleam/list
-import glot_frontend/route
+import glot_core/route
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html

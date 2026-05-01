@@ -6,9 +6,9 @@ import gleam/time/timestamp
 import glot_core/auth/account_dto
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import glot_core/route
 import glot_frontend/api
 import glot_frontend/app_event
-import glot_frontend/route
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}

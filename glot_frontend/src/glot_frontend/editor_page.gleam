@@ -10,6 +10,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_core/api_action
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
+import glot_core/route
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
@@ -18,7 +19,6 @@ import glot_frontend/api
 import glot_frontend/editor_draft
 import glot_frontend/editor_settings
 import glot_frontend/icons
-import glot_frontend/route
 import glot_frontend/string_helpers
 import glot_frontend/top_bar
 import lustre/attribute

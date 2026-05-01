@@ -5,6 +5,7 @@ import gleam/order
 import gleam/string
 import glot_core/auth/session_dto
 import glot_core/language
+import glot_core/route
 import glot_frontend/account_page
 import glot_frontend/api
 import glot_frontend/app_dialog
@@ -15,7 +16,6 @@ import glot_frontend/keyboard_shortcuts
 import glot_frontend/login_page
 import glot_frontend/manage_snippets_page
 import glot_frontend/quick_action_scroll
-import glot_frontend/route
 import glot_frontend/snippets_page
 import glot_frontend/string_helpers
 import glot_frontend/top_bar

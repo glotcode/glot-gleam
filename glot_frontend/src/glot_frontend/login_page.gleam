@@ -2,9 +2,9 @@ import gleam/option
 import gleam/regexp
 import gleam/string
 import glot_core/email/email_address_model
+import glot_core/route
 import glot_frontend/api
 import glot_frontend/app_event
-import glot_frontend/route
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
