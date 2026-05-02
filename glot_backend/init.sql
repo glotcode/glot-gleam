@@ -241,6 +241,17 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 ), (
+  '243fda96-7166-44dd-ad87-260fb767531f',
+  'clean_page_log',
+  NULL,
+  86400,
+  TRUE,
+  CURRENT_TIMESTAMP,
+  NULL,
+  NULL,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
   'a7c48c4a-b660-495f-bbda-91fa476b825b',
   'clean_jobs',
   NULL,

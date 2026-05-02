@@ -5,6 +5,7 @@ import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/error
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
+import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
@@ -95,6 +96,8 @@ fn map_db_effect(
       program_types.JobEffect(job_algebra.map(effect, f))
     program_types.JobLogEffect(effect) ->
       program_types.JobLogEffect(job_log_algebra.map(effect, f))
+    program_types.PageLogEffect(effect) ->
+      program_types.PageLogEffect(page_log_algebra.map(effect, f))
     program_types.PeriodicJobEffect(effect) ->
       program_types.PeriodicJobEffect(periodic_job_algebra.map(effect, f))
     program_types.SnippetEffect(effect) ->

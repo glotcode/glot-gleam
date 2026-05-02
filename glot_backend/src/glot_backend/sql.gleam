@@ -1218,6 +1218,13 @@ WHERE user_id IN (
   #(sql, [dev.ParamBitArray(account_id)])
 }
 
+pub fn delete_page_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM page_log
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
 pub type GetSessionByToken {
   GetSessionByToken(
     id: BitArray,
