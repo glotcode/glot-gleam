@@ -32,7 +32,10 @@ pub type Status {
   SchedulingDelete
   CancelingDelete
   Saved
-  Error(String)
+  LoadError(String)
+  UsernameError(String)
+  DeleteError(String)
+  LogoutError(String)
 }
 
 pub type Msg {
@@ -75,13 +78,13 @@ pub fn update(
         }
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: Error(error.message)),
+          Model(..model, status: LoadError(error.message)),
           effect.none(),
           app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
-          Model(..model, status: Error("Could not load account.")),
+          Model(..model, status: LoadError("Could not load account.")),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -112,7 +115,9 @@ pub fn update(
           Model(
             ..model,
             username: username,
-            status: Error(result.unwrap_error(validation, "Invalid username.")),
+            status: UsernameError(
+              result.unwrap_error(validation, "Invalid username."),
+            ),
           ),
           effect.none(),
           app_event.NoAppEvent,
@@ -141,13 +146,16 @@ pub fn update(
         )
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: Error(error.message)),
+          Model(..model, status: DeleteError(error.message)),
           effect.none(),
           app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
-          Model(..model, status: Error("Could not schedule account deletion.")),
+          Model(
+            ..model,
+            status: DeleteError("Could not schedule account deletion."),
+          ),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -168,13 +176,16 @@ pub fn update(
         )
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: Error(error.message)),
+          Model(..model, status: DeleteError(error.message)),
           effect.none(),
           app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
-          Model(..model, status: Error("Could not cancel account deletion.")),
+          Model(
+            ..model,
+            status: DeleteError("Could not cancel account deletion."),
+          ),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -195,13 +206,13 @@ pub fn update(
         }
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: Error(error.message)),
+          Model(..model, status: UsernameError(error.message)),
           effect.none(),
           app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
-          Model(..model, status: Error("Could not update account.")),
+          Model(..model, status: UsernameError("Could not update account.")),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -216,13 +227,13 @@ pub fn update(
         )
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: Error(error.message)),
+          Model(..model, status: LogoutError(error.message)),
           effect.none(),
           app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
-          Model(..model, status: Error("Could not log out.")),
+          Model(..model, status: LogoutError("Could not log out.")),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -251,7 +262,7 @@ fn content(model: Model) -> Element(Msg) {
         html.text("Loading account..."),
       ])
 
-    option.None, Error(message) ->
+    option.None, LoadError(message) ->
       html.div([attribute.class("account-page__empty")], [
         html.p(
           [attribute.class("account-page__status account-page__status--error")],
@@ -390,29 +401,19 @@ fn status_view(status: Status) -> Element(Msg) {
       html.p([attribute.class("account-page__status")], [
         html.text("Saving account..."),
       ])
-    LoggingOut ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("Logging out..."),
-      ])
-    SchedulingDelete ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("Scheduling account deletion..."),
-      ])
-    CancelingDelete ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("Canceling account deletion..."),
-      ])
     Saved ->
       html.p([attribute.class("account-page__status")], [
         html.text("Account updated."),
       ])
-    Error(message) ->
+    UsernameError(message) ->
       html.p(
         [attribute.class("account-page__status account-page__status--error")],
         [
           html.text(message),
         ],
       )
+    LoggingOut | SchedulingDelete | CancelingDelete | LoadError(_)
+    | DeleteError(_) | LogoutError(_) -> html.text("")
   }
 }
 
@@ -442,6 +443,7 @@ fn delete_account_section(
   html.div([attribute.class("account-page__danger-zone")], [
     html.p([attribute.class("account-page__label")], [html.text(title)]),
     html.p([attribute.class("account-page__status")], [html.text(description)]),
+    delete_status_view(status),
     html.button(
       [
         attribute.type_("button"),
@@ -452,6 +454,28 @@ fn delete_account_section(
       [html.text(button_label)],
     ),
   ])
+}
+
+fn delete_status_view(status: Status) -> Element(Msg) {
+  case status {
+    SchedulingDelete ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Scheduling account deletion..."),
+      ])
+    CancelingDelete ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Canceling account deletion..."),
+      ])
+    DeleteError(message) ->
+      html.p(
+        [attribute.class("account-page__status account-page__status--error")],
+        [
+          html.text(message),
+        ],
+      )
+    Loading | Idle | Saving | LoggingOut | Saved | LoadError(_)
+    | UsernameError(_) | LogoutError(_) -> html.text("")
+  }
 }
 
 fn delete_account_description(account: account_dto.AccountResponse) -> String {
@@ -470,6 +494,7 @@ fn logout_section(status: Status) -> Element(Msg) {
     html.p([attribute.class("account-page__status")], [
       html.text("End your current session on this device."),
     ]),
+    logout_status_view(status),
     html.button(
       [
         attribute.type_("button"),
@@ -480,6 +505,24 @@ fn logout_section(status: Status) -> Element(Msg) {
       [html.text(logout_button_text(status))],
     ),
   ])
+}
+
+fn logout_status_view(status: Status) -> Element(Msg) {
+  case status {
+    LoggingOut ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Logging out..."),
+      ])
+    LogoutError(message) ->
+      html.p(
+        [attribute.class("account-page__status account-page__status--error")],
+        [
+          html.text(message),
+        ],
+      )
+    Loading | Idle | Saving | SchedulingDelete | CancelingDelete | Saved
+    | LoadError(_) | UsernameError(_) | DeleteError(_) -> html.text("")
+  }
 }
 
 fn button_text(status: Status) -> String {
@@ -511,6 +554,7 @@ fn delete_button_text(status: Status, delete_scheduled: Bool) -> String {
 fn is_busy(status: Status) -> Bool {
   case status {
     Saving | LoggingOut | SchedulingDelete | CancelingDelete -> True
-    Loading | Idle | Saved | Error(_) -> False
+    Loading | Idle | Saved | LoadError(_) | UsernameError(_) | DeleteError(_)
+    | LogoutError(_) -> False
   }
 }
