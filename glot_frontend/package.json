@@ -4,8 +4,8 @@
   "description": "glot",
   "main": "js/main.ts",
   "scripts": {
-    "dev": "concurrently -k \"bun run watch:gleam\" \"vite\"",
-    "watch:gleam": "watchexec -e gleam -w src -w ../glot_core/src -w gleam.toml -w ../glot_core/gleam.toml -- gleam build",
+    "dev": "concurrently -k \"bun run watch:build\" \"vite\"",
+    "watch:build": "watchexec --watch src --watch ../glot_core/src --watch gleam.toml --watch ../glot_core/gleam.toml --exts gleam,toml -- ../build_frontend.sh",
     "build": "vite build"
   },
   "type": "module",
