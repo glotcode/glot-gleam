@@ -137,7 +137,7 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
       track_pageview(r),
       session_effect,
       shortcut_effect,
-      clock.schedule_next_minute(MinuteTicked),
+      clock.schedule_next_tick(ClockTicked),
     ])
 
   #(
@@ -157,7 +157,7 @@ type Msg {
   UserNavigatedTo(route: route.Route)
   PageviewTracked(api.ApiResponse(Nil))
   SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
-  MinuteTicked(Timestamp)
+  ClockTicked(Timestamp)
   QuickActionsOpened
   QuickActionsDismissed
   QuickActionsClosed
@@ -176,9 +176,9 @@ type Msg {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.page_model {
-    MinuteTicked(now), _ -> #(
+    ClockTicked(now), _ -> #(
       Model(..model, now: now),
-      clock.schedule_next_minute(MinuteTicked),
+      clock.schedule_next_tick(ClockTicked),
     )
 
     SessionLoaded(result), _ -> {

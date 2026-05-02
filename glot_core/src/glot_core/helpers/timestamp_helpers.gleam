@@ -35,8 +35,8 @@ pub fn relative_label(value: Timestamp, now: Timestamp) -> String {
   let delta_seconds = value_seconds - now_seconds
   let absolute_delta = int.absolute_value(delta_seconds)
 
-  case absolute_delta < 5 {
-    True -> "just now"
+  case absolute_delta < 60 {
+    True -> "now"
     False -> relative_label_with_direction(delta_seconds, absolute_delta)
   }
 }
