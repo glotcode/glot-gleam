@@ -1,8 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 (
-    cd glot_frontend
+    cd "$SCRIPT_DIR/glot_frontend"
     gleam build
     bun run build
 )
