@@ -134,6 +134,7 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
     effect.batch([
       eff,
       page_effect,
+      track_pageview(r),
       session_effect,
       shortcut_effect,
       clock.schedule_next_minute(MinuteTicked),
