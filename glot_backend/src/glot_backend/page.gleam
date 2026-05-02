@@ -9,12 +9,15 @@ import glot_backend/effect/runtime
 import glot_backend/effect/total_program
 import glot_backend/erlang
 import glot_backend/home_page
+import glot_backend/page_layout
 import glot_backend/page/snippets_page_domain
 import glot_backend/page_response
 import glot_backend/server_timing
 import glot_backend/snippets_page
 import glot_backend/worker/language_version_cache_worker
 import glot_core/route
+import lustre/attribute
+import lustre/element
 import pog
 import wisp
 
@@ -62,7 +65,14 @@ fn handle_page_request(
   case page_request.route {
     route.Home ->
       page_response.PageResponse(
-        wisp.html_response(home_page.home_page(), 200),
+        wisp.html_response(
+          page_layout.document(
+            title: home_page.title(),
+            app_attributes: [],
+            app_children: [home_page.view()],
+          ),
+          200,
+        ),
         [],
       )
     route.Login -> spa_page()
@@ -74,6 +84,8 @@ fn handle_page_request(
         snippets_page_domain.load_view_model(ctx, after, before, username),
         runtime,
         ctx,
+        snippets_page.title(),
+        snippets_page.app_attributes,
         snippets_page.render,
       )
     route.NewSnippet(_) -> spa_page()
@@ -83,7 +95,17 @@ fn handle_page_request(
 }
 
 fn spa_page() -> page_response.PageResponse {
-  page_response.PageResponse(wisp.html_response(home_page.spa_page(), 200), [])
+  page_response.PageResponse(
+    wisp.html_response(
+      page_layout.document(
+        title: "glot.io",
+        app_attributes: [],
+        app_children: [],
+      ),
+      200,
+    ),
+    [],
+  )
 }
 
 fn run_page_program(
@@ -91,7 +113,9 @@ fn run_page_program(
   total_program: total_program.TotalProgram(a),
   runtime: runtime.Runtime,
   ctx: context.Context,
-  render: fn(a) -> String,
+  title: String,
+  app_attributes: fn(a) -> List(attribute.Attribute(Nil)),
+  render: fn(a) -> element.Element(Nil),
 ) -> page_response.PageResponse {
   let #(result, state) =
     total_program
@@ -101,7 +125,14 @@ fn run_page_program(
   case result {
     Ok(value) ->
       page_response.PageResponse(
-        wisp.html_response(render(value), 200),
+        wisp.html_response(
+          page_layout.document(
+            title: title,
+            app_attributes: app_attributes(value),
+            app_children: [render(value)],
+          ),
+          200,
+        ),
         state.effect_measurements,
       )
     Error(err) -> internal_page_error(page_name, err, state)

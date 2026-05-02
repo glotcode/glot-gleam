@@ -2,7 +2,7 @@ import gleam/list
 import gleam/option
 import gleam/string
 import glot_core/auth/session_dto
-import glot_core/page/footer
+import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/route
 import glot_frontend/account_page
@@ -300,8 +300,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn view(model: Model) -> Element(Msg) {
-  html.div([], [
-    top_bar.view(top_bar_model(model)),
+  let page_content =
     case model.page_model {
       EmptyPageModel -> {
         not_found_view()
@@ -336,9 +335,13 @@ fn view(model: Model) -> Element(Msg) {
         let elem = editor_page.view(page_model, current_user_id(model.session))
         element.map(elem, EditorPageMsg)
       }
-    },
-    site_footer(model.session),
-  ])
+    }
+
+  site_chrome.view(
+    top_bar_model: top_bar_model(model),
+    footer_account_route: current_user_route(model.session),
+    content: page_content,
+  )
 }
 
 fn current_user_id(session: SessionState) -> option.Option(uuid.Uuid) {
@@ -365,10 +368,6 @@ fn current_user_route(session: SessionState) -> route.Route {
     AuthenticatedSession(_) | LoadingSession -> route.Account
     AnonymousSession | SessionError -> route.Login
   }
-}
-
-fn site_footer(session: SessionState) -> Element(Msg) {
-  footer.view(account_route: current_user_route(session))
 }
 
 fn top_bar_model(model: Model) -> top_bar.ViewModel(Msg) {
