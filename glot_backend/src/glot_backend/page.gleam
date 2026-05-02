@@ -9,16 +9,17 @@ import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
 import glot_backend/effect/total_program
+import glot_backend/editor_page
 import glot_backend/erlang
 import glot_backend/home_page
 import glot_backend/page_layout
+import glot_backend/page/editor_page_domain
 import glot_backend/page/snippets_page_domain
 import glot_backend/page_response
 import glot_backend/server_timing
 import glot_backend/snippets_page
 import glot_backend/worker/log_worker
 import glot_backend/worker/language_version_cache_worker
-import glot_core/language
 import glot_core/route
 import lustre/attribute
 import lustre/element
@@ -85,6 +86,7 @@ fn handle_page_request(
         response: wisp.html_response(
           page_layout.document(
             title: home_page.title(),
+            head_children: [],
             app_attributes: [],
             app_children: [home_page.view()],
           ),
@@ -108,12 +110,33 @@ fn handle_page_request(
         snippets_page_domain.load_view_model(ctx, after, before, username),
         runtime,
         ctx,
-        snippets_page.title(),
+        fn(_) { snippets_page.title() },
+        fn(_) { [] },
         snippets_page.app_attributes,
         snippets_page.render,
       )
-    route.NewSnippet(language_slug) -> spa_page(new_snippet_title(language_slug))
-    route.Snippet(_) -> spa_page("glot.io - snippet")
+    route.NewSnippet(language_slug) ->
+      run_page_program(
+        "new snippet page",
+        editor_page_domain.load_new_view_model(language_slug),
+        runtime,
+        ctx,
+        editor_page.title,
+        editor_page.head_children,
+        editor_page.app_attributes,
+        editor_page.render,
+      )
+    route.Snippet(slug) ->
+      run_page_program(
+        "snippet page",
+        editor_page_domain.load_existing_view_model(ctx, slug),
+        runtime,
+        ctx,
+        editor_page.title,
+        editor_page.head_children,
+        editor_page.app_attributes,
+        editor_page.render,
+      )
     route.NotFound(_) -> {
       let state = empty_page_state()
       page_response.PageResponse(
@@ -136,6 +159,7 @@ fn spa_page(title: String) -> page_response.PageResponse {
     response: wisp.html_response(
       page_layout.document(
         title: title,
+        head_children: [],
         app_attributes: [],
         app_children: [],
       ),
@@ -151,19 +175,13 @@ fn spa_page(title: String) -> page_response.PageResponse {
   )
 }
 
-fn new_snippet_title(language_slug: String) -> String {
-  case language.from_string(language_slug) {
-    option.Some(lang) -> "glot.io - new " <> language.name(lang) <> " snippet"
-    option.None -> "glot.io - new " <> language_slug <> " snippet"
-  }
-}
-
 fn run_page_program(
   page_name: String,
   total_program: total_program.TotalProgram(a),
   runtime: runtime.Runtime,
   ctx: context.Context,
-  title: String,
+  title: fn(a) -> String,
+  head_children: fn(a) -> List(element.Element(Nil)),
   app_attributes: fn(a) -> List(attribute.Attribute(Nil)),
   render: fn(a) -> element.Element(Nil),
 ) -> page_response.PageResponse {
@@ -177,7 +195,8 @@ fn run_page_program(
       page_response.PageResponse(
         response: wisp.html_response(
           page_layout.document(
-            title: title,
+            title: title(value),
+            head_children: head_children(value),
             app_attributes: app_attributes(value),
             app_children: [render(value)],
           ),
