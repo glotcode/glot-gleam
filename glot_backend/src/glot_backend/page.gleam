@@ -1,5 +1,6 @@
 import gleam/erlang/process
 import gleam/http/request
+import gleam/option
 import gleam/string
 import glot_backend/context
 import glot_backend/effect/error
@@ -15,6 +16,7 @@ import glot_backend/page_response
 import glot_backend/server_timing
 import glot_backend/snippets_page
 import glot_backend/worker/language_version_cache_worker
+import glot_core/language
 import glot_core/route
 import lustre/attribute
 import lustre/element
@@ -75,9 +77,9 @@ fn handle_page_request(
         ),
         [],
       )
-    route.Login -> spa_page()
-    route.Account -> spa_page()
-    route.AccountSnippets(_, _) -> spa_page()
+    route.Login -> spa_page("glot.io - login")
+    route.Account -> spa_page("glot.io - account")
+    route.AccountSnippets(_, _) -> spa_page("glot.io - account snippets")
     route.Snippets(after:, before:, username:) ->
       run_page_program(
         "snippets page",
@@ -88,17 +90,17 @@ fn handle_page_request(
         snippets_page.app_attributes,
         snippets_page.render,
       )
-    route.NewSnippet(_) -> spa_page()
-    route.Snippet(_) -> spa_page()
+    route.NewSnippet(language_slug) -> spa_page(new_snippet_title(language_slug))
+    route.Snippet(_) -> spa_page("glot.io - snippet")
     route.NotFound(_) -> page_response.PageResponse(wisp.not_found(), [])
   }
 }
 
-fn spa_page() -> page_response.PageResponse {
+fn spa_page(title: String) -> page_response.PageResponse {
   page_response.PageResponse(
     wisp.html_response(
       page_layout.document(
-        title: "glot.io",
+        title: title,
         app_attributes: [],
         app_children: [],
       ),
@@ -106,6 +108,13 @@ fn spa_page() -> page_response.PageResponse {
     ),
     [],
   )
+}
+
+fn new_snippet_title(language_slug: String) -> String {
+  case language.from_string(language_slug) {
+    option.Some(lang) -> "glot.io - new " <> language.name(lang) <> " snippet"
+    option.None -> "glot.io - new " <> language_slug <> " snippet"
+  }
 }
 
 fn run_page_program(
