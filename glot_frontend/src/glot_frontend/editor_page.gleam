@@ -692,20 +692,25 @@ pub fn update_helper(
   }
 }
 
-pub fn view(model: Model, current_user_id: option.Option(Uuid)) -> Element(Msg) {
+pub fn view(
+  model: Model,
+  current_user_id: option.Option(Uuid),
+  now: Timestamp,
+) -> Element(Msg) {
   case model {
     UnsupportedLanguage(lang) ->
       html.div([], [html.text("Unsupported language: " <> lang)])
     LoadingSnippet(_slug, _settings) ->
       html.div([], [html.text("Loading snippet...")])
     LoadError(message) -> html.div([], [html.text(message)])
-    SupportedLanguage(model) -> view_helper(model, current_user_id)
+    SupportedLanguage(model) -> view_helper(model, current_user_id, now)
   }
 }
 
 fn view_helper(
   model: RealModel,
   current_user_id: option.Option(Uuid),
+  now: Timestamp,
 ) -> Element(Msg) {
   let can_edit_title =
     model.slug == option.None || is_owner(model, current_user_id)
@@ -743,7 +748,7 @@ fn view_helper(
       edit_entry_dialog_view(model),
       settings_dialog_view(model),
       save_dialog_view(model, current_user_id),
-      restore_draft_dialog_view(model),
+      restore_draft_dialog_view(model, now),
       snippet_info_dialog_view(model),
     ],
     tabbar_children: tabbar_children(model),
@@ -1303,22 +1308,15 @@ fn save_dialog_children(
   }
 }
 
-fn restore_draft_dialog_view(model: RealModel) -> Element(Msg) {
-  let restore_copy = case model.slug {
-    option.None ->
-      "A local draft from the last 24 hours was found for this new snippet. Do you want to restore it?"
-    option.Some(_) ->
-      "A newer local draft was found for this snippet. Do you want to restore your unsaved local changes?"
-  }
-
+fn restore_draft_dialog_view(model: RealModel, now: Timestamp) -> Element(Msg) {
   let children = case model.pending_restore_draft {
-    option.Some(_) -> [
+    option.Some(draft) -> [
       html.div([attribute.class("editor-page__dialog-form")], [
         html.label([attribute.class("editor-page__dialog-label")], [
           html.text("Restore draft"),
         ]),
         html.p([attribute.class("editor-page__dialog-copy")], [
-          html.text(restore_copy),
+          html.text(restore_draft_copy(model.slug, draft.saved_at_ms, now)),
         ]),
         html.div([attribute.class("editor-page__dialog-actions")], [
           html.button(
@@ -1354,6 +1352,29 @@ fn restore_draft_dialog_view(model: RealModel) -> Element(Msg) {
     ],
     children,
   )
+}
+
+fn restore_draft_copy(
+  slug: option.Option(String),
+  saved_at_ms: Int,
+  now: Timestamp,
+) -> String {
+  let saved_at =
+    timestamp_helpers.relative_label(
+      timestamp_helpers.from_unix_milliseconds(saved_at_ms),
+      now,
+    )
+
+  case slug {
+    option.None ->
+      "A local draft saved "
+      <> saved_at
+      <> " was found for this new snippet. Do you want to restore it?"
+    option.Some(_) ->
+      "A newer local draft saved "
+      <> saved_at
+      <> " was found for this snippet. Do you want to restore your unsaved local changes?"
+  }
 }
 
 fn snippet_info_dialog_view(model: RealModel) -> Element(Msg) {

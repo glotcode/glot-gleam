@@ -1,11 +1,12 @@
 import gleam/json
 import gleam/option
+import gleam/time/timestamp.{type Timestamp}
 import glot_core/page/snippets
 import glot_core/pagination_model
 import glot_core/snippet/snippet_dto
 import glot_frontend/api
-import lustre/effect.{type Effect}
 import lustre/element.{type Element}
+import lustre/effect.{type Effect}
 import glot_frontend/ssr_data
 
 pub type Model {
@@ -60,8 +61,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(model: Model) -> Element(Msg) {
-  snippets.view(to_view_model(model))
+pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
+  snippets.view(to_view_model(model, now))
 }
 
 fn load_page(
@@ -94,10 +95,11 @@ fn from_view_model(view_model: snippets.ViewModel) -> Model {
   )
 }
 
-fn to_view_model(model: Model) -> snippets.ViewModel {
+fn to_view_model(model: Model, now: Timestamp) -> snippets.ViewModel {
   snippets.ViewModel(
     page: model.page,
     username: model.username,
+    now: now,
     state: model.state,
   )
 }

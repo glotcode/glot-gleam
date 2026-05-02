@@ -19,6 +19,7 @@ pub fn load_view_model(
       snippets.ViewModel(
         page: response.page,
         username: username,
+        now: ctx.timestamp,
         state: snippets.Ready,
       )
     })
@@ -27,6 +28,7 @@ pub fn load_view_model(
     snippets.ViewModel(
       page: snippets.empty_page(),
       username: username,
+      now: ctx.timestamp,
       state: snippets.Error(page_error_message(err)),
     )
   })

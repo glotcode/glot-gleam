@@ -1,8 +1,8 @@
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option
-import gleam/time/calendar
-import gleam/time/timestamp
+import gleam/time/timestamp.{type Timestamp}
+import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/route
@@ -176,7 +176,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(model: Model) -> Element(Msg) {
+pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
     html.main([attribute.class("app-shell")], [
@@ -200,7 +200,7 @@ pub fn view(model: Model) -> Element(Msg) {
           ]),
         ]),
         status_view(model),
-        snippets_table(model),
+        snippets_table(model, now),
       ]),
     ]),
     delete_confirmation_dialog(model),
@@ -288,7 +288,7 @@ fn status_view(model: Model) -> Element(Msg) {
   }
 }
 
-fn snippets_table(model: Model) -> Element(Msg) {
+fn snippets_table(model: Model, now: Timestamp) -> Element(Msg) {
   let deleting_slug = deleting_slug(model.state)
 
   html.div([attribute.class("snippets-table snippets-table--manage")], [
@@ -314,7 +314,7 @@ fn snippets_table(model: Model) -> Element(Msg) {
     ),
     html.div([attribute.class("snippets-table__body")], {
       pagination_model.items(model.page)
-      |> list.map(fn(snippet) { snippet_row(snippet, deleting_slug) })
+      |> list.map(fn(snippet) { snippet_row(snippet, deleting_slug, now) })
     }),
   ])
 }
@@ -322,6 +322,7 @@ fn snippets_table(model: Model) -> Element(Msg) {
 fn snippet_row(
   snippet: snippet_dto.SnippetResponse,
   deleting_slug: option.Option(String),
+  now: Timestamp,
 ) -> Element(Msg) {
   let is_deleting = deleting_slug == option.Some(snippet.slug)
 
@@ -352,7 +353,7 @@ fn snippet_row(
         "snippets-table__cell",
         "Updated",
         route.Snippet(snippet.slug),
-        timestamp_label(snippet.updated_at),
+        timestamp_helpers.relative_label(snippet.updated_at, now),
       ),
       html.div(
         [attribute.class("snippets-table__cell snippets-table__actions")],
@@ -499,8 +500,4 @@ fn find_snippet(
     Ok(snippet) -> option.Some(snippet)
     _ -> option.None
   }
-}
-
-fn timestamp_label(value: timestamp.Timestamp) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
 }

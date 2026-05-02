@@ -2,10 +2,11 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/calendar
-import gleam/time/timestamp
+import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/account_dto
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import glot_core/helpers/timestamp_helpers
 import glot_core/route
 import glot_frontend/api
 import glot_frontend/app_event
@@ -241,7 +242,7 @@ pub fn update(
   }
 }
 
-pub fn view(model: Model) -> Element(Msg) {
+pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
     html.main([attribute.class("app-shell app-shell--narrow")], [
@@ -249,13 +250,13 @@ pub fn view(model: Model) -> Element(Msg) {
         html.h2([attribute.class("account-page__title")], [
           html.text("Account"),
         ]),
-        content(model),
+        content(model, now),
       ]),
     ]),
   ])
 }
 
-fn content(model: Model) -> Element(Msg) {
+fn content(model: Model, now: Timestamp) -> Element(Msg) {
   case model.account, model.status {
     option.None, Loading ->
       html.p([attribute.class("account-page__status")], [
@@ -283,13 +284,14 @@ fn content(model: Model) -> Element(Msg) {
         html.text("No account loaded."),
       ])
 
-    option.Some(account), _ -> account_form(model, account)
+    option.Some(account), _ -> account_form(model, account, now)
   }
 }
 
 fn account_form(
   model: Model,
   account: account_dto.AccountResponse,
+  now: Timestamp,
 ) -> Element(Msg) {
   html.div([attribute.class("account-page__panels")], [
     html.section([attribute.class("app-panel")], [
@@ -318,7 +320,7 @@ fn account_form(
       html.h3([attribute.class("account-page__section-title")], [
         html.text("Danger Zone"),
       ]),
-      delete_account_section(account, model.status),
+      delete_account_section(account, model.status, now),
     ]),
     html.section([attribute.class("app-panel")], [
       html.h3([attribute.class("account-page__section-title")], [
@@ -420,12 +422,13 @@ fn status_view(status: Status) -> Element(Msg) {
 fn delete_account_section(
   account: account_dto.AccountResponse,
   status: Status,
+  now: Timestamp,
 ) -> Element(Msg) {
   let #(description, button_msg, button_class, title, button_label) = case
     account.delete_scheduled
   {
     True -> #(
-      delete_account_description(account),
+      delete_account_description(account, now),
       CancelDeleteSubmitted,
       "account-page__button account-page__button--secondary",
       "Delete scheduled",
@@ -478,11 +481,14 @@ fn delete_status_view(status: Status) -> Element(Msg) {
   }
 }
 
-fn delete_account_description(account: account_dto.AccountResponse) -> String {
+fn delete_account_description(
+  account: account_dto.AccountResponse,
+  now: Timestamp,
+) -> String {
   case account.delete_scheduled_at {
     option.Some(delete_scheduled_at) ->
-      "Your account is scheduled for deletion at "
-      <> timestamp.to_rfc3339(delete_scheduled_at, calendar.utc_offset)
+      "Your account is scheduled for deletion "
+      <> timestamp_helpers.relative_label(delete_scheduled_at, now)
       <> ". Cancel this if you want to keep your data."
     option.None ->
       "Your account is scheduled for deletion. Cancel this if you want to keep your data."

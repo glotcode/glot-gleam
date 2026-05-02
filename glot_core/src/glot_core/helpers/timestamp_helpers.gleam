@@ -23,6 +23,66 @@ pub fn to_microseconds(ts: Timestamp) -> Int {
   seconds * 1_000_000 + nanos / 1_000
 }
 
+pub fn from_unix_milliseconds(ms: Int) -> Timestamp {
+  let seconds = ms / 1000
+  let millis = ms - seconds * 1000
+  timestamp.from_unix_seconds_and_nanoseconds(seconds, millis * 1_000_000)
+}
+
+pub fn relative_label(value: Timestamp, now: Timestamp) -> String {
+  let #(value_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(value)
+  let #(now_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(now)
+  let delta_seconds = value_seconds - now_seconds
+  let absolute_delta = int.absolute_value(delta_seconds)
+
+  case absolute_delta < 5 {
+    True -> "just now"
+    False -> relative_label_with_direction(delta_seconds, absolute_delta)
+  }
+}
+
+fn relative_label_with_direction(delta_seconds: Int, absolute_delta: Int) -> String {
+  let #(count, unit) = relative_unit(absolute_delta)
+  let phrase = int.to_string(count) <> " " <> pluralize(unit, count)
+
+  case delta_seconds < 0 {
+    True -> phrase <> " ago"
+    False -> "in " <> phrase
+  }
+}
+
+fn relative_unit(absolute_delta: Int) -> #(Int, String) {
+  first_matching_relative_unit(absolute_delta, [
+    #(31_536_000, "year"),
+    #(2_592_000, "month"),
+    #(604_800, "week"),
+    #(86_400, "day"),
+    #(3600, "hour"),
+    #(60, "minute"),
+  ])
+}
+
+fn first_matching_relative_unit(
+  absolute_delta: Int,
+  units: List(#(Int, String)),
+) -> #(Int, String) {
+  case units {
+    [#(seconds_per_unit, unit), ..rest] ->
+      case absolute_delta >= seconds_per_unit {
+        True -> #(absolute_delta / seconds_per_unit, unit)
+        False -> first_matching_relative_unit(absolute_delta, rest)
+      }
+    [] -> #(absolute_delta, "second")
+  }
+}
+
+fn pluralize(unit: String, count: Int) -> String {
+  case count == 1 {
+    True -> unit
+    False -> unit <> "s"
+  }
+}
+
 pub fn one_day_ago(now: Timestamp) -> Timestamp {
   let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(now)
   timestamp.from_unix_seconds_and_nanoseconds(seconds - 86_400, nanos)

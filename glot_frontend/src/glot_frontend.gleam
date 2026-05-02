@@ -1,6 +1,7 @@
 import gleam/list
 import gleam/option
 import gleam/string
+import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/session_dto
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
@@ -9,6 +10,7 @@ import glot_frontend/account_page
 import glot_frontend/api
 import glot_frontend/app_dialog
 import glot_frontend/app_event
+import glot_frontend/clock
 import glot_frontend/editor_page
 import glot_frontend/home_page
 import glot_frontend/keyboard_shortcuts
@@ -36,6 +38,7 @@ type Model {
     route: route.Route,
     page_model: PageModel,
     session: SessionState,
+    now: Timestamp,
     quick_action_query: String,
     quick_action_selected_index: Int,
   )
@@ -127,13 +130,20 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
   let shortcut_effect =
     keyboard_shortcuts.bind(QuickActionsOpened, EditorRunShortcutPressed)
   let effects =
-    effect.batch([eff, page_effect, session_effect, shortcut_effect])
+    effect.batch([
+      eff,
+      page_effect,
+      session_effect,
+      shortcut_effect,
+      clock.schedule_next_minute(MinuteTicked),
+    ])
 
   #(
     Model(
       route: r,
       page_model: page_model,
       session: LoadingSession,
+      now: clock.now(),
       quick_action_query: "",
       quick_action_selected_index: 0,
     ),
@@ -144,6 +154,7 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
 type Msg {
   UserNavigatedTo(route: route.Route)
   SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
+  MinuteTicked(Timestamp)
   QuickActionsOpened
   QuickActionsDismissed
   QuickActionsClosed
@@ -162,6 +173,11 @@ type Msg {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.page_model {
+    MinuteTicked(now), _ -> #(
+      Model(..model, now: now),
+      clock.schedule_next_minute(MinuteTicked),
+    )
+
     SessionLoaded(result), _ -> {
       let session = case result {
         api.ApiSuccess(option.Some(session)) -> AuthenticatedSession(session)
@@ -317,22 +333,23 @@ fn view(model: Model) -> Element(Msg) {
       }
 
       AccountPage(page_model) -> {
-        let elem = account_page.view(page_model)
+        let elem = account_page.view(page_model, model.now)
         element.map(elem, AccountPageMsg)
       }
 
       ManageSnippetsPage(page_model) -> {
-        let elem = manage_snippets_page.view(page_model)
+        let elem = manage_snippets_page.view(page_model, model.now)
         element.map(elem, ManageSnippetsPageMsg)
       }
 
       SnippetsPage(page_model) -> {
-        let elem = snippets_page.view(page_model)
+        let elem = snippets_page.view(page_model, model.now)
         element.map(elem, SnippetsPageMsg)
       }
 
       EditorPage(page_model) -> {
-        let elem = editor_page.view(page_model, current_user_id(model.session))
+        let elem =
+          editor_page.view(page_model, current_user_id(model.session), model.now)
         element.map(elem, EditorPageMsg)
       }
     }

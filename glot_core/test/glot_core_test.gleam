@@ -2,6 +2,7 @@ import gleam/option
 import gleam/time/timestamp
 import gleeunit
 import glot_core/auth/user_model
+import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/snippet/snippet_model
@@ -143,6 +144,27 @@ pub fn pagination_validate_rejects_limit_above_max_test() {
       100,
     )
     == Error("limit must be less than or equal to 100")
+}
+
+pub fn timestamp_relative_label_for_past_test() {
+  let now = timestamp.from_unix_seconds_and_nanoseconds(3_600, 0)
+  let created_at = timestamp.from_unix_seconds_and_nanoseconds(3_300, 0)
+
+  assert timestamp_helpers.relative_label(created_at, now) == "5 minutes ago"
+}
+
+pub fn timestamp_relative_label_for_future_test() {
+  let now = timestamp.from_unix_seconds_and_nanoseconds(3_600, 0)
+  let scheduled_at = timestamp.from_unix_seconds_and_nanoseconds(10_800, 0)
+
+  assert timestamp_helpers.relative_label(scheduled_at, now) == "in 2 hours"
+}
+
+pub fn timestamp_from_unix_milliseconds_test() {
+  let ts = timestamp_helpers.from_unix_milliseconds(1_234_567_890)
+
+  assert timestamp.to_unix_seconds_and_nanoseconds(ts)
+    == #(1_234_567, 890_000_000)
 }
 
 pub fn paginate_initial_page_test() {

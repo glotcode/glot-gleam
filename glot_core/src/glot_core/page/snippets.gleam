@@ -3,8 +3,8 @@ import gleam/json
 import gleam/list
 import gleam/option
 import gleam/string
-import gleam/time/calendar
-import gleam/time/timestamp
+import gleam/time/timestamp.{type Timestamp}
+import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/route
@@ -25,6 +25,7 @@ pub type ViewModel {
   ViewModel(
     page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
     username: option.Option(String),
+    now: Timestamp,
     state: State,
   )
 }
@@ -50,8 +51,9 @@ pub fn decoder() -> decode.Decoder(ViewModel) {
     pagination_model.page_decoder("snippets", snippet_dto.response_decoder()),
   )
   use username <- decode.field("username", decode.optional(decode.string))
+  use now <- decode.field("now", timestamp_helpers.decoder())
   use state <- decode.field("state", state_decoder())
-  decode.success(ViewModel(page:, username:, state:))
+  decode.success(ViewModel(page:, username:, now:, state:))
 }
 
 pub fn encode(view_model: ViewModel) -> json.Json {
@@ -65,6 +67,7 @@ pub fn encode(view_model: ViewModel) -> json.Json {
       ),
     ),
     #("username", json.nullable(view_model.username, json.string)),
+    #("now", timestamp_helpers.encode(view_model.now)),
     #("state", encode_state(view_model.state)),
   ])
 }
@@ -87,7 +90,7 @@ pub fn view(model: ViewModel) -> Element(msg) {
           ]),
         ]),
         status_view(model),
-        snippets_table(pagination_model.items(model.page)),
+        snippets_table(pagination_model.items(model.page), model.now),
       ]),
     ]),
   ])
@@ -208,7 +211,10 @@ fn active_filter_view(username: option.Option(String)) -> Element(msg) {
   }
 }
 
-fn snippets_table(snippets: List(snippet_dto.SnippetResponse)) -> Element(msg) {
+fn snippets_table(
+  snippets: List(snippet_dto.SnippetResponse),
+  now: Timestamp,
+) -> Element(msg) {
   html.div([attribute.class("snippets-table")], [
     html.div([attribute.class("snippets-table__head")], [
       html.span([attribute.class("snippets-table__heading")], [
@@ -225,12 +231,12 @@ fn snippets_table(snippets: List(snippet_dto.SnippetResponse)) -> Element(msg) {
       ]),
     ]),
     html.div([attribute.class("snippets-table__body")], {
-      snippets |> list.map(snippet_row)
+      snippets |> list.map(fn(snippet) { snippet_row(snippet, now) })
     }),
   ])
 }
 
-fn snippet_row(snippet: snippet_dto.SnippetResponse) -> Element(msg) {
+fn snippet_row(snippet: snippet_dto.SnippetResponse, now: Timestamp) -> Element(msg) {
   html.div([attribute.class("snippets-table__row")], [
     snippet_cell_link(
       "snippets-table__cell snippets-table__cell--language",
@@ -248,7 +254,7 @@ fn snippet_row(snippet: snippet_dto.SnippetResponse) -> Element(msg) {
       "snippets-table__cell",
       "Created",
       route.Snippet(snippet.slug),
-      timestamp_label(snippet.created_at),
+      timestamp_helpers.relative_label(snippet.created_at, now),
     ),
     html.a(
       [
@@ -338,8 +344,4 @@ fn truncate_stem_middle(stem: String, max_length: Int) -> String {
         }
       }
   }
-}
-
-fn timestamp_label(value: timestamp.Timestamp) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
 }
