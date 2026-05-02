@@ -950,10 +950,15 @@ a.snippets-table__cell:hover {
 
 .app-quick-actions {
   width: min(38rem, calc(100vw - 1.5rem));
+  height: min(80vh, calc(100vh - 1.5rem));
+  max-height: calc(100vh - 1.5rem);
 }
 
 .app-quick-actions__form {
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 1.1rem;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .app-quick-actions__header {
@@ -999,7 +1004,10 @@ a.snippets-table__cell:hover {
 
 .app-quick-actions__sections {
   display: grid;
+  align-content: start;
   gap: 1rem;
+  min-height: 0;
+  overflow: auto;
 }
 
 .app-quick-actions__list {
@@ -1065,6 +1073,8 @@ a.snippets-table__cell:hover {
 
 .app-quick-actions__empty {
   margin: 0;
+  min-height: 0;
+  overflow: auto;
 }
 
 .editor-page__dialog {
