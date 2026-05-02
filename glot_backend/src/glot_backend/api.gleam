@@ -4,6 +4,7 @@ import gleam/dynamic/decode
 import gleam/erlang/process
 import gleam/int
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/string
 import glot_backend/context
@@ -205,15 +206,17 @@ fn require_api_request(
             Ok(api_request) -> next(api_request)
             Error(decode_errors) ->
               error_response(
+                400,
                 "invalid_api_request",
                 "Failed to decode as api request: "
                   <> string.inspect(decode_errors),
               )
           }
         Error(_) ->
-          error_response("invalid_utf8", "Request body is not valid UTF-8")
+          error_response(400, "invalid_utf8", "Request body is not valid UTF-8")
       }
-    Error(_) -> error_response("body_read_error", "Failed to read request body")
+    Error(_) ->
+      error_response(400, "body_read_error", "Failed to read request body")
   }
 }
 
@@ -269,17 +272,13 @@ fn api_result_to_response(
 }
 
 fn success_response(data: json.Json) -> wisp.Response {
-  wisp.json_response(
-    json.to_string(json.object([#("ok", json.bool(True)), #("data", data)])),
-    200,
-  )
+  wisp.json_response(json.to_string(json.object([#("data", data)])), 200)
 }
 
-fn error_response(code: String, message: String) -> wisp.Response {
+fn error_response(status: Int, code: String, message: String) -> wisp.Response {
   wisp.json_response(
     json.to_string(
       json.object([
-        #("ok", json.bool(False)),
         #(
           "error",
           json.object([
@@ -289,7 +288,7 @@ fn error_response(code: String, message: String) -> wisp.Response {
         ),
       ]),
     ),
-    200,
+    status,
   )
 }
 
@@ -369,95 +368,92 @@ fn result_to_response(
 }
 
 fn error_to_response(error: error.Error) -> wisp.Response {
+  let #(status, code, message) = api_error_details(error)
+
   case error {
-    error.JsonParseError(error) ->
-      error_response(
-        "json_parse_error",
-        "Decode error: " <> string.inspect(error),
-      )
-    error.DecodeError(errors) ->
-      error_response("decode_error", "Decode error: " <> string.inspect(errors))
-    error.EmailInvalidError(message) -> {
-      error_response("email_invalid", "Invalid email: " <> message)
-    }
+    error.JsonParseError(_error) ->
+      error_response(status, code, message)
+    error.DecodeError(_errors) -> error_response(status, code, message)
+    error.EmailInvalidError(_message) -> error_response(status, code, message)
     error.ValidationError(message) -> {
       wisp.log_error("Validation error: " <> message)
-      error_response("validation_error", message)
+      error_response(status, code, message)
     }
-    error.TooManyRequestsError(count, config) -> {
-      error_response(
-        "too_many_requests",
-        "Too many requests: "
-          <> int.to_string(count)
-          <> " / "
-          <> int.to_string(config.max_requests),
-      )
+    error.NotFoundError(code, message) -> {
+      wisp.log_error("Not found error: " <> code <> ":" <> message)
+      error_response(status, code, message)
     }
+    error.ConflictError(code, message) -> {
+      wisp.log_error("Conflict error: " <> code <> ":" <> message)
+      error_response(status, code, message)
+    }
+    error.TooManyRequestsError(_count, _config) ->
+      error_response(status, code, message)
     error.QueryError(error.DbQueryError(message: message)) -> {
       wisp.log_error("Query error: " <> message)
-      error_response("query_error", "Failed to query data")
+      error_response(status, code, message)
     }
     error.CommandError(error.DbCommandError(message: message)) -> {
       wisp.log_error("Command error: " <> message)
-      error_response("command_error", "Failed to run command")
+      error_response(status, code, message)
     }
     error.TransactionError(error.DbTransactionError(message: message)) -> {
       wisp.log_error("Transaction error: " <> message)
-      error_response("transaction_error", "Transaction failed")
+      error_response(status, code, message)
     }
     error.LoginError(login_error) ->
       case login_error {
         error.InvalidTokenError -> {
           wisp.log_error("Login error: invalid token")
-          error_response("login_error", "Invalid login token")
+          error_response(status, code, message)
         }
         error.TokenUsedError -> {
           wisp.log_error("Login error: token used")
-          error_response("login_error", "Login token already used")
+          error_response(status, code, message)
         }
         error.TokenExpiredError -> {
           wisp.log_error("Login error: token expired")
-          error_response("login_error", "Login token expired")
+          error_response(status, code, message)
         }
       }
     error.SendEmailError(send_email_error) ->
       case send_email_error {
         error.PublicSendEmailError(message: message) -> {
           wisp.log_error("Send email error (public): " <> message)
-          error_response("send_email_error", message)
+          error_response(status, code, message)
         }
         error.InternalSendEmailError(message: message) -> {
           wisp.log_error("Send email error (private): " <> message)
-          error_response("send_email_error", "Failed to send email")
+          error_response(status, code, message)
         }
       }
     error.SessionError(session_error) ->
       case session_error {
         error.MissingSessionTokenError -> {
           wisp.log_error("Session error: missing session token")
-          error_response("session_error", "Missing session token")
+          error_response(status, code, message)
         }
         error.SessionNotFoundError -> {
           wisp.log_error("Session error: session not found")
-          error_response("session_error", "Session not found")
+          error_response(status, code, message)
         }
         error.SessionExpiredError -> {
           wisp.log_error("Session error: session expired")
-          error_response("session_error", "Session expired")
+          error_response(status, code, message)
         }
       }
     error.ClientInfoError(client_info_error) ->
       case client_info_error {
         error.MissingUserIdAndIpError -> {
           wisp.log_error("Client info error: missing user_id and ip")
-          error_response("client_info_error", "Missing user_id and ip")
+          error_response(status, code, message)
         }
       }
     error.AuthorizationError(authorization_error) ->
       case authorization_error {
         error.NotOwnerError -> {
           wisp.log_error("Authorization error: not owner")
-          error_response("authorization_error", "Not authorized")
+          error_response(status, code, message)
         }
       }
     error.AccountStateError(account_state_error) ->
@@ -472,19 +468,153 @@ fn error_to_response(error: error.Error) -> wisp.Response {
             <> " not allowed for "
             <> api_action.to_string(action),
           )
-          error_response("account_state_error", "Account state not allowed")
+          error_response(status, code, message)
         }
       }
     error.RunError(run_request_error) ->
       case run_request_error {
         error.PublicRunRequestError(message: message) -> {
           wisp.log_error("Run request error (public): " <> message)
-          error_response("run_error", message)
+          error_response(status, code, message)
         }
         error.InternalRunRequestError(message: message) -> {
           wisp.log_error("Run request error (private): " <> message)
-          error_response("run_error", "Failed to run code")
+          error_response(status, code, message)
         }
       }
   }
+}
+
+pub fn error_status(error: error.Error) -> Int {
+  let #(status, _, _) = api_error_details(error)
+  status
+}
+
+pub fn api_error_details(error: error.Error) -> #(Int, String, String) {
+  case error {
+    error.JsonParseError(parse_error) ->
+      #(400, "json_parse_error", "Decode error: " <> string.inspect(parse_error))
+    error.DecodeError(errors) ->
+      #(400, "decode_error", "Decode error: " <> string.inspect(errors))
+    error.EmailInvalidError(message) ->
+      #(400, "email_invalid", "Invalid email: " <> message)
+    error.ValidationError(message) ->
+      #(400, validation_error_code(message), message)
+    error.NotFoundError(code, message) -> #(404, code, message)
+    error.ConflictError(code, message) -> #(409, code, message)
+    error.TooManyRequestsError(count, config) ->
+      #(
+        429,
+        "too_many_requests",
+        "Too many requests: "
+          <> int.to_string(count)
+          <> " / "
+          <> int.to_string(config.max_requests),
+      )
+    error.QueryError(_) -> #(500, "query_error", "Failed to query data")
+    error.CommandError(_) -> #(500, "command_error", "Failed to run command")
+    error.TransactionError(_) -> #(500, "transaction_error", "Transaction failed")
+    error.ClientInfoError(_) ->
+      #(500, "client_info_error", "Missing user_id and ip")
+    error.LoginError(login_error) ->
+      case login_error {
+        error.InvalidTokenError ->
+          #(401, "login_invalid_token", "Invalid login token")
+        error.TokenUsedError ->
+          #(409, "login_token_used", "Login token already used")
+        error.TokenExpiredError ->
+          #(401, "login_token_expired", "Login token expired")
+      }
+    error.SendEmailError(send_email_error) ->
+      case send_email_error {
+        error.PublicSendEmailError(message: message) ->
+          #(400, "send_email_public_error", message)
+        error.InternalSendEmailError(message: _) ->
+          #(500, "send_email_internal_error", "Failed to send email")
+      }
+    error.SessionError(session_error) ->
+      case session_error {
+        error.MissingSessionTokenError ->
+          #(401, "session_missing_token", "Missing session token")
+        error.SessionNotFoundError ->
+          #(401, "session_not_found", "Session not found")
+        error.SessionExpiredError ->
+          #(401, "session_expired", "Session expired")
+      }
+    error.AuthorizationError(authorization_error) ->
+      case authorization_error {
+        error.NotOwnerError ->
+          #(403, "authorization_not_owner", "Not authorized")
+      }
+    error.AccountStateError(_) ->
+      #(403, "account_state_forbidden", "Account state not allowed")
+    error.RunError(run_request_error) ->
+      case run_request_error {
+        error.PublicRunRequestError(message: message) ->
+          #(400, "run_public_error", message)
+        error.InternalRunRequestError(message: _) ->
+          #(500, "run_internal_error", "Failed to run code")
+      }
+  }
+}
+
+fn validation_error_code(message: String) -> String {
+  case message {
+    "files must contain at least one file" -> "validation_files_missing"
+    _ ->
+      case string.split_once(message, " must not be empty") {
+        Ok(#(field, "")) -> "validation_" <> validation_field_slug(field) <> "_empty"
+        Ok(#(_, _)) ->
+          case is_spam_validation_message(message) {
+            True -> "validation_spam_detected"
+            False -> "validation_error"
+          }
+        Error(_) ->
+          case string.split_once(message, " must be at most ") {
+            Ok(#(field, rest)) ->
+              case string.ends_with(rest, " characters") {
+                True ->
+                  "validation_" <> validation_field_slug(field) <> "_too_long"
+                False ->
+                  case is_spam_validation_message(message) {
+                    True -> "validation_spam_detected"
+                    False -> "validation_error"
+                  }
+              }
+            _ ->
+              case is_spam_validation_message(message) {
+                True -> "validation_spam_detected"
+                False -> "validation_error"
+              }
+          }
+      }
+  }
+}
+
+fn is_spam_validation_message(message: String) -> Bool {
+  string.contains(message, " contains multiple links")
+  || string.contains(message, " matched spam phrases: ")
+  || string.contains(message, " contains hidden characters")
+  || message == "suspicious filename combined with links"
+}
+
+fn validation_field_slug(field: String) -> String {
+  field
+  |> string.lowercase
+  |> string.replace(each: ".", with: "_")
+  |> string.replace(each: "[", with: "_")
+  |> string.replace(each: "]", with: "")
+  |> string.to_graphemes
+  |> list.filter(fn(part) { part != "" })
+  |> list.fold("", fn(acc, part) {
+    case part, acc {
+      "_", "" -> acc
+      "_", acc ->
+        case string.ends_with(acc, "_") {
+          True -> acc
+          False -> acc <> "_"
+        }
+      part, acc -> acc <> part
+    }
+  })
 }

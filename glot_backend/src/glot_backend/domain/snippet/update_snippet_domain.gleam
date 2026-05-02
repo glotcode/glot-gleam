@@ -56,7 +56,7 @@ pub fn update_snippet(
   use existing_snippet <- program.and_then(
     snippet_effect.get_by_slug(request.slug)
     |> program.require(
-      error.QueryError(error.DbQueryError("Snippet not found")),
+      error.NotFoundError("snippet_not_found", "Snippet not found"),
     ),
   )
 

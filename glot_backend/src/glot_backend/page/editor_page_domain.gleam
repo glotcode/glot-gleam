@@ -23,7 +23,7 @@ pub fn load_existing_view_model(
 
 fn page_error_message(err: error.Error) -> String {
   case err {
-    error.QueryError(error.DbQueryError(message: "Snippet not found")) ->
+    error.NotFoundError(code: "snippet_not_found", message: _) ->
       "Snippet not found."
     error.ValidationError(message) -> message
     error.TooManyRequestsError(_, _) -> "Too many requests. Please try again."

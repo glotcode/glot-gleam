@@ -445,7 +445,10 @@ pub fn schedule_delete_account_rejects_existing_pending_delete_job_test() {
     )
 
   assert run_result
-    == Error(error.ValidationError("Account deletion already scheduled"))
+    == Error(error.ConflictError(
+      "account_delete_already_scheduled",
+      "Account deletion already scheduled",
+    ))
 
   let assert Ok(updated_account) =
     dict.get(db.accounts, uuid_key(fixture.account.id))

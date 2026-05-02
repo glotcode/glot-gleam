@@ -5,6 +5,7 @@ import gleam/regexp
 import gleam/string
 import gleam/time/timestamp
 import gleeunit
+import glot_backend/api
 import glot_backend/context
 import glot_backend/crypto_token
 import glot_backend/effect/api_log/api_log_handlers
@@ -32,6 +33,7 @@ import glot_backend/effect/user_action/user_action_handlers
 import glot_backend/log
 import glot_backend/server_timing
 import glot_core/job/job_model
+import glot_core/rate_limit
 import youid/uuid
 
 pub fn main() -> Nil {
@@ -164,6 +166,45 @@ pub fn rolled_back_transaction_effect_is_marked_test() {
   assert string.contains(timing, "TxRollback;dur=")
 }
 
+pub fn api_error_status_mapping_test() {
+  assert api.error_status(error.ValidationError("bad input")) == 400
+  assert api.error_status(error.NotFoundError("snippet_not_found", "missing")) == 404
+  assert api.error_status(
+    error.ConflictError("account_delete_not_scheduled", "no pending delete"),
+  ) == 409
+  assert api.error_status(error.SessionError(error.MissingSessionTokenError)) == 401
+  assert api.error_status(error.AuthorizationError(error.NotOwnerError)) == 403
+  assert api.error_status(error.TooManyRequestsError(3, test_rate_limit())) == 429
+  assert api.error_status(
+    error.RunError(error.InternalRunRequestError("docker unavailable")),
+  ) == 500
+}
+
+pub fn api_error_detail_codes_test() {
+  assert api.api_error_details(error.LoginError(error.InvalidTokenError))
+    == #(401, "login_invalid_token", "Invalid login token")
+  assert api.api_error_details(error.LoginError(error.TokenUsedError))
+    == #(409, "login_token_used", "Login token already used")
+  assert api.api_error_details(error.SessionError(error.SessionExpiredError))
+    == #(401, "session_expired", "Session expired")
+  assert api.api_error_details(error.AuthorizationError(error.NotOwnerError))
+    == #(403, "authorization_not_owner", "Not authorized")
+  assert api.api_error_details(
+    error.ValidationError("files must contain at least one file"),
+  ) == #(400, "validation_files_missing", "files must contain at least one file")
+  assert api.api_error_details(
+    error.ValidationError("title must be at most 200 characters"),
+  ) == #(400, "validation_title_too_long", "title must be at most 200 characters")
+  assert api.api_error_details(
+    error.ValidationError("files[0].content must be at most 100000 characters"),
+  )
+    == #(
+      400,
+      "validation_files_0_content_too_long",
+      "files[0].content must be at most 100000 characters",
+    )
+}
+
 fn test_handlers() -> handlers.Handlers {
   handlers.Handlers(
     api_log: api_log_handlers.ApiLogHandlers(delete_before: fn(_) { Ok(Nil) }),
@@ -237,6 +278,13 @@ fn test_handlers() -> handlers.Handlers {
 
 fn test_runtime() -> runtime.Runtime {
   runtime.from_handlers(test_handlers())
+}
+
+fn test_rate_limit() -> rate_limit.RateLimit {
+  rate_limit.RateLimit(
+    unit: rate_limit.Minute,
+    max_requests: 2,
+  )
 }
 
 fn test_context() -> context.Context {

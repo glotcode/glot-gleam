@@ -60,6 +60,8 @@ pub type Error {
   DecodeError(List(decode.DecodeError))
   EmailInvalidError(String)
   ValidationError(String)
+  NotFoundError(code: String, message: String)
+  ConflictError(code: String, message: String)
   TooManyRequestsError(count: Int, rate_limit: RateLimit)
   QueryError(DbQueryError)
   CommandError(DbCommandError)
@@ -79,6 +81,8 @@ pub fn to_string(err: Error) -> String {
     DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
     EmailInvalidError(message) -> "email_invalid:" <> message
     ValidationError(message) -> "validation_error:" <> message
+    NotFoundError(code, message) -> "not_found:" <> code <> ":" <> message
+    ConflictError(code, message) -> "conflict:" <> code <> ":" <> message
     TooManyRequestsError(count, _) ->
       "too_many_requests:" <> int.to_string(count)
     QueryError(DbQueryError(message: message)) -> "query_error:" <> message

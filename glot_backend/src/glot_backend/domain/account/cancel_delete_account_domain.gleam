@@ -39,7 +39,10 @@ pub fn cancel_delete_account(ctx: context.Context) -> program_types.Program(Nil)
 
   use delete_job_id <- program.and_then(program.from_option(
     session.user.account.identity.delete_job_id,
-    error.ValidationError("Account deletion is not scheduled"),
+    error.ConflictError(
+      "account_delete_not_scheduled",
+      "Account deletion is not scheduled",
+    ),
   ))
   use maybe_job <- program.and_then(job_effect.get_job_by_id(delete_job_id))
 

@@ -82,7 +82,8 @@ fn require_no_pending_delete(
         option.Some(job) -> {
           case is_pending_delete_job_for_account(job, account.identity.id) {
             True ->
-              program.fail(error.ValidationError(
+              program.fail(error.ConflictError(
+                "account_delete_already_scheduled",
                 "Account deletion already scheduled",
               ))
             False -> {

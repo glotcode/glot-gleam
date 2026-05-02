@@ -1,8 +1,10 @@
 import gleam/dynamic/decode
+import gleam/http/response
 import gleam/json
 import gleam/list
 import gleam/option
 import gleam/regexp
+import gleam/result
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/account_dto
 import glot_core/auth/login_dto
@@ -272,9 +274,13 @@ fn send_api_request(
 ) -> effect.Effect(msg) {
   let body = encode_api_request(req, encode_data)
   let handler =
-    rsvp.expect_json(api_response_decoder(decode_data), fn(result) {
+    rsvp.expect_any_response(fn(result) {
       case result {
-        Ok(response) -> to_msg(response)
+        Ok(http_response) ->
+          case decode_api_response(http_response, decode_data) {
+            Ok(response) -> to_msg(response)
+            Error(error) -> to_msg(HttpFailure(error))
+          }
         Error(error) -> to_msg(HttpFailure(error))
       }
     })
@@ -295,25 +301,46 @@ fn encode_api_request(
 fn api_response_decoder(
   data_decoder: decode.Decoder(a),
 ) -> decode.Decoder(ApiResponse(a)) {
-  use ok <- decode.field("ok", decode.bool)
-
-  case ok {
-    True -> {
-      use data <- decode.field("data", data_decoder)
-      decode.success(ApiSuccess(data))
-    }
-
-    False -> {
-      use error <- decode.field("error", api_error_decoder())
-      decode.success(ApiFailure(error))
-    }
-  }
+  use data <- decode.field("data", data_decoder)
+  decode.success(ApiSuccess(data))
 }
 
 fn api_error_decoder() -> decode.Decoder(ApiError) {
   use code <- decode.field("code", decode.string)
   use message <- decode.field("message", decode.string)
   decode.success(ApiError(code: code, message: message))
+}
+
+fn decode_api_response(
+  http_response: response.Response(String),
+  data_decoder: decode.Decoder(a),
+) -> Result(ApiResponse(a), rsvp.Error) {
+  use _ <- result.try(ensure_json_response(http_response))
+
+  case http_response.status {
+    status if status >= 200 && status < 300 ->
+      json.parse(http_response.body, api_response_decoder(data_decoder))
+      |> result.map_error(rsvp.JsonError)
+    status if status >= 400 && status < 600 ->
+      json.parse(http_response.body, error_response_decoder())
+      |> result.map_error(rsvp.JsonError)
+    _ -> Error(rsvp.UnhandledResponse(http_response))
+  }
+}
+
+fn ensure_json_response(
+  http_response: response.Response(String),
+) -> Result(Nil, rsvp.Error) {
+  case response.get_header(http_response, "content-type") {
+    Ok("application/json") -> Ok(Nil)
+    Ok("application/json;" <> _) -> Ok(Nil)
+    _ -> Error(rsvp.UnhandledResponse(http_response))
+  }
+}
+
+fn error_response_decoder() -> decode.Decoder(ApiResponse(a)) {
+  use error <- decode.field("error", api_error_decoder())
+  decode.success(ApiFailure(error))
 }
 
 fn nil_decoder() -> decode.Decoder(Nil) {
