@@ -28,7 +28,6 @@ import glot_backend/worker/log_worker
 import glot_core/email/email_address_model
 import mist
 import pog
-import radiate
 import signal_handler
 import wisp
 import wisp/wisp_mist
@@ -42,17 +41,6 @@ pub fn main() {
   let signal_name = process.new_name("graceful_gleam_sigterm")
   let assert Ok(Nil) = process.register(process.self(), signal_name)
   let signal_subject = process.named_subject(signal_name)
-
-  // TODO: only in dev mode
-  let _ =
-    radiate.new()
-    |> radiate.add_dir(
-      "/Users/petter/dev/Projects/glot-gleam/glot_backend/src/glot_backend",
-    )
-    |> radiate.on_reload(fn(_state, path) {
-      io.println("Change in " <> path <> ", reloading!")
-    })
-    |> radiate.start()
 
   wisp.configure_logger()
   signal_handler.install(signal_name)
