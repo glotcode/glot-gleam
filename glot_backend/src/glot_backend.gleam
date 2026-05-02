@@ -17,20 +17,15 @@ import glot_backend/api
 import glot_backend/context
 import glot_backend/erlang
 import glot_backend/helpers/response_helpers
-import glot_backend/home_page
 import glot_backend/job_tracker
+import glot_backend/page
 import glot_backend/request_tracker
 import glot_backend/server_mode
-import glot_backend/snippets_page
 import glot_backend/worker/db_monitor
 import glot_backend/worker/job_worker
 import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_core/email/email_address_model
-import glot_core/route
-import lustre/attribute
-import lustre/element
-import lustre/element/html
 import mist
 import pog
 import radiate
@@ -176,7 +171,8 @@ fn drain_work(
   log_worker_subject: process.Subject(log_worker.Message),
   remaining_ms: Int,
 ) -> Nil {
-  let in_flight_request_count = request_tracker.get_count(request_tracker_subject)
+  let in_flight_request_count =
+    request_tracker.get_count(request_tracker_subject)
   let in_flight_job_count = job_tracker.get_count(job_tracker_subject)
   let total_in_flight_count = in_flight_request_count + in_flight_job_count
 
@@ -240,45 +236,8 @@ pub fn handle_request(
         req,
       )
     http.Get, _ ->
-      request.to_uri(req)
-      |> route.from_uri
-      |> fn(current_route) {
-        handle_frontend_route(
-          db,
-          ctx,
-          language_version_cache_subject,
-          current_route,
-        )
-      }
+      page.handle_request(db, ctx, language_version_cache_subject, req)
     _, _ -> wisp.not_found()
-  }
-}
-
-fn handle_frontend_route(
-  db: pog.Connection,
-  ctx: context.Context,
-  language_version_cache_subject: process.Subject(
-    language_version_cache_worker.Message,
-  ),
-  current_route: route.Route,
-) -> wisp.Response {
-  case current_route {
-    route.Home -> home_page.home_page()
-    route.Login -> serve_spa_page()
-    route.Account -> serve_spa_page()
-    route.AccountSnippets(_, _) -> serve_spa_page()
-    route.Snippets(after:, before:, username:) ->
-      snippets_page.snippets_page(
-        db,
-        ctx,
-        language_version_cache_subject,
-        after: after,
-        before: before,
-        username: username,
-      )
-    route.NewSnippet(_) -> serve_spa_page()
-    route.Snippet(_) -> serve_spa_page()
-    route.NotFound(_) -> wisp.not_found()
   }
 }
 
@@ -353,31 +312,6 @@ fn with_tracked_request(
   next()
 }
 
-fn serve_spa_page() -> wisp.Response {
-  let html =
-    html.html([], [
-      html.head([], [
-        html.title([], "glot.io"),
-        html.link([
-          attribute.rel("stylesheet"),
-          attribute.href("/static/styles.css"),
-        ]),
-        html.script(
-          [
-            attribute.type_("module"),
-            attribute.src("/static/glot_frontend.js"),
-          ],
-          "",
-        ),
-      ]),
-      html.body([], [html.div([attribute.id("app")], [])]),
-    ])
-
-  html
-  |> element.to_document_string
-  |> wisp.html_response(200)
-}
-
 fn maintenance_response() -> wisp.Response {
   wisp.json_response(
     json.to_string(response_helpers.error_body(
@@ -404,29 +338,26 @@ fn start_supervisor_tree(
   static_supervisor.new(static_supervisor.OneForAll)
   |> static_supervisor.add(pog.supervised(pog_config))
   |> static_supervisor.add(server_mode.supervised(server_mode_name))
-  |> static_supervisor.add(
-    db_monitor.supervised(db, process.named_subject(server_mode_name)),
-  )
+  |> static_supervisor.add(db_monitor.supervised(
+    db,
+    process.named_subject(server_mode_name),
+  ))
   |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
-  |> static_supervisor.add(
-    language_version_cache_worker.supervised(
-      language_version_cache_worker_name,
-      config,
-      process.named_subject(server_mode_name),
-    ),
-  )
+  |> static_supervisor.add(language_version_cache_worker.supervised(
+    language_version_cache_worker_name,
+    config,
+    process.named_subject(server_mode_name),
+  ))
   |> static_supervisor.add(request_tracker.supervised(request_tracker_name))
   |> static_supervisor.add(job_tracker.supervised(job_tracker_name))
-  |> static_supervisor.add(
-    job_worker.supervised(
-      db,
-      config,
-      regexes,
-      process.named_subject(job_tracker_name),
-      process.named_subject(server_mode_name),
-      process.named_subject(language_version_cache_worker_name),
-    ),
-  )
+  |> static_supervisor.add(job_worker.supervised(
+    db,
+    config,
+    regexes,
+    process.named_subject(job_tracker_name),
+    process.named_subject(server_mode_name),
+    process.named_subject(language_version_cache_worker_name),
+  ))
   |> static_supervisor.add(mist.supervised(mist_builder))
   |> static_supervisor.start
 }
