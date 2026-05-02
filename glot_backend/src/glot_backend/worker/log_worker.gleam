@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/otp/actor
 import gleam/otp/supervision
+import gleam/result
 import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
@@ -37,17 +38,43 @@ pub type ApiLogEntry {
   )
 }
 
+pub type PageLogEntry {
+  PageLogEntry(
+    id: Uuid,
+    request_id: Uuid,
+    created_at: Timestamp,
+    route: String,
+    path: String,
+    status_code: Int,
+    render_mode: String,
+    duration_ns: Int,
+    ip: Option(String),
+    user_agent: Option(String),
+    info: log.Fields,
+    warnings: log.Fields,
+    debug: log.Fields,
+    error: Option(error.Error),
+    effects: List(effect_trace.EffectMeasurement),
+  )
+}
+
 pub type Message {
   Insert(ApiLogEntry)
+  InsertPage(PageLogEntry)
   Tick
   Drain(reply: process.Subject(Nil))
+}
+
+type PendingEntry {
+  PendingApiLogEntry(ApiLogEntry)
+  PendingPageLogEntry(PageLogEntry)
 }
 
 type State {
   State(
     subject: process.Subject(Message),
     db: pog.Connection,
-    pending_entries: List(ApiLogEntry),
+    pending_entries: List(PendingEntry),
     pending_count: Int,
     flush_scheduled: Bool,
   )
@@ -92,7 +119,18 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
     Insert(log_entry) -> {
       let state =
         state
-        |> enqueue_entry(log_entry)
+        |> enqueue_entry(PendingApiLogEntry(log_entry))
+        |> schedule_flush_if_needed()
+
+      case state.pending_count >= max_batch_size {
+        True -> actor.continue(flush_entries_runtime(state))
+        False -> actor.continue(state)
+      }
+    }
+    InsertPage(log_entry) -> {
+      let state =
+        state
+        |> enqueue_entry(PendingPageLogEntry(log_entry))
         |> schedule_flush_if_needed()
 
       case state.pending_count >= max_batch_size {
@@ -114,7 +152,7 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
   }
 }
 
-fn enqueue_entry(state: State, entry: ApiLogEntry) -> State {
+fn enqueue_entry(state: State, entry: PendingEntry) -> State {
   case state.pending_count >= max_buffer_size {
     True ->
       State(
@@ -130,7 +168,7 @@ fn enqueue_entry(state: State, entry: ApiLogEntry) -> State {
   }
 }
 
-fn drop_oldest_entry(entries: List(ApiLogEntry)) -> List(ApiLogEntry) {
+fn drop_oldest_entry(entries: List(PendingEntry)) -> List(PendingEntry) {
   case list.reverse(entries) {
     [] -> []
     [_oldest, ..rest] -> list.reverse(rest)
@@ -151,7 +189,7 @@ fn flush_entries_runtime(state: State) -> State {
   case state.pending_entries {
     [] -> State(..state, flush_scheduled: False)
     pending_entries -> {
-      case insert_api_logs(state.db, list.reverse(pending_entries)) {
+      case insert_logs(state.db, list.reverse(pending_entries)) {
         Ok(_) ->
           State(
             ..state,
@@ -172,7 +210,7 @@ fn flush_entries_for_shutdown(state: State) -> State {
   case state.pending_entries {
     [] -> State(..state, flush_scheduled: False)
     pending_entries -> {
-      case insert_api_logs(state.db, list.reverse(pending_entries)) {
+      case insert_logs(state.db, list.reverse(pending_entries)) {
         Ok(_) -> {
           State(
             ..state,
@@ -195,20 +233,73 @@ fn flush_entries_for_shutdown(state: State) -> State {
   }
 }
 
+fn insert_logs(
+  db: pog.Connection,
+  entries: List(PendingEntry),
+) -> Result(Nil, String) {
+  let #(api_entries, page_entries) = split_entries(entries, [], [])
+  pog.transaction(db, fn(connection) {
+    use _ <- result.try(insert_api_logs(connection, api_entries))
+    insert_page_logs(connection, page_entries)
+  })
+  |> result.map_error(fn(err) { string.inspect(err) })
+}
+
+fn split_entries(
+  entries: List(PendingEntry),
+  api_entries: List(ApiLogEntry),
+  page_entries: List(PageLogEntry),
+) -> #(List(ApiLogEntry), List(PageLogEntry)) {
+  case entries {
+    [] -> #(list.reverse(api_entries), list.reverse(page_entries))
+    [PendingApiLogEntry(entry), ..rest] ->
+      split_entries(rest, [entry, ..api_entries], page_entries)
+    [PendingPageLogEntry(entry), ..rest] ->
+      split_entries(rest, api_entries, [entry, ..page_entries])
+  }
+}
+
 fn insert_api_logs(
   db: pog.Connection,
   entries: List(ApiLogEntry),
 ) -> Result(Nil, String) {
-  let query =
-    sql.insert_api_log(
-      entries: json.array(entries, of: encode_log_entry) |> json.to_string,
-    )
+  case entries {
+    [] -> Ok(Nil)
+    _ -> {
+      let query =
+        sql.insert_api_log(
+          entries: json.array(entries, of: encode_api_log_entry) |> json.to_string,
+        )
 
-  let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
+      let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
 
-  case res {
-    Ok(_) -> Ok(Nil)
-    Error(err) -> Error(err)
+      case res {
+        Ok(_) -> Ok(Nil)
+        Error(err) -> Error(err)
+      }
+    }
+  }
+}
+
+fn insert_page_logs(
+  db: pog.Connection,
+  entries: List(PageLogEntry),
+) -> Result(Nil, String) {
+  case entries {
+    [] -> Ok(Nil)
+    _ -> {
+      let query =
+        sql.insert_page_log(
+          entries: json.array(entries, of: encode_page_log_entry) |> json.to_string,
+        )
+
+      let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
+
+      case res {
+        Ok(_) -> Ok(Nil)
+        Error(err) -> Error(err)
+      }
+    }
   }
 }
 
@@ -218,7 +309,7 @@ fn encode_error(err: error.Error) -> json.Json {
   ])
 }
 
-fn encode_log_entry(entry: ApiLogEntry) -> json.Json {
+fn encode_api_log_entry(entry: ApiLogEntry) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(entry.id))),
     #("request_id", json.string(uuid.to_string(entry.request_id))),
@@ -228,6 +319,57 @@ fn encode_log_entry(entry: ApiLogEntry) -> json.Json {
     ),
     #("action", json.string(api_action.to_string(entry.action))),
     #("body_bytes", json.int(entry.body_bytes)),
+    #("duration_ns", json.int(entry.duration_ns)),
+    #("ip", json.nullable(entry.ip, json.string)),
+    #("user_agent", json.nullable(entry.user_agent, json.string)),
+    #(
+      "info",
+      json.nullable(
+        entry.info
+          |> dict_helpers.non_empty_dict,
+        log.encode_fields,
+      ),
+    ),
+    #(
+      "warnings",
+      json.nullable(
+        entry.warnings
+          |> dict_helpers.non_empty_dict,
+        log.encode_fields,
+      ),
+    ),
+    #(
+      "debug",
+      json.nullable(
+        entry.debug
+          |> dict_helpers.non_empty_dict,
+        log.encode_fields,
+      ),
+    ),
+    #("error", json.nullable(entry.error, encode_error)),
+    #(
+      "effects",
+      json.nullable(
+        entry.effects
+          |> list_helpers.non_empty_list,
+        effect_trace.encode_effect_measurements,
+      ),
+    ),
+  ])
+}
+
+fn encode_page_log_entry(entry: PageLogEntry) -> json.Json {
+  json.object([
+    #("id", json.string(uuid.to_string(entry.id))),
+    #("request_id", json.string(uuid.to_string(entry.request_id))),
+    #(
+      "created_at",
+      json.string(timestamp.to_rfc3339(entry.created_at, calendar.utc_offset)),
+    ),
+    #("route", json.string(entry.route)),
+    #("path", json.string(entry.path)),
+    #("status_code", json.int(entry.status_code)),
+    #("render_mode", json.string(entry.render_mode)),
     #("duration_ns", json.int(entry.duration_ns)),
     #("ip", json.nullable(entry.ip, json.string)),
     #("user_agent", json.nullable(entry.user_agent, json.string)),

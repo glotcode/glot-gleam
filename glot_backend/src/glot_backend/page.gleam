@@ -3,6 +3,7 @@ import gleam/http/request
 import gleam/option
 import gleam/string
 import glot_backend/context
+import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/error
 import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
@@ -15,6 +16,7 @@ import glot_backend/page/snippets_page_domain
 import glot_backend/page_response
 import glot_backend/server_timing
 import glot_backend/snippets_page
+import glot_backend/worker/log_worker
 import glot_backend/worker/language_version_cache_worker
 import glot_core/language
 import glot_core/route
@@ -24,7 +26,7 @@ import pog
 import wisp
 
 pub type PageRequest {
-  PageRequest(route: route.Route)
+  PageRequest(route: route.Route, path: String)
 }
 
 pub fn handle_request(
@@ -33,12 +35,20 @@ pub fn handle_request(
   language_version_cache_subject: process.Subject(
     language_version_cache_worker.Message,
   ),
+  log_worker_subject: process.Subject(log_worker.Message),
   req: wisp.Request,
 ) -> wisp.Response {
   let page_request = page_request_from_request(req)
   let page_response =
     handle_page_request(db, ctx, language_version_cache_subject, page_request)
   let total_duration_ns = erlang.perf_counter_ns() - ctx.started_at
+  insert_log_entry(
+    ctx,
+    log_worker_subject,
+    page_request,
+    page_response,
+    total_duration_ns,
+  )
 
   page_response.response
   |> wisp.set_header(
@@ -48,10 +58,14 @@ pub fn handle_request(
 }
 
 fn page_request_from_request(req: wisp.Request) -> PageRequest {
-  req
-  |> request.to_uri
-  |> route.from_uri
-  |> fn(current_route) { PageRequest(route: current_route) }
+  let uri = request.to_uri(req)
+  let path =
+    case uri.query {
+      option.Some(query) -> uri.path <> "?" <> query
+      option.None -> uri.path
+    }
+
+  PageRequest(route: route.from_uri(uri), path: path)
 }
 
 fn handle_page_request(
@@ -65,9 +79,10 @@ fn handle_page_request(
   let runtime = runtime.new(db, language_version_cache_subject)
 
   case page_request.route {
-    route.Home ->
+    route.Home -> {
+      let state = empty_page_state()
       page_response.PageResponse(
-        wisp.html_response(
+        response: wisp.html_response(
           page_layout.document(
             title: home_page.title(),
             app_attributes: [],
@@ -75,8 +90,15 @@ fn handle_page_request(
           ),
           200,
         ),
-        [],
+        status_code: 200,
+        render_mode: "ssr",
+        effects: [],
+        info: state.info_fields,
+        warnings: state.warning_fields,
+        debug: state.debug_fields,
+        error: option.None,
       )
+    }
     route.Login -> spa_page("glot.io - login")
     route.Account -> spa_page("glot.io - account")
     route.AccountSnippets(_, _) -> spa_page("glot.io - account snippets")
@@ -92,13 +114,26 @@ fn handle_page_request(
       )
     route.NewSnippet(language_slug) -> spa_page(new_snippet_title(language_slug))
     route.Snippet(_) -> spa_page("glot.io - snippet")
-    route.NotFound(_) -> page_response.PageResponse(wisp.not_found(), [])
+    route.NotFound(_) -> {
+      let state = empty_page_state()
+      page_response.PageResponse(
+        response: wisp.not_found(),
+        status_code: 404,
+        render_mode: "not_found",
+        effects: [],
+        info: state.info_fields,
+        warnings: state.warning_fields,
+        debug: state.debug_fields,
+        error: option.None,
+      )
+    }
   }
 }
 
 fn spa_page(title: String) -> page_response.PageResponse {
+  let state = empty_page_state()
   page_response.PageResponse(
-    wisp.html_response(
+    response: wisp.html_response(
       page_layout.document(
         title: title,
         app_attributes: [],
@@ -106,7 +141,13 @@ fn spa_page(title: String) -> page_response.PageResponse {
       ),
       200,
     ),
-    [],
+    status_code: 200,
+    render_mode: "spa",
+    effects: [],
+    info: state.info_fields,
+    warnings: state.warning_fields,
+    debug: state.debug_fields,
+    error: option.None,
   )
 }
 
@@ -134,7 +175,7 @@ fn run_page_program(
   case result {
     Ok(value) ->
       page_response.PageResponse(
-        wisp.html_response(
+        response: wisp.html_response(
           page_layout.document(
             title: title,
             app_attributes: app_attributes(value),
@@ -142,7 +183,13 @@ fn run_page_program(
           ),
           200,
         ),
-        state.effect_measurements,
+        status_code: 200,
+        render_mode: "ssr",
+        effects: state.effect_measurements,
+        info: state.info_fields,
+        warnings: state.warning_fields,
+        debug: state.debug_fields,
+        error: option.None,
       )
     Error(err) -> internal_page_error(page_name, err, state)
   }
@@ -160,7 +207,79 @@ fn internal_page_error(
     <> string.inspect(err),
   )
   page_response.PageResponse(
-    wisp.html_response("Internal Server Error", 500),
-    state.effect_measurements,
+    response: wisp.html_response("Internal Server Error", 500),
+    status_code: 500,
+    render_mode: "error",
+    effects: state.effect_measurements,
+    info: state.info_fields,
+    warnings: state.warning_fields,
+    debug: state.debug_fields,
+    error: option.Some(err),
   )
+}
+
+fn empty_page_state() -> program_state.State {
+  program_state.new_state()
+}
+
+fn insert_log_entry(
+  ctx: context.Context,
+  log_worker_subject: process.Subject(log_worker.Message),
+  page_request: PageRequest,
+  page_response: page_response.PageResponse,
+  total_duration_ns: Int,
+) -> Nil {
+  case process.subject_owner(log_worker_subject) {
+    Ok(_) -> {
+      process.send(
+        log_worker_subject,
+        log_worker.InsertPage(prepare_log_entry(
+          ctx,
+          page_request,
+          page_response,
+          total_duration_ns,
+        )),
+      )
+      Nil
+    }
+    Error(_) -> wisp.log_error("Log worker unavailable")
+  }
+}
+
+fn prepare_log_entry(
+  ctx: context.Context,
+  page_request: PageRequest,
+  page_response: page_response.PageResponse,
+  total_duration_ns: Int,
+) -> log_worker.PageLogEntry {
+  log_worker.PageLogEntry(
+    id: basic_handlers.uuid_v7(ctx.timestamp),
+    request_id: ctx.request_id,
+    created_at: ctx.timestamp,
+    route: route_name(page_request.route),
+    path: page_request.path,
+    status_code: page_response.status_code,
+    render_mode: page_response.render_mode,
+    duration_ns: total_duration_ns,
+    ip: ctx.client_info.ip,
+    user_agent: ctx.client_info.user_agent,
+    info: page_response.info,
+    warnings: page_response.warnings,
+    debug: page_response.debug,
+    error: page_response.error,
+    effects: page_response.effects,
+  )
+}
+
+fn route_name(current_route: route.Route) -> String {
+  case current_route {
+    route.Home -> "home"
+    route.Login -> "login"
+    route.Account -> "account"
+    route.AccountSnippets(_, _) -> "account_snippets"
+    route.Snippets(_, _, _) -> "snippets"
+    route.NewSnippet(_) -> "new_snippet"
+    route.Snippet(_) -> "snippet"
+    route.NotFound(_) -> "not_found"
+  }
 }

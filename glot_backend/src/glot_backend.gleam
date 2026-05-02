@@ -236,7 +236,13 @@ pub fn handle_request(
         req,
       )
     http.Get, _ ->
-      page.handle_request(db, ctx, language_version_cache_subject, req)
+      page.handle_request(
+        db,
+        ctx,
+        language_version_cache_subject,
+        log_worker_subject,
+        req,
+      )
     _, _ -> wisp.not_found()
   }
 }

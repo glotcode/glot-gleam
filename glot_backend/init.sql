@@ -162,6 +162,28 @@ CREATE TABLE IF NOT EXISTS api_log (
 
 CREATE INDEX idx_api_log_created_at ON api_log(created_at);
 
+-- PAGE LOG
+
+CREATE TABLE IF NOT EXISTS page_log (
+  id UUID PRIMARY KEY,
+  request_id UUID NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  route TEXT NOT NULL,
+  path TEXT NOT NULL,
+  status_code INT NOT NULL,
+  render_mode TEXT NOT NULL,
+  duration_ns BIGINT NOT NULL,
+  ip TEXT NULL,
+  user_agent TEXT NULL,
+  info JSONB NULL,
+  warnings JSONB NULL,
+  debug JSONB NULL,
+  error JSONB NULL,
+  effects JSONB NULL
+);
+
+CREATE INDEX idx_page_log_created_at ON page_log(created_at);
+
 -- JOB LOG
 
 CREATE TABLE IF NOT EXISTS job_log (

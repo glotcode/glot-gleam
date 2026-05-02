@@ -871,6 +871,45 @@ pub fn insert_snippet(
   ])
 }
 
+pub fn insert_page_log(entries entries: String) {
+  let sql =
+    "INSERT INTO page_log (id, request_id, created_at, route, path, status_code, render_mode, duration_ns, ip, user_agent, info, warnings, debug, error, effects)
+SELECT
+  id,
+  request_id,
+  created_at,
+  route,
+  path,
+  status_code,
+  render_mode,
+  duration_ns,
+  ip,
+  user_agent,
+  info,
+  warnings,
+  debug,
+  error,
+  effects
+FROM jsonb_to_recordset($1::JSONB) AS rows(
+  id UUID,
+  request_id UUID,
+  created_at TIMESTAMPTZ,
+  route TEXT,
+  path TEXT,
+  status_code INT,
+  render_mode TEXT,
+  duration_ns BIGINT,
+  ip TEXT,
+  user_agent TEXT,
+  info JSONB,
+  warnings JSONB,
+  debug JSONB,
+  error JSONB,
+  effects JSONB
+)"
+  #(sql, [dev.ParamString(entries)])
+}
+
 pub fn insert_user(
   id id: BitArray,
   account_id account_id: BitArray,
