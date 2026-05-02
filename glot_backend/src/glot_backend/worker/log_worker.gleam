@@ -50,6 +50,7 @@ pub type PageLogEntry {
     duration_ns: Int,
     ip: Option(String),
     user_agent: Option(String),
+    referrer: Option(String),
     info: log.Fields,
     warnings: log.Fields,
     debug: log.Fields,
@@ -451,6 +452,7 @@ fn encode_page_log_entry(entry: PageLogEntry) -> json.Json {
     #("duration_ns", json.int(entry.duration_ns)),
     #("ip", json.nullable(entry.ip, json.string)),
     #("user_agent", json.nullable(entry.user_agent, json.string)),
+    #("referrer", json.nullable(entry.referrer, json.string)),
     #(
       "info",
       json.nullable(

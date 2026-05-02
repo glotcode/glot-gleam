@@ -282,6 +282,7 @@ fn prepare_log_entry(
     duration_ns: total_duration_ns,
     ip: ctx.client_info.ip,
     user_agent: ctx.client_info.user_agent,
+    referrer: ctx.client_info.referrer,
     info: page_response.info,
     warnings: page_response.warnings,
     debug: page_response.debug,

@@ -335,6 +335,7 @@ fn test_context() -> context.Context {
       session_token: option.None,
       ip: option.None,
       user_agent: option.None,
+      referrer: option.None,
     ),
   )
 }

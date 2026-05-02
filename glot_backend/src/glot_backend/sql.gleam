@@ -873,7 +873,7 @@ pub fn insert_snippet(
 
 pub fn insert_page_log(entries entries: String) {
   let sql =
-    "INSERT INTO page_log (id, request_id, created_at, route, path, status_code, render_mode, duration_ns, ip, user_agent, info, warnings, debug, error, effects)
+    "INSERT INTO page_log (id, request_id, created_at, route, path, status_code, render_mode, duration_ns, ip, user_agent, referrer, info, warnings, debug, error, effects)
 SELECT
   id,
   request_id,
@@ -885,6 +885,7 @@ SELECT
   duration_ns,
   ip,
   user_agent,
+  referrer,
   info,
   warnings,
   debug,
@@ -901,6 +902,7 @@ FROM jsonb_to_recordset($1::JSONB) AS rows(
   duration_ns BIGINT,
   ip TEXT,
   user_agent TEXT,
+  referrer TEXT,
   info JSONB,
   warnings JSONB,
   debug JSONB,

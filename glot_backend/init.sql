@@ -175,6 +175,7 @@ CREATE TABLE IF NOT EXISTS page_log (
   duration_ns BIGINT NOT NULL,
   ip TEXT NULL,
   user_agent TEXT NULL,
+  referrer TEXT NULL,
   info JSONB NULL,
   warnings JSONB NULL,
   debug JSONB NULL,

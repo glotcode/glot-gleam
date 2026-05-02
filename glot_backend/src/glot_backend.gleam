@@ -245,6 +245,7 @@ fn get_client_info(
     ip: get_header(req, "x-forwarded-for")
       |> option.lazy_or(fn() { get_client_ip(conn) }),
     user_agent: get_header(req, "user-agent"),
+    referrer: get_header(req, "referer"),
   )
 }
 

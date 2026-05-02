@@ -74,6 +74,7 @@ pub fn get_session_with_missing_db_session_returns_none_test() {
         session_token: option.Some("missing-session-token"),
         ip: option.None,
         user_agent: option.None,
+        referrer: option.None,
       ),
     )
 
@@ -100,6 +101,7 @@ pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
         session_token: option.Some("missing-session-token"),
         ip: option.None,
         user_agent: option.None,
+        referrer: option.None,
       ),
     )
 
@@ -153,6 +155,7 @@ pub fn login_creates_account_user_and_session_in_foreign_key_order_test() {
         session_token: option.None,
         ip: option.Some("127.0.0.1"),
         user_agent: option.Some("gleeunit"),
+        referrer: option.None,
       ),
     )
   let request =
@@ -229,6 +232,7 @@ pub fn login_for_suspended_user_returns_account_state_error_test() {
         session_token: option.None,
         ip: option.Some("127.0.0.1"),
         user_agent: option.Some("gleeunit"),
+        referrer: option.None,
       ),
     )
   let request =
@@ -864,6 +868,7 @@ fn integration_fixture(
         session_token: option.Some(session.token),
         ip: option.Some("127.0.0.1"),
         user_agent: option.Some("gleeunit"),
+        referrer: option.None,
       ),
     )
 
@@ -1995,6 +2000,7 @@ fn test_context() -> context.Context {
       session_token: option.None,
       ip: option.None,
       user_agent: option.None,
+      referrer: option.None,
     ),
   )
 }

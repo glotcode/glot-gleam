@@ -308,6 +308,7 @@ pub type ClientInfo {
     session_token: Option(String),
     ip: Option(String),
     user_agent: Option(String),
+    referrer: Option(String),
   )
 }
 
@@ -316,5 +317,6 @@ pub fn empty_client_info() -> ClientInfo {
     session_token: option.None,
     ip: option.None,
     user_agent: option.None,
+    referrer: option.None,
   )
 }
