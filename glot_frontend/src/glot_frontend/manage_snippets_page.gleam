@@ -330,46 +330,59 @@ fn snippet_row(
     [
       snippet_cell_link(
         "snippets-table__cell snippets-table__cell--language",
+        "Language",
         route.Snippet(snippet.slug),
         language.name(snippet.data.language),
       ),
       snippet_cell_link(
         "snippets-table__cell snippets-table__cell--title",
+        "Title",
         route.Snippet(snippet.slug),
         snippet.data.title,
       ),
       html.span([attribute.class("snippets-table__cell")], [
-        html.text(snippet_model.visibility_to_string(snippet.data.visibility)),
+        html.span([attribute.class("snippets-table__cell-label")], [
+          html.text("Visibility"),
+        ]),
+        html.span([attribute.class("snippets-table__cell-value")], [
+          html.text(snippet_model.visibility_to_string(snippet.data.visibility)),
+        ]),
       ]),
       snippet_cell_link(
         "snippets-table__cell",
+        "Updated",
         route.Snippet(snippet.slug),
         timestamp_label(snippet.updated_at),
       ),
       html.div(
         [attribute.class("snippets-table__cell snippets-table__actions")],
         [
-          html.a(
-            [
-              attribute.class("snippets-table__action-link"),
-              route.href(route.Snippet(snippet.slug)),
-            ],
-            [html.text("Edit")],
-          ),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("snippets-table__action-button"),
-              attribute.disabled(is_deleting),
-              event.on_click(DeleteClicked(snippet.slug)),
-            ],
-            [
-              html.text(case is_deleting {
-                True -> "Deleting..."
-                False -> "Delete"
-              }),
-            ],
-          ),
+          html.span([attribute.class("snippets-table__cell-label")], [
+            html.text("Actions"),
+          ]),
+          html.div([attribute.class("snippets-table__action-group")], [
+            html.a(
+              [
+                attribute.class("snippets-table__action-link"),
+                route.href(route.Snippet(snippet.slug)),
+              ],
+              [html.text("Edit")],
+            ),
+            html.button(
+              [
+                attribute.type_("button"),
+                attribute.class("snippets-table__action-button"),
+                attribute.disabled(is_deleting),
+                event.on_click(DeleteClicked(snippet.slug)),
+              ],
+              [
+                html.text(case is_deleting {
+                  True -> "Deleting..."
+                  False -> "Delete"
+                }),
+              ],
+            ),
+          ]),
         ],
       ),
     ],
@@ -432,11 +445,17 @@ fn delete_confirmation_dialog_children(
 
 fn snippet_cell_link(
   class_name: String,
+  cell_label: String,
   destination: route.Route,
-  label: String,
+  value: String,
 ) -> Element(Msg) {
   html.a([attribute.class(class_name), route.href(destination)], [
-    html.text(label),
+    html.span([attribute.class("snippets-table__cell-label")], [
+      html.text(cell_label),
+    ]),
+    html.span([attribute.class("snippets-table__cell-value")], [
+      html.text(value),
+    ]),
   ])
 }
 

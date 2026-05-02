@@ -234,40 +234,57 @@ fn snippet_row(snippet: snippet_dto.SnippetResponse) -> Element(msg) {
   html.div([attribute.class("snippets-table__row")], [
     snippet_cell_link(
       "snippets-table__cell snippets-table__cell--language",
+      "Language",
       route.Snippet(snippet.slug),
       language.name(snippet.data.language),
     ),
     snippet_cell_link(
       "snippets-table__cell snippets-table__cell--title",
+      "Title",
       route.Snippet(snippet.slug),
       snippet.data.title,
     ),
     snippet_cell_link(
       "snippets-table__cell",
+      "Created",
       route.Snippet(snippet.slug),
       timestamp_label(snippet.created_at),
     ),
     html.a(
       [
         attribute.class("snippets-table__cell snippets-table__username"),
+        attribute.attribute("aria-label", "Filter by user"),
         route.href(route.Snippets(
           after: option.None,
           before: option.None,
           username: option.Some(snippet.user.username),
         )),
       ],
-      [html.text(truncate_username(snippet.user.username))],
+      [
+        html.span([attribute.class("snippets-table__cell-label")], [
+          html.text("Username"),
+        ]),
+        html.span([attribute.class("snippets-table__cell-value")], [
+          html.text(truncate_username(snippet.user.username)),
+        ]),
+      ],
     ),
   ])
 }
 
 fn snippet_cell_link(
   class_name: String,
+  cell_label: String,
   destination: route.Route,
-  label: String,
+  value: String,
 ) -> Element(msg) {
   html.a([attribute.class(class_name), route.href(destination)], [
-    html.text(label),
+    html.span([attribute.class("snippets-table__cell-label")], [
+      html.text(cell_label),
+    ]),
+    html.span([attribute.class("snippets-table__cell-value")], [
+      html.text(value),
+    ]),
   ])
 }
 
