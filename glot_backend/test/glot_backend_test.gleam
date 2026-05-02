@@ -29,6 +29,7 @@ import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/page_log/page_log_algebra
+import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
@@ -1050,6 +1051,8 @@ fn run_test_db_effect(
       run_test_job_log_effect(job_log_effect, ctx, db)
     program_types.PageLogEffect(page_log_effect) ->
       run_test_page_log_effect(page_log_effect, ctx, db)
+    program_types.PageviewLogEffect(pageview_log_effect) ->
+      run_test_pageview_log_effect(pageview_log_effect, ctx, db)
     program_types.PeriodicJobEffect(periodic_job_effect) ->
       run_test_periodic_job_effect(periodic_job_effect, ctx, db)
     program_types.SnippetEffect(snippet_effect) ->
@@ -1075,6 +1078,8 @@ fn run_test_tx_db_effect(
       run_test_job_log_tx_effect(job_log_effect, ctx, db)
     program_types.PageLogEffect(page_log_effect) ->
       run_test_page_log_tx_effect(page_log_effect, ctx, db)
+    program_types.PageviewLogEffect(pageview_log_effect) ->
+      run_test_pageview_log_tx_effect(pageview_log_effect, ctx, db)
     program_types.PeriodicJobEffect(periodic_job_effect) ->
       run_test_periodic_job_tx_effect(periodic_job_effect, ctx, db)
     program_types.SnippetEffect(snippet_effect) ->
@@ -1124,6 +1129,30 @@ fn run_test_page_log_tx_effect(
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
     page_log_algebra.DeletePageLogBefore(before: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_pageview_log_effect(
+  effect: pageview_log_algebra.PageviewLogEffect(program_types.Program(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    pageview_log_algebra.DeletePageviewLogBefore(before: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_pageview_log_tx_effect(
+  effect: pageview_log_algebra.PageviewLogEffect(
+    program_types.TransactionProgram(a),
+  ),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    pageview_log_algebra.DeletePageviewLogBefore(before: _, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, db)
   }
 }
@@ -1950,6 +1979,7 @@ fn test_context() -> context.Context {
       cleanup: context.CleanupConfig(
         api_log_retention_days: 30,
         page_log_retention_days: 30,
+        pageview_log_retention_days: 30,
         job_log_retention_days: 30,
         jobs_retention_days: 30,
         login_tokens_retention_days: 30,

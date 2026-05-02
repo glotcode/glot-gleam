@@ -13,6 +13,7 @@ pub type JobType {
   DeleteAccountJob
   CleanApiLogJob
   CleanPageLogJob
+  CleanPageviewLogJob
   CleanJobLogJob
   CleanJobsJob
   CleanLoginTokensJob
@@ -25,6 +26,7 @@ pub fn job_type_to_string(job_type: JobType) -> String {
     DeleteAccountJob -> "delete_account"
     CleanApiLogJob -> "clean_api_log"
     CleanPageLogJob -> "clean_page_log"
+    CleanPageviewLogJob -> "clean_pageview_log"
     CleanJobLogJob -> "clean_job_log"
     CleanJobsJob -> "clean_jobs"
     CleanLoginTokensJob -> "clean_login_tokens"
@@ -38,6 +40,7 @@ pub fn job_type_from_string(value: String) -> Result(JobType, String) {
     "delete_account" -> Ok(DeleteAccountJob)
     "clean_api_log" -> Ok(CleanApiLogJob)
     "clean_page_log" -> Ok(CleanPageLogJob)
+    "clean_pageview_log" -> Ok(CleanPageviewLogJob)
     "clean_job_log" -> Ok(CleanJobLogJob)
     "clean_jobs" -> Ok(CleanJobsJob)
     "clean_login_tokens" -> Ok(CleanLoginTokensJob)

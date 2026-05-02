@@ -273,6 +273,17 @@ VALUES (
   CURRENT_TIMESTAMP
 ), (
   uuidv4(),
+  'clean_pageview_log',
+  NULL,
+  86400,
+  TRUE,
+  CURRENT_TIMESTAMP,
+  NULL,
+  NULL,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  uuidv4(),
   'clean_jobs',
   NULL,
   86400,

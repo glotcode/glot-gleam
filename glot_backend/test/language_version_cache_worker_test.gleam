@@ -320,6 +320,7 @@ fn test_context() -> context.Context {
       cleanup: context.CleanupConfig(
         api_log_retention_days: 30,
         page_log_retention_days: 30,
+        pageview_log_retention_days: 30,
         job_log_retention_days: 30,
         jobs_retention_days: 30,
         login_tokens_retention_days: 30,

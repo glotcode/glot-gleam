@@ -9,6 +9,7 @@ import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/page_log/page_log_algebra
+import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/transaction/transaction_algebra
@@ -21,6 +22,7 @@ pub type EffectName {
   JobEffectName(job_algebra.EffectName)
   JobLogEffectName(job_log_algebra.EffectName)
   PageLogEffectName(page_log_algebra.EffectName)
+  PageviewLogEffectName(pageview_log_algebra.EffectName)
   PeriodicJobEffectName(periodic_job_algebra.EffectName)
   AuthEffectName(auth_algebra.EffectName)
   SnippetEffectName(snippet_algebra.EffectName)
@@ -42,6 +44,8 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     JobEffectName(name) -> job_algebra.effect_name_to_string(name)
     JobLogEffectName(name) -> job_log_algebra.effect_name_to_string(name)
     PageLogEffectName(name) -> page_log_algebra.effect_name_to_string(name)
+    PageviewLogEffectName(name) ->
+      pageview_log_algebra.effect_name_to_string(name)
     PeriodicJobEffectName(name) ->
       periodic_job_algebra.effect_name_to_string(name)
     AuthEffectName(name) -> auth_algebra.effect_name_to_string(name)
@@ -64,6 +68,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     JobEffectName(_) -> "job"
     JobLogEffectName(_) -> "job_log"
     PageLogEffectName(_) -> "page_log"
+    PageviewLogEffectName(_) -> "pageview_log"
     PeriodicJobEffectName(_) -> "periodic_job"
     AuthEffectName(_) -> "auth"
     SnippetEffectName(_) -> "snippet"

@@ -8,6 +8,7 @@ import glot_backend/effect/job/job_handlers
 import glot_backend/effect/job_log/job_log_handlers
 import glot_backend/effect/periodic_job/periodic_job_handlers
 import glot_backend/effect/page_log/page_log_handlers
+import glot_backend/effect/pageview_log/pageview_log_handlers
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
@@ -22,6 +23,7 @@ pub type Handlers {
     job: job_handlers.JobHandlers,
     job_log: job_log_handlers.JobLogHandlers,
     page_log: page_log_handlers.PageLogHandlers,
+    pageview_log: pageview_log_handlers.PageviewLogHandlers,
     periodic_job: periodic_job_handlers.PeriodicJobHandlers,
     auth: auth_handlers.AuthHandlers,
     snippet: snippet_handlers.SnippetHandlers,
@@ -40,6 +42,7 @@ pub fn new(db: pog.Connection) -> Handlers {
     job: job_handlers.new(db),
     job_log: job_log_handlers.new(db),
     page_log: page_log_handlers.new(db),
+    pageview_log: pageview_log_handlers.new(db),
     periodic_job: periodic_job_handlers.new(db),
     auth: auth_handlers.new(db),
     snippet: snippet_handlers.new(db),

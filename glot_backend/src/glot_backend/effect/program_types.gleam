@@ -8,6 +8,7 @@ import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/page_log/page_log_algebra
+import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
@@ -41,6 +42,7 @@ pub type DbEffect(next) {
   JobEffect(job_algebra.JobEffect(next))
   JobLogEffect(job_log_algebra.JobLogEffect(next))
   PageLogEffect(page_log_algebra.PageLogEffect(next))
+  PageviewLogEffect(pageview_log_algebra.PageviewLogEffect(next))
   PeriodicJobEffect(periodic_job_algebra.PeriodicJobEffect(next))
   SnippetEffect(snippet_algebra.SnippetEffect(next))
   UserActionEffect(user_action_algebra.UserActionEffect(next))
