@@ -229,16 +229,21 @@ pub fn paginate(
   pagination: CursorPagination,
   get_cursor: fn(a) -> Cursor,
 ) -> CursorPage(a) {
-  let PageSlice(items: page_items, has_more: has_more) =
-    take_page(items, limit(pagination))
-
   case pagination {
-    InitialPage(limit: _) ->
+    InitialPage(limit: _) -> {
+      let PageSlice(items: page_items, has_more: has_more) =
+        take_page(items, limit(pagination))
+
       InitialCursorPage(
         items: page_items,
         next_cursor: maybe_last_cursor(page_items, has_more, get_cursor),
       )
-    AfterPage(cursor: request_cursor, limit: _) ->
+    }
+
+    AfterPage(cursor: request_cursor, limit: _) -> {
+      let PageSlice(items: page_items, has_more: has_more) =
+        take_page(items, limit(pagination))
+
       AfterCursorPage(
         items: page_items,
         previous_cursor: after_previous_cursor(
@@ -248,7 +253,12 @@ pub fn paginate(
         ),
         next_cursor: maybe_last_cursor(page_items, has_more, get_cursor),
       )
-    BeforePage(cursor: request_cursor, limit: _) ->
+    }
+
+    BeforePage(cursor: request_cursor, limit: _) -> {
+      let PageSlice(items: page_items, has_more: has_more) =
+        take_page_from_end(items, limit(pagination))
+
       BeforeCursorPage(
         items: page_items,
         previous_cursor: maybe_first_cursor_when(
@@ -258,6 +268,7 @@ pub fn paginate(
         ),
         next_cursor: before_next_cursor(page_items, request_cursor, get_cursor),
       )
+    }
   }
 }
 
@@ -314,6 +325,13 @@ fn encode_cursor_json(cursor: Cursor) -> json.Json {
 
 fn take_page(items: List(a), page_limit: Int) -> PageSlice(a) {
   take_page_loop(items, page_limit, [])
+}
+
+fn take_page_from_end(items: List(a), page_limit: Int) -> PageSlice(a) {
+  items
+  |> list.reverse
+  |> take_page(page_limit)
+  |> reverse_page_slice
 }
 
 fn take_page_loop(
@@ -380,4 +398,9 @@ fn before_next_cursor(
     option.Some(cursor) -> cursor
     option.None -> request_cursor
   }
+}
+
+fn reverse_page_slice(slice: PageSlice(a)) -> PageSlice(a) {
+  let PageSlice(items: items, has_more: has_more) = slice
+  PageSlice(items: list.reverse(items), has_more: has_more)
 }

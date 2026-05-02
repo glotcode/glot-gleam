@@ -182,7 +182,7 @@ pub fn paginate_after_page_test() {
 pub fn paginate_before_page_test() {
   let page =
     pagination_model.paginate(
-      ["a", "b", "c"],
+      ["c", "b", "a"],
       pagination_model.BeforePage(
         cursor: pagination_model.from_string("d"),
         limit: 2,
@@ -192,9 +192,28 @@ pub fn paginate_before_page_test() {
 
   assert page
     == pagination_model.BeforeCursorPage(
-      items: ["a", "b"],
-      previous_cursor: option.Some(pagination_model.from_string("a")),
-      next_cursor: pagination_model.from_string("b"),
+      items: ["b", "a"],
+      previous_cursor: option.Some(pagination_model.from_string("b")),
+      next_cursor: pagination_model.from_string("a"),
+    )
+}
+
+pub fn paginate_before_page_keeps_nearest_window_test() {
+  let page =
+    pagination_model.paginate(
+      ["5", "4", "3"],
+      pagination_model.BeforePage(
+        cursor: pagination_model.from_string("2"),
+        limit: 2,
+      ),
+      pagination_model.from_string,
+    )
+
+  assert page
+    == pagination_model.BeforeCursorPage(
+      items: ["4", "3"],
+      previous_cursor: option.Some(pagination_model.from_string("4")),
+      next_cursor: pagination_model.from_string("3"),
     )
 }
 

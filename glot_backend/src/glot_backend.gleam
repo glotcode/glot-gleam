@@ -21,6 +21,7 @@ import glot_backend/home_page
 import glot_backend/job_tracker
 import glot_backend/request_tracker
 import glot_backend/server_mode
+import glot_backend/snippets_page
 import glot_backend/worker/db_monitor
 import glot_backend/worker/job_worker
 import glot_backend/worker/language_version_cache_worker
@@ -241,18 +242,40 @@ pub fn handle_request(
     http.Get, _ ->
       request.to_uri(req)
       |> route.from_uri
-      |> handle_frontend_route
+      |> fn(current_route) {
+        handle_frontend_route(
+          db,
+          ctx,
+          language_version_cache_subject,
+          current_route,
+        )
+      }
     _, _ -> wisp.not_found()
   }
 }
 
-fn handle_frontend_route(current_route: route.Route) -> wisp.Response {
+fn handle_frontend_route(
+  db: pog.Connection,
+  ctx: context.Context,
+  language_version_cache_subject: process.Subject(
+    language_version_cache_worker.Message,
+  ),
+  current_route: route.Route,
+) -> wisp.Response {
   case current_route {
     route.Home -> home_page.home_page()
     route.Login -> serve_spa_page()
     route.Account -> serve_spa_page()
     route.AccountSnippets(_, _) -> serve_spa_page()
-    route.Snippets(_, _, _) -> serve_spa_page()
+    route.Snippets(after:, before:, username:) ->
+      snippets_page.snippets_page(
+        db,
+        ctx,
+        language_version_cache_subject,
+        after: after,
+        before: before,
+        username: username,
+      )
     route.NewSnippet(_) -> serve_spa_page()
     route.Snippet(_) -> serve_spa_page()
     route.NotFound(_) -> wisp.not_found()
