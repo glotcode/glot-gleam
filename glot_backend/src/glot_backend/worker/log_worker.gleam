@@ -58,9 +58,23 @@ pub type PageLogEntry {
   )
 }
 
+pub type PageviewLogEntry {
+  PageviewLogEntry(
+    id: Uuid,
+    created_at: Timestamp,
+    session_id: Option(Uuid),
+    user_id: Option(Uuid),
+    route: String,
+    path: String,
+    user_agent: Option(String),
+    ip: Option(String),
+  )
+}
+
 pub type Message {
   Insert(ApiLogEntry)
   InsertPage(PageLogEntry)
+  InsertPageview(PageviewLogEntry)
   Tick
   Drain(reply: process.Subject(Nil))
 }
@@ -68,6 +82,7 @@ pub type Message {
 type PendingEntry {
   PendingApiLogEntry(ApiLogEntry)
   PendingPageLogEntry(PageLogEntry)
+  PendingPageviewLogEntry(PageviewLogEntry)
 }
 
 type State {
@@ -131,6 +146,17 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
       let state =
         state
         |> enqueue_entry(PendingPageLogEntry(log_entry))
+        |> schedule_flush_if_needed()
+
+      case state.pending_count >= max_batch_size {
+        True -> actor.continue(flush_entries_runtime(state))
+        False -> actor.continue(state)
+      }
+    }
+    InsertPageview(log_entry) -> {
+      let state =
+        state
+        |> enqueue_entry(PendingPageviewLogEntry(log_entry))
         |> schedule_flush_if_needed()
 
       case state.pending_count >= max_batch_size {
@@ -237,10 +263,12 @@ fn insert_logs(
   db: pog.Connection,
   entries: List(PendingEntry),
 ) -> Result(Nil, String) {
-  let #(api_entries, page_entries) = split_entries(entries, [], [])
+  let #(api_entries, page_entries, pageview_entries) =
+    split_entries(entries, [], [], [])
   pog.transaction(db, fn(connection) {
     use _ <- result.try(insert_api_logs(connection, api_entries))
-    insert_page_logs(connection, page_entries)
+    use _ <- result.try(insert_page_logs(connection, page_entries))
+    insert_pageview_logs(connection, pageview_entries)
   })
   |> result.map_error(fn(err) { string.inspect(err) })
 }
@@ -249,13 +277,40 @@ fn split_entries(
   entries: List(PendingEntry),
   api_entries: List(ApiLogEntry),
   page_entries: List(PageLogEntry),
-) -> #(List(ApiLogEntry), List(PageLogEntry)) {
+  pageview_entries: List(PageviewLogEntry),
+) -> #(
+  List(ApiLogEntry),
+  List(PageLogEntry),
+  List(PageviewLogEntry),
+) {
   case entries {
-    [] -> #(list.reverse(api_entries), list.reverse(page_entries))
+    [] ->
+      #(
+        list.reverse(api_entries),
+        list.reverse(page_entries),
+        list.reverse(pageview_entries),
+      )
     [PendingApiLogEntry(entry), ..rest] ->
-      split_entries(rest, [entry, ..api_entries], page_entries)
+      split_entries(
+        rest,
+        [entry, ..api_entries],
+        page_entries,
+        pageview_entries,
+      )
     [PendingPageLogEntry(entry), ..rest] ->
-      split_entries(rest, api_entries, [entry, ..page_entries])
+      split_entries(
+        rest,
+        api_entries,
+        [entry, ..page_entries],
+        pageview_entries,
+      )
+    [PendingPageviewLogEntry(entry), ..rest] ->
+      split_entries(
+        rest,
+        api_entries,
+        page_entries,
+        [entry, ..pageview_entries],
+      )
   }
 }
 
@@ -291,6 +346,29 @@ fn insert_page_logs(
       let query =
         sql.insert_page_log(
           entries: json.array(entries, of: encode_page_log_entry) |> json.to_string,
+        )
+
+      let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
+
+      case res {
+        Ok(_) -> Ok(Nil)
+        Error(err) -> Error(err)
+      }
+    }
+  }
+}
+
+fn insert_pageview_logs(
+  db: pog.Connection,
+  entries: List(PageviewLogEntry),
+) -> Result(Nil, String) {
+  case entries {
+    [] -> Ok(Nil)
+    _ -> {
+      let query =
+        sql.insert_pageview_log(
+          entries: json.array(entries, of: encode_pageview_log_entry)
+            |> json.to_string,
         )
 
       let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
@@ -406,5 +484,29 @@ fn encode_page_log_entry(entry: PageLogEntry) -> json.Json {
         effect_trace.encode_effect_measurements,
       ),
     ),
+  ])
+}
+
+fn encode_pageview_log_entry(
+  entry: PageviewLogEntry,
+) -> json.Json {
+  json.object([
+    #("id", json.string(uuid.to_string(entry.id))),
+    #(
+      "created_at",
+      json.string(timestamp.to_rfc3339(entry.created_at, calendar.utc_offset)),
+    ),
+    #(
+      "session_id",
+      json.nullable(entry.session_id, fn(id) { json.string(uuid.to_string(id)) }),
+    ),
+    #(
+      "user_id",
+      json.nullable(entry.user_id, fn(id) { json.string(uuid.to_string(id)) }),
+    ),
+    #("route", json.string(entry.route)),
+    #("path", json.string(entry.path)),
+    #("user_agent", json.nullable(entry.user_agent, json.string)),
+    #("ip", json.nullable(entry.ip, json.string)),
   ])
 }

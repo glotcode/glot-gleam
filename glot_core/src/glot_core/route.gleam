@@ -62,6 +62,19 @@ pub fn to_string(route: Route) -> String {
   }
 }
 
+pub fn name(route: Route) -> String {
+  case route {
+    Home -> "home"
+    Login -> "login"
+    Account -> "account"
+    AccountSnippets(_, _) -> "account_snippets"
+    Snippets(_, _, _) -> "snippets"
+    NewSnippet(_) -> "new_snippet"
+    Snippet(_) -> "snippet"
+    NotFound(_) -> "not_found"
+  }
+}
+
 pub fn href(route: Route) -> Attribute(msg) {
   attribute.href(to_string(route))
 }

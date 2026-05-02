@@ -5,6 +5,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/session_dto
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
+import glot_core/pageview_dto
 import glot_core/route
 import glot_frontend/account_page
 import glot_frontend/api
@@ -153,6 +154,7 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
 
 type Msg {
   UserNavigatedTo(route: route.Route)
+  PageviewTracked(api.ApiResponse(Nil))
   SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
   MinuteTicked(Timestamp)
   QuickActionsOpened
@@ -187,6 +189,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       #(Model(..model, session: session), effect.none())
     }
+
+    PageviewTracked(_), _ -> #(model, effect.none())
 
     QuickActionsOpened, _ -> #(
       Model(..model, quick_action_query: "", quick_action_selected_index: 0),
@@ -307,6 +311,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         effect.batch([
           app_dialog.close(top_bar.quick_actions_dialog_id),
           page_effect,
+          track_pageview(route),
         ]),
       )
     }
@@ -480,6 +485,23 @@ fn handle_quick_action(
 fn navigate_to(route: route.Route) -> Effect(Msg) {
   let #(path, query) = route.path_and_query(route)
   modem.push(path, query, option.None)
+}
+
+fn track_pageview(route: route.Route) -> Effect(Msg) {
+  let #(path, query) = route.path_and_query(route)
+  let full_path = case query {
+    option.Some(query) -> path <> "?" <> query
+    option.None -> path
+  }
+
+  api.track_pageview(
+    pageview_dto.PageviewRequest(
+      id: uuid.v7(),
+      route: route.name(route),
+      path: full_path,
+    ),
+    PageviewTracked,
+  )
 }
 
 fn filtered_quick_action_sections(model: Model) -> List(top_bar.Section(Msg)) {

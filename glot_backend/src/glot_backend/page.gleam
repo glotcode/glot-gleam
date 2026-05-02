@@ -275,7 +275,7 @@ fn prepare_log_entry(
     id: basic_handlers.uuid_v7(ctx.timestamp),
     request_id: ctx.request_id,
     created_at: ctx.timestamp,
-    route: route_name(page_request.route),
+    route: route.name(page_request.route),
     path: page_request.path,
     status_code: page_response.status_code,
     render_mode: page_response.render_mode,
@@ -288,17 +288,4 @@ fn prepare_log_entry(
     error: page_response.error,
     effects: page_response.effects,
   )
-}
-
-fn route_name(current_route: route.Route) -> String {
-  case current_route {
-    route.Home -> "home"
-    route.Login -> "login"
-    route.Account -> "account"
-    route.AccountSnippets(_, _) -> "account_snippets"
-    route.Snippets(_, _, _) -> "snippets"
-    route.NewSnippet(_) -> "new_snippet"
-    route.Snippet(_) -> "snippet"
-    route.NotFound(_) -> "not_found"
-  }
 }

@@ -16,6 +16,7 @@ import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/logout_domain
 import glot_backend/domain/auth/send_login_token_domain
+import glot_backend/domain/navigation/track_pageview_domain
 import glot_backend/domain/run_code/get_language_version_domain
 import glot_backend/domain/run_code/run_domain
 import glot_backend/domain/snippet/create_snippet_domain
@@ -84,6 +85,13 @@ fn handle_api_request(
   api_request: ApiRequest,
 ) -> program_types.Program(ApiResult) {
   case api_request.action {
+    api_action.TrackPageviewAction -> {
+      use request <- program.and_then(
+        track_pageview_domain.request_from_dynamic(api_request.data),
+      )
+      track_pageview_domain.track_pageview(ctx, request)
+      |> program.map(TrackPageviewResponse)
+    }
     api_action.RunAction -> {
       use request <- program.and_then(run_domain.request_from_dynamic(
         api_request.data,
@@ -221,6 +229,7 @@ fn require_api_request(
 }
 
 type ApiResult {
+  TrackPageviewResponse(track_pageview_domain.TrackedPageview)
   RunResultResponse(run.RunResult)
   SessionResponse(option.Option(session_dto.SessionResponse))
   AccountResponse(account_dto.AccountResponse)
@@ -237,6 +246,7 @@ fn api_result_to_response(
   result: ApiResult,
 ) -> wisp.Response {
   case result {
+    TrackPageviewResponse(_) -> success_response(json.null())
     RunResultResponse(run_result) -> {
       success_response(run.encode_run_result(run_result))
     }
@@ -317,9 +327,37 @@ fn insert_log_entry(
           error,
         )),
       )
+      insert_pageview_log_entry(ctx, log_worker_subject, result)
       Nil
     }
     Error(_) -> wisp.log_error("Log worker unavailable")
+  }
+}
+
+fn insert_pageview_log_entry(
+  ctx: context.Context,
+  log_worker_subject: process.Subject(log_worker.Message),
+  result: Result(ApiResult, error.Error),
+) -> Nil {
+  case result {
+    Ok(TrackPageviewResponse(pageview)) ->
+      process.send(
+        log_worker_subject,
+        log_worker.InsertPageview(
+          log_worker.PageviewLogEntry(
+            id: pageview.id,
+            created_at: ctx.timestamp,
+            session_id: pageview.session_id,
+            user_id: pageview.user_id,
+            route: pageview.route,
+            path: pageview.path,
+            user_agent: ctx.client_info.user_agent,
+            ip: ctx.client_info.ip,
+          ),
+        ),
+      )
+    Ok(_)
+    | Error(_) -> Nil
   }
 }
 

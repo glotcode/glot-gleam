@@ -184,6 +184,26 @@ CREATE TABLE IF NOT EXISTS page_log (
 
 CREATE INDEX idx_page_log_created_at ON page_log(created_at);
 
+-- PAGEVIEW LOG
+
+CREATE TABLE IF NOT EXISTS pageview_log (
+  id UUID PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL,
+  session_id UUID NULL,
+  user_id UUID NULL,
+  route TEXT NOT NULL,
+  path TEXT NOT NULL,
+  user_agent TEXT NULL,
+  ip TEXT NULL
+);
+
+CREATE INDEX idx_pageview_log_created_at
+  ON pageview_log(created_at);
+CREATE INDEX idx_pageview_log_route_created_at
+  ON pageview_log(route, created_at);
+CREATE INDEX idx_pageview_log_user_id_created_at
+  ON pageview_log(user_id, created_at);
+
 -- JOB LOG
 
 CREATE TABLE IF NOT EXISTS job_log (

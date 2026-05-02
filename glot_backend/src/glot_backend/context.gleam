@@ -186,6 +186,10 @@ fn rate_limits_config_from_dict(
   values: Dict(String, String),
 ) -> RateLimitsConfig {
   dict.from_list([
+    #(
+      api_action.TrackPageviewAction,
+      lookup_rate_limits(values, "TRACK_PAGEVIEW"),
+    ),
     #(api_action.GetSessionAction, lookup_rate_limits(values, "GET_SESSION")),
     #(api_action.LogoutAction, lookup_rate_limits(values, "LOGOUT")),
     #(api_action.GetAccountAction, lookup_rate_limits(values, "GET_ACCOUNT")),

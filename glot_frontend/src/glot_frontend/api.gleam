@@ -11,6 +11,7 @@ import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
 import glot_core/auth/session_dto
 import glot_core/email/email_address_model.{type EmailAddress}
+import glot_core/pageview_dto
 import glot_core/pagination_model
 import glot_core/run
 import glot_core/snippet/snippet_dto
@@ -42,6 +43,20 @@ pub fn send_login_token(
     )
 
   send_api_request(req, login_token_dto.encode, nil_decoder(), to_msg)
+}
+
+pub fn track_pageview(
+  request: pageview_dto.PageviewRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.TrackPageviewAction, request)
+
+  send_api_request(
+    req,
+    pageview_dto.encode,
+    nil_decoder(),
+    to_msg,
+  )
 }
 
 pub fn login(

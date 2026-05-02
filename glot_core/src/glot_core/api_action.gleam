@@ -2,6 +2,7 @@ import gleam/dynamic/decode
 import gleam/json
 
 pub type ApiAction {
+  TrackPageviewAction
   RunAction
   GetLanguageVersionAction
   GetSessionAction
@@ -23,6 +24,7 @@ pub type ApiAction {
 pub fn decoder() -> decode.Decoder(ApiAction) {
   use action <- decode.then(decode.string)
   case action {
+    "track_pageview" -> decode.success(TrackPageviewAction)
     "run" -> decode.success(RunAction)
     "get_language_version" -> decode.success(GetLanguageVersionAction)
     "get_session" -> decode.success(GetSessionAction)
@@ -49,6 +51,7 @@ pub fn encode(action: ApiAction) -> json.Json {
 
 pub fn to_string(action: ApiAction) -> String {
   case action {
+    TrackPageviewAction -> "track_pageview"
     RunAction -> "run"
     GetLanguageVersionAction -> "get_language_version"
     GetSessionAction -> "get_session"

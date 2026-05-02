@@ -1634,3 +1634,38 @@ pub fn update_login_token(
     dev.ParamBitArray(id),
   ])
 }
+
+pub fn insert_pageview_log(entries entries: String) {
+  let sql =
+    "INSERT INTO pageview_log (
+  id,
+  created_at,
+  session_id,
+  user_id,
+  route,
+  path,
+  user_agent,
+  ip
+)
+SELECT
+  id,
+  created_at,
+  session_id,
+  user_id,
+  route,
+  path,
+  user_agent,
+  ip
+FROM jsonb_to_recordset($1::JSONB) AS rows(
+  id UUID,
+  created_at TIMESTAMPTZ,
+  session_id UUID,
+  user_id UUID,
+  route TEXT,
+  path TEXT,
+  user_agent TEXT,
+  ip TEXT
+)
+ON CONFLICT (id) DO NOTHING"
+  #(sql, [dev.ParamString(entries)])
+}
