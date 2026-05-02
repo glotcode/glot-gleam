@@ -2,7 +2,7 @@
 
 CREATE TABLE IF NOT EXISTS periodic_jobs (
   id UUID PRIMARY KEY, -- Periodic job id.
-  job_type TEXT NOT NULL, -- Handler discriminator for enqueued jobs.
+  job_type TEXT NOT NULL UNIQUE, -- Handler discriminator for enqueued jobs.
   payload JSONB NULL, -- Encoded job input reused for each execution.
   interval_seconds INT NOT NULL, -- Scheduler cadence in seconds.
   enabled BOOLEAN NOT NULL DEFAULT TRUE, -- Whether new executions should be enqueued.
@@ -219,7 +219,7 @@ INSERT INTO periodic_jobs (
   updated_at
 )
 VALUES (
-  '4b787ca6-2a3c-485e-b41c-25e82225425d',
+  uuidv4(),
   'clean_api_log',
   NULL,
   86400,
@@ -230,7 +230,7 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 ), (
-  '7b1438f9-ee9f-4949-b980-4e9c856f8bf0',
+  uuidv4(),
   'clean_job_log',
   NULL,
   86400,
@@ -241,7 +241,7 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 ), (
-  '243fda96-7166-44dd-ad87-260fb767531f',
+  uuidv4(),
   'clean_page_log',
   NULL,
   86400,
@@ -252,7 +252,7 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 ), (
-  'a7c48c4a-b660-495f-bbda-91fa476b825b',
+  uuidv4(),
   'clean_jobs',
   NULL,
   86400,
@@ -263,7 +263,7 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 ), (
-  'c0302520-085a-4d33-a0f7-b32c52800f79',
+  uuidv4(),
   'clean_login_tokens',
   NULL,
   86400,
@@ -274,7 +274,7 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 ), (
-  '22796a72-e861-4032-881d-cdbd8c07f420',
+  uuidv4(),
   'clean_user_actions',
   NULL,
   86400,
@@ -285,4 +285,4 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 )
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (job_type) DO NOTHING;
