@@ -467,7 +467,7 @@ fn navigate_to(route: route.Route) -> Effect(Msg) {
 
 fn filtered_quick_action_sections(model: Model) -> List(top_bar.Section(Msg)) {
   let query = model.quick_action_query |> string.trim |> string.lowercase
-  let uses_initial_home_sections = case
+  let uses_default_quick_action_sections = case
     model.session,
     model.route,
     model.page_model,
@@ -477,9 +477,9 @@ fn filtered_quick_action_sections(model: Model) -> List(top_bar.Section(Msg)) {
     _, _, _, _ -> False
   }
 
-  case uses_initial_home_sections {
+  case uses_default_quick_action_sections {
     True ->
-      top_bar.initial_home_sections(fn(destination) {
+      top_bar.default_quick_action_sections(fn(destination) {
         QuickActionSelected(NavigateTo(destination))
       })
     False -> filtered_quick_action_sections_for_state(model, query)

@@ -141,7 +141,7 @@ pub fn action_at(
   }
 }
 
-pub fn initial_home_sections(
+pub fn default_quick_action_sections(
   on_navigate: fn(route.Route) -> msg,
 ) -> List(Section(msg)) {
   [
@@ -159,6 +159,21 @@ pub fn initial_home_sections(
       actions: language_actions(query: "", on_navigate:),
     ),
   ]
+}
+
+pub fn empty_model() -> ViewModel(Nil) {
+  ViewModel(
+    current_user_label: "Account",
+    account_route: route.Account,
+    search_query: "",
+    selected_index: 0,
+    open_msg: Nil,
+    close_msg: Nil,
+    search_changed: fn(_) { Nil },
+    keydown: fn(_) { Nil },
+    submit_msg: Nil,
+    sections: default_quick_action_sections(fn(_) { Nil }),
+  )
 }
 
 pub fn navigation_actions(

@@ -21,23 +21,8 @@ pub fn app_attributes(view_model: snippets.ViewModel) -> List(attribute.Attribut
 
 pub fn render(view_model: snippets.ViewModel) -> Element(Nil) {
   site_chrome.view(
-    top_bar_model: initial_top_bar_model(),
+    top_bar_model: top_bar.empty_model(),
     footer_account_route: route.Account,
     content: snippets.view(view_model),
-  )
-}
-
-fn initial_top_bar_model() -> top_bar.ViewModel(Nil) {
-  top_bar.ViewModel(
-    current_user_label: "Account",
-    account_route: route.Account,
-    search_query: "",
-    selected_index: 0,
-    open_msg: Nil,
-    close_msg: Nil,
-    search_changed: fn(_) { Nil },
-    keydown: fn(_) { Nil },
-    submit_msg: Nil,
-    sections: top_bar.initial_home_sections(fn(_) { Nil }),
   )
 }
