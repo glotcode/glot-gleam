@@ -2,6 +2,7 @@ import gleam/int
 import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
+import glot_backend/domain/analytics/aggregate_metrics_domain
 import glot_backend/domain/account/delete_account_domain
 import glot_backend/domain/cleanup/clean_api_log_domain
 import glot_backend/domain/cleanup/clean_jobs_domain
@@ -90,6 +91,8 @@ fn delegate_job(
       clean_login_tokens_domain.clean_login_tokens(ctx)
     job_model.CleanUserActionsJob ->
       clean_user_actions_domain.clean_user_actions(ctx)
+    job_model.AggregateMetricsJob ->
+      aggregate_metrics_domain.aggregate_metrics(ctx)
   }
 }
 

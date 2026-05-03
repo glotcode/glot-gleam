@@ -1,3 +1,4 @@
+import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import gleam/json
 import gleam/list
@@ -11,12 +12,14 @@ import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
+import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/user_action/user_action_algebra
 
 pub type EffectName {
   ApiLogEffectName(api_log_algebra.EffectName)
+  AnalyticsEffectName(analytics_algebra.EffectName)
   BasicEffectName(basic_algebra.EffectName)
   EmailEffectName(email_algebra.EffectName)
   JobEffectName(job_algebra.EffectName)
@@ -24,6 +27,7 @@ pub type EffectName {
   PageLogEffectName(page_log_algebra.EffectName)
   PageviewLogEffectName(pageview_log_algebra.EffectName)
   PeriodicJobEffectName(periodic_job_algebra.EffectName)
+  RunLogEffectName(run_log_algebra.EffectName)
   AuthEffectName(auth_algebra.EffectName)
   SnippetEffectName(snippet_algebra.EffectName)
   DockerRunEffectName(docker_run_algebra.EffectName)
@@ -39,6 +43,7 @@ pub type EffectName {
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
   case effect_name {
     ApiLogEffectName(name) -> api_log_algebra.effect_name_to_string(name)
+    AnalyticsEffectName(name) -> analytics_algebra.effect_name_to_string(name)
     BasicEffectName(name) -> basic_algebra.effect_name_to_string(name)
     EmailEffectName(name) -> email_algebra.effect_name_to_string(name)
     JobEffectName(name) -> job_algebra.effect_name_to_string(name)
@@ -48,6 +53,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
       pageview_log_algebra.effect_name_to_string(name)
     PeriodicJobEffectName(name) ->
       periodic_job_algebra.effect_name_to_string(name)
+    RunLogEffectName(name) -> run_log_algebra.effect_name_to_string(name)
     AuthEffectName(name) -> auth_algebra.effect_name_to_string(name)
     SnippetEffectName(name) -> snippet_algebra.effect_name_to_string(name)
     DockerRunEffectName(name) -> docker_run_algebra.effect_name_to_string(name)
@@ -63,6 +69,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
 pub fn effect_name_to_family(effect_name: EffectName) -> String {
   case effect_name {
     ApiLogEffectName(_) -> "api_log"
+    AnalyticsEffectName(_) -> "analytics"
     BasicEffectName(_) -> "basic"
     EmailEffectName(_) -> "email"
     JobEffectName(_) -> "job"
@@ -70,6 +77,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     PageLogEffectName(_) -> "page_log"
     PageviewLogEffectName(_) -> "pageview_log"
     PeriodicJobEffectName(_) -> "periodic_job"
+    RunLogEffectName(_) -> "run_log"
     AuthEffectName(_) -> "auth"
     SnippetEffectName(_) -> "snippet"
     DockerRunEffectName(_) -> "docker_run"

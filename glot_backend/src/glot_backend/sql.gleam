@@ -4,6 +4,7 @@
 import gleam/dynamic/decode
 import gleam/list
 import gleam/option.{type Option}
+import gleam/time/calendar.{type Date}
 import gleam/time/timestamp.{type Timestamp}
 import parrot/dev
 
@@ -1039,6 +1040,42 @@ WHERE id = $1"
   ])
 }
 
+pub fn insert_run_log(
+  id id: BitArray,
+  request_id request_id: BitArray,
+  created_at created_at: Timestamp,
+  session_id session_id: Option(BitArray),
+  user_id user_id: Option(BitArray),
+  language language: String,
+  outcome outcome: String,
+  duration_ns duration_ns: Option(Int),
+  failure_message failure_message: Option(String),
+) {
+  let sql =
+    "INSERT INTO run_log (
+  id,
+  request_id,
+  created_at,
+  session_id,
+  user_id,
+  language,
+  outcome,
+  duration_ns,
+  failure_message
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamBitArray(request_id),
+    dev.ParamTimestamp(created_at),
+    dev.ParamNullable(option.map(session_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamString(language),
+    dev.ParamString(outcome),
+    dev.ParamNullable(option.map(duration_ns, fn(v) { dev.ParamInt(v) })),
+    dev.ParamNullable(option.map(failure_message, fn(v) { dev.ParamString(v) })),
+  ])
+}
+
 pub fn insert_job_log(
   id id: BitArray,
   request_id request_id: Option(BitArray),
@@ -1368,6 +1405,226 @@ pub fn delete_job(id id: BitArray) {
     "DELETE FROM jobs
 WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)])
+}
+
+pub type GetMaxCompletedMetricsDay {
+  GetMaxCompletedMetricsDay(day: decode.Dynamic)
+}
+
+pub fn get_max_completed_metrics_day() {
+  let sql =
+    "SELECT MAX(day) AS day
+FROM metrics_completed_day"
+  #(sql, [], get_max_completed_metrics_day_decoder())
+}
+
+pub fn get_max_completed_metrics_day_decoder() -> decode.Decoder(
+  GetMaxCompletedMetricsDay,
+) {
+  use day <- decode.field(0, decode.dynamic)
+  decode.success(GetMaxCompletedMetricsDay(day:))
+}
+
+pub type GetFirstMetricsSourceDay {
+  GetFirstMetricsSourceDay(day: decode.Dynamic)
+}
+
+pub fn get_first_metrics_source_day(before_day before_day: Timestamp) {
+  let sql =
+    "SELECT MIN(day) AS day
+FROM (
+  SELECT MIN(DATE_TRUNC('day', pageview_log.created_at AT TIME ZONE 'UTC')::date) AS day
+  FROM pageview_log
+  WHERE DATE_TRUNC('day', pageview_log.created_at AT TIME ZONE 'UTC')::date < $1
+
+  UNION ALL
+
+  SELECT MIN(DATE_TRUNC('day', sessions.created_at AT TIME ZONE 'UTC')::date) AS day
+  FROM sessions
+  WHERE DATE_TRUNC('day', sessions.created_at AT TIME ZONE 'UTC')::date < $1
+
+  UNION ALL
+
+  SELECT MIN(DATE_TRUNC('day', snippets.created_at AT TIME ZONE 'UTC')::date) AS day
+  FROM snippets
+  WHERE DATE_TRUNC('day', snippets.created_at AT TIME ZONE 'UTC')::date < $1
+
+  UNION ALL
+
+  SELECT MIN(DATE_TRUNC('day', page_log.created_at AT TIME ZONE 'UTC')::date) AS day
+  FROM page_log
+  WHERE DATE_TRUNC('day', page_log.created_at AT TIME ZONE 'UTC')::date < $1
+
+  UNION ALL
+
+  SELECT MIN(DATE_TRUNC('day', run_log.created_at AT TIME ZONE 'UTC')::date) AS day
+  FROM run_log
+  WHERE DATE_TRUNC('day', run_log.created_at AT TIME ZONE 'UTC')::date < $1
+
+  UNION ALL
+
+  SELECT MIN(DATE_TRUNC('day', api_log.created_at AT TIME ZONE 'UTC')::date) AS day
+  FROM api_log
+  WHERE DATE_TRUNC('day', api_log.created_at AT TIME ZONE 'UTC')::date < $1
+) AS source_days"
+  #(
+    sql,
+    [dev.ParamTimestamp(before_day)],
+    get_first_metrics_source_day_decoder(),
+  )
+}
+
+pub fn get_first_metrics_source_day_decoder() -> decode.Decoder(
+  GetFirstMetricsSourceDay,
+) {
+  use day <- decode.field(0, decode.dynamic)
+  decode.success(GetFirstMetricsSourceDay(day:))
+}
+
+pub fn insert_metrics_pageview_day(day day: Date) {
+  let sql =
+    "INSERT INTO metrics_pageview_daily (
+  day,
+  route,
+  path,
+  views,
+  unique_sessions,
+  unique_users
+)
+SELECT
+  $1 AS day,
+  route,
+  path,
+  COUNT(*),
+  COUNT(DISTINCT session_id),
+  COUNT(DISTINCT user_id)
+FROM pageview_log
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = $1
+GROUP BY route, path
+ON CONFLICT (day, route, path) DO NOTHING"
+  #(sql, [dev.ParamDate(day)])
+}
+
+pub fn insert_metrics_product_event_day(day day: Date) {
+  let sql =
+    "INSERT INTO metrics_product_event_daily (
+  day,
+  event_name,
+  event_count,
+  unique_sessions,
+  unique_users
+)
+SELECT
+  day,
+  event_name,
+  event_count,
+  unique_sessions,
+  unique_users
+FROM (
+  SELECT
+    $1 AS day,
+    'login_succeeded' AS event_name,
+    COUNT(*) AS event_count,
+    COUNT(DISTINCT id) AS unique_sessions,
+    COUNT(DISTINCT user_id) AS unique_users
+  FROM sessions
+  WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = $1
+  GROUP BY 1
+
+  UNION ALL
+
+  SELECT
+    $1 AS day,
+    'snippet_created' AS event_name,
+    COUNT(*) AS event_count,
+    0 AS unique_sessions,
+    COUNT(DISTINCT user_id) AS unique_users
+  FROM snippets
+  WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = $1
+  GROUP BY 1
+) AS derived_events
+ON CONFLICT (day, event_name) DO NOTHING"
+  #(sql, [dev.ParamDate(day)])
+}
+
+pub fn insert_metrics_run_day(day day: Date) {
+  let sql =
+    "INSERT INTO metrics_run_daily (
+  day,
+  language,
+  successful_runs,
+  failed_runs,
+  unique_sessions,
+  unique_users
+)
+SELECT
+  $1 AS day,
+  COALESCE(language, 'unknown'),
+  COUNT(*) FILTER (WHERE outcome = 'succeeded'),
+  COUNT(*) FILTER (WHERE outcome = 'failed'),
+  COUNT(DISTINCT session_id),
+  COUNT(DISTINCT user_id)
+FROM run_log
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = $1
+GROUP BY COALESCE(language, 'unknown')
+ON CONFLICT (day, language) DO NOTHING"
+  #(sql, [dev.ParamDate(day)])
+}
+
+pub fn insert_metrics_reliability_page_day(day day: Date) {
+  let sql =
+    "INSERT INTO metrics_reliability_daily (
+  day,
+  surface,
+  name,
+  request_count,
+  error_count,
+  avg_duration_ns
+)
+SELECT
+  $1 AS day,
+  'page',
+  route,
+  COUNT(*),
+  COUNT(*) FILTER (WHERE status_code >= 400),
+  COALESCE(AVG(duration_ns)::BIGINT, 0)
+FROM page_log
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = $1
+GROUP BY route
+ON CONFLICT (day, surface, name) DO NOTHING"
+  #(sql, [dev.ParamDate(day)])
+}
+
+pub fn insert_metrics_reliability_api_day(day day: Date) {
+  let sql =
+    "INSERT INTO metrics_reliability_daily (
+  day,
+  surface,
+  name,
+  request_count,
+  error_count,
+  avg_duration_ns
+)
+SELECT
+  $1 AS day,
+  'api',
+  action,
+  COUNT(*),
+  COUNT(*) FILTER (WHERE error IS NOT NULL),
+  COALESCE(AVG(duration_ns)::BIGINT, 0)
+FROM api_log
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = $1
+GROUP BY action
+ON CONFLICT (day, surface, name) DO NOTHING"
+  #(sql, [dev.ParamDate(day)])
+}
+
+pub fn insert_metrics_completed_day(day day: Date) {
+  let sql =
+    "INSERT INTO metrics_completed_day (day)
+VALUES ($1)
+ON CONFLICT (day) DO NOTHING"
+  #(sql, [dev.ParamDate(day)])
 }
 
 pub fn update_account(

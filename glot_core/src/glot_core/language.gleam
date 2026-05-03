@@ -213,6 +213,11 @@ pub fn from_string(s: String) -> Option(Language) {
   }
 }
 
+pub fn from_container_image(image: String) -> Option(Language) {
+  list.find(list(), fn(lang) { container_image(lang) == image })
+  |> option.from_result
+}
+
 pub fn encode(lang: Language) -> json.Json {
   json.string(to_string(lang))
 }

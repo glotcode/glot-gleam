@@ -20,6 +20,7 @@ import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/effect/api_log/api_log_algebra
+import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
@@ -32,6 +33,7 @@ import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
+import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 import glot_core/api_action
@@ -1046,6 +1048,8 @@ fn run_test_db_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    program_types.AnalyticsEffect(analytics_effect) ->
+      run_test_analytics_effect(analytics_effect, ctx, db)
     program_types.ApiLogEffect(api_log_effect) ->
       run_test_api_log_effect(api_log_effect, ctx, db)
     program_types.AuthEffect(auth_effect) ->
@@ -1060,6 +1064,8 @@ fn run_test_db_effect(
       run_test_pageview_log_effect(pageview_log_effect, ctx, db)
     program_types.PeriodicJobEffect(periodic_job_effect) ->
       run_test_periodic_job_effect(periodic_job_effect, ctx, db)
+    program_types.RunLogEffect(run_log_effect) ->
+      run_test_run_log_effect(run_log_effect, ctx, db)
     program_types.SnippetEffect(snippet_effect) ->
       run_test_snippet_effect(snippet_effect, ctx, db)
     program_types.UserActionEffect(user_action_effect) ->
@@ -1073,6 +1079,8 @@ fn run_test_tx_db_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    program_types.AnalyticsEffect(analytics_effect) ->
+      run_test_analytics_tx_effect(analytics_effect, ctx, db)
     program_types.ApiLogEffect(api_log_effect) ->
       run_test_api_log_tx_effect(api_log_effect, ctx, db)
     program_types.AuthEffect(auth_effect) ->
@@ -1087,6 +1095,8 @@ fn run_test_tx_db_effect(
       run_test_pageview_log_tx_effect(pageview_log_effect, ctx, db)
     program_types.PeriodicJobEffect(periodic_job_effect) ->
       run_test_periodic_job_tx_effect(periodic_job_effect, ctx, db)
+    program_types.RunLogEffect(run_log_effect) ->
+      run_test_run_log_tx_effect(run_log_effect, ctx, db)
     program_types.SnippetEffect(snippet_effect) ->
       run_test_snippet_tx_effect(snippet_effect, ctx, db)
     program_types.UserActionEffect(user_action_effect) ->
@@ -1102,6 +1112,58 @@ fn run_test_api_log_effect(
   case effect {
     api_log_algebra.DeleteApiLogBefore(before: _, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_analytics_effect(
+  effect: analytics_algebra.AnalyticsEffect(program_types.Program(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    analytics_algebra.GetMaxCompletedMetricsDay(next:) ->
+      run_test_program(next(Ok(option.None)), ctx, db)
+    analytics_algebra.GetFirstMetricsSourceDay(before: _, next: next) ->
+      run_test_program(next(Ok(option.None)), ctx, db)
+    analytics_algebra.InsertMetricsPageviewDay(day: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsProductEventDay(day: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsRunDay(day: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsReliabilityPageDay(day: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsReliabilityApiDay(day: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsCompletedDay(day: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_analytics_tx_effect(
+  effect: analytics_algebra.AnalyticsEffect(
+    program_types.TransactionProgram(a),
+  ),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    analytics_algebra.GetMaxCompletedMetricsDay(next:) ->
+      run_test_tx_program(next(Ok(option.None)), ctx, db)
+    analytics_algebra.GetFirstMetricsSourceDay(before: _, next: next) ->
+      run_test_tx_program(next(Ok(option.None)), ctx, db)
+    analytics_algebra.InsertMetricsPageviewDay(day: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsProductEventDay(day: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsRunDay(day: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsReliabilityPageDay(day: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsReliabilityApiDay(day: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
+    analytics_algebra.InsertMetricsCompletedDay(day: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
   }
 }
 
@@ -1191,6 +1253,28 @@ fn run_test_periodic_job_tx_effect(
       run_test_tx_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
     periodic_job_algebra.UpdatePeriodicJob(periodic_job, next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
+  }
+}
+
+fn run_test_run_log_effect(
+  effect: run_log_algebra.RunLogEffect(program_types.Program(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    run_log_algebra.CreateRunLog(run_log: _, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_run_log_tx_effect(
+  effect: run_log_algebra.RunLogEffect(program_types.TransactionProgram(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    run_log_algebra.CreateRunLog(run_log: _, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, db)
   }
 }
 

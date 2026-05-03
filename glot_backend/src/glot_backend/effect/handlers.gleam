@@ -1,3 +1,4 @@
+import glot_backend/effect/analytics/analytics_handlers
 import glot_backend/effect/api_log/api_log_handlers
 import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/basic/basic_handlers
@@ -10,6 +11,7 @@ import glot_backend/effect/periodic_job/periodic_job_handlers
 import glot_backend/effect/page_log/page_log_handlers
 import glot_backend/effect/pageview_log/pageview_log_handlers
 import glot_backend/effect/snippet/snippet_handlers
+import glot_backend/effect/run_log/run_log_handlers
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
 import pog
@@ -17,6 +19,7 @@ import pog
 pub type Handlers {
   Handlers(
     api_log: api_log_handlers.ApiLogHandlers,
+    analytics: analytics_handlers.AnalyticsHandlers,
     basic: basic_handlers.BasicHandlers,
     email: email_handlers.EmailHandlers,
     get_language_version: get_language_version_handlers.GetLanguageVersionHandlers,
@@ -25,6 +28,7 @@ pub type Handlers {
     page_log: page_log_handlers.PageLogHandlers,
     pageview_log: pageview_log_handlers.PageviewLogHandlers,
     periodic_job: periodic_job_handlers.PeriodicJobHandlers,
+    run_log: run_log_handlers.RunLogHandlers,
     auth: auth_handlers.AuthHandlers,
     snippet: snippet_handlers.SnippetHandlers,
     docker_run: docker_run_handlers.DockerRunHandlers,
@@ -36,6 +40,7 @@ pub type Handlers {
 pub fn new(db: pog.Connection) -> Handlers {
   Handlers(
     api_log: api_log_handlers.new(db),
+    analytics: analytics_handlers.new(db),
     basic: basic_handlers.new(),
     email: email_handlers.new(),
     get_language_version: get_language_version_handlers.new(),
@@ -44,6 +49,7 @@ pub fn new(db: pog.Connection) -> Handlers {
     page_log: page_log_handlers.new(db),
     pageview_log: pageview_log_handlers.new(db),
     periodic_job: periodic_job_handlers.new(db),
+    run_log: run_log_handlers.new(db),
     auth: auth_handlers.new(db),
     snippet: snippet_handlers.new(db),
     docker_run: docker_run_handlers.new(),

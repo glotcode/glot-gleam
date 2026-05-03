@@ -205,6 +205,69 @@ CREATE INDEX idx_pageview_log_route_created_at
 CREATE INDEX idx_pageview_log_user_id_created_at
   ON pageview_log(user_id, created_at);
 
+-- RUN LOG
+
+CREATE TABLE IF NOT EXISTS run_log (
+  id UUID PRIMARY KEY,
+  request_id UUID NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  session_id UUID NULL,
+  user_id UUID NULL,
+  language TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  duration_ns BIGINT NULL,
+  failure_message TEXT NULL
+);
+
+CREATE INDEX idx_run_log_created_at ON run_log(created_at);
+CREATE INDEX idx_run_log_language_created_at ON run_log(language, created_at);
+
+-- ANALYTICS ROLLUPS
+
+CREATE TABLE IF NOT EXISTS metrics_pageview_daily (
+  day DATE NOT NULL,
+  route TEXT NOT NULL,
+  path TEXT NOT NULL,
+  views BIGINT NOT NULL,
+  unique_sessions BIGINT NOT NULL,
+  unique_users BIGINT NOT NULL,
+  PRIMARY KEY (day, route, path)
+);
+
+CREATE TABLE IF NOT EXISTS metrics_product_event_daily (
+  day DATE NOT NULL,
+  event_name TEXT NOT NULL,
+  event_count BIGINT NOT NULL,
+  unique_sessions BIGINT NOT NULL,
+  unique_users BIGINT NOT NULL,
+  PRIMARY KEY (day, event_name)
+);
+
+CREATE TABLE IF NOT EXISTS metrics_run_daily (
+  day DATE NOT NULL,
+  language TEXT NOT NULL,
+  successful_runs BIGINT NOT NULL,
+  failed_runs BIGINT NOT NULL,
+  unique_sessions BIGINT NOT NULL,
+  unique_users BIGINT NOT NULL,
+  PRIMARY KEY (day, language)
+);
+
+CREATE TABLE IF NOT EXISTS metrics_reliability_daily (
+  day DATE NOT NULL,
+  surface TEXT NOT NULL,
+  name TEXT NOT NULL,
+  request_count BIGINT NOT NULL,
+  error_count BIGINT NOT NULL,
+  avg_duration_ns BIGINT NOT NULL,
+  PRIMARY KEY (day, surface, name)
+);
+
+CREATE TABLE IF NOT EXISTS metrics_completed_day (
+  day DATE PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- JOB LOG
 
 CREATE TABLE IF NOT EXISTS job_log (
@@ -277,6 +340,17 @@ VALUES (
   'clean_pageview_log',
   NULL,
   86400,
+  TRUE,
+  CURRENT_TIMESTAMP,
+  NULL,
+  NULL,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  uuidv4(),
+  'aggregate_metrics',
+  NULL,
+  3600,
   TRUE,
   CURRENT_TIMESTAMP,
   NULL,

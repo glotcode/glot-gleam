@@ -38,8 +38,29 @@ pub fn string(key: String, value: String) -> #(String, Value) {
   #(key, String(value))
 }
 
+pub fn optional_string(
+  key: String,
+  value: Option(String),
+) -> #(String, Value) {
+  case value {
+    option.Some(v) -> #(key, String(v))
+    option.None -> #(key, Null)
+  }
+}
+
 pub fn bool(key: String, value: Bool) -> #(String, Value) {
   #(key, Bool(value))
+}
+
+pub fn int(key: String, value: Int) -> #(String, Value) {
+  #(key, Int(value))
+}
+
+pub fn optional_int(key: String, value: Option(Int)) -> #(String, Value) {
+  case value {
+    option.Some(v) -> #(key, Int(v))
+    option.None -> #(key, Null)
+  }
 }
 
 pub fn object(key: String, items: List(#(String, Value))) -> #(String, Value) {

@@ -1,3 +1,4 @@
+import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import gleam/list
 import gleam/option
@@ -8,6 +9,7 @@ import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
+import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
@@ -89,6 +91,8 @@ fn map_db_effect(
   f: fn(a) -> b,
 ) -> program_types.DbEffect(b) {
   case effect {
+    program_types.AnalyticsEffect(effect) ->
+      program_types.AnalyticsEffect(analytics_algebra.map(effect, f))
     program_types.ApiLogEffect(effect) ->
       program_types.ApiLogEffect(api_log_algebra.map(effect, f))
     program_types.AuthEffect(effect) ->
@@ -103,6 +107,8 @@ fn map_db_effect(
       program_types.PageviewLogEffect(pageview_log_algebra.map(effect, f))
     program_types.PeriodicJobEffect(effect) ->
       program_types.PeriodicJobEffect(periodic_job_algebra.map(effect, f))
+    program_types.RunLogEffect(effect) ->
+      program_types.RunLogEffect(run_log_algebra.map(effect, f))
     program_types.SnippetEffect(effect) ->
       program_types.SnippetEffect(snippet_algebra.map(effect, f))
     program_types.UserActionEffect(effect) ->

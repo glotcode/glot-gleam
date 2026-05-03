@@ -8,6 +8,7 @@ import gleeunit
 import glot_backend/api
 import glot_backend/context
 import glot_backend/crypto_token
+import glot_backend/effect/analytics/analytics_handlers
 import glot_backend/effect/api_log/api_log_handlers
 import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/basic/basic_algebra
@@ -25,6 +26,7 @@ import glot_backend/effect/job_log/job_log_handlers
 import glot_backend/effect/page_log/page_log_handlers
 import glot_backend/effect/pageview_log/pageview_log_handlers
 import glot_backend/effect/periodic_job/periodic_job_handlers
+import glot_backend/effect/run_log/run_log_handlers
 import glot_backend/effect/program
 import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_handlers
@@ -209,6 +211,16 @@ pub fn api_error_detail_codes_test() {
 fn test_handlers() -> handlers.Handlers {
   handlers.Handlers(
     api_log: api_log_handlers.ApiLogHandlers(delete_before: fn(_) { Ok(Nil) }),
+    analytics: analytics_handlers.AnalyticsHandlers(
+      get_max_completed_metrics_day: fn() { Ok(option.None) },
+      get_first_metrics_source_day: fn(_) { Ok(option.None) },
+      insert_metrics_pageview_day: fn(_) { Ok(Nil) },
+      insert_metrics_product_event_day: fn(_) { Ok(Nil) },
+      insert_metrics_run_day: fn(_) { Ok(Nil) },
+      insert_metrics_reliability_page_day: fn(_) { Ok(Nil) },
+      insert_metrics_reliability_api_day: fn(_) { Ok(Nil) },
+      insert_metrics_completed_day: fn(_) { Ok(Nil) },
+    ),
     basic: basic_handlers.BasicHandlers(
       new_token: fn(_, _) { "random" },
       system_time: timestamp.system_time,
@@ -242,6 +254,7 @@ fn test_handlers() -> handlers.Handlers {
       create_periodic_job: fn(_) { Ok(Nil) },
       update_periodic_job: fn(_) { Ok(Nil) },
     ),
+    run_log: run_log_handlers.RunLogHandlers(create_run_log: fn(_) { Ok(Nil) }),
     auth: auth_handlers.AuthHandlers(
       get_user_by_email: fn(_, _) { Ok(option.None) },
       list_login_tokens_by_email: fn(_, _) { Ok([]) },

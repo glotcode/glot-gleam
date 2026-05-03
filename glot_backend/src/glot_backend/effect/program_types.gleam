@@ -1,3 +1,4 @@
+import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
@@ -10,6 +11,7 @@ import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
+import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 
@@ -38,12 +40,14 @@ pub type Effect(next) {
 
 pub type DbEffect(next) {
   ApiLogEffect(api_log_algebra.ApiLogEffect(next))
+  AnalyticsEffect(analytics_algebra.AnalyticsEffect(next))
   AuthEffect(auth_algebra.AuthEffect(next))
   JobEffect(job_algebra.JobEffect(next))
   JobLogEffect(job_log_algebra.JobLogEffect(next))
   PageLogEffect(page_log_algebra.PageLogEffect(next))
   PageviewLogEffect(pageview_log_algebra.PageviewLogEffect(next))
   PeriodicJobEffect(periodic_job_algebra.PeriodicJobEffect(next))
+  RunLogEffect(run_log_algebra.RunLogEffect(next))
   SnippetEffect(snippet_algebra.SnippetEffect(next))
   UserActionEffect(user_action_algebra.UserActionEffect(next))
 }
