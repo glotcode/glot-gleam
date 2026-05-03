@@ -273,13 +273,13 @@ type ApiResult {
   RateLimitPoliciesResponse(rate_limit_config_dto.RateLimitPoliciesResponse)
   RateLimitPolicyResponse(rate_limit_config_dto.RateLimitPolicyResponse)
   DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
-  LoginResponse(session_token: String)
+  LoginResponse(login_domain.LoginResult)
   LogoutResponse
   NoContentResponse
 }
 
 fn api_result_to_response(
-  ctx: context.Context,
+  _ctx: context.Context,
   req: wisp.Request,
   result: ApiResult,
 ) -> wisp.Response {
@@ -301,14 +301,14 @@ fn api_result_to_response(
       success_response(rate_limit_config_dto.encode_policy_response(response))
     DockerRunConfigResponse(response) ->
       success_response(docker_run_config_dto.encode_response(response))
-    LoginResponse(session_token) -> {
+    LoginResponse(login_result) -> {
       success_response(json.null())
       |> wisp.set_cookie(
         request: req,
         name: "session",
-        value: session_token,
+        value: login_result.session_token,
         security: wisp.Signed,
-        max_age: ctx.config.auth.session_cookie_max_age,
+        max_age: login_result.session_cookie_max_age,
       )
     }
     LogoutResponse -> {

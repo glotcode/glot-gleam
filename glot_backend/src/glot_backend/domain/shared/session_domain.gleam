@@ -2,6 +2,8 @@ import gleam/option.{type Option}
 import gleam/result
 import gleam/time/timestamp
 import glot_backend/context
+import glot_backend/dynamic_config
+import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
@@ -25,6 +27,14 @@ pub fn require_session(
 fn get_validated_session(
   ctx: context.Context,
 ) -> program_types.Program(Result(session_model.HydratedSession, error.Error)) {
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  use auth_config <- program.and_then(
+    dynamic_config.require_auth_config(config)
+    |> result.map_error(fn(message) {
+      error.QueryError(error.DbQueryError(message))
+    })
+    |> program.from_result(),
+  )
   use session_result <- program.and_then(case ctx.client_info.session_token {
     option.Some(token) ->
       auth_effect.get_session_by_token(token)
@@ -37,19 +47,20 @@ fn get_validated_session(
   })
 
   session_result
-  |> result.try(validate_session(_, ctx))
+  |> result.try(validate_session(_, ctx.timestamp, auth_config.session_token_max_age))
   |> program.succeed
 }
 
 fn validate_session(
   session: session_model.HydratedSession,
-  ctx: context.Context,
+  now: timestamp.Timestamp,
+  session_token_max_age: Int,
 ) -> Result(session_model.HydratedSession, error.Error) {
   let expired =
     is_expired(
       session.identity.created_at,
-      ctx.timestamp,
-      ctx.config.auth.session_token_max_age,
+      now,
+      session_token_max_age,
     )
 
   case expired {

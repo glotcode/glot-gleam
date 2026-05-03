@@ -1,10 +1,13 @@
 import gleam/dynamic
 import gleam/list
 import gleam/option
+import gleam/result
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/crypto_token
 import glot_backend/domain/shared/api_action_policy_domain
+import glot_backend/dynamic_config
+import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -23,10 +26,14 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model.{type EmailAddress}
 import youid/uuid.{type Uuid}
 
+pub type LoginResult {
+  LoginResult(session_token: String, session_cookie_max_age: Int)
+}
+
 pub fn login(
   ctx: context.Context,
   request: login_dto.LoginRequest,
-) -> program_types.Program(String) {
+) -> program_types.Program(LoginResult) {
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
@@ -34,6 +41,14 @@ pub fn login(
         log.string("token", request.token),
       ]),
     ),
+  )
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  use auth_config <- program.and_then(
+    dynamic_config.require_auth_config(config)
+    |> result.map_error(fn(message) {
+      error.QueryError(error.DbQueryError(message))
+    })
+    |> program.from_result(),
   )
 
   use maybe_user <- program.and_then(auth_effect.get_user_by_email(
@@ -54,7 +69,7 @@ pub fn login(
       tokens,
       request.token,
       ctx.timestamp,
-      ctx.config.auth.login_token_max_age,
+      auth_config.login_token_max_age,
     )),
   )
   let used_login_token =
@@ -106,7 +121,10 @@ pub fn login(
     ),
   )
 
-  program.succeed(session_token)
+  program.succeed(LoginResult(
+    session_token: session_token,
+    session_cookie_max_age: auth_config.session_cookie_max_age,
+  ))
 }
 
 pub fn request_from_dynamic(

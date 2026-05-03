@@ -109,6 +109,21 @@ pub fn app_config_decodes_docker_run_config_test() {
   let assert Ok(config) =
     dynamic_config.from_entries([
       app_config.AppConfigEntry(
+        namespace: "auth",
+        key: "login_token_max_age",
+        value: "900",
+      ),
+      app_config.AppConfigEntry(
+        namespace: "auth",
+        key: "session_token_max_age",
+        value: "86400",
+      ),
+      app_config.AppConfigEntry(
+        namespace: "auth",
+        key: "session_cookie_max_age",
+        value: "86400",
+      ),
+      app_config.AppConfigEntry(
         namespace: "docker_run",
         key: "base_url",
         value: "\"https://docker-run.internal\"",
@@ -348,7 +363,11 @@ pub fn login_creates_account_user_and_session_in_foreign_key_order_test() {
   let #(run_result, updated_db) =
     run_test_program(login_domain.login(ctx, request), ctx, db)
 
-  assert run_result == Ok("random")
+  assert run_result
+    == Ok(login_domain.LoginResult(
+      session_token: "random",
+      session_cookie_max_age: 86_400,
+    ))
   assert list.reverse(updated_db.write_steps)
     == [
       "update_login_token",
@@ -1293,17 +1312,22 @@ fn run_test_app_config_effect(
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
     app_config_algebra.GetDynamicConfig(next:) ->
-      run_test_program(next(Ok(dynamic_config.empty())), ctx, db)
+      run_test_program(next(Ok(test_dynamic_config())), ctx, db)
     app_config_algebra.UpsertRateLimitPolicy(
       action: _,
       policy: _,
       updated_at: _,
       next: next,
     ) ->
-      run_test_program(next(Ok(dynamic_config.empty())), ctx, db)
+      run_test_program(next(Ok(test_dynamic_config())), ctx, db)
     app_config_algebra.UpsertDockerRunConfig(config:, updated_at: _, next: next) ->
       run_test_program(
         next(Ok(dynamic_config.DynamicConfig(
+          auth: option.Some(dynamic_config.AuthConfig(
+            login_token_max_age: 900,
+            session_token_max_age: 86_400,
+            session_cookie_max_age: 86_400,
+          )),
           docker_run: option.Some(config),
           rate_limit_policies: dict.new(),
         ))),
@@ -1311,6 +1335,18 @@ fn run_test_app_config_effect(
         db,
       )
   }
+}
+
+fn test_dynamic_config() -> dynamic_config.DynamicConfig {
+  dynamic_config.DynamicConfig(
+    auth: option.Some(dynamic_config.AuthConfig(
+      login_token_max_age: 900,
+      session_token_max_age: 86_400,
+      session_cookie_max_age: 86_400,
+    )),
+    docker_run: option.None,
+    rate_limit_policies: dict.new(),
+  )
 }
 
 fn run_test_db_effect(
@@ -2347,11 +2383,6 @@ fn test_context() -> context.Context {
         user: "test",
         pass: "test",
         pool_size: 1,
-      ),
-      auth: context.AuthConfig(
-        login_token_max_age: 900,
-        session_token_max_age: 86_400,
-        session_cookie_max_age: 86_400,
       ),
       cleanup: context.CleanupConfig(
         api_log_retention_days: 30,

@@ -12,8 +12,17 @@ import glot_core/rate_limit
 
 pub type DynamicConfig {
   DynamicConfig(
+    auth: option.Option(AuthConfig),
     docker_run: option.Option(DockerRunConfig),
     rate_limit_policies: dict.Dict(api_action.ApiAction, RateLimitPolicy),
+  )
+}
+
+pub type AuthConfig {
+  AuthConfig(
+    login_token_max_age: Int,
+    session_token_max_age: Int,
+    session_cookie_max_age: Int,
   )
 }
 
@@ -41,14 +50,28 @@ pub type RateLimitActor {
   AuthenticatedActor(account_tier: account_model.AccountTier)
 }
 
+type PartialAuthConfig {
+  PartialAuthConfig(
+    login_token_max_age: option.Option(Int),
+    session_token_max_age: option.Option(Int),
+    session_cookie_max_age: option.Option(Int),
+  )
+}
+
 pub fn empty() -> DynamicConfig {
-  DynamicConfig(docker_run: option.None, rate_limit_policies: dict.new())
+  DynamicConfig(
+    auth: option.None,
+    docker_run: option.None,
+    rate_limit_policies: dict.new(),
+  )
 }
 
 pub fn from_entries(
   entries: List(app_config.AppConfigEntry),
 ) -> Result(DynamicConfig, String) {
-  list.fold(entries, Ok(empty()), fn(acc, entry) {
+  use auth <- result.try(auth_config_from_entries(entries))
+
+  list.fold(entries, Ok(DynamicConfig(..empty(), auth: option.Some(auth))), fn(acc, entry) {
     use config <- result.try(acc)
     apply_entry(config, entry)
   })
@@ -111,6 +134,73 @@ fn apply_entry(
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
   }
+}
+
+fn auth_config_from_entries(
+  entries: List(app_config.AppConfigEntry),
+) -> Result(AuthConfig, String) {
+  list.fold(entries, Ok(PartialAuthConfig(
+    login_token_max_age: option.None,
+    session_token_max_age: option.None,
+    session_cookie_max_age: option.None,
+  )), fn(acc, entry) {
+    use partial <- result.try(acc)
+    case entry.namespace {
+      "auth" -> decode_auth_entry(partial, entry)
+      _ -> Ok(partial)
+    }
+  })
+  |> result.try(build_auth_config)
+}
+
+fn decode_auth_entry(
+  partial: PartialAuthConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(PartialAuthConfig, String) {
+  use value <- result.try(
+    json.parse(entry.value, decode.int)
+    |> result.map_error(fn(err) {
+      "Failed to decode auth app_config for "
+      <> entry.key
+      <> ": "
+      <> string.inspect(err)
+    }),
+  )
+
+  Ok(case entry.key {
+    "login_token_max_age" ->
+      PartialAuthConfig(..partial, login_token_max_age: option.Some(value))
+    "session_token_max_age" ->
+      PartialAuthConfig(..partial, session_token_max_age: option.Some(value))
+    "session_cookie_max_age" ->
+      PartialAuthConfig(..partial, session_cookie_max_age: option.Some(value))
+    _ -> partial
+  })
+}
+
+fn build_auth_config(partial: PartialAuthConfig) -> Result(AuthConfig, String) {
+  use login_token_max_age <- result.try(option.to_result(
+    partial.login_token_max_age,
+    "Missing auth app_config entries",
+  ))
+  use session_token_max_age <- result.try(option.to_result(
+    partial.session_token_max_age,
+    "Missing auth app_config entries",
+  ))
+  use session_cookie_max_age <- result.try(option.to_result(
+    partial.session_cookie_max_age,
+    "Missing auth app_config entries",
+  ))
+
+  Ok(AuthConfig(
+    login_token_max_age: login_token_max_age,
+    session_token_max_age: session_token_max_age,
+    session_cookie_max_age: session_cookie_max_age,
+  ))
+}
+
+pub fn require_auth_config(config: DynamicConfig) -> Result(AuthConfig, String) {
+  option.to_result(config.auth, "Missing auth app_config entries")
 }
 
 fn decode_docker_run_entry(

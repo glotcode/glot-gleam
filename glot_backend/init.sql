@@ -152,6 +152,13 @@ CREATE TABLE IF NOT EXISTS app_config (
   PRIMARY KEY (namespace, key)
 );
 
+INSERT INTO app_config (namespace, key, value, updated_at)
+VALUES
+  ('auth', 'login_token_max_age', '900'::jsonb, NOW()),
+  ('auth', 'session_token_max_age', '86400'::jsonb, NOW()),
+  ('auth', 'session_cookie_max_age', '86400'::jsonb, NOW())
+ON CONFLICT (namespace, key) DO NOTHING;
+
 -- API LOG
 
 CREATE TABLE IF NOT EXISTS api_log (

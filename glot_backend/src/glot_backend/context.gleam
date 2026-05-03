@@ -24,7 +24,6 @@ pub type Config {
     encryption_key: String,
     static_base_path: String,
     postgres: PostgresConfig,
-    auth: AuthConfig,
     cleanup: CleanupConfig,
   )
 }
@@ -38,14 +37,12 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
   use encryption_key <- result.try(lookup(values, "ENCRYPTION_KEY"))
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))
-  use auth <- result.try(auth_config_from_dict(values))
 
   Ok(Config(
     debug: debug,
     encryption_key: encryption_key,
     static_base_path: static_base_path,
     postgres: postgres,
-    auth: auth,
     cleanup: cleanup_config_from_dict(values),
   ))
 }
@@ -84,37 +81,6 @@ fn postgres_config_from_dict(
     user: user,
     pass: pass,
     pool_size: pool_size,
-  ))
-}
-
-pub type AuthConfig {
-  AuthConfig(
-    login_token_max_age: Int,
-    session_token_max_age: Int,
-    session_cookie_max_age: Int,
-  )
-}
-
-fn auth_config_from_dict(
-  values: Dict(String, String),
-) -> Result(AuthConfig, String) {
-  use login_token_max_age <- result.try(
-    lookup(values, "AUTH_LOGIN_TOKEN_MAX_AGE")
-    |> result.try(string_to_int),
-  )
-  use session_token_max_age <- result.try(
-    lookup(values, "AUTH_SESSION_TOKEN_MAX_AGE")
-    |> result.try(string_to_int),
-  )
-  use session_cookie_max_age <- result.try(
-    lookup(values, "AUTH_SESSION_COOKIE_MAX_AGE")
-    |> result.try(string_to_int),
-  )
-
-  Ok(AuthConfig(
-    login_token_max_age: login_token_max_age,
-    session_token_max_age: session_token_max_age,
-    session_cookie_max_age: session_cookie_max_age,
   ))
 }
 

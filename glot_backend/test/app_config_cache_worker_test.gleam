@@ -258,6 +258,11 @@ fn expect_result(
 
 fn test_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
+    auth: option.Some(dynamic_config.AuthConfig(
+      login_token_max_age: 900,
+      session_token_max_age: 86_400,
+      session_cookie_max_age: 86_400,
+    )),
     docker_run: option.Some(dynamic_config.DockerRunConfig(
       base_url: "http://docker-run",
       access_token: "test-token",
@@ -284,6 +289,11 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
 
 fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
+    auth: option.Some(dynamic_config.AuthConfig(
+      login_token_max_age: 900,
+      session_token_max_age: 86_400,
+      session_cookie_max_age: 86_400,
+    )),
     docker_run: option.Some(dynamic_config.DockerRunConfig(
       base_url: "http://docker-run-2",
       access_token: "updated-token",
