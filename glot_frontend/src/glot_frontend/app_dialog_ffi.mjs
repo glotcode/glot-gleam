@@ -3,15 +3,15 @@ function bindBackdropClose(dialog) {
     return;
   }
 
-  dialog.addEventListener("click", (event) => {
+  dialog.addEventListener("mousedown", (event) => {
     const rect = dialog.getBoundingClientRect();
-    const clickedInside =
+    const pressedInside =
       rect.left <= event.clientX &&
       event.clientX <= rect.right &&
       rect.top <= event.clientY &&
       event.clientY <= rect.bottom;
 
-    if (!clickedInside) {
+    if (!pressedInside) {
       dialog.close();
     }
   });
