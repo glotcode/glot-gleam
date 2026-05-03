@@ -7,6 +7,7 @@ import gleam/regexp
 import gleam/result
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
+import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action.{type ApiAction}
@@ -307,6 +308,33 @@ pub fn get_admin_auth_config(
     req,
     fn(_) { json.null() },
     auth_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_debug_config(
+  to_msg: fn(ApiResponse(debug_config_dto.DebugConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminDebugConfigAction, Nil)
+
+  send_api_request(
+    req,
+    fn(_) { json.null() },
+    debug_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_debug_config(
+  request: debug_config_dto.UpsertDebugConfigRequest,
+  to_msg: fn(ApiResponse(debug_config_dto.DebugConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.UpsertAdminDebugConfigAction, request)
+
+  send_api_request(
+    req,
+    debug_config_dto.encode_request,
+    debug_config_dto.response_decoder(),
     to_msg,
   )
 }

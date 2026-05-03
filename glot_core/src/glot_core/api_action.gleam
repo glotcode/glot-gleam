@@ -20,6 +20,8 @@ pub type ApiAction {
   DeleteSnippetAction
   SendLoginTokenAction
   LoginAction
+  GetAdminDebugConfigAction
+  UpsertAdminDebugConfigAction
   GetAdminAuthConfigAction
   UpsertAdminAuthConfigAction
   GetAdminCleanupConfigAction
@@ -49,6 +51,8 @@ pub fn list() -> List(ApiAction) {
     DeleteSnippetAction,
     SendLoginTokenAction,
     LoginAction,
+    GetAdminDebugConfigAction,
+    UpsertAdminDebugConfigAction,
     GetAdminAuthConfigAction,
     UpsertAdminAuthConfigAction,
     GetAdminCleanupConfigAction,
@@ -91,6 +95,8 @@ pub fn to_string(action: ApiAction) -> String {
     DeleteSnippetAction -> "delete_snippet"
     SendLoginTokenAction -> "send_login_token"
     LoginAction -> "login"
+    GetAdminDebugConfigAction -> "get_admin_debug_config"
+    UpsertAdminDebugConfigAction -> "upsert_admin_debug_config"
     GetAdminAuthConfigAction -> "get_admin_auth_config"
     UpsertAdminAuthConfigAction -> "upsert_admin_auth_config"
     GetAdminCleanupConfigAction -> "get_admin_cleanup_config"
@@ -121,6 +127,8 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "delete_snippet" -> option.Some(DeleteSnippetAction)
     "send_login_token" -> option.Some(SendLoginTokenAction)
     "login" -> option.Some(LoginAction)
+    "get_admin_debug_config" -> option.Some(GetAdminDebugConfigAction)
+    "upsert_admin_debug_config" -> option.Some(UpsertAdminDebugConfigAction)
     "get_admin_auth_config" -> option.Some(GetAdminAuthConfigAction)
     "upsert_admin_auth_config" -> option.Some(UpsertAdminAuthConfigAction)
     "get_admin_cleanup_config" -> option.Some(GetAdminCleanupConfigAction)

@@ -297,7 +297,6 @@ fn test_context() -> context.Context {
 
   context.Context(
     config: context.Config(
-      debug: False,
       encryption_key: "test",
       static_base_path: "/tmp",
       postgres: context.PostgresConfig(

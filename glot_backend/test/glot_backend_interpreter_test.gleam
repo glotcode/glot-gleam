@@ -5,6 +5,7 @@ import gleam/string
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/api
+import glot_backend/app_config
 import glot_backend/context
 import glot_backend/crypto_token
 import glot_backend/effect/app_config/app_config_handlers
@@ -211,7 +212,15 @@ pub fn api_error_detail_codes_test() {
 fn test_handlers() -> handlers.Handlers {
   handlers.Handlers(
     app_config: app_config_handlers.AppConfigHandlers(
-      list_entries: fn() { Ok([]) },
+      list_entries: fn() {
+        Ok([
+          app_config.AppConfigEntry(
+            namespace: "debug",
+            key: "enabled",
+            value: "false",
+          ),
+        ])
+      },
       upsert_entry: fn(_, _, _, _) { Ok(Nil) },
     ),
     api_log: api_log_handlers.ApiLogHandlers(delete_before: fn(_) { Ok(Nil) }),
@@ -316,7 +325,6 @@ fn test_context() -> context.Context {
 
   context.Context(
     config: context.Config(
-      debug: False,
       encryption_key: "test",
       static_base_path: "/tmp",
       postgres: context.PostgresConfig(

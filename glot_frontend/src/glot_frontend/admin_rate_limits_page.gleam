@@ -829,6 +829,8 @@ fn action_label(action: api_action.ApiAction) -> String {
     api_action.DeleteSnippetAction -> "Delete snippet"
     api_action.SendLoginTokenAction -> "Send login token"
     api_action.LoginAction -> "Login"
+    api_action.GetAdminDebugConfigAction -> "Get debug config"
+    api_action.UpsertAdminDebugConfigAction -> "Save debug config"
     api_action.GetAdminAuthConfigAction -> "Get auth config"
     api_action.UpsertAdminAuthConfigAction -> "Save auth config"
     api_action.GetAdminCleanupConfigAction -> "Get cleanup config"

@@ -12,11 +12,16 @@ import glot_core/rate_limit
 
 pub type DynamicConfig {
   DynamicConfig(
+    debug: DebugConfig,
     auth: AuthConfig,
     cleanup: CleanupConfig,
     docker_run: option.Option(DockerRunConfig),
     rate_limit_policies: dict.Dict(api_action.ApiAction, RateLimitPolicy),
   )
+}
+
+pub type DebugConfig {
+  DebugConfig(enabled: Bool)
 }
 
 pub type AuthConfig {
@@ -66,6 +71,7 @@ pub type RateLimitActor {
 
 pub fn empty() -> DynamicConfig {
   DynamicConfig(
+    debug: default_debug_config(),
     auth: default_auth_config(),
     cleanup: default_cleanup_config(),
     docker_run: option.None,
@@ -98,6 +104,10 @@ pub fn docker_run_config(
 
 pub fn auth_config(config: DynamicConfig) -> AuthConfig {
   config.auth
+}
+
+pub fn debug_config(config: DynamicConfig) -> DebugConfig {
+  config.debug
 }
 
 pub fn select_rate_limits(
@@ -139,12 +149,27 @@ fn apply_entry(
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
   case entry.namespace {
+    "debug" -> decode_debug_config_entry(config, entry)
     "auth" -> decode_auth_config_entry(config, entry)
     "cleanup" -> decode_cleanup_config_entry(config, entry)
     "docker_run" -> decode_docker_run_entry(config, entry)
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
   }
+}
+
+fn decode_debug_config_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  use value <- result.try(decode_bool_entry("debug", entry))
+
+  let debug = case entry.key {
+    "enabled" -> DebugConfig(enabled: value)
+    _ -> config.debug
+  }
+
+  Ok(DynamicConfig(..config, debug: debug))
 }
 
 fn decode_auth_config_entry(
@@ -176,6 +201,10 @@ fn default_auth_config() -> AuthConfig {
     session_token_max_age: 86_400,
     session_cookie_max_age: 86_400,
   )
+}
+
+fn default_debug_config() -> DebugConfig {
+  DebugConfig(enabled: False)
 }
 
 fn default_cleanup_config() -> CleanupConfig {
@@ -281,6 +310,13 @@ fn decode_string_entry(
   entry: app_config.AppConfigEntry,
 ) -> Result(String, String) {
   decode_json_entry(namespace, entry, decode.string)
+}
+
+fn decode_bool_entry(
+  namespace: String,
+  entry: app_config.AppConfigEntry,
+) -> Result(Bool, String) {
+  decode_json_entry(namespace, entry, decode.bool)
 }
 
 fn decode_json_entry(

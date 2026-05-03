@@ -20,7 +20,6 @@ pub type Context {
 
 pub type Config {
   Config(
-    debug: Bool,
     encryption_key: String,
     static_base_path: String,
     postgres: PostgresConfig,
@@ -28,17 +27,11 @@ pub type Config {
 }
 
 pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) {
-  let debug =
-    lookup(values, "DEBUG")
-    |> result.try(string_to_bool)
-    |> result.unwrap(False)
-
   use encryption_key <- result.try(lookup(values, "ENCRYPTION_KEY"))
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))
 
   Ok(Config(
-    debug: debug,
     encryption_key: encryption_key,
     static_base_path: static_base_path,
     postgres: postgres,
@@ -90,14 +83,6 @@ fn lookup(dict: Dict(String, String), key: String) -> Result(String, String) {
 fn string_to_int(s: String) -> Result(Int, String) {
   int.parse(s)
   |> result.map_error(fn(_) { "Invalid integer: " <> s })
-}
-
-fn string_to_bool(s: String) -> Result(Bool, String) {
-  case s {
-    "true" -> Ok(True)
-    "false" -> Ok(False)
-    _ -> Error("Invalid boolean: " <> s)
-  }
 }
 
 pub type Regexes {

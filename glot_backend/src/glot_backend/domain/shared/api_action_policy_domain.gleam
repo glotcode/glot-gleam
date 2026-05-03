@@ -173,6 +173,16 @@ fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
     api_action.DeleteSnippetAction ->
       AllowedAccountStates([account_model.Active])
     api_action.RunAction -> AllowedAccountStates([account_model.Active])
+    api_action.GetAdminDebugConfigAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.UpsertAdminDebugConfigAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
     api_action.GetAdminAuthConfigAction ->
       AllowedAccountStates([
         account_model.Active,

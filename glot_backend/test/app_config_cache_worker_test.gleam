@@ -258,6 +258,7 @@ fn expect_result(
 
 fn test_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
+    debug: dynamic_config.DebugConfig(enabled: False),
     auth: dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,
@@ -299,6 +300,7 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
 
 fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
+    debug: dynamic_config.DebugConfig(enabled: True),
     auth: dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,

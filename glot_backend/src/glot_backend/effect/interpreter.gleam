@@ -46,7 +46,7 @@ pub fn run_with_state(
         program_types.AppConfigEffect(effect) ->
           app_config_interpreter.run(effect, runtime, state, continue)
         program_types.BasicEffect(effect) ->
-          basic_interpreter.run(effect, ctx, runtime.handlers, state, continue)
+          basic_interpreter.run(effect, ctx, runtime, state, continue)
         program_types.EmailEffect(effect) ->
           email_interpreter.run(effect, ctx, runtime.handlers, state, continue)
         program_types.DockerRunEffect(effect) ->

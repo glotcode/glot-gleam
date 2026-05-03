@@ -1,17 +1,21 @@
 import glot_backend/context
+import glot_backend/dynamic_config
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
-import glot_backend/effect/handlers
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
+import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/log
+import glot_backend/worker/app_config_cache_worker
+import gleam/option
+import gleam/result
 
 pub fn run(
   effect: basic_algebra.BasicEffect(program_types.Program(a)),
   ctx: context.Context,
-  handlers: handlers.Handlers,
+  runtime: runtime.Runtime,
   state: program_state.State,
   continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
@@ -19,7 +23,7 @@ pub fn run(
   case effect {
     basic_algebra.NewToken(length, alphabet, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.basic.new_token(length, alphabet)
+      let value = runtime.handlers.basic.new_token(length, alphabet)
       continue(
         next(value),
         program_state.add_effect_measurement(
@@ -32,7 +36,7 @@ pub fn run(
     }
     basic_algebra.SystemTime(next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.basic.system_time()
+      let value = runtime.handlers.basic.system_time()
       continue(
         next(value),
         program_state.add_effect_measurement(
@@ -45,7 +49,7 @@ pub fn run(
     }
     basic_algebra.UuidV7(next) -> {
       let started_at = erlang.perf_counter_ns()
-      let value = handlers.basic.uuid_v7(ctx.timestamp)
+      let value = runtime.handlers.basic.uuid_v7(ctx.timestamp)
       continue(
         next(value),
         program_state.add_effect_measurement(
@@ -85,7 +89,7 @@ pub fn run(
           )
         }
         log.Debug ->
-          case ctx.config.debug {
+          case debug_enabled(runtime) {
             True -> {
               let started_at = erlang.perf_counter_ns()
               let state = program_state.add_debug_fields(state, fields)
@@ -105,5 +109,23 @@ pub fn run(
           }
       }
     }
+  }
+}
+
+fn debug_enabled(runtime: runtime.Runtime) -> Bool {
+  let config_result =
+    case runtime.app_config_cache_subject {
+      option.Some(subject) -> app_config_cache_worker.get_config(subject)
+      option.None ->
+        runtime.handlers.app_config.list_entries()
+        |> result.try(fn(entries) {
+          dynamic_config.from_entries(entries)
+          |> result.map_error(error.DbQueryError)
+        })
+    }
+
+  case config_result {
+    Ok(config) -> dynamic_config.debug_config(config).enabled
+    Error(_) -> False
   }
 }

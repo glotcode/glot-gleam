@@ -28,6 +28,26 @@ pub fn get_dynamic_config() -> program_types.Program(dynamic_config.DynamicConfi
   )
 }
 
+pub fn upsert_debug_config(
+  config: dynamic_config.DebugConfig,
+  updated_at: Timestamp,
+) -> program_types.Program(dynamic_config.DynamicConfig) {
+  program_types.Impure(
+    program_types.AppConfigEffect(
+      app_config_algebra.UpsertDebugConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(result) {
+          case result {
+            Ok(config) -> program_types.Pure(config)
+            Error(err) -> program_types.Fail(err)
+          }
+        },
+      ),
+    ),
+  )
+}
+
 pub fn upsert_auth_config(
   config: dynamic_config.AuthConfig,
   updated_at: Timestamp,

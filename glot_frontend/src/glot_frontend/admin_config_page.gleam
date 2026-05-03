@@ -4,6 +4,7 @@ import gleam/result
 import gleam/string
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
+import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_frontend/api
 import lustre/attribute
@@ -15,9 +16,11 @@ import lustre/event
 pub type Model {
   Model(
     status: Status,
+    debug: DebugSection,
     auth: AuthSection,
     cleanup: CleanupSection,
     docker_run: DockerRunSection,
+    debug_loaded: Bool,
     auth_loaded: Bool,
     cleanup_loaded: Bool,
     docker_run_loaded: Bool,
@@ -41,6 +44,14 @@ pub type DockerRunSection {
 
 pub type DockerRunFields {
   DockerRunFields(base_url: String, access_token: String)
+}
+
+pub type DebugSection {
+  DebugSection(saved: DebugFields, draft: DebugFields, state: SectionState)
+}
+
+pub type DebugFields {
+  DebugFields(enabled: Bool)
 }
 
 pub type AuthSection {
@@ -84,6 +95,11 @@ pub type SectionState {
 }
 
 pub type Msg {
+  DebugLoaded(api.ApiResponse(debug_config_dto.DebugConfigResponse))
+  DebugToggleClicked
+  DebugResetClicked
+  DebugSaveClicked
+  DebugSaveFinished(api.ApiResponse(debug_config_dto.DebugConfigResponse))
   AuthLoaded(api.ApiResponse(auth_config_dto.AuthConfigResponse))
   AuthLoginTokenMaxAgeChanged(String)
   AuthSessionTokenMaxAgeChanged(String)
@@ -119,9 +135,11 @@ pub fn init() -> #(Model, Effect(Msg)) {
   #(
     Model(
       status: NotLoaded,
+      debug: empty_debug_section(),
       auth: empty_auth_section(),
       cleanup: empty_cleanup_section(),
       docker_run: empty_docker_run_section(),
+      debug_loaded: False,
       auth_loaded: False,
       cleanup_loaded: False,
       docker_run_loaded: False,
@@ -135,6 +153,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
     NotLoaded -> #(
       Model(..model, status: Loading),
       effect.batch([
+        load_debug_config(),
         load_auth_config(),
         load_cleanup_config(),
         load_docker_run_config(),
@@ -146,6 +165,93 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
+    DebugLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = debug_fields_from_response(response)
+          let next_model =
+            Model(
+              ..model,
+              debug: DebugSection(saved: fields, draft: fields, state: Idle),
+              debug_loaded: True,
+            )
+
+          #(
+            Model(..next_model, status: loaded_status(next_model)),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(..model, status: LoadError(error.message)),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(..model, status: LoadError("Could not load debug config.")),
+          effect.none(),
+        )
+      }
+
+    DebugToggleClicked -> #(
+      Model(
+        ..model,
+        debug: DebugSection(
+          ..model.debug,
+          draft: DebugFields(enabled: !model.debug.draft.enabled),
+          state: Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    DebugResetClicked -> #(
+      Model(
+        ..model,
+        debug: DebugSection(..model.debug, draft: model.debug.saved, state: Idle),
+      ),
+      effect.none(),
+    )
+
+    DebugSaveClicked -> #(
+      Model(..model, debug: DebugSection(..model.debug, state: Saving)),
+      api.upsert_admin_debug_config(
+        debug_config_dto.UpsertDebugConfigRequest(
+          enabled: model.debug.draft.enabled,
+        ),
+        DebugSaveFinished,
+      ),
+    )
+
+    DebugSaveFinished(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = debug_fields_from_response(response)
+          #(
+            Model(
+              ..model,
+              debug: DebugSection(saved: fields, draft: fields, state: Saved),
+            ),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            debug: DebugSection(..model.debug, state: SaveError(error.message)),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            debug: DebugSection(
+              ..model.debug,
+              state: SaveError("Could not save debug config."),
+            ),
+          ),
+          effect.none(),
+        )
+      }
+
     AuthLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> {
@@ -624,6 +730,7 @@ pub fn view(model: Model) -> Element(Msg) {
         status_banner(model.status),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__section-grid")], [
+            debug_section_view(model.debug, model.status),
             auth_section_view(model.auth, model.status),
             cleanup_section_view(model.cleanup, model.status),
             docker_run_section_view(model.docker_run, model.status),
@@ -834,6 +941,92 @@ fn status_banner(status: Status) -> Element(Msg) {
   }
 }
 
+fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
+  let save_disabled =
+    status != Ready || section.state == Saving || !is_dirty_debug(section)
+
+  html.article(
+    [attribute.class("admin-page__policy admin-page__policy--config")],
+    [
+      html.div([attribute.class("admin-page__policy-header")], [
+        html.div([], [
+          html.h3([attribute.class("admin-page__policy-title")], [
+            html.text("Debug"),
+          ]),
+          html.p([attribute.class("admin-page__policy-subtitle")], [
+            html.text(
+              "Controls whether backend debug log fields are collected into API and page logs.",
+            ),
+          ]),
+        ]),
+        html.div([attribute.class("admin-page__policy-header-actions")], [
+          debug_status_badge(section),
+        ]),
+      ]),
+      html.div([attribute.class("admin-page__field-grid")], [
+        html.div([attribute.class("admin-page__field")], [
+          html.span([attribute.class("admin-page__field-label")], [
+            html.text("Debug logging"),
+          ]),
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class(
+                "admin-page__button admin-page__button--secondary",
+              ),
+              attribute.disabled(status != Ready || section.state == Saving),
+              event.on_click(DebugToggleClicked),
+            ],
+            [
+              html.text(case section.draft.enabled {
+                True -> "Enabled"
+                False -> "Disabled"
+              }),
+            ],
+          ),
+          html.span([attribute.class("admin-page__field-help")], [
+            html.text(
+              "When enabled, debug fields are persisted with request logs. Toggle to change the draft value.",
+            ),
+          ]),
+        ]),
+      ]),
+      html.div([attribute.class("admin-page__policy-footer")], [
+        debug_section_message(section),
+        html.div([attribute.class("admin-page__policy-actions")], [
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class(
+                "admin-page__button admin-page__button--secondary",
+              ),
+              attribute.disabled(
+                section.state == Saving || !is_dirty_debug(section),
+              ),
+              event.on_click(DebugResetClicked),
+            ],
+            [html.text("Reset")],
+          ),
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class("admin-page__button"),
+              attribute.disabled(save_disabled),
+              event.on_click(DebugSaveClicked),
+            ],
+            [
+              html.text(case section.state {
+                Saving -> "Saving..."
+                _ -> "Save"
+              }),
+            ],
+          ),
+        ]),
+      ]),
+    ],
+  )
+}
+
 fn docker_run_section_view(
   section: DockerRunSection,
   status: Status,
@@ -999,6 +1192,46 @@ fn section_message(section: DockerRunSection) -> Element(Msg) {
   }
 }
 
+fn debug_status_badge(section: DebugSection) -> Element(Msg) {
+  case section.state, is_dirty_debug(section) {
+    Idle, False -> html.div([], [])
+    _, _ ->
+      html.span([attribute.class(debug_status_badge_class(section))], [
+        html.text(debug_status_badge_text(section)),
+      ])
+  }
+}
+
+fn debug_status_badge_text(section: DebugSection) -> String {
+  case section.state {
+    SaveError(_) -> "Error"
+    Saving -> "Saving"
+    Saved -> "Saved"
+    Idle ->
+      case is_dirty_debug(section) {
+        True -> "Unsaved"
+        False -> ""
+      }
+  }
+}
+
+fn debug_status_badge_class(section: DebugSection) -> String {
+  case section.state {
+    SaveError(_) -> "admin-page__version admin-page__version--error"
+    Saving -> "admin-page__version"
+    Saved -> "admin-page__version admin-page__version--success"
+    Idle ->
+      case is_dirty_debug(section) {
+        True -> "admin-page__version admin-page__version--dirty"
+        False -> "admin-page__version"
+      }
+  }
+}
+
+fn debug_section_message(section: DebugSection) -> Element(Msg) {
+  section_state_message(section.state)
+}
+
 fn auth_status_badge(section: AuthSection) -> Element(Msg) {
   case section.state, is_dirty_auth(section) {
     Idle, False -> html.div([], [])
@@ -1098,6 +1331,10 @@ fn section_state_message(state: SectionState) -> Element(Msg) {
   }
 }
 
+fn load_debug_config() -> Effect(Msg) {
+  api.get_admin_debug_config(DebugLoaded)
+}
+
 fn load_auth_config() -> Effect(Msg) {
   api.get_admin_auth_config(AuthLoaded)
 }
@@ -1118,6 +1355,12 @@ fn auth_fields_from_response(
     session_token_max_age: int.to_string(response.session_token_max_age),
     session_cookie_max_age: int.to_string(response.session_cookie_max_age),
   )
+}
+
+fn debug_fields_from_response(
+  response: debug_config_dto.DebugConfigResponse,
+) -> DebugFields {
+  DebugFields(enabled: response.enabled)
 }
 
 fn cleanup_fields_from_response(
@@ -1165,6 +1408,10 @@ fn validate_docker_run_fields(
 }
 
 fn is_dirty(section: DockerRunSection) -> Bool {
+  section.saved != section.draft
+}
+
+fn is_dirty_debug(section: DebugSection) -> Bool {
   section.saved != section.draft
 }
 
@@ -1262,6 +1509,15 @@ fn empty_auth_section() -> AuthSection {
   AuthSection(saved: fields, draft: fields, state: Idle)
 }
 
+fn empty_debug_section() -> DebugSection {
+  let fields = empty_debug_fields()
+  DebugSection(saved: fields, draft: fields, state: Idle)
+}
+
+fn empty_debug_fields() -> DebugFields {
+  DebugFields(enabled: False)
+}
+
 fn empty_auth_fields() -> AuthFields {
   AuthFields(
     login_token_max_age: "",
@@ -1298,7 +1554,12 @@ fn empty_docker_run_fields() -> DockerRunFields {
 }
 
 fn loaded_status(model: Model) -> Status {
-  case model.auth_loaded && model.cleanup_loaded && model.docker_run_loaded {
+  case
+    model.debug_loaded
+    && model.auth_loaded
+    && model.cleanup_loaded
+    && model.docker_run_loaded
+  {
     True -> Ready
     False -> Loading
   }

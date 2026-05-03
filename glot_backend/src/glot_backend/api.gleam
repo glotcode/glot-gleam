@@ -10,10 +10,12 @@ import gleam/string
 import glot_backend/context
 import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
-import glot_backend/domain/admin/get_rate_limit_policies_domain
+import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/get_rate_limit_policies_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_cleanup_config_domain
+import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/account/cancel_delete_account_domain
@@ -49,6 +51,7 @@ import glot_backend/worker/app_config_cache_worker
 import glot_core/api_action
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
+import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/auth/account_dto
@@ -208,6 +211,16 @@ fn handle_api_request(
       login_domain.login(ctx, request)
       |> program.map(LoginResponse)
     }
+    api_action.GetAdminDebugConfigAction ->
+      get_debug_config_domain.get_debug_config(ctx)
+      |> program.map(DebugConfigResponse)
+    api_action.UpsertAdminDebugConfigAction -> {
+      use request <- program.and_then(
+        upsert_debug_config_domain.request_from_dynamic(api_request.data),
+      )
+      upsert_debug_config_domain.upsert_debug_config(ctx, request)
+      |> program.map(DebugConfigResponse)
+    }
     api_action.GetAdminAuthConfigAction ->
       get_auth_config_domain.get_auth_config(ctx)
       |> program.map(AuthConfigResponse)
@@ -296,6 +309,7 @@ type ApiResult {
   AccountResponse(account_dto.AccountResponse)
   SnippetResponse(snippet_dto.SnippetResponse)
   SnippetsResponse(snippet_dto.ListSnippetsResponse)
+  DebugConfigResponse(debug_config_dto.DebugConfigResponse)
   AuthConfigResponse(auth_config_dto.AuthConfigResponse)
   CleanupConfigResponse(cleanup_config_dto.CleanupConfigResponse)
   RateLimitPoliciesResponse(rate_limit_config_dto.RateLimitPoliciesResponse)
@@ -323,6 +337,8 @@ fn api_result_to_response(
       success_response(snippet_dto.encode_response(response))
     SnippetsResponse(response) ->
       success_response(snippet_dto.encode_list_response(response))
+    DebugConfigResponse(response) ->
+      success_response(debug_config_dto.encode_response(response))
     AuthConfigResponse(response) ->
       success_response(auth_config_dto.encode_response(response))
     CleanupConfigResponse(response) ->
