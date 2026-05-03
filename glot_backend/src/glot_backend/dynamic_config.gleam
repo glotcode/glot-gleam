@@ -12,8 +12,13 @@ import glot_core/rate_limit
 
 pub type DynamicConfig {
   DynamicConfig(
+    docker_run: option.Option(DockerRunConfig),
     rate_limit_policies: dict.Dict(api_action.ApiAction, RateLimitPolicy),
   )
+}
+
+pub type DockerRunConfig {
+  DockerRunConfig(base_url: String, access_token: String)
 }
 
 pub type RateLimitPolicy {
@@ -37,7 +42,7 @@ pub type RateLimitActor {
 }
 
 pub fn empty() -> DynamicConfig {
-  DynamicConfig(rate_limit_policies: dict.new())
+  DynamicConfig(docker_run: option.None, rate_limit_policies: dict.new())
 }
 
 pub fn from_entries(
@@ -55,6 +60,12 @@ pub fn lookup_rate_limit_policy(
 ) -> option.Option(RateLimitPolicy) {
   dict.get(config.rate_limit_policies, action)
   |> option.from_result()
+}
+
+pub fn lookup_docker_run_config(
+  config: DynamicConfig,
+) -> option.Option(DockerRunConfig) {
+  config.docker_run
 }
 
 pub fn select_rate_limits(
@@ -96,9 +107,40 @@ fn apply_entry(
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
   case entry.namespace {
+    "docker_run" -> decode_docker_run_entry(config, entry)
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
   }
+}
+
+fn decode_docker_run_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  use value <- result.try(
+    json.parse(entry.value, decode.string)
+    |> result.map_error(fn(err) {
+      "Failed to decode docker_run app_config for "
+      <> entry.key
+      <> ": "
+      <> string.inspect(err)
+    }),
+  )
+
+  let docker_run =
+    case entry.key, config.docker_run {
+      "base_url", option.Some(docker_run) ->
+        option.Some(DockerRunConfig(base_url: value, access_token: docker_run.access_token))
+      "base_url", option.None ->
+        option.Some(DockerRunConfig(base_url: value, access_token: ""))
+      "access_token", option.Some(docker_run) ->
+        option.Some(DockerRunConfig(base_url: docker_run.base_url, access_token: value))
+      "access_token", option.None ->
+        option.Some(DockerRunConfig(base_url: "", access_token: value))
+      _, _ -> config.docker_run
+    }
+
+  Ok(DynamicConfig(..config, docker_run: docker_run))
 }
 
 fn decode_rate_limit_policy_entry(
@@ -119,6 +161,7 @@ fn decode_rate_limit_policy_entry(
     }),
   )
   Ok(DynamicConfig(
+    ..config,
     rate_limit_policies: dict.insert(config.rate_limit_policies, action, policy),
   ))
 }

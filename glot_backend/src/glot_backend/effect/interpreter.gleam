@@ -50,7 +50,7 @@ pub fn run_with_state(
         program_types.EmailEffect(effect) ->
           email_interpreter.run(effect, ctx, runtime.handlers, state, continue)
         program_types.DockerRunEffect(effect) ->
-          docker_run_interpreter.run(effect, runtime.handlers, state, continue)
+          docker_run_interpreter.run(effect, runtime, state, continue)
         program_types.GetLanguageVersionEffect(effect) ->
           get_language_version_interpreter.run(effect, runtime, state, continue)
         program_types.DbEffect(effect) ->

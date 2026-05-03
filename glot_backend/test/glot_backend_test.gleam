@@ -5,6 +5,7 @@ import gleam/order
 import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
+import glot_backend/app_config
 import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/domain/admin/get_rate_limit_policies_domain
@@ -99,6 +100,28 @@ pub fn rate_limit_policy_prefers_tier_specific_rule_test() {
     policy,
     dynamic_config.AuthenticatedActor(account_tier: account_model.FreeTier),
   ) == [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)]
+}
+
+pub fn app_config_decodes_docker_run_config_test() {
+  let assert Ok(config) =
+    dynamic_config.from_entries([
+      app_config.AppConfigEntry(
+        namespace: "docker_run",
+        key: "base_url",
+        value: "\"https://docker-run.internal\"",
+      ),
+      app_config.AppConfigEntry(
+        namespace: "docker_run",
+        key: "access_token",
+        value: "\"plain-token\"",
+      ),
+    ])
+
+  assert dynamic_config.lookup_docker_run_config(config)
+    == option.Some(dynamic_config.DockerRunConfig(
+      base_url: "https://docker-run.internal",
+      access_token: "plain-token",
+    ))
 }
 
 pub fn rate_limit_policy_matches_free_plus_rule_test() {
@@ -1199,7 +1222,7 @@ fn run_test_docker_run_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
-    docker_run_algebra.RunCode(_, _, _) -> #(
+    docker_run_algebra.RunCode(_, _) -> #(
       Error(error.RunError(error.InternalRunRequestError("unused in test"))),
       db,
     )
@@ -2274,10 +2297,6 @@ fn test_context() -> context.Context {
         user: "test",
         pass: "test",
         pool_size: 1,
-      ),
-      docker_run: context.DockerRunConfig(
-        base_url: "http://localhost",
-        access_token: "test",
       ),
       auth: context.AuthConfig(
         login_token_max_age: 900,

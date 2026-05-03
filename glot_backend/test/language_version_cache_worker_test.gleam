@@ -151,6 +151,7 @@ fn start_worker(
   let assert Ok(_) = language_version_cache_worker.start_with_handlers(
     worker_name,
     test_context().config,
+    process.new_subject(),
     server_mode_subject,
     handlers,
   )
@@ -306,10 +307,6 @@ fn test_context() -> context.Context {
         user: "test",
         pass: "test",
         pool_size: 1,
-      ),
-      docker_run: context.DockerRunConfig(
-        base_url: "http://localhost",
-        access_token: "test",
       ),
       auth: context.AuthConfig(
         login_token_max_age: 900,

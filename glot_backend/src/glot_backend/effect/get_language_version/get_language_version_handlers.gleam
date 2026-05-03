@@ -1,6 +1,4 @@
-import gleam/option
 import glot_backend/context
-import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/error
 import glot_core/language
 import glot_core/run
@@ -17,18 +15,10 @@ pub fn new() -> GetLanguageVersionHandlers {
 }
 
 pub fn get_language_version(
-  cfg: context.Config,
-  lang: language.Language,
+  _cfg: context.Config,
+  _lang: language.Language,
 ) -> Result(run.RunResult, error.RunRequestError) {
-  let run_request =
-    run.RunRequest(
-      image: language.container_image(lang),
-      payload: run.RunRequestPayload(
-        run_instructions: language.version_run_instructions(lang),
-        files: [],
-        stdin: option.None,
-      ),
-    )
-
-  docker_run_handlers.run_code(cfg, run_request)
+  Error(error.InternalRunRequestError(
+    "get_language_version handler requires app_config-backed runtime",
+  ))
 }

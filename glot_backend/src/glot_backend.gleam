@@ -358,6 +358,7 @@ fn start_supervisor_tree(
   |> static_supervisor.add(language_version_cache_worker.supervised(
     language_version_cache_worker_name,
     config,
+    process.named_subject(app_config_cache_worker_name),
     process.named_subject(server_mode_name),
   ))
   |> static_supervisor.add(request_tracker.supervised(request_tracker_name))

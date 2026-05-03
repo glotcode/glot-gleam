@@ -3,14 +3,14 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/result
 import gleam/string
-import glot_backend/context
+import glot_backend/dynamic_config
 import glot_backend/effect/error
 import glot_backend/http_client
 import glot_core/run
 
 pub type DockerRunHandlers {
   DockerRunHandlers(
-    run_code: fn(context.Config, run.RunRequest) ->
+    run_code: fn(dynamic_config.DockerRunConfig, run.RunRequest) ->
       Result(run.RunResult, error.RunRequestError),
   )
 }
@@ -20,13 +20,13 @@ pub fn new() -> DockerRunHandlers {
 }
 
 pub fn run_code(
-  cfg: context.Config,
+  cfg: dynamic_config.DockerRunConfig,
   request: run.RunRequest,
 ) -> Result(run.RunResult, error.RunRequestError) {
   http_client.post_json(
-    url: cfg.docker_run.base_url <> "/run",
+    url: cfg.base_url <> "/run",
     body: run.encode_run_request(request),
-    headers: dict.from_list([#("X-Access-Token", cfg.docker_run.access_token)]),
+    headers: dict.from_list([#("X-Access-Token", cfg.access_token)]),
     decoder: run.run_result_decoder(),
   )
   |> result.map_error(map_run_http_error)

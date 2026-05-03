@@ -327,10 +327,6 @@ fn test_context() -> context.Context {
         pass: "test",
         pool_size: 1,
       ),
-      docker_run: context.DockerRunConfig(
-        base_url: "http://localhost",
-        access_token: "test",
-      ),
       auth: context.AuthConfig(
         login_token_max_age: 900,
         session_token_max_age: 86_400,

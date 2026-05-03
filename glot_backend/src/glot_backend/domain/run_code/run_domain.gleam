@@ -48,7 +48,6 @@ pub fn run(
   ))
 
   use run_result <- program.and_then(docker_run_effect.run_code(
-    ctx.config,
     request,
   ))
 

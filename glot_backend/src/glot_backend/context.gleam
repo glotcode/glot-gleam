@@ -24,7 +24,6 @@ pub type Config {
     encryption_key: String,
     static_base_path: String,
     postgres: PostgresConfig,
-    docker_run: DockerRunConfig,
     auth: AuthConfig,
     cleanup: CleanupConfig,
   )
@@ -39,7 +38,6 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
   use encryption_key <- result.try(lookup(values, "ENCRYPTION_KEY"))
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))
-  use docker_run <- result.try(docker_run_config_from_dict(values))
   use auth <- result.try(auth_config_from_dict(values))
 
   Ok(Config(
@@ -47,7 +45,6 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
     encryption_key: encryption_key,
     static_base_path: static_base_path,
     postgres: postgres,
-    docker_run: docker_run,
     auth: auth,
     cleanup: cleanup_config_from_dict(values),
   ))
@@ -88,19 +85,6 @@ fn postgres_config_from_dict(
     pass: pass,
     pool_size: pool_size,
   ))
-}
-
-pub type DockerRunConfig {
-  DockerRunConfig(base_url: String, access_token: String)
-}
-
-fn docker_run_config_from_dict(
-  values: Dict(String, String),
-) -> Result(DockerRunConfig, String) {
-  use base_url <- result.try(lookup(values, "DOCKER_RUN_BASE_URL"))
-  use access_token <- result.try(lookup(values, "DOCKER_RUN_ACCESS_TOKEN"))
-
-  Ok(DockerRunConfig(base_url: base_url, access_token: access_token))
 }
 
 pub type AuthConfig {

@@ -257,35 +257,47 @@ fn expect_result(
 }
 
 fn test_dynamic_config() -> dynamic_config.DynamicConfig {
-  dynamic_config.DynamicConfig(rate_limit_policies: dict.from_list([
-    #(
-      api_action.RunAction,
-      dynamic_config.RateLimitPolicy(rules: [
-        dynamic_config.RateLimitRule(
-          match: dynamic_config.AnonymousMatch,
-          limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 2)],
-        ),
-        dynamic_config.RateLimitRule(
-          match: dynamic_config.AuthenticatedMatch(account_tiers: option.Some([
-            account_model.FreeTier,
-          ])),
-          limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 5)],
-        ),
-      ]),
-    ),
-  ]))
+  dynamic_config.DynamicConfig(
+    docker_run: option.Some(dynamic_config.DockerRunConfig(
+      base_url: "http://docker-run",
+      access_token: "test-token",
+    )),
+    rate_limit_policies: dict.from_list([
+      #(
+        api_action.RunAction,
+        dynamic_config.RateLimitPolicy(rules: [
+          dynamic_config.RateLimitRule(
+            match: dynamic_config.AnonymousMatch,
+            limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 2)],
+          ),
+          dynamic_config.RateLimitRule(
+            match: dynamic_config.AuthenticatedMatch(account_tiers: option.Some([
+              account_model.FreeTier,
+            ])),
+            limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 5)],
+          ),
+        ]),
+      ),
+    ]),
+  )
 }
 
 fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
-  dynamic_config.DynamicConfig(rate_limit_policies: dict.from_list([
-    #(
-      api_action.RunAction,
-      dynamic_config.RateLimitPolicy(rules: [
-        dynamic_config.RateLimitRule(
-          match: dynamic_config.AuthenticatedMatch(account_tiers: option.None),
-          limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)],
-        ),
-      ]),
-    ),
-  ]))
+  dynamic_config.DynamicConfig(
+    docker_run: option.Some(dynamic_config.DockerRunConfig(
+      base_url: "http://docker-run-2",
+      access_token: "updated-token",
+    )),
+    rate_limit_policies: dict.from_list([
+      #(
+        api_action.RunAction,
+        dynamic_config.RateLimitPolicy(rules: [
+          dynamic_config.RateLimitRule(
+            match: dynamic_config.AuthenticatedMatch(account_tiers: option.None),
+            limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)],
+          ),
+        ]),
+      ),
+    ]),
+  )
 }

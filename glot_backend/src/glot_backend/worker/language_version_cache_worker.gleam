@@ -5,11 +5,14 @@ import gleam/list
 import gleam/option
 import gleam/otp/actor
 import gleam/otp/supervision
+import gleam/result
 import glot_backend/context
+import glot_backend/dynamic_config
+import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/error
-import glot_backend/effect/get_language_version/get_language_version_handlers
 import glot_backend/erlang
 import glot_backend/server_mode
+import glot_backend/worker/app_config_cache_worker
 import glot_core/language as language_module
 import glot_core/run
 import wisp
@@ -45,8 +48,10 @@ type InFlight {
 
 pub type FetchHandlers {
   FetchHandlers(
-    fetch_language_version: fn(context.Config, language_module.Language) ->
-      Result(run.RunResult, error.RunRequestError),
+    fetch_language_version: fn(
+      process.Subject(app_config_cache_worker.Message),
+      language_module.Language,
+    ) -> Result(run.RunResult, error.RunRequestError),
     now_ns: fn() -> Int,
     supported_languages: fn() -> List(language_module.Language),
   )
@@ -59,7 +64,7 @@ type CacheEntry {
 type State {
   State(
     subject: process.Subject(Message),
-    config: context.Config,
+    app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
     server_mode_subject: process.Subject(server_mode.Message),
     fetch_handlers: FetchHandlers,
     cached_versions: dict.Dict(language_module.Language, CacheEntry),
@@ -72,11 +77,13 @@ type State {
 pub fn start(
   name: process.Name(Message),
   config: context.Config,
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
 ) {
   start_with_handlers(
     name,
     config,
+    app_config_cache_subject,
     server_mode_subject,
     default_fetch_handlers(),
   )
@@ -84,7 +91,8 @@ pub fn start(
 
 pub fn start_with_handlers(
   name: process.Name(Message),
-  config: context.Config,
+  _config: context.Config,
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
   fetch_handlers: FetchHandlers,
 ) {
@@ -92,7 +100,7 @@ pub fn start_with_handlers(
     let initial_state =
       State(
         subject: subject,
-        config: config,
+        app_config_cache_subject: app_config_cache_subject,
         server_mode_subject: server_mode_subject,
         fetch_handlers: fetch_handlers,
         cached_versions: dict.new(),
@@ -112,9 +120,12 @@ pub fn start_with_handlers(
 pub fn supervised(
   name: process.Name(Message),
   config: context.Config,
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
 ) {
-  supervision.worker(fn() { start(name, config, server_mode_subject) })
+  supervision.worker(fn() {
+    start(name, config, app_config_cache_subject, server_mode_subject)
+  })
 }
 
 pub fn get_language_version(
@@ -128,7 +139,7 @@ pub fn get_language_version(
 
 fn default_fetch_handlers() -> FetchHandlers {
   FetchHandlers(
-    fetch_language_version: get_language_version_handlers.get_language_version,
+    fetch_language_version: fetch_language_version,
     now_ns: erlang.perf_counter_ns,
     supported_languages: language_module.list,
   )
@@ -256,12 +267,13 @@ fn ensure_fetch_started(
     True -> state
     False -> {
       let subject = state.subject
-      let config = state.config
+      let app_config_cache_subject = state.app_config_cache_subject
       let fetch_handlers = state.fetch_handlers
 
       let _ =
         process.spawn_unlinked(fn() {
-          let result = fetch_handlers.fetch_language_version(config, language)
+          let result =
+            fetch_handlers.fetch_language_version(app_config_cache_subject, language)
           let fetched_at_ns = fetch_handlers.now_ns()
           process.send(
             subject,
@@ -279,6 +291,38 @@ fn ensure_fetch_started(
       )
     }
   }
+}
+
+fn fetch_language_version(
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
+  language: language_module.Language,
+) -> Result(run.RunResult, error.RunRequestError) {
+  app_config_cache_worker.get_config(app_config_cache_subject)
+  |> result.map_error(map_query_error)
+  |> result.try(fn(config) {
+    case dynamic_config.lookup_docker_run_config(config) {
+      option.Some(docker_run) ->
+        docker_run_handlers.run_code(docker_run, run_request(language))
+      option.None ->
+        Error(error.InternalRunRequestError("Missing docker_run app_config"))
+    }
+  })
+}
+
+fn run_request(language: language_module.Language) -> run.RunRequest {
+  run.RunRequest(
+    image: language_module.container_image(language),
+    payload: run.RunRequestPayload(
+      run_instructions: language_module.version_run_instructions(language),
+      files: [],
+      stdin: option.None,
+    ),
+  )
+}
+
+fn map_query_error(err: error.DbQueryError) -> error.RunRequestError {
+  let error.DbQueryError(message: message) = err
+  error.InternalRunRequestError(message)
 }
 
 fn schedule_refresh_if_idle(state: State, base_delay_ms: Int) -> State {
