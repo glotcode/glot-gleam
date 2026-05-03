@@ -10,6 +10,7 @@ pub type AccountState {
 
 pub type AccountTier {
   FreeTier
+  FreePlusTier
 }
 
 pub type Account {
@@ -58,6 +59,7 @@ pub fn account_state_from_string(
 pub fn account_tier_to_string(account_tier: AccountTier) -> String {
   case account_tier {
     FreeTier -> "free"
+    FreePlusTier -> "free_plus"
   }
 }
 
@@ -66,6 +68,7 @@ pub fn account_tier_from_string(
 ) -> option.Option(AccountTier) {
   case account_tier {
     "free" -> option.Some(FreeTier)
+    "free_plus" -> option.Some(FreePlusTier)
     _ -> option.None
   }
 }

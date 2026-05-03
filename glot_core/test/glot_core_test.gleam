@@ -1,6 +1,7 @@
 import gleam/option
 import gleam/time/timestamp
 import gleeunit
+import glot_core/auth/account_model
 import glot_core/auth/user_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
@@ -23,6 +24,13 @@ pub fn new_slug_truncates_to_microseconds_test() {
   let b = timestamp.from_unix_seconds_and_nanoseconds(42, 123_456_999)
 
   assert snippet_model.new_slug(a) == snippet_model.new_slug(b)
+}
+
+pub fn account_tier_round_trips_free_plus_test() {
+  assert account_model.account_tier_to_string(account_model.FreePlusTier)
+    == "free_plus"
+  assert account_model.account_tier_from_string("free_plus")
+    == option.Some(account_model.FreePlusTier)
 }
 
 pub fn validate_username_accepts_valid_values_test() {

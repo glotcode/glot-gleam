@@ -101,6 +101,29 @@ pub fn rate_limit_policy_prefers_tier_specific_rule_test() {
   ) == [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)]
 }
 
+pub fn rate_limit_policy_matches_free_plus_rule_test() {
+  let policy =
+    dynamic_config.RateLimitPolicy(rules: [
+      dynamic_config.RateLimitRule(
+        match: dynamic_config.AuthenticatedMatch(account_tiers: option.None),
+        limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 5)],
+      ),
+      dynamic_config.RateLimitRule(
+        match: dynamic_config.AuthenticatedMatch(account_tiers: option.Some([
+          account_model.FreePlusTier,
+        ])),
+        limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 12)],
+      ),
+    ])
+
+  assert dynamic_config.select_rate_limits(
+    policy,
+    dynamic_config.AuthenticatedActor(
+      account_tier: account_model.FreePlusTier,
+    ),
+  ) == [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 12)]
+}
+
 pub fn rate_limit_policy_falls_back_to_anonymous_rule_test() {
   let policy =
     dynamic_config.RateLimitPolicy(rules: [
