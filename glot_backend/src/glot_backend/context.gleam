@@ -24,7 +24,6 @@ pub type Config {
     encryption_key: String,
     static_base_path: String,
     postgres: PostgresConfig,
-    cleanup: CleanupConfig,
   )
 }
 
@@ -43,7 +42,6 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
     encryption_key: encryption_key,
     static_base_path: static_base_path,
     postgres: postgres,
-    cleanup: cleanup_config_from_dict(values),
   ))
 }
 
@@ -82,57 +80,6 @@ fn postgres_config_from_dict(
     pass: pass,
     pool_size: pool_size,
   ))
-}
-
-pub type CleanupConfig {
-  CleanupConfig(
-    api_log_retention_days: Int,
-    page_log_retention_days: Int,
-    pageview_log_retention_days: Int,
-    run_log_retention_days: Int,
-    job_log_retention_days: Int,
-    jobs_retention_days: Int,
-    login_tokens_retention_days: Int,
-    user_actions_retention_days: Int,
-  )
-}
-
-fn cleanup_config_from_dict(values: Dict(String, String)) -> CleanupConfig {
-  CleanupConfig(
-    api_log_retention_days: lookup(values, "CLEANUP_API_LOG_RETENTION_DAYS")
-      |> result.try(string_to_int)
-      |> result.unwrap(30),
-    page_log_retention_days: lookup(values, "CLEANUP_PAGE_LOG_RETENTION_DAYS")
-      |> result.try(string_to_int)
-      |> result.unwrap(30),
-    pageview_log_retention_days: lookup(
-      values,
-      "CLEANUP_PAGEVIEW_LOG_RETENTION_DAYS",
-    )
-      |> result.try(string_to_int)
-      |> result.unwrap(30),
-    run_log_retention_days: lookup(values, "CLEANUP_RUN_LOG_RETENTION_DAYS")
-      |> result.try(string_to_int)
-      |> result.unwrap(90),
-    job_log_retention_days: lookup(values, "CLEANUP_JOB_LOG_RETENTION_DAYS")
-      |> result.try(string_to_int)
-      |> result.unwrap(90),
-    jobs_retention_days: lookup(values, "CLEANUP_JOBS_RETENTION_DAYS")
-      |> result.try(string_to_int)
-      |> result.unwrap(90),
-    login_tokens_retention_days: lookup(
-      values,
-      "CLEANUP_LOGIN_TOKENS_RETENTION_DAYS",
-    )
-      |> result.try(string_to_int)
-      |> result.unwrap(30),
-    user_actions_retention_days: lookup(
-      values,
-      "CLEANUP_USER_ACTIONS_RETENTION_DAYS",
-    )
-      |> result.try(string_to_int)
-      |> result.unwrap(90),
-  )
 }
 
 fn lookup(dict: Dict(String, String), key: String) -> Result(String, String) {

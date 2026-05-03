@@ -13,6 +13,7 @@ import glot_core/rate_limit
 pub type DynamicConfig {
   DynamicConfig(
     auth: option.Option(AuthConfig),
+    cleanup: CleanupConfig,
     docker_run: option.Option(DockerRunConfig),
     rate_limit_policies: dict.Dict(api_action.ApiAction, RateLimitPolicy),
   )
@@ -28,6 +29,19 @@ pub type AuthConfig {
 
 pub type DockerRunConfig {
   DockerRunConfig(base_url: String, access_token: String)
+}
+
+pub type CleanupConfig {
+  CleanupConfig(
+    api_log_retention_days: Int,
+    page_log_retention_days: Int,
+    pageview_log_retention_days: Int,
+    run_log_retention_days: Int,
+    job_log_retention_days: Int,
+    jobs_retention_days: Int,
+    login_tokens_retention_days: Int,
+    user_actions_retention_days: Int,
+  )
 }
 
 pub type RateLimitPolicy {
@@ -61,6 +75,7 @@ type PartialAuthConfig {
 pub fn empty() -> DynamicConfig {
   DynamicConfig(
     auth: option.None,
+    cleanup: default_cleanup_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),
   )
@@ -134,6 +149,7 @@ fn apply_entry(
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
   case entry.namespace {
+    "cleanup" -> decode_cleanup_entry(config, entry)
     "docker_run" -> decode_docker_run_entry(config, entry)
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
@@ -205,6 +221,60 @@ fn build_auth_config(partial: PartialAuthConfig) -> Result(AuthConfig, String) {
 
 pub fn require_auth_config(config: DynamicConfig) -> Result(AuthConfig, String) {
   option.to_result(config.auth, "Missing auth app_config entries")
+}
+
+pub fn lookup_cleanup_config(config: DynamicConfig) -> CleanupConfig {
+  config.cleanup
+}
+
+fn default_cleanup_config() -> CleanupConfig {
+  CleanupConfig(
+    api_log_retention_days: 30,
+    page_log_retention_days: 30,
+    pageview_log_retention_days: 30,
+    run_log_retention_days: 90,
+    job_log_retention_days: 90,
+    jobs_retention_days: 90,
+    login_tokens_retention_days: 30,
+    user_actions_retention_days: 90,
+  )
+}
+
+fn decode_cleanup_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  use value <- result.try(
+    json.parse(entry.value, decode.int)
+    |> result.map_error(fn(err) {
+      "Failed to decode cleanup app_config for "
+      <> entry.key
+      <> ": "
+      <> string.inspect(err)
+    }),
+  )
+
+  let cleanup = case entry.key {
+    "api_log_retention_days" ->
+      CleanupConfig(..config.cleanup, api_log_retention_days: value)
+    "page_log_retention_days" ->
+      CleanupConfig(..config.cleanup, page_log_retention_days: value)
+    "pageview_log_retention_days" ->
+      CleanupConfig(..config.cleanup, pageview_log_retention_days: value)
+    "run_log_retention_days" ->
+      CleanupConfig(..config.cleanup, run_log_retention_days: value)
+    "job_log_retention_days" ->
+      CleanupConfig(..config.cleanup, job_log_retention_days: value)
+    "jobs_retention_days" ->
+      CleanupConfig(..config.cleanup, jobs_retention_days: value)
+    "login_tokens_retention_days" ->
+      CleanupConfig(..config.cleanup, login_tokens_retention_days: value)
+    "user_actions_retention_days" ->
+      CleanupConfig(..config.cleanup, user_actions_retention_days: value)
+    _ -> config.cleanup
+  }
+
+  Ok(DynamicConfig(..config, cleanup: cleanup))
 }
 
 fn decode_docker_run_entry(

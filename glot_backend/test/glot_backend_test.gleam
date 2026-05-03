@@ -1356,10 +1356,26 @@ fn run_test_app_config_effect(
   case effect {
     app_config_algebra.GetDynamicConfig(next:) ->
       run_test_program(next(Ok(test_dynamic_config())), ctx, db)
-    app_config_algebra.UpsertAuthConfig(config:, updated_at: _, next: next) ->
+    app_config_algebra.UpsertAuthConfig(config: config, updated_at: _, next: next) ->
       run_test_program(
         next(Ok(dynamic_config.DynamicConfig(
           auth: option.Some(config),
+          cleanup: test_cleanup_config(),
+          docker_run: option.None,
+          rate_limit_policies: dict.new(),
+        ))),
+        ctx,
+        db,
+      )
+    app_config_algebra.UpsertCleanupConfig(config: config, updated_at: _, next: next) ->
+      run_test_program(
+        next(Ok(dynamic_config.DynamicConfig(
+          auth: option.Some(dynamic_config.AuthConfig(
+            login_token_max_age: 900,
+            session_token_max_age: 86_400,
+            session_cookie_max_age: 86_400,
+          )),
+          cleanup: config,
           docker_run: option.None,
           rate_limit_policies: dict.new(),
         ))),
@@ -1373,7 +1389,7 @@ fn run_test_app_config_effect(
       next: next,
     ) ->
       run_test_program(next(Ok(test_dynamic_config())), ctx, db)
-    app_config_algebra.UpsertDockerRunConfig(config:, updated_at: _, next: next) ->
+    app_config_algebra.UpsertDockerRunConfig(config: config, updated_at: _, next: next) ->
       run_test_program(
         next(Ok(dynamic_config.DynamicConfig(
           auth: option.Some(dynamic_config.AuthConfig(
@@ -1381,6 +1397,7 @@ fn run_test_app_config_effect(
             session_token_max_age: 86_400,
             session_cookie_max_age: 86_400,
           )),
+          cleanup: test_cleanup_config(),
           docker_run: option.Some(config),
           rate_limit_policies: dict.new(),
         ))),
@@ -1397,8 +1414,22 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
       session_token_max_age: 86_400,
       session_cookie_max_age: 86_400,
     )),
+    cleanup: test_cleanup_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),
+  )
+}
+
+fn test_cleanup_config() -> dynamic_config.CleanupConfig {
+  dynamic_config.CleanupConfig(
+    api_log_retention_days: 30,
+    page_log_retention_days: 30,
+    pageview_log_retention_days: 30,
+    run_log_retention_days: 30,
+    job_log_retention_days: 30,
+    jobs_retention_days: 30,
+    login_tokens_retention_days: 30,
+    user_actions_retention_days: 30,
   )
 }
 
@@ -2436,16 +2467,6 @@ fn test_context() -> context.Context {
         user: "test",
         pass: "test",
         pool_size: 1,
-      ),
-      cleanup: context.CleanupConfig(
-        api_log_retention_days: 30,
-        page_log_retention_days: 30,
-        pageview_log_retention_days: 30,
-        run_log_retention_days: 30,
-        job_log_retention_days: 30,
-        jobs_retention_days: 30,
-        login_tokens_retention_days: 30,
-        user_actions_retention_days: 30,
       ),
     ),
     regexes: context.Regexes(is_email: is_email),

@@ -183,6 +183,16 @@ fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
         account_model.Active,
         account_model.ReadOnly,
       ])
+    api_action.GetAdminCleanupConfigAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.UpsertAdminCleanupConfigAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
     api_action.GetAdminRateLimitPoliciesAction ->
       AllowedAccountStates([
         account_model.Active,

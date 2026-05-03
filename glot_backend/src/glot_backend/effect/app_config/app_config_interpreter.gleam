@@ -86,6 +86,93 @@ pub fn run(
         ),
       )
     }
+    app_config_algebra.UpsertCleanupConfig(config:, updated_at:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        runtime.handlers.app_config.upsert_entry(
+          "cleanup",
+          "api_log_retention_days",
+          json.int(config.api_log_retention_days) |> json.to_string(),
+          updated_at,
+        )
+        |> result.map_error(error.CommandError)
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "cleanup",
+            "page_log_retention_days",
+            json.int(config.page_log_retention_days) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "cleanup",
+            "pageview_log_retention_days",
+            json.int(config.pageview_log_retention_days) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "cleanup",
+            "run_log_retention_days",
+            json.int(config.run_log_retention_days) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "cleanup",
+            "job_log_retention_days",
+            json.int(config.job_log_retention_days) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "cleanup",
+            "jobs_retention_days",
+            json.int(config.jobs_retention_days) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "cleanup",
+            "login_tokens_retention_days",
+            json.int(config.login_tokens_retention_days) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "cleanup",
+            "user_actions_retention_days",
+            json.int(config.user_actions_retention_days) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) { refresh_dynamic_config(runtime) })
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.UpsertCleanupConfigEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     app_config_algebra.UpsertRateLimitPolicy(action:, policy:, updated_at:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result =

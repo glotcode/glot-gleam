@@ -12,6 +12,11 @@ pub type AppConfigEffect(next) {
     updated_at: Timestamp,
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
   )
+  UpsertCleanupConfig(
+    config: dynamic_config.CleanupConfig,
+    updated_at: Timestamp,
+    next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
+  )
   UpsertRateLimitPolicy(
     action: ApiAction,
     policy: dynamic_config.RateLimitPolicy,
@@ -35,6 +40,12 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
         updated_at: updated_at,
         next: fn(value) { f(next(value)) },
       )
+    UpsertCleanupConfig(config:, updated_at:, next:) ->
+      UpsertCleanupConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(value) { f(next(value)) },
+      )
     UpsertRateLimitPolicy(action:, policy:, updated_at:, next:) ->
       UpsertRateLimitPolicy(
         action: action,
@@ -54,6 +65,7 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
 pub type EffectName {
   GetDynamicConfigEffectName
   UpsertAuthConfigEffectName
+  UpsertCleanupConfigEffectName
   UpsertRateLimitPolicyEffectName
   UpsertDockerRunConfigEffectName
 }
@@ -62,6 +74,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetDynamicConfigEffectName -> "get_dynamic_config"
     UpsertAuthConfigEffectName -> "upsert_auth_config"
+    UpsertCleanupConfigEffectName -> "upsert_cleanup_config"
     UpsertRateLimitPolicyEffectName -> "upsert_rate_limit_policy"
     UpsertDockerRunConfigEffectName -> "upsert_docker_run_config"
   }
