@@ -112,21 +112,6 @@ pub fn app_config_decodes_docker_run_config_test() {
   let assert Ok(config) =
     dynamic_config.from_entries([
       app_config.AppConfigEntry(
-        namespace: "auth",
-        key: "login_token_max_age",
-        value: "900",
-      ),
-      app_config.AppConfigEntry(
-        namespace: "auth",
-        key: "session_token_max_age",
-        value: "86400",
-      ),
-      app_config.AppConfigEntry(
-        namespace: "auth",
-        key: "session_cookie_max_age",
-        value: "86400",
-      ),
-      app_config.AppConfigEntry(
         namespace: "docker_run",
         key: "base_url",
         value: "\"https://docker-run.internal\"",
@@ -138,11 +123,22 @@ pub fn app_config_decodes_docker_run_config_test() {
       ),
     ])
 
-  assert dynamic_config.lookup_docker_run_config(config)
+  assert dynamic_config.docker_run_config(config)
     == option.Some(dynamic_config.DockerRunConfig(
       base_url: "https://docker-run.internal",
       access_token: "plain-token",
     ))
+}
+
+pub fn app_config_uses_default_auth_config_test() {
+  let assert Ok(config) = dynamic_config.from_entries([])
+
+  assert dynamic_config.auth_config(config)
+    == dynamic_config.AuthConfig(
+      login_token_max_age: 900,
+      session_token_max_age: 86_400,
+      session_cookie_max_age: 86_400,
+    )
 }
 
 pub fn rate_limit_policy_matches_free_plus_rule_test() {
@@ -1359,7 +1355,7 @@ fn run_test_app_config_effect(
     app_config_algebra.UpsertAuthConfig(config: config, updated_at: _, next: next) ->
       run_test_program(
         next(Ok(dynamic_config.DynamicConfig(
-          auth: option.Some(config),
+          auth: config,
           cleanup: test_cleanup_config(),
           docker_run: option.None,
           rate_limit_policies: dict.new(),
@@ -1370,11 +1366,11 @@ fn run_test_app_config_effect(
     app_config_algebra.UpsertCleanupConfig(config: config, updated_at: _, next: next) ->
       run_test_program(
         next(Ok(dynamic_config.DynamicConfig(
-          auth: option.Some(dynamic_config.AuthConfig(
+          auth: dynamic_config.AuthConfig(
             login_token_max_age: 900,
             session_token_max_age: 86_400,
             session_cookie_max_age: 86_400,
-          )),
+          ),
           cleanup: config,
           docker_run: option.None,
           rate_limit_policies: dict.new(),
@@ -1392,11 +1388,11 @@ fn run_test_app_config_effect(
     app_config_algebra.UpsertDockerRunConfig(config: config, updated_at: _, next: next) ->
       run_test_program(
         next(Ok(dynamic_config.DynamicConfig(
-          auth: option.Some(dynamic_config.AuthConfig(
+          auth: dynamic_config.AuthConfig(
             login_token_max_age: 900,
             session_token_max_age: 86_400,
             session_cookie_max_age: 86_400,
-          )),
+          ),
           cleanup: test_cleanup_config(),
           docker_run: option.Some(config),
           rate_limit_policies: dict.new(),
@@ -1409,11 +1405,11 @@ fn run_test_app_config_effect(
 
 fn test_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
-    auth: option.Some(dynamic_config.AuthConfig(
+    auth: dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,
       session_cookie_max_age: 86_400,
-    )),
+    ),
     cleanup: test_cleanup_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),

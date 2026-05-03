@@ -12,7 +12,7 @@ import glot_core/rate_limit
 
 pub type DynamicConfig {
   DynamicConfig(
-    auth: option.Option(AuthConfig),
+    auth: AuthConfig,
     cleanup: CleanupConfig,
     docker_run: option.Option(DockerRunConfig),
     rate_limit_policies: dict.Dict(api_action.ApiAction, RateLimitPolicy),
@@ -64,17 +64,9 @@ pub type RateLimitActor {
   AuthenticatedActor(account_tier: account_model.AccountTier)
 }
 
-type PartialAuthConfig {
-  PartialAuthConfig(
-    login_token_max_age: option.Option(Int),
-    session_token_max_age: option.Option(Int),
-    session_cookie_max_age: option.Option(Int),
-  )
-}
-
 pub fn empty() -> DynamicConfig {
   DynamicConfig(
-    auth: option.None,
+    auth: default_auth_config(),
     cleanup: default_cleanup_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),
@@ -84,9 +76,7 @@ pub fn empty() -> DynamicConfig {
 pub fn from_entries(
   entries: List(app_config.AppConfigEntry),
 ) -> Result(DynamicConfig, String) {
-  use auth <- result.try(auth_config_from_entries(entries))
-
-  list.fold(entries, Ok(DynamicConfig(..empty(), auth: option.Some(auth))), fn(acc, entry) {
+  list.fold(entries, Ok(empty()), fn(acc, entry) {
     use config <- result.try(acc)
     apply_entry(config, entry)
   })
@@ -100,13 +90,13 @@ pub fn lookup_rate_limit_policy(
   |> option.from_result()
 }
 
-pub fn lookup_docker_run_config(
+pub fn docker_run_config(
   config: DynamicConfig,
 ) -> option.Option(DockerRunConfig) {
   config.docker_run
 }
 
-pub fn lookup_auth_config(config: DynamicConfig) -> option.Option(AuthConfig) {
+pub fn auth_config(config: DynamicConfig) -> AuthConfig {
   config.auth
 }
 
@@ -149,82 +139,43 @@ fn apply_entry(
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
   case entry.namespace {
-    "cleanup" -> decode_cleanup_entry(config, entry)
+    "auth" -> decode_auth_config_entry(config, entry)
+    "cleanup" -> decode_cleanup_config_entry(config, entry)
     "docker_run" -> decode_docker_run_entry(config, entry)
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
   }
 }
 
-fn auth_config_from_entries(
-  entries: List(app_config.AppConfigEntry),
-) -> Result(AuthConfig, String) {
-  list.fold(entries, Ok(PartialAuthConfig(
-    login_token_max_age: option.None,
-    session_token_max_age: option.None,
-    session_cookie_max_age: option.None,
-  )), fn(acc, entry) {
-    use partial <- result.try(acc)
-    case entry.namespace {
-      "auth" -> decode_auth_entry(partial, entry)
-      _ -> Ok(partial)
-    }
-  })
-  |> result.try(build_auth_config)
-}
-
-fn decode_auth_entry(
-  partial: PartialAuthConfig,
+fn decode_auth_config_entry(
+  config: DynamicConfig,
   entry: app_config.AppConfigEntry,
-) -> Result(PartialAuthConfig, String) {
-  use value <- result.try(
-    json.parse(entry.value, decode.int)
-    |> result.map_error(fn(err) {
-      "Failed to decode auth app_config for "
-      <> entry.key
-      <> ": "
-      <> string.inspect(err)
-    }),
-  )
+) -> Result(DynamicConfig, String) {
+  use value <- result.try(decode_int_entry("auth", entry))
 
-  Ok(case entry.key {
+  let auth = case entry.key {
     "login_token_max_age" ->
-      PartialAuthConfig(..partial, login_token_max_age: option.Some(value))
+      AuthConfig(..config.auth, login_token_max_age: value)
     "session_token_max_age" ->
-      PartialAuthConfig(..partial, session_token_max_age: option.Some(value))
+      AuthConfig(..config.auth, session_token_max_age: value)
     "session_cookie_max_age" ->
-      PartialAuthConfig(..partial, session_cookie_max_age: option.Some(value))
-    _ -> partial
-  })
+      AuthConfig(..config.auth, session_cookie_max_age: value)
+    _ -> config.auth
+  }
+
+  Ok(DynamicConfig(..config, auth: auth))
 }
 
-fn build_auth_config(partial: PartialAuthConfig) -> Result(AuthConfig, String) {
-  use login_token_max_age <- result.try(option.to_result(
-    partial.login_token_max_age,
-    "Missing auth app_config entries",
-  ))
-  use session_token_max_age <- result.try(option.to_result(
-    partial.session_token_max_age,
-    "Missing auth app_config entries",
-  ))
-  use session_cookie_max_age <- result.try(option.to_result(
-    partial.session_cookie_max_age,
-    "Missing auth app_config entries",
-  ))
-
-  Ok(AuthConfig(
-    login_token_max_age: login_token_max_age,
-    session_token_max_age: session_token_max_age,
-    session_cookie_max_age: session_cookie_max_age,
-  ))
-}
-
-pub fn require_auth_config(config: DynamicConfig) -> Result(AuthConfig, String) {
-  option.to_result(config.auth, "Missing auth app_config entries")
-}
-
-pub fn lookup_cleanup_config(config: DynamicConfig) -> CleanupConfig {
+pub fn cleanup_config(config: DynamicConfig) -> CleanupConfig {
   config.cleanup
+}
+
+fn default_auth_config() -> AuthConfig {
+  AuthConfig(
+    login_token_max_age: 900,
+    session_token_max_age: 86_400,
+    session_cookie_max_age: 86_400,
+  )
 }
 
 fn default_cleanup_config() -> CleanupConfig {
@@ -240,19 +191,11 @@ fn default_cleanup_config() -> CleanupConfig {
   )
 }
 
-fn decode_cleanup_entry(
+fn decode_cleanup_config_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
-  use value <- result.try(
-    json.parse(entry.value, decode.int)
-    |> result.map_error(fn(err) {
-      "Failed to decode cleanup app_config for "
-      <> entry.key
-      <> ": "
-      <> string.inspect(err)
-    }),
-  )
+  use value <- result.try(decode_int_entry("cleanup", entry))
 
   let cleanup = case entry.key {
     "api_log_retention_days" ->
@@ -277,19 +220,26 @@ fn decode_cleanup_entry(
   Ok(DynamicConfig(..config, cleanup: cleanup))
 }
 
+fn decode_int_entry(
+  namespace: String,
+  entry: app_config.AppConfigEntry,
+) -> Result(Int, String) {
+  json.parse(entry.value, decode.int)
+  |> result.map_error(fn(err) {
+    "Failed to decode "
+    <> namespace
+    <> " app_config for "
+    <> entry.key
+    <> ": "
+    <> string.inspect(err)
+  })
+}
+
 fn decode_docker_run_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
-  use value <- result.try(
-    json.parse(entry.value, decode.string)
-    |> result.map_error(fn(err) {
-      "Failed to decode docker_run app_config for "
-      <> entry.key
-      <> ": "
-      <> string.inspect(err)
-    }),
-  )
+  use value <- result.try(decode_string_entry("docker_run", entry))
 
   let docker_run =
     case entry.key, config.docker_run {
@@ -315,19 +265,38 @@ fn decode_rate_limit_policy_entry(
     option.Some(action) -> Ok(action)
     option.None -> Error("Invalid rate limit action in app_config key: " <> entry.key)
   })
-  use policy <- result.try(
-    json.parse(entry.value, rate_limit_policy_decoder())
-    |> result.map_error(fn(err) {
-      "Failed to decode rate_limit app_config for "
-      <> entry.key
-      <> ": "
-      <> string.inspect(err)
-    }),
-  )
+  use policy <- result.try(decode_json_entry(
+    "rate_limit",
+    entry,
+    rate_limit_policy_decoder(),
+  ))
   Ok(DynamicConfig(
     ..config,
     rate_limit_policies: dict.insert(config.rate_limit_policies, action, policy),
   ))
+}
+
+fn decode_string_entry(
+  namespace: String,
+  entry: app_config.AppConfigEntry,
+) -> Result(String, String) {
+  decode_json_entry(namespace, entry, decode.string)
+}
+
+fn decode_json_entry(
+  namespace: String,
+  entry: app_config.AppConfigEntry,
+  decoder: decode.Decoder(a),
+) -> Result(a, String) {
+  json.parse(entry.value, decoder)
+  |> result.map_error(fn(err) {
+    "Failed to decode "
+    <> namespace
+    <> " app_config for "
+    <> entry.key
+    <> ": "
+    <> string.inspect(err)
+  })
 }
 
 fn rate_limit_policy_decoder() -> decode.Decoder(RateLimitPolicy) {

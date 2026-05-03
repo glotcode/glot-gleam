@@ -1,7 +1,6 @@
 import gleam/dynamic
 import gleam/list
 import gleam/option
-import gleam/result
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/crypto_token
@@ -43,13 +42,7 @@ pub fn login(
     ),
   )
   use config <- program.and_then(app_config_effect.get_dynamic_config())
-  use auth_config <- program.and_then(
-    dynamic_config.require_auth_config(config)
-    |> result.map_error(fn(message) {
-      error.QueryError(error.DbQueryError(message))
-    })
-    |> program.from_result(),
-  )
+  let auth_config = dynamic_config.auth_config(config)
 
   use maybe_user <- program.and_then(auth_effect.get_user_by_email(
     request.email,

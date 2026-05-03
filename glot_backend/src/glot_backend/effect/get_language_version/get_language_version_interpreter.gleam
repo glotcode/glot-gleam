@@ -31,7 +31,7 @@ pub fn run(
           option.None ->
             load_config(runtime)
             |> result.try(fn(config) {
-              case dynamic_config.lookup_docker_run_config(config) {
+              case dynamic_config.docker_run_config(config) {
                 option.Some(docker_run) ->
                   runtime.handlers.docker_run.run_code(
                     docker_run,

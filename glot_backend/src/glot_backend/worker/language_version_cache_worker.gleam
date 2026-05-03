@@ -300,7 +300,7 @@ fn fetch_language_version(
   app_config_cache_worker.get_config(app_config_cache_subject)
   |> result.map_error(map_query_error)
   |> result.try(fn(config) {
-    case dynamic_config.lookup_docker_run_config(config) {
+    case dynamic_config.docker_run_config(config) {
       option.Some(docker_run) ->
         docker_run_handlers.run_code(docker_run, run_request(language))
       option.None ->

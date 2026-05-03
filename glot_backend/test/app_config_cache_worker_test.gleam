@@ -258,11 +258,11 @@ fn expect_result(
 
 fn test_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
-    auth: option.Some(dynamic_config.AuthConfig(
+    auth: dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,
       session_cookie_max_age: 86_400,
-    )),
+    ),
     cleanup: dynamic_config.CleanupConfig(
       api_log_retention_days: 30,
       page_log_retention_days: 30,
@@ -299,11 +299,11 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
 
 fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
-    auth: option.Some(dynamic_config.AuthConfig(
+    auth: dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,
       session_cookie_max_age: 86_400,
-    )),
+    ),
     cleanup: dynamic_config.CleanupConfig(
       api_log_retention_days: 30,
       page_log_retention_days: 30,

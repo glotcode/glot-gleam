@@ -24,7 +24,7 @@ pub fn get_docker_run_config(
   ))
   use config <- program.and_then(app_config_effect.get_dynamic_config())
   use docker_run_config <- program.and_then(program.from_option(
-    dynamic_config.lookup_docker_run_config(config),
+    dynamic_config.docker_run_config(config),
     error.NotFoundError(
       code: "docker_run_config_not_found",
       message: "Docker run config is not configured",

@@ -22,7 +22,7 @@ pub fn get_cleanup_config(
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use config <- program.and_then(app_config_effect.get_dynamic_config())
-  let cleanup_config = dynamic_config.lookup_cleanup_config(config)
+  let cleanup_config = dynamic_config.cleanup_config(config)
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
   program.succeed(cleanup_config_dto.CleanupConfigResponse(

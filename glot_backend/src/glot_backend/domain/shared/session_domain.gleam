@@ -28,13 +28,7 @@ fn get_validated_session(
   ctx: context.Context,
 ) -> program_types.Program(Result(session_model.HydratedSession, error.Error)) {
   use config <- program.and_then(app_config_effect.get_dynamic_config())
-  use auth_config <- program.and_then(
-    dynamic_config.require_auth_config(config)
-    |> result.map_error(fn(message) {
-      error.QueryError(error.DbQueryError(message))
-    })
-    |> program.from_result(),
-  )
+  let auth_config = dynamic_config.auth_config(config)
   use session_result <- program.and_then(case ctx.client_info.session_token {
     option.Some(token) ->
       auth_effect.get_session_by_token(token)

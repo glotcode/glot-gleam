@@ -1,12 +1,10 @@
 import gleam/option
-import gleam/result
 import glot_backend/context
 import glot_backend/domain/shared/admin_authorization_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_effect
-import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
@@ -24,14 +22,9 @@ pub fn get_auth_config(
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use config <- program.and_then(app_config_effect.get_dynamic_config())
-  use auth_config <- program.and_then(
-    dynamic_config.require_auth_config(config)
-    |> result.map_error(fn(message) {
-      error.QueryError(error.DbQueryError(message))
-    })
-    |> program.from_result(),
-  )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
+
+  let auth_config = dynamic_config.auth_config(config)
 
   program.succeed(auth_config_dto.AuthConfigResponse(
     login_token_max_age: auth_config.login_token_max_age,
