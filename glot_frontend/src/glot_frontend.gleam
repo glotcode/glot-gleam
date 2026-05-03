@@ -8,6 +8,7 @@ import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/pageview_dto
 import glot_core/route
+import glot_frontend/admin_page
 import glot_frontend/admin_rate_limits_page
 import glot_frontend/account_page
 import glot_frontend/api
@@ -51,6 +52,7 @@ type PageModel {
   HomePageModel(home_page.Model)
   LoginPage(login_page.Model)
   AccountPage(account_page.Model)
+  AdminPage(admin_page.Model)
   AdminRateLimitsPage(admin_rate_limits_page.Model)
   ManageSnippetsPage(manage_snippets_page.Model)
   SnippetsPage(snippets_page.Model)
@@ -88,6 +90,11 @@ fn init_page(
     route.Account -> {
       let #(m, eff) = account_page.init()
       #(AccountPage(m), effect.map(eff, AccountPageMsg))
+    }
+
+    route.Admin -> {
+      let #(m, eff) = admin_page.init()
+      #(AdminPage(m), effect.map(eff, AdminPageMsg))
     }
 
     route.AdminRateLimits -> {
@@ -192,6 +199,7 @@ type Msg {
   HomePageMsg(home_page.Msg)
   LoginPageMsg(login_page.Msg)
   AccountPageMsg(account_page.Msg)
+  AdminPageMsg(admin_page.Msg)
   AdminRateLimitsPageMsg(admin_rate_limits_page.Msg)
   ManageSnippetsPageMsg(manage_snippets_page.Msg)
   SnippetsPageMsg(snippets_page.Msg)
@@ -215,9 +223,9 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let next_model = Model(..model, session: session)
 
       case model.route {
-        route.AdminRateLimits ->
-          case session_is_admin(session), model.page_model {
-            True, AdminRateLimitsPage(page_model) -> {
+        route.Admin | route.AdminRateLimits ->
+          case session_is_admin(session), model.route, model.page_model {
+            True, route.AdminRateLimits, AdminRateLimitsPage(page_model) -> {
               let #(new_page_model, page_effect) =
                 admin_rate_limits_page.ensure_loaded(page_model)
               #(
@@ -225,12 +233,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 effect.map(page_effect, AdminRateLimitsPageMsg),
               )
             }
-            False, _ -> #(
+            False, _, _ -> #(
               next_model,
               replace_route(admin_fallback_route(session)),
             )
-            _, _ -> #(next_model, effect.none())
+            _, _, _ -> #(next_model, effect.none())
           }
+
         _ -> #(next_model, effect.none())
       }
     }
@@ -321,6 +330,12 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(new_model, apply_app_event(mapped_effect, event))
     }
 
+    AdminPageMsg(page_msg), AdminPage(page_model) -> {
+      let #(new_page_model, page_effect) = admin_page.update(page_model, page_msg)
+      let new_model = Model(..model, page_model: AdminPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminPageMsg))
+    }
+
     AdminRateLimitsPageMsg(page_msg), AdminRateLimitsPage(page_model) -> {
       let #(new_page_model, page_effect) =
         admin_rate_limits_page.update(page_model, page_msg)
@@ -394,6 +409,13 @@ fn view(model: Model) -> Element(Msg) {
       AccountPage(page_model) -> {
         let elem = account_page.view(page_model, model.now)
         element.map(elem, AccountPageMsg)
+      }
+
+      AdminPage(_page_model) -> {
+        case session_is_admin(model.session) {
+          True -> admin_page.view() |> element.map(AdminPageMsg)
+          False -> not_found_view()
+        }
       }
 
       AdminRateLimitsPage(page_model) -> {
@@ -512,6 +534,7 @@ fn page_actions(
     HomePageModel(_)
     | LoginPage(_)
     | AccountPage(_)
+    | AdminPage(_)
     | AdminRateLimitsPage(_)
     | ManageSnippetsPage(_)
     | SnippetsPage(_)
@@ -684,7 +707,7 @@ fn authorized_route(
   session: SessionState,
 ) -> route.Route {
   case target_route {
-    route.AdminRateLimits ->
+    route.Admin | route.AdminRateLimits ->
       case session_is_admin(session) {
         True -> target_route
         False -> admin_fallback_route(session)

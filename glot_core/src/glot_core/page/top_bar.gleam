@@ -236,11 +236,11 @@ pub fn navigation_actions(
           msg: on_navigate(route.Account),
         ),
         Action(
-          label: "Admin rate limits",
-          description: "Configure API rate limit policies.",
+          label: "Admin",
+          description: "Open admin tools and configuration.",
           shortcut: [],
-          target_route: option.Some(route.AdminRateLimits),
-          msg: on_navigate(route.AdminRateLimits),
+          target_route: option.Some(route.Admin),
+          msg: on_navigate(route.Admin),
         ),
       ])
 

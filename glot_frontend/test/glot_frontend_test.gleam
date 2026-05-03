@@ -42,3 +42,7 @@ pub fn snippets_route_to_string_includes_username_query_test() {
 pub fn admin_rate_limits_route_to_string_test() {
   assert route.to_string(route.AdminRateLimits) == "/admin/rate-limits"
 }
+
+pub fn admin_route_to_string_test() {
+  assert route.to_string(route.Admin) == "/admin"
+}
