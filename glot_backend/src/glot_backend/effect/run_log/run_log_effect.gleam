@@ -1,3 +1,4 @@
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_backend/effect/run_log/run_log_algebra
@@ -11,6 +12,14 @@ pub fn create(run_log: RunLog) -> program_types.Program(Nil) {
 
 pub fn create_tx(run_log: RunLog) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(create_effect(run_log, tx_next))
+}
+
+pub fn delete_before(
+  before: Timestamp,
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_before_effect(before, next)),
+  )
 }
 
 fn next(
@@ -37,6 +46,16 @@ fn create_effect(
 ) -> program_types.DbEffect(next) {
   program_types.RunLogEffect(run_log_algebra.CreateRunLog(
     run_log: run_log,
+    next: next,
+  ))
+}
+
+fn delete_before_effect(
+  before: Timestamp,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.RunLogEffect(run_log_algebra.DeleteRunLogBefore(
+    before: before,
     next: next,
   ))
 }

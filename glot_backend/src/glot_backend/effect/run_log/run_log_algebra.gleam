@@ -1,9 +1,14 @@
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_core/run_log_model.{type RunLog}
 
 pub type RunLogEffect(next) {
   CreateRunLog(
     run_log: RunLog,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  DeleteRunLogBefore(
+    before: Timestamp,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
 }
@@ -18,15 +23,19 @@ pub fn map(
         run_log: run_log,
         next: fn(value) { f(next(value)) },
       )
+    DeleteRunLogBefore(before:, next:) ->
+      DeleteRunLogBefore(before: before, next: fn(value) { f(next(value)) })
   }
 }
 
 pub type EffectName {
   CreateRunLogEffectName
+  DeleteRunLogBeforeEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     CreateRunLogEffectName -> "create_run_log"
+    DeleteRunLogBeforeEffectName -> "delete_run_log_before"
   }
 }

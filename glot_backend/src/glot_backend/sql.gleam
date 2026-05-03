@@ -133,6 +133,13 @@ pub fn insert_user_action(
   ])
 }
 
+pub fn delete_run_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM run_log
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
 pub type GetJobById {
   GetJobById(
     id: BitArray,

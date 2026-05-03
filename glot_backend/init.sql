@@ -315,6 +315,17 @@ VALUES (
   CURRENT_TIMESTAMP
 ), (
   uuidv4(),
+  'clean_run_log',
+  NULL,
+  86400,
+  TRUE,
+  CURRENT_TIMESTAMP,
+  NULL,
+  NULL,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  uuidv4(),
   'clean_job_log',
   NULL,
   86400,

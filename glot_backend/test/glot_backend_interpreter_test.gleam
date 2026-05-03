@@ -254,7 +254,10 @@ fn test_handlers() -> handlers.Handlers {
       create_periodic_job: fn(_) { Ok(Nil) },
       update_periodic_job: fn(_) { Ok(Nil) },
     ),
-    run_log: run_log_handlers.RunLogHandlers(create_run_log: fn(_) { Ok(Nil) }),
+    run_log: run_log_handlers.RunLogHandlers(
+      create_run_log: fn(_) { Ok(Nil) },
+      delete_before: fn(_) { Ok(Nil) },
+    ),
     auth: auth_handlers.AuthHandlers(
       get_user_by_email: fn(_, _) { Ok(option.None) },
       list_login_tokens_by_email: fn(_, _) { Ok([]) },
@@ -333,6 +336,7 @@ fn test_context() -> context.Context {
         api_log_retention_days: 30,
         page_log_retention_days: 30,
         pageview_log_retention_days: 30,
+        run_log_retention_days: 30,
         job_log_retention_days: 30,
         jobs_retention_days: 30,
         login_tokens_retention_days: 30,

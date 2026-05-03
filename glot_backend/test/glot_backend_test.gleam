@@ -12,6 +12,7 @@ import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/cleanup/clean_jobs_domain
 import glot_backend/domain/cleanup/clean_login_tokens_domain
+import glot_backend/domain/cleanup/clean_run_log_domain
 import glot_backend/domain/cleanup/clean_user_actions_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
@@ -47,6 +48,7 @@ import glot_core/email/email_address_model
 import glot_core/job/job_model
 import glot_core/language
 import glot_core/run
+import glot_core/run_log_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/periodic_job/periodic_job_model
 import glot_core/snippet/snippet_dto
@@ -680,6 +682,48 @@ pub fn clean_jobs_deletes_only_done_jobs_before_cutoff_test() {
   assert dict.get(updated_db.jobs, uuid_key(recent_done_job.id)) == Ok(recent_done_job)
 }
 
+pub fn clean_run_log_deletes_only_old_rows_test() {
+  let old_run_log =
+    run_log_model.RunLog(
+      id: must_uuid("00000000-0000-0000-0000-000000000d01"),
+      request_id: test_request_id(),
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),
+      session_id: option.None,
+      user_id: option.None,
+      language: language.Python,
+      outcome: run_log_model.RunSucceeded,
+      duration_ns: option.Some(1_000),
+      failure_message: option.None,
+    )
+  let recent_run_log =
+    run_log_model.RunLog(
+      ..old_run_log,
+      id: must_uuid("00000000-0000-0000-0000-000000000d02"),
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_699_900_000, 0),
+    )
+  let ctx =
+    context.Context(
+      ..test_context(),
+      timestamp: timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0),
+    )
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      run_logs: dict.from_list([
+        #(uuid_key(old_run_log.id), old_run_log),
+        #(uuid_key(recent_run_log.id), recent_run_log),
+      ]),
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(clean_run_log_domain.clean_run_log(ctx), ctx, db)
+
+  assert run_result == Ok(Nil)
+  assert dict.get(updated_db.run_logs, uuid_key(old_run_log.id)) == Error(Nil)
+  assert dict.get(updated_db.run_logs, uuid_key(recent_run_log.id))
+    == Ok(recent_run_log)
+}
+
 pub fn clean_user_actions_deletes_only_old_rows_test() {
   let old_action =
     user_action.UserAction(
@@ -781,6 +825,7 @@ type TestDb {
     login_tokens: Dict(String, login_token_model.LoginToken),
     sessions: Dict(String, session_model.Session),
     session_ids_by_token: Dict(String, String),
+    run_logs: Dict(String, run_log_model.RunLog),
     jobs: Dict(String, job_model.Job),
     periodic_jobs: Dict(String, periodic_job_model.PeriodicJob),
     snippets: Dict(String, snippet_model.Snippet),
@@ -851,6 +896,7 @@ fn integration_fixture(
       session_ids_by_token: dict.from_list([
         #(session.token, uuid_key(session.id)),
       ]),
+      run_logs: dict.new(),
       jobs: dict.from_list(list.map(jobs, fn(job) { #(uuid_key(job.id), job) })),
       periodic_jobs: dict.new(),
       snippets: dict.from_list([#(uuid_key(snippet.id), snippet)]),
@@ -921,6 +967,7 @@ fn empty_test_db() -> TestDb {
     login_tokens: dict.new(),
     sessions: dict.new(),
     session_ids_by_token: dict.new(),
+    run_logs: dict.new(),
     jobs: dict.new(),
     periodic_jobs: dict.new(),
     snippets: dict.new(),
@@ -1264,6 +1311,8 @@ fn run_test_run_log_effect(
   case effect {
     run_log_algebra.CreateRunLog(run_log: _, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, db)
+    run_log_algebra.DeleteRunLogBefore(before:, next:) ->
+      run_test_program(next(Ok(Nil)), ctx, delete_run_logs_before(db, before))
   }
 }
 
@@ -1275,6 +1324,8 @@ fn run_test_run_log_tx_effect(
   case effect {
     run_log_algebra.CreateRunLog(run_log: _, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, db)
+    run_log_algebra.DeleteRunLogBefore(before:, next:) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, delete_run_logs_before(db, before))
   }
 }
 
@@ -1811,6 +1862,23 @@ fn delete_login_tokens_before(
   TestDb(..db, login_tokens: kept_login_tokens)
 }
 
+fn delete_run_logs_before(
+  db: TestDb,
+  before: timestamp.Timestamp,
+) -> TestDb {
+  let before_microseconds = timestamp_helpers.to_microseconds(before)
+  let kept_run_logs =
+    db.run_logs
+    |> dict.to_list
+    |> list.filter(fn(entry) {
+      let #(_, run_log) = entry
+      timestamp_helpers.to_microseconds(run_log.created_at) >= before_microseconds
+    })
+    |> dict.from_list
+
+  TestDb(..db, run_logs: kept_run_logs)
+}
+
 fn put_job(db: TestDb, job: job_model.Job) -> TestDb {
   TestDb(..db, jobs: dict.insert(db.jobs, uuid_key(job.id), job))
 }
@@ -2069,6 +2137,7 @@ fn test_context() -> context.Context {
         api_log_retention_days: 30,
         page_log_retention_days: 30,
         pageview_log_retention_days: 30,
+        run_log_retention_days: 30,
         job_log_retention_days: 30,
         jobs_retention_days: 30,
         login_tokens_retention_days: 30,

@@ -28,5 +28,20 @@ pub fn run(
         ),
       )
     }
+    run_log_algebra.DeleteRunLogBefore(before:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.run_log.delete_before(before)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.RunLogEffectName(
+            run_log_algebra.DeleteRunLogBeforeEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
   }
 }
