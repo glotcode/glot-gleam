@@ -91,6 +91,10 @@ pub fn lookup_docker_run_config(
   config.docker_run
 }
 
+pub fn lookup_auth_config(config: DynamicConfig) -> option.Option(AuthConfig) {
+  config.auth
+}
+
 pub fn select_rate_limits(
   policy: RateLimitPolicy,
   actor: RateLimitActor,

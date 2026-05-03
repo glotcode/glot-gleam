@@ -9,7 +9,9 @@ import glot_backend/app_config
 import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/domain/admin/get_rate_limit_policies_domain
+import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/account/cancel_delete_account_domain
@@ -45,6 +47,7 @@ import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 import glot_core/api_action
+import glot_core/admin/auth_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/auth/account_model
@@ -206,6 +209,19 @@ pub fn get_docker_run_config_requires_admin_role_test() {
   assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
 }
 
+pub fn get_auth_config_requires_admin_role_test() {
+  let fixture = integration_fixture(next_uuids: [], jobs: [], account_delete_job_id: option.None)
+
+  let #(run_result, _) =
+    run_test_program(
+      get_auth_config_domain.get_auth_config(fixture.ctx),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
+}
+
 pub fn upsert_rate_limit_policy_allows_admin_role_test() {
   let fixture = admin_integration_fixture()
   let request =
@@ -261,6 +277,33 @@ pub fn upsert_docker_run_config_allows_admin_role_test() {
   assert run_result == Ok(docker_run_config_dto.DockerRunConfigResponse(
     base_url: request.base_url,
     access_token: request.access_token,
+  ))
+  assert updated_db.user_action_count == 1
+}
+
+pub fn upsert_auth_config_allows_admin_role_test() {
+  let fixture = admin_integration_fixture()
+  let request =
+    auth_config_dto.UpsertAuthConfigRequest(
+      login_token_max_age: 1_200,
+      session_token_max_age: 172_800,
+      session_cookie_max_age: 172_800,
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      upsert_auth_config_domain.upsert_auth_config(
+        fixture.ctx,
+        request,
+      ),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result == Ok(auth_config_dto.AuthConfigResponse(
+    login_token_max_age: request.login_token_max_age,
+    session_token_max_age: request.session_token_max_age,
+    session_cookie_max_age: request.session_cookie_max_age,
   ))
   assert updated_db.user_action_count == 1
 }
@@ -1313,6 +1356,16 @@ fn run_test_app_config_effect(
   case effect {
     app_config_algebra.GetDynamicConfig(next:) ->
       run_test_program(next(Ok(test_dynamic_config())), ctx, db)
+    app_config_algebra.UpsertAuthConfig(config:, updated_at: _, next: next) ->
+      run_test_program(
+        next(Ok(dynamic_config.DynamicConfig(
+          auth: option.Some(config),
+          docker_run: option.None,
+          rate_limit_policies: dict.new(),
+        ))),
+        ctx,
+        db,
+      )
     app_config_algebra.UpsertRateLimitPolicy(
       action: _,
       policy: _,

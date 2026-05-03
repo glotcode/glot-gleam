@@ -44,6 +44,48 @@ pub fn run(
         ),
       )
     }
+    app_config_algebra.UpsertAuthConfig(config:, updated_at:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        runtime.handlers.app_config.upsert_entry(
+          "auth",
+          "login_token_max_age",
+          json.int(config.login_token_max_age) |> json.to_string(),
+          updated_at,
+        )
+        |> result.map_error(error.CommandError)
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "auth",
+            "session_token_max_age",
+            json.int(config.session_token_max_age) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "auth",
+            "session_cookie_max_age",
+            json.int(config.session_cookie_max_age) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) { refresh_dynamic_config(runtime) })
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.UpsertAuthConfigEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     app_config_algebra.UpsertRateLimitPolicy(action:, policy:, updated_at:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result =

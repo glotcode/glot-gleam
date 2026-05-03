@@ -8,8 +8,10 @@ import gleam/list
 import gleam/option
 import gleam/string
 import glot_backend/context
+import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/account/cancel_delete_account_domain
@@ -43,6 +45,7 @@ import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_backend/worker/app_config_cache_worker
 import glot_core/api_action
+import glot_core/admin/auth_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/auth/account_dto
@@ -202,6 +205,16 @@ fn handle_api_request(
       login_domain.login(ctx, request)
       |> program.map(LoginResponse)
     }
+    api_action.GetAdminAuthConfigAction ->
+      get_auth_config_domain.get_auth_config(ctx)
+      |> program.map(AuthConfigResponse)
+    api_action.UpsertAdminAuthConfigAction -> {
+      use request <- program.and_then(
+        upsert_auth_config_domain.request_from_dynamic(api_request.data),
+      )
+      upsert_auth_config_domain.upsert_auth_config(ctx, request)
+      |> program.map(AuthConfigResponse)
+    }
     api_action.GetAdminRateLimitPoliciesAction ->
       get_rate_limit_policies_domain.get_rate_limit_policies(ctx)
       |> program.map(RateLimitPoliciesResponse)
@@ -270,6 +283,7 @@ type ApiResult {
   AccountResponse(account_dto.AccountResponse)
   SnippetResponse(snippet_dto.SnippetResponse)
   SnippetsResponse(snippet_dto.ListSnippetsResponse)
+  AuthConfigResponse(auth_config_dto.AuthConfigResponse)
   RateLimitPoliciesResponse(rate_limit_config_dto.RateLimitPoliciesResponse)
   RateLimitPolicyResponse(rate_limit_config_dto.RateLimitPolicyResponse)
   DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
@@ -295,6 +309,8 @@ fn api_result_to_response(
       success_response(snippet_dto.encode_response(response))
     SnippetsResponse(response) ->
       success_response(snippet_dto.encode_list_response(response))
+    AuthConfigResponse(response) ->
+      success_response(auth_config_dto.encode_response(response))
     RateLimitPoliciesResponse(response) ->
       success_response(rate_limit_config_dto.encode_response(response))
     RateLimitPolicyResponse(response) ->

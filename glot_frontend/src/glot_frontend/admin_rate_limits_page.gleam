@@ -829,6 +829,8 @@ fn action_label(action: api_action.ApiAction) -> String {
     api_action.DeleteSnippetAction -> "Delete snippet"
     api_action.SendLoginTokenAction -> "Send login token"
     api_action.LoginAction -> "Login"
+    api_action.GetAdminAuthConfigAction -> "Get auth config"
+    api_action.UpsertAdminAuthConfigAction -> "Save auth config"
     api_action.GetAdminRateLimitPoliciesAction -> "Get admin rate limits"
     api_action.UpsertAdminRateLimitPolicyAction -> "Save admin rate limits"
     api_action.GetAdminDockerRunConfigAction -> "Get docker run config"
