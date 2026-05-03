@@ -8,6 +8,7 @@ pub type Route {
   Login
   Account
   Admin
+  AdminConfig
   AdminRateLimits
   AccountSnippets(after: option.Option(String), before: option.Option(String))
   Snippets(
@@ -26,6 +27,7 @@ pub fn from_uri(uri: Uri) -> Route {
     ["login"] -> Login
     ["account"] -> Account
     ["admin"] -> Admin
+    ["admin", "config"] -> AdminConfig
     ["admin", "rate-limits"] -> AdminRateLimits
     ["account", "snippets"] -> {
       let #(after, before, _) = snippet_query_params(uri)
@@ -47,6 +49,7 @@ pub fn to_string(route: Route) -> String {
     Login -> "/login"
     Account -> "/account"
     Admin -> "/admin"
+    AdminConfig -> "/admin/config"
     AdminRateLimits -> "/admin/rate-limits"
     AccountSnippets(after:, before:) -> {
       let query = snippet_query_string(after, before, option.None)
@@ -74,6 +77,7 @@ pub fn name(route: Route) -> String {
     Login -> "login"
     Account -> "account"
     Admin -> "admin"
+    AdminConfig -> "admin_config"
     AdminRateLimits -> "admin_rate_limits"
     AccountSnippets(_, _) -> "account_snippets"
     Snippets(_, _, _) -> "snippets"

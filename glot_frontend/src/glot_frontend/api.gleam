@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option
 import gleam/regexp
 import gleam/result
+import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/account_dto
@@ -305,6 +306,33 @@ pub fn upsert_admin_rate_limit_policy(
     req,
     rate_limit_config_dto.encode_request,
     rate_limit_config_dto.policy_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_docker_run_config(
+  to_msg: fn(ApiResponse(docker_run_config_dto.DockerRunConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminDockerRunConfigAction, Nil)
+
+  send_api_request(
+    req,
+    fn(_) { json.null() },
+    docker_run_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_docker_run_config(
+  request: docker_run_config_dto.UpsertDockerRunConfigRequest,
+  to_msg: fn(ApiResponse(docker_run_config_dto.DockerRunConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.UpsertAdminDockerRunConfigAction, request)
+
+  send_api_request(
+    req,
+    docker_run_config_dto.encode_request,
+    docker_run_config_dto.response_decoder(),
     to_msg,
   )
 }

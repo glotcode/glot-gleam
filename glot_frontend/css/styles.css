@@ -119,6 +119,37 @@ a {
   color: #2853a6;
 }
 
+.admin-page__group {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-page__group-header {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.admin-page__group-title {
+  margin: 0;
+  color: #1f2c45;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.admin-page__group-copy {
+  margin: 0;
+  color: #58667f;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.admin-page__section-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
 .admin-page__schema,
 .admin-page__add-panel,
 .admin-page__policy {
@@ -219,6 +250,24 @@ a {
   color: #2853a6;
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.admin-page__version--dirty {
+  border-color: #c8d7ef;
+  background: #edf4ff;
+  color: #2853a6;
+}
+
+.admin-page__version--success {
+  border-color: #c9e6d0;
+  background: #edf9f0;
+  color: #12713d;
+}
+
+.admin-page__version--error {
+  border-color: #f0c6c3;
+  background: #fff0ef;
+  color: #b42318;
 }
 
 .admin-page__dialog {

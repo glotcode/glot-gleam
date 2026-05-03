@@ -46,3 +46,7 @@ pub fn admin_rate_limits_route_to_string_test() {
 pub fn admin_route_to_string_test() {
   assert route.to_string(route.Admin) == "/admin"
 }
+
+pub fn admin_config_route_to_string_test() {
+  assert route.to_string(route.AdminConfig) == "/admin/config"
+}

@@ -9,6 +9,8 @@ import gleam/option
 import gleam/string
 import glot_backend/context
 import glot_backend/domain/admin/get_rate_limit_policies_domain
+import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/get_account_domain
@@ -41,6 +43,7 @@ import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_backend/worker/app_config_cache_worker
 import glot_core/api_action
+import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/auth/account_dto
 import glot_core/auth/account_model
@@ -209,6 +212,16 @@ fn handle_api_request(
       upsert_rate_limit_policy_domain.upsert_rate_limit_policy(ctx, request)
       |> program.map(RateLimitPolicyResponse)
     }
+    api_action.GetAdminDockerRunConfigAction ->
+      get_docker_run_config_domain.get_docker_run_config(ctx)
+      |> program.map(DockerRunConfigResponse)
+    api_action.UpsertAdminDockerRunConfigAction -> {
+      use request <- program.and_then(
+        upsert_docker_run_config_domain.request_from_dynamic(api_request.data),
+      )
+      upsert_docker_run_config_domain.upsert_docker_run_config(ctx, request)
+      |> program.map(DockerRunConfigResponse)
+    }
   }
 }
 
@@ -259,6 +272,7 @@ type ApiResult {
   SnippetsResponse(snippet_dto.ListSnippetsResponse)
   RateLimitPoliciesResponse(rate_limit_config_dto.RateLimitPoliciesResponse)
   RateLimitPolicyResponse(rate_limit_config_dto.RateLimitPolicyResponse)
+  DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
   LoginResponse(session_token: String)
   LogoutResponse
   NoContentResponse
@@ -285,6 +299,8 @@ fn api_result_to_response(
       success_response(rate_limit_config_dto.encode_response(response))
     RateLimitPolicyResponse(response) ->
       success_response(rate_limit_config_dto.encode_policy_response(response))
+    DockerRunConfigResponse(response) ->
+      success_response(docker_run_config_dto.encode_response(response))
     LoginResponse(session_token) -> {
       success_response(json.null())
       |> wisp.set_cookie(

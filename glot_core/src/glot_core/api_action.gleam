@@ -22,6 +22,8 @@ pub type ApiAction {
   LoginAction
   GetAdminRateLimitPoliciesAction
   UpsertAdminRateLimitPolicyAction
+  GetAdminDockerRunConfigAction
+  UpsertAdminDockerRunConfigAction
 }
 
 pub fn list() -> List(ApiAction) {
@@ -45,6 +47,8 @@ pub fn list() -> List(ApiAction) {
     LoginAction,
     GetAdminRateLimitPoliciesAction,
     UpsertAdminRateLimitPolicyAction,
+    GetAdminDockerRunConfigAction,
+    UpsertAdminDockerRunConfigAction,
   ]
 }
 
@@ -81,6 +85,8 @@ pub fn to_string(action: ApiAction) -> String {
     LoginAction -> "login"
     GetAdminRateLimitPoliciesAction -> "get_admin_rate_limit_policies"
     UpsertAdminRateLimitPolicyAction -> "upsert_admin_rate_limit_policy"
+    GetAdminDockerRunConfigAction -> "get_admin_docker_run_config"
+    UpsertAdminDockerRunConfigAction -> "upsert_admin_docker_run_config"
   }
 }
 
@@ -107,6 +113,10 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
       option.Some(GetAdminRateLimitPoliciesAction)
     "upsert_admin_rate_limit_policy" ->
       option.Some(UpsertAdminRateLimitPolicyAction)
+    "get_admin_docker_run_config" ->
+      option.Some(GetAdminDockerRunConfigAction)
+    "upsert_admin_docker_run_config" ->
+      option.Some(UpsertAdminDockerRunConfigAction)
     _ -> option.None
   }
 }

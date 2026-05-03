@@ -13,6 +13,11 @@ pub type AppConfigEffect(next) {
     updated_at: Timestamp,
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
   )
+  UpsertDockerRunConfig(
+    config: dynamic_config.DockerRunConfig,
+    updated_at: Timestamp,
+    next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
+  )
 }
 
 pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
@@ -26,17 +31,25 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
         updated_at: updated_at,
         next: fn(value) { f(next(value)) },
       )
+    UpsertDockerRunConfig(config:, updated_at:, next:) ->
+      UpsertDockerRunConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(value) { f(next(value)) },
+      )
   }
 }
 
 pub type EffectName {
   GetDynamicConfigEffectName
   UpsertRateLimitPolicyEffectName
+  UpsertDockerRunConfigEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetDynamicConfigEffectName -> "get_dynamic_config"
     UpsertRateLimitPolicyEffectName -> "upsert_rate_limit_policy"
+    UpsertDockerRunConfigEffectName -> "upsert_docker_run_config"
   }
 }
