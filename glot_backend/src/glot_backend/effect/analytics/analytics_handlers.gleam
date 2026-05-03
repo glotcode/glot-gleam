@@ -1,4 +1,3 @@
-import gleam/dynamic/decode
 import gleam/option
 import gleam/result
 import gleam/string
@@ -7,7 +6,6 @@ import gleam/time/timestamp
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
-import parrot/dev
 import pog
 
 pub type AnalyticsHandlers {
@@ -64,7 +62,7 @@ pub fn get_max_completed_metrics_day(
 
   case returned.rows {
     [] -> Ok(option.None)
-    [row] -> decode_optional_date(row.day)
+    [row] -> Ok(option.Some(row.day))
     _ -> Error(error.DbQueryError("Expected one max completed metrics day row"))
   }
 }
@@ -84,7 +82,7 @@ pub fn get_first_metrics_source_day(
 
   case returned.rows {
     [] -> Ok(option.None)
-    [row] -> decode_optional_date(row.day)
+    [row] -> Ok(option.Some(row.day))
     _ ->
       Error(error.DbQueryError("Expected one first metrics source day row"))
   }
@@ -139,13 +137,4 @@ fn execute_rollup(
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
   db_helpers.execute(db, query, to_error)
   |> result.map(fn(_) { Nil })
-}
-
-fn decode_optional_date(
-  value: decode.Dynamic,
-) -> Result(option.Option(calendar.Date), error.DbQueryError) {
-  decode.run(value, decode.optional(dev.calendar_date_decoder()))
-  |> result.map_error(fn(err) {
-    error.DbQueryError("Failed to decode metrics day: " <> string.inspect(err))
-  })
 }
