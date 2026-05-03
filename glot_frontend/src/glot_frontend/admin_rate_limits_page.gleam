@@ -76,7 +76,6 @@ pub type EditorState {
 }
 
 pub type Msg {
-  ReloadRequested
   PoliciesLoaded(api.ApiResponse(rate_limit_config_dto.RateLimitPoliciesResponse))
   EditClicked(api_action.ApiAction)
   EditDialogClosed
@@ -107,11 +106,6 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    ReloadRequested -> #(
-      Model(..model, status: Loading),
-      load_policies(),
-    )
-
     PoliciesLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> #(
@@ -271,15 +265,6 @@ pub fn view(model: Model) -> Element(Msg) {
               html.text("Each action shows its current limits. Edit opens a compact modal."),
             ]),
           ]),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("admin-page__button admin-page__button--secondary"),
-              attribute.disabled(model.status == Loading),
-              event.on_click(ReloadRequested),
-            ],
-            [html.text("Reload")],
-          ),
         ]),
         status_banner(model.status),
         policies_view(model),
