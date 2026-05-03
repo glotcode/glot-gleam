@@ -38,3 +38,7 @@ pub fn snippets_route_to_string_includes_username_query_test() {
     ))
     == "/snippets?after=after-1&username=alice"
 }
+
+pub fn admin_rate_limits_route_to_string_test() {
+  assert route.to_string(route.AdminRateLimits) == "/admin/rate-limits"
+}

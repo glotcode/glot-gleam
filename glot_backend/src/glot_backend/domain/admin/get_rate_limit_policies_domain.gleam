@@ -41,7 +41,6 @@ fn rate_limit_policy_response(
 ) -> rate_limit_config_dto.RateLimitPolicyResponse {
   rate_limit_config_dto.RateLimitPolicyResponse(
     action: action,
-    version: 1,
     rules: list.map(policy.rules, dto_rule_from_policy_rule),
   )
 }

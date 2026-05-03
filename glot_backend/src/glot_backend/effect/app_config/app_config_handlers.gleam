@@ -11,7 +11,7 @@ import pog
 pub type AppConfigHandlers {
   AppConfigHandlers(
     list_entries: fn() -> Result(List(app_config.AppConfigEntry), error.DbQueryError),
-    upsert_entry: fn(String, String, String, Int, Timestamp) ->
+    upsert_entry: fn(String, String, String, Timestamp) ->
       Result(Nil, error.DbCommandError),
   )
 }
@@ -19,8 +19,8 @@ pub type AppConfigHandlers {
 pub fn new(db: pog.Connection) -> AppConfigHandlers {
   AppConfigHandlers(
     list_entries: fn() { list_entries(db) },
-    upsert_entry: fn(namespace, key, value, version, updated_at) {
-      upsert_entry(db, namespace, key, value, version, updated_at)
+    upsert_entry: fn(namespace, key, value, updated_at) {
+      upsert_entry(db, namespace, key, value, updated_at)
     },
   )
 }
@@ -40,7 +40,6 @@ fn entries_from_rows(rows: List(sql.ListAppConfig)) -> List(app_config.AppConfig
       namespace: row.namespace,
       key: row.key,
       value: row.value,
-      version: row.version,
     )
   })
 }
@@ -50,12 +49,11 @@ pub fn upsert_entry(
   namespace: String,
   key: String,
   value: String,
-  version: Int,
   updated_at: Timestamp,
 ) -> Result(Nil, error.DbCommandError) {
   db_helpers.execute(
     db,
-    sql.upsert_app_config(namespace:, key:, value:, version:, updated_at:),
+    sql.upsert_app_config(namespace:, key:, value:, updated_at:),
     fn(err) { error.DbCommandError(string.inspect(err)) },
   )
   |> result.map(fn(_) { Nil })

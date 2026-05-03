@@ -35,7 +35,6 @@ pub fn upsert_rate_limit_policy(
 
   program.succeed(rate_limit_config_dto.RateLimitPolicyResponse(
     action: request.action,
-    version: 1,
     rules: request.rules,
   ))
 }

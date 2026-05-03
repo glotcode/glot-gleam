@@ -24,6 +24,30 @@ pub type ApiAction {
   UpsertAdminRateLimitPolicyAction
 }
 
+pub fn list() -> List(ApiAction) {
+  [
+    TrackPageviewAction,
+    RunAction,
+    GetLanguageVersionAction,
+    GetSessionAction,
+    LogoutAction,
+    GetAccountAction,
+    UpdateAccountAction,
+    ScheduleDeleteAccountAction,
+    CancelDeleteAccountAction,
+    GetSnippetAction,
+    ListPublicSnippetsAction,
+    ListSessionSnippetsAction,
+    CreateSnippetAction,
+    UpdateSnippetAction,
+    DeleteSnippetAction,
+    SendLoginTokenAction,
+    LoginAction,
+    GetAdminRateLimitPoliciesAction,
+    UpsertAdminRateLimitPolicyAction,
+  ]
+}
+
 pub fn decoder() -> decode.Decoder(ApiAction) {
   use action <- decode.then(decode.string)
   case from_string(action) {

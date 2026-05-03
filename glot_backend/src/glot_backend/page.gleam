@@ -121,6 +121,7 @@ fn handle_page_request(
     }
     route.Login -> spa_page("glot.io - login")
     route.Account -> spa_page("glot.io - account")
+    route.AdminRateLimits -> spa_page("glot.io - admin rate limits")
     route.AccountSnippets(_, _) -> spa_page("glot.io - account snippets")
     route.Snippets(after:, before:, username:) ->
       run_page_program(

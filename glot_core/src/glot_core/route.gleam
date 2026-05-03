@@ -7,6 +7,7 @@ pub type Route {
   Home
   Login
   Account
+  AdminRateLimits
   AccountSnippets(after: option.Option(String), before: option.Option(String))
   Snippets(
     after: option.Option(String),
@@ -23,6 +24,7 @@ pub fn from_uri(uri: Uri) -> Route {
     [] | [""] -> Home
     ["login"] -> Login
     ["account"] -> Account
+    ["admin", "rate-limits"] -> AdminRateLimits
     ["account", "snippets"] -> {
       let #(after, before, _) = snippet_query_params(uri)
       AccountSnippets(after:, before:)
@@ -42,6 +44,7 @@ pub fn to_string(route: Route) -> String {
     Home -> "/"
     Login -> "/login"
     Account -> "/account"
+    AdminRateLimits -> "/admin/rate-limits"
     AccountSnippets(after:, before:) -> {
       let query = snippet_query_string(after, before, option.None)
       case query {
@@ -67,6 +70,7 @@ pub fn name(route: Route) -> String {
     Home -> "home"
     Login -> "login"
     Account -> "account"
+    AdminRateLimits -> "admin_rate_limits"
     AccountSnippets(_, _) -> "account_snippets"
     Snippets(_, _, _) -> "snippets"
     NewSnippet(_) -> "new_snippet"

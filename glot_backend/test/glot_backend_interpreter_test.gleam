@@ -212,7 +212,7 @@ fn test_handlers() -> handlers.Handlers {
   handlers.Handlers(
     app_config: app_config_handlers.AppConfigHandlers(
       list_entries: fn() { Ok([]) },
-      upsert_entry: fn(_, _, _, _, _) { Ok(Nil) },
+      upsert_entry: fn(_, _, _, _) { Ok(Nil) },
     ),
     api_log: api_log_handlers.ApiLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     analytics: analytics_handlers.AnalyticsHandlers(

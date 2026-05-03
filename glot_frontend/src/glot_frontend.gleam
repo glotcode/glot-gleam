@@ -3,10 +3,12 @@ import gleam/option
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/session_dto
+import glot_core/auth/user_model
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/pageview_dto
 import glot_core/route
+import glot_frontend/admin_rate_limits_page
 import glot_frontend/account_page
 import glot_frontend/api
 import glot_frontend/app_dialog
@@ -49,6 +51,7 @@ type PageModel {
   HomePageModel(home_page.Model)
   LoginPage(login_page.Model)
   AccountPage(account_page.Model)
+  AdminRateLimitsPage(admin_rate_limits_page.Model)
   ManageSnippetsPage(manage_snippets_page.Model)
   SnippetsPage(snippets_page.Model)
   EditorPage(editor_page.Model)
@@ -67,7 +70,10 @@ type QuickActionTarget {
   TriggerEditorAction(editor_page.Msg)
 }
 
-fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
+fn init_page(
+  route: route.Route,
+  session: SessionState,
+) -> #(PageModel, Effect(Msg)) {
   case route {
     route.Home -> {
       let #(m, eff) = home_page.init()
@@ -82,6 +88,23 @@ fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
     route.Account -> {
       let #(m, eff) = account_page.init()
       #(AccountPage(m), effect.map(eff, AccountPageMsg))
+    }
+
+    route.AdminRateLimits -> {
+      let #(m, eff) = admin_rate_limits_page.init()
+      let admin_effect = case session_is_admin(session) {
+        True ->
+          effect.map(
+            admin_rate_limits_page.ensure_loaded(m).1,
+            AdminRateLimitsPageMsg,
+          )
+        False -> effect.none()
+      }
+
+      #(
+        AdminRateLimitsPage(m),
+        effect.batch([effect.map(eff, AdminRateLimitsPageMsg), admin_effect]),
+      )
     }
 
     route.AccountSnippets(after:, before:) -> {
@@ -118,7 +141,7 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
     Error(_) -> route.Home
   }
 
-  let #(page_model, page_effect) = init_page(r)
+  let #(page_model, page_effect) = init_page(r, LoadingSession)
 
   let eff =
     modem.init(fn(uri) {
@@ -169,6 +192,7 @@ type Msg {
   HomePageMsg(home_page.Msg)
   LoginPageMsg(login_page.Msg)
   AccountPageMsg(account_page.Msg)
+  AdminRateLimitsPageMsg(admin_rate_limits_page.Msg)
   ManageSnippetsPageMsg(manage_snippets_page.Msg)
   SnippetsPageMsg(snippets_page.Msg)
   EditorPageMsg(editor_page.Msg)
@@ -188,7 +212,27 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(_) | api.HttpFailure(_) -> SessionError
       }
 
-      #(Model(..model, session: session), effect.none())
+      let next_model = Model(..model, session: session)
+
+      case model.route {
+        route.AdminRateLimits ->
+          case session_is_admin(session), model.page_model {
+            True, AdminRateLimitsPage(page_model) -> {
+              let #(new_page_model, page_effect) =
+                admin_rate_limits_page.ensure_loaded(page_model)
+              #(
+                Model(..next_model, page_model: AdminRateLimitsPage(new_page_model)),
+                effect.map(page_effect, AdminRateLimitsPageMsg),
+              )
+            }
+            False, _ -> #(
+              next_model,
+              replace_route(admin_fallback_route(session)),
+            )
+            _, _ -> #(next_model, effect.none())
+          }
+        _ -> #(next_model, effect.none())
+      }
     }
 
     PageviewTracked(_), _ -> #(model, effect.none())
@@ -277,6 +321,14 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(new_model, apply_app_event(mapped_effect, event))
     }
 
+    AdminRateLimitsPageMsg(page_msg), AdminRateLimitsPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_rate_limits_page.update(page_model, page_msg)
+      let new_model =
+        Model(..model, page_model: AdminRateLimitsPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminRateLimitsPageMsg))
+    }
+
     ManageSnippetsPageMsg(page_msg), ManageSnippetsPage(page_model) -> {
       let #(new_page_model, page_effect) =
         manage_snippets_page.update(page_model, page_msg)
@@ -300,11 +352,12 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     UserNavigatedTo(route:), _ -> {
-      let #(page_model, page_effect) = init_page(route)
+      let destination = authorized_route(route, model.session)
+      let #(page_model, page_effect) = init_page(destination, model.session)
       #(
         Model(
           ..model,
-          route:,
+          route: destination,
           page_model:,
           quick_action_query: "",
           quick_action_selected_index: 0,
@@ -312,7 +365,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         effect.batch([
           app_dialog.close(top_bar.quick_actions_dialog_id),
           page_effect,
-          track_pageview(route),
+          track_pageview(destination),
         ]),
       )
     }
@@ -341,6 +394,15 @@ fn view(model: Model) -> Element(Msg) {
       AccountPage(page_model) -> {
         let elem = account_page.view(page_model, model.now)
         element.map(elem, AccountPageMsg)
+      }
+
+      AdminRateLimitsPage(page_model) -> {
+        case session_is_admin(model.session) {
+          True ->
+            admin_rate_limits_page.view(page_model)
+            |> element.map(AdminRateLimitsPageMsg)
+          False -> not_found_view()
+        }
       }
 
       ManageSnippetsPage(page_model) -> {
@@ -416,7 +478,12 @@ fn navigation_actions(
   query: String,
 ) -> List(top_bar.Action(Msg)) {
   let navigation_state = case session {
-    AuthenticatedSession(_) | LoadingSession -> top_bar.CanManageAccount
+    AuthenticatedSession(_) ->
+      case session_is_admin(session) {
+        True -> top_bar.CanManageAdmin
+        False -> top_bar.CanManageAccount
+      }
+    LoadingSession -> top_bar.CanManageAccount
     AnonymousSession | SessionError -> top_bar.NeedsLogin
   }
 
@@ -445,6 +512,7 @@ fn page_actions(
     HomePageModel(_)
     | LoginPage(_)
     | AccountPage(_)
+    | AdminRateLimitsPage(_)
     | ManageSnippetsPage(_)
     | SnippetsPage(_)
     | EmptyPageModel -> []
@@ -604,7 +672,40 @@ fn apply_app_event(
   }
 }
 
-fn not_found_view() -> Element(Msg) {
+fn session_is_admin(session: SessionState) -> Bool {
+  case session {
+    AuthenticatedSession(session) -> session.user.role == user_model.AdminUser
+    LoadingSession | AnonymousSession | SessionError -> False
+  }
+}
+
+fn authorized_route(
+  target_route: route.Route,
+  session: SessionState,
+) -> route.Route {
+  case target_route {
+    route.AdminRateLimits ->
+      case session_is_admin(session) {
+        True -> target_route
+        False -> admin_fallback_route(session)
+      }
+    _ -> target_route
+  }
+}
+
+fn admin_fallback_route(session: SessionState) -> route.Route {
+  case session {
+    AnonymousSession | SessionError -> route.Login
+    AuthenticatedSession(_) | LoadingSession -> route.Home
+  }
+}
+
+fn replace_route(target_route: route.Route) -> Effect(Msg) {
+  let #(path, query) = route.path_and_query(target_route)
+  modem.replace(path, query, option.None)
+}
+
+fn not_found_view() -> Element(msg) {
   html.div([], [
     html.h2([], [html.text("404 Not Found")]),
   ])

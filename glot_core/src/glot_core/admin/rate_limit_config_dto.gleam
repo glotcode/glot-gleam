@@ -12,7 +12,6 @@ pub type RateLimitPoliciesResponse {
 pub type RateLimitPolicyResponse {
   RateLimitPolicyResponse(
     action: api_action.ApiAction,
-    version: Int,
     rules: List(RateLimitRule),
   )
 }
@@ -33,6 +32,17 @@ pub type RuleMatch {
   AuthenticatedMatch(account_tiers: List(account_model.AccountTier))
 }
 
+pub fn response_decoder() -> decode.Decoder(RateLimitPoliciesResponse) {
+  use policies <- decode.field("policies", decode.list(policy_response_decoder()))
+  decode.success(RateLimitPoliciesResponse(policies: policies))
+}
+
+pub fn policy_response_decoder() -> decode.Decoder(RateLimitPolicyResponse) {
+  use action <- decode.field("action", api_action.decoder())
+  use rules <- decode.field("rules", decode.list(rule_decoder()))
+  decode.success(RateLimitPolicyResponse(action:, rules:))
+}
+
 pub fn encode_response(response: RateLimitPoliciesResponse) -> json.Json {
   json.object([
     #("policies", json.array(response.policies, encode_policy_response)),
@@ -42,7 +52,6 @@ pub fn encode_response(response: RateLimitPoliciesResponse) -> json.Json {
 pub fn encode_policy_response(response: RateLimitPolicyResponse) -> json.Json {
   json.object([
     #("action", api_action.encode(response.action)),
-    #("version", json.int(response.version)),
     #("rules", json.array(response.rules, encode_rule)),
   ])
 }
@@ -51,6 +60,21 @@ pub fn decoder() -> decode.Decoder(UpsertRateLimitPolicyRequest) {
   use action <- decode.field("action", api_action.decoder())
   use rules <- decode.field("rules", decode.list(rule_decoder()))
   decode.success(UpsertRateLimitPolicyRequest(action:, rules:))
+}
+
+pub fn rules_decoder() -> decode.Decoder(List(RateLimitRule)) {
+  decode.list(rule_decoder())
+}
+
+pub fn encode_request(request: UpsertRateLimitPolicyRequest) -> json.Json {
+  json.object([
+    #("action", api_action.encode(request.action)),
+    #("rules", encode_rules(request.rules)),
+  ])
+}
+
+pub fn encode_rules(rules: List(RateLimitRule)) -> json.Json {
+  json.array(rules, encode_rule)
 }
 
 pub fn encode_rule(rule: RateLimitRule) -> json.Json {

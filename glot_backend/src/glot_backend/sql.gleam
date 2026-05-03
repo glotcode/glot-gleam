@@ -602,7 +602,6 @@ pub fn upsert_app_config(
   namespace namespace: String,
   key key: String,
   value value: String,
-  version version: Int,
   updated_at updated_at: Timestamp,
 ) {
   let sql =
@@ -610,25 +609,21 @@ pub fn upsert_app_config(
   namespace,
   key,
   value,
-  version,
   updated_at
 )
 VALUES (
   $1,
   $2,
   $3::jsonb,
-  $4,
-  $5
+  $4
 )
 ON CONFLICT (namespace, key) DO UPDATE SET
   value = EXCLUDED.value,
-  version = EXCLUDED.version,
   updated_at = EXCLUDED.updated_at"
   #(sql, [
     dev.ParamString(namespace),
     dev.ParamString(key),
     dev.ParamString(value),
-    dev.ParamInt(version),
     dev.ParamTimestamp(updated_at),
   ])
 }
@@ -678,7 +673,7 @@ pub fn count_user_actions_by_ip_decoder() -> decode.Decoder(
 }
 
 pub type ListAppConfig {
-  ListAppConfig(namespace: String, key: String, value: String, version: Int)
+  ListAppConfig(namespace: String, key: String, value: String)
 }
 
 pub fn list_app_config() {
@@ -686,8 +681,7 @@ pub fn list_app_config() {
     "SELECT
   namespace,
   key,
-  value::text AS value,
-  version
+  value::text AS value
 FROM app_config
 ORDER BY namespace ASC, key ASC"
   #(sql, [], list_app_config_decoder())
@@ -697,8 +691,7 @@ pub fn list_app_config_decoder() -> decode.Decoder(ListAppConfig) {
   use namespace <- decode.field(0, decode.string)
   use key <- decode.field(1, decode.string)
   use value <- decode.field(2, decode.string)
-  use version <- decode.field(3, decode.int)
-  decode.success(ListAppConfig(namespace:, key:, value:, version:))
+  decode.success(ListAppConfig(namespace:, key:, value:))
 }
 
 pub type GetSnippetById {

@@ -181,7 +181,6 @@ pub fn upsert_rate_limit_policy_allows_admin_role_test() {
 
   assert run_result == Ok(rate_limit_config_dto.RateLimitPolicyResponse(
     action: api_action.RunAction,
-    version: 1,
     rules: request.rules,
   ))
   assert updated_db.user_action_count == 1

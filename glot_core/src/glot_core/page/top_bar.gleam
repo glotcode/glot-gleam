@@ -44,6 +44,7 @@ pub type ViewModel(msg) {
 
 pub type NavigationState {
   CanManageAccount
+  CanManageAdmin
   NeedsLogin
 }
 
@@ -215,6 +216,31 @@ pub fn navigation_actions(
           shortcut: [],
           target_route: option.Some(route.Account),
           msg: on_navigate(route.Account),
+        ),
+      ])
+
+    CanManageAdmin ->
+      list.append(shared, [
+        Action(
+          label: "My snippets",
+          description: "Manage snippets in your account.",
+          shortcut: [],
+          target_route: option.Some(route.AccountSnippets(option.None, option.None)),
+          msg: on_navigate(route.AccountSnippets(option.None, option.None)),
+        ),
+        Action(
+          label: "Account",
+          description: "Open your account settings.",
+          shortcut: [],
+          target_route: option.Some(route.Account),
+          msg: on_navigate(route.Account),
+        ),
+        Action(
+          label: "Admin rate limits",
+          description: "Configure API rate limit policies.",
+          shortcut: [],
+          target_route: option.Some(route.AdminRateLimits),
+          msg: on_navigate(route.AdminRateLimits),
         ),
       ])
 

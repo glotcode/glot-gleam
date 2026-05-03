@@ -148,7 +148,6 @@ CREATE TABLE IF NOT EXISTS app_config (
   namespace TEXT NOT NULL,
   key TEXT NOT NULL,
   value JSONB NOT NULL,
-  version INT NOT NULL DEFAULT 1,
   updated_at TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (namespace, key)
 );

@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option
 import gleam/regexp
 import gleam/result
+import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/account_dto
 import glot_core/auth/login_dto
@@ -277,6 +278,33 @@ pub fn update_account(
       ])
     },
     account_dto.decoder(is_email),
+    to_msg,
+  )
+}
+
+pub fn get_admin_rate_limit_policies(
+  to_msg: fn(ApiResponse(rate_limit_config_dto.RateLimitPoliciesResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminRateLimitPoliciesAction, Nil)
+
+  send_api_request(
+    req,
+    fn(_) { json.null() },
+    rate_limit_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_rate_limit_policy(
+  request: rate_limit_config_dto.UpsertRateLimitPolicyRequest,
+  to_msg: fn(ApiResponse(rate_limit_config_dto.RateLimitPolicyResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.UpsertAdminRateLimitPolicyAction, request)
+
+  send_api_request(
+    req,
+    rate_limit_config_dto.encode_request,
+    rate_limit_config_dto.policy_response_decoder(),
     to_msg,
   )
 }

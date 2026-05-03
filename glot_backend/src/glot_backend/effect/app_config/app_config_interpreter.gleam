@@ -51,7 +51,6 @@ pub fn run(
           "rate_limit",
           api_action.to_string(action),
           dynamic_config.encode_rate_limit_policy(policy) |> json.to_string(),
-          1,
           updated_at,
         )
         |> result.map_error(error.CommandError)
