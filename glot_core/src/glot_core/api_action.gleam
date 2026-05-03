@@ -20,6 +20,8 @@ pub type ApiAction {
   DeleteSnippetAction
   SendLoginTokenAction
   LoginAction
+  GetAdminRateLimitPoliciesAction
+  UpsertAdminRateLimitPolicyAction
 }
 
 pub fn decoder() -> decode.Decoder(ApiAction) {
@@ -53,6 +55,8 @@ pub fn to_string(action: ApiAction) -> String {
     DeleteSnippetAction -> "delete_snippet"
     SendLoginTokenAction -> "send_login_token"
     LoginAction -> "login"
+    GetAdminRateLimitPoliciesAction -> "get_admin_rate_limit_policies"
+    UpsertAdminRateLimitPolicyAction -> "upsert_admin_rate_limit_policy"
   }
 }
 
@@ -75,6 +79,10 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "delete_snippet" -> option.Some(DeleteSnippetAction)
     "send_login_token" -> option.Some(SendLoginTokenAction)
     "login" -> option.Some(LoginAction)
+    "get_admin_rate_limit_policies" ->
+      option.Some(GetAdminRateLimitPoliciesAction)
+    "upsert_admin_rate_limit_policy" ->
+      option.Some(UpsertAdminRateLimitPolicyAction)
     _ -> option.None
   }
 }

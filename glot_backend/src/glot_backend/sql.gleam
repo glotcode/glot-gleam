@@ -598,6 +598,41 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
   ))
 }
 
+pub fn upsert_app_config(
+  namespace namespace: String,
+  key key: String,
+  value value: String,
+  version version: Int,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO app_config (
+  namespace,
+  key,
+  value,
+  version,
+  updated_at
+)
+VALUES (
+  $1,
+  $2,
+  $3::jsonb,
+  $4,
+  $5
+)
+ON CONFLICT (namespace, key) DO UPDATE SET
+  value = EXCLUDED.value,
+  version = EXCLUDED.version,
+  updated_at = EXCLUDED.updated_at"
+  #(sql, [
+    dev.ParamString(namespace),
+    dev.ParamString(key),
+    dev.ParamString(value),
+    dev.ParamInt(version),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
 pub type CountUserActionsByIp {
   CountUserActionsByIp(unit: String, count: Int)
 }

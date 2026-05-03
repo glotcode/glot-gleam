@@ -46,6 +46,7 @@ pub type ClientInfoError {
 
 pub type AuthorizationError {
   NotOwnerError
+  AdminRequiredError
 }
 
 pub type AccountStateError {
@@ -104,6 +105,8 @@ pub fn to_string(err: Error) -> String {
     ClientInfoError(MissingUserIdAndIpError) ->
       "client_info_error:missing_user_id_and_ip"
     AuthorizationError(NotOwnerError) -> "authorization_error:not_owner"
+    AuthorizationError(AdminRequiredError) ->
+      "authorization_error:admin_required"
     AccountStateError(ForbiddenAccountState(action, account_state)) ->
       "account_state_error:"
       <> api_action_model.to_string(action)

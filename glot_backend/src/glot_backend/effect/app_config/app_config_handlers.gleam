@@ -1,6 +1,7 @@
 import gleam/list
 import gleam/result
 import gleam/string
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/app_config
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
@@ -10,11 +11,18 @@ import pog
 pub type AppConfigHandlers {
   AppConfigHandlers(
     list_entries: fn() -> Result(List(app_config.AppConfigEntry), error.DbQueryError),
+    upsert_entry: fn(String, String, String, Int, Timestamp) ->
+      Result(Nil, error.DbCommandError),
   )
 }
 
 pub fn new(db: pog.Connection) -> AppConfigHandlers {
-  AppConfigHandlers(list_entries: fn() { list_entries(db) })
+  AppConfigHandlers(
+    list_entries: fn() { list_entries(db) },
+    upsert_entry: fn(namespace, key, value, version, updated_at) {
+      upsert_entry(db, namespace, key, value, version, updated_at)
+    },
+  )
 }
 
 pub fn list_entries(
@@ -35,4 +43,20 @@ fn entries_from_rows(rows: List(sql.ListAppConfig)) -> List(app_config.AppConfig
       version: row.version,
     )
   })
+}
+
+pub fn upsert_entry(
+  db: pog.Connection,
+  namespace: String,
+  key: String,
+  value: String,
+  version: Int,
+  updated_at: Timestamp,
+) -> Result(Nil, error.DbCommandError) {
+  db_helpers.execute(
+    db,
+    sql.upsert_app_config(namespace:, key:, value:, version:, updated_at:),
+    fn(err) { error.DbCommandError(string.inspect(err)) },
+  )
+  |> result.map(fn(_) { Nil })
 }

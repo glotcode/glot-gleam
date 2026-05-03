@@ -7,6 +7,8 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
 import glot_backend/dynamic_config
+import glot_backend/domain/admin/get_rate_limit_policies_domain
+import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
@@ -40,6 +42,7 @@ import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 import glot_core/api_action
+import glot_core/admin/rate_limit_config_dto
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
@@ -111,6 +114,54 @@ pub fn rate_limit_policy_falls_back_to_anonymous_rule_test() {
     policy,
     dynamic_config.AnonymousActor,
   ) == [rate_limit.RateLimit(unit: rate_limit.Hour, max_requests: 10)]
+}
+
+pub fn get_rate_limit_policies_requires_admin_role_test() {
+  let fixture = integration_fixture(next_uuids: [], jobs: [], account_delete_job_id: option.None)
+
+  let #(run_result, _) =
+    run_test_program(
+      get_rate_limit_policies_domain.get_rate_limit_policies(fixture.ctx),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
+}
+
+pub fn upsert_rate_limit_policy_allows_admin_role_test() {
+  let fixture = admin_integration_fixture()
+  let request =
+    rate_limit_config_dto.UpsertRateLimitPolicyRequest(
+      action: api_action.RunAction,
+      rules: [
+        rate_limit_config_dto.RateLimitRule(
+          match: rate_limit_config_dto.AuthenticatedMatch(account_tiers: [
+            account_model.FreeTier,
+          ]),
+          limits: [
+            rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 10),
+          ],
+        ),
+      ],
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      upsert_rate_limit_policy_domain.upsert_rate_limit_policy(
+        fixture.ctx,
+        request,
+      ),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result == Ok(rate_limit_config_dto.RateLimitPolicyResponse(
+    action: api_action.RunAction,
+    version: 1,
+    rules: request.rules,
+  ))
+  assert updated_db.user_action_count == 1
 }
 
 pub fn get_session_with_missing_db_session_returns_none_test() {
@@ -1003,6 +1054,19 @@ fn suspended_integration_fixture(
   TestFixture(..fixture, db: db, account: suspended_account)
 }
 
+fn admin_integration_fixture() -> TestFixture {
+  let fixture =
+    integration_fixture(next_uuids: [], jobs: [], account_delete_job_id: option.None)
+  let admin_user = user_model.User(..fixture.user, role: user_model.AdminUser)
+  let db =
+    TestDb(
+      ..fixture.db,
+      users: dict.from_list([#(uuid_key(admin_user.id), admin_user)]),
+    )
+
+  TestFixture(..fixture, db: db, user: admin_user)
+}
+
 fn empty_test_db() -> TestDb {
   TestDb(
     accounts: dict.new(),
@@ -1143,6 +1207,13 @@ fn run_test_app_config_effect(
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
     app_config_algebra.GetDynamicConfig(next:) ->
+      run_test_program(next(Ok(dynamic_config.empty())), ctx, db)
+    app_config_algebra.UpsertRateLimitPolicy(
+      action: _,
+      policy: _,
+      updated_at: _,
+      next: next,
+    ) ->
       run_test_program(next(Ok(dynamic_config.empty())), ctx, db)
   }
 }

@@ -79,6 +79,18 @@ pub fn select_rate_limits(
   |> option.unwrap([])
 }
 
+pub fn list_rate_limit_policies(
+  config: DynamicConfig,
+) -> List(#(api_action.ApiAction, RateLimitPolicy)) {
+  dict.to_list(config.rate_limit_policies)
+}
+
+pub fn encode_rate_limit_policy(policy: RateLimitPolicy) -> json.Json {
+  json.object([
+    #("rules", json.array(policy.rules, encode_rate_limit_rule)),
+  ])
+}
+
 fn apply_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
@@ -114,6 +126,39 @@ fn decode_rate_limit_policy_entry(
 fn rate_limit_policy_decoder() -> decode.Decoder(RateLimitPolicy) {
   use rules <- decode.field("rules", decode.list(rate_limit_rule_decoder()))
   decode.success(RateLimitPolicy(rules: rules))
+}
+
+fn encode_rate_limit_rule(rule: RateLimitRule) -> json.Json {
+  json.object([
+    #("match", encode_rate_limit_match(rule.match)),
+    #("limits", json.array(rule.limits, encode_rate_limit)),
+  ])
+}
+
+fn encode_rate_limit_match(rule_match: RateLimitMatch) -> json.Json {
+  case rule_match {
+    AnonymousMatch ->
+      json.object([#("actor", json.string("anonymous"))])
+    AuthenticatedMatch(account_tiers: account_tiers) ->
+      json.object([
+        #("actor", json.string("authenticated")),
+        #(
+          "account_tiers",
+          json.nullable(account_tiers, fn(account_tiers) {
+            json.array(account_tiers, fn(account_tier) {
+              json.string(account_model.account_tier_to_string(account_tier))
+            })
+          }),
+        ),
+      ])
+  }
+}
+
+fn encode_rate_limit(rate_limit_value: rate_limit.RateLimit) -> json.Json {
+  json.object([
+    #("unit", json.string(rate_limit.unit_to_string(rate_limit_value.unit))),
+    #("max_requests", json.int(rate_limit_value.max_requests)),
+  ])
 }
 
 fn rate_limit_rule_decoder() -> decode.Decoder(RateLimitRule) {

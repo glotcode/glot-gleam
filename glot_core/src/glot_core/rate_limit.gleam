@@ -1,3 +1,4 @@
+import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
@@ -60,6 +61,19 @@ pub type RateLimit {
   RateLimit(unit: TimeUnit, max_requests: Int)
 }
 
+pub fn encode_rate_limit(rate_limit: RateLimit) -> json.Json {
+  json.object([
+    #("unit", json.string(unit_to_string(rate_limit.unit))),
+    #("maxRequests", json.int(rate_limit.max_requests)),
+  ])
+}
+
+pub fn decoder() -> decode.Decoder(RateLimit) {
+  use unit <- decode.field("unit", time_unit_decoder())
+  use max_requests <- decode.field("maxRequests", decode.int)
+  decode.success(RateLimit(unit:, max_requests:))
+}
+
 fn to_window(rate_limit: RateLimit, now: Timestamp) -> Window {
   Window(unit: rate_limit.unit, cutoff: start_time(rate_limit, now))
 }
@@ -75,5 +89,13 @@ pub fn start_time(config: RateLimit, now: Timestamp) -> Timestamp {
     Hour -> timestamp_helpers.one_hour_ago(now)
     Minute -> timestamp_helpers.one_minute_ago(now)
     Second -> timestamp_helpers.one_second_ago(now)
+  }
+}
+
+fn time_unit_decoder() -> decode.Decoder(TimeUnit) {
+  use value <- decode.then(decode.string)
+  case unit_from_string(value) {
+    option.Some(unit) -> decode.success(unit)
+    option.None -> decode.failure(Minute, "TimeUnit")
   }
 }

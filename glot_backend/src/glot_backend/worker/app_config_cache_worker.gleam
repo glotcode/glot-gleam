@@ -19,6 +19,7 @@ const refresh_interval_ms = 60_000
 
 pub type Message {
   GetConfig(reply: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)))
+  Refresh(reply: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)))
   Tick
   RefreshCompleted(
     fetched_at_ns: Int,
@@ -113,6 +114,12 @@ pub fn get_config(
   process.call(subject, call_timeout_ms, GetConfig)
 }
 
+pub fn refresh(
+  subject: process.Subject(Message),
+) -> Result(dynamic_config.DynamicConfig, error.DbQueryError) {
+  process.call(subject, call_timeout_ms, Refresh)
+}
+
 fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
   case message {
     GetConfig(reply) -> {
@@ -127,6 +134,12 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
         Error(Nil) -> actor.continue(next_state)
       }
     }
+    Refresh(reply) ->
+      actor.continue(
+        state
+        |> ensure_fetch_started()
+        |> enqueue_waiter(reply),
+      )
     Tick -> {
       let _ = process.send_after(state.subject, refresh_interval_ms, Tick)
       case should_schedule_refreshes(state) {

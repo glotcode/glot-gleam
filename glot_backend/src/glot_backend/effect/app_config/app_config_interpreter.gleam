@@ -1,3 +1,4 @@
+import gleam/json
 import gleam/option
 import gleam/result
 import glot_backend/dynamic_config
@@ -9,6 +10,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/worker/app_config_cache_worker
+import glot_core/api_action
 
 pub fn run(
   effect: app_config_algebra.AppConfigEffect(program_types.Program(a)),
@@ -42,5 +44,49 @@ pub fn run(
         ),
       )
     }
+    app_config_algebra.UpsertRateLimitPolicy(action:, policy:, updated_at:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        runtime.handlers.app_config.upsert_entry(
+          "rate_limit",
+          api_action.to_string(action),
+          dynamic_config.encode_rate_limit_policy(policy) |> json.to_string(),
+          1,
+          updated_at,
+        )
+        |> result.map_error(error.CommandError)
+        |> result.try(fn(_) { refresh_dynamic_config(runtime) })
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.UpsertRateLimitPolicyEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+  }
+}
+
+fn refresh_dynamic_config(
+  runtime: runtime.Runtime,
+) -> Result(dynamic_config.DynamicConfig, error.Error) {
+  case runtime.app_config_cache_subject {
+    option.Some(subject) ->
+      app_config_cache_worker.refresh(subject)
+      |> result.map_error(error.QueryError)
+    option.None ->
+      runtime.handlers.app_config.list_entries()
+      |> result.map_error(error.QueryError)
+      |> result.try(fn(entries) {
+        dynamic_config.from_entries(entries)
+        |> result.map_error(fn(message) {
+          error.QueryError(error.DbQueryError(message))
+        })
+      })
   }
 }
