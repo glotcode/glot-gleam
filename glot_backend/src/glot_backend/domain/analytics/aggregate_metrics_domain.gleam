@@ -35,8 +35,7 @@ fn next_metrics_day(
 
   case maybe_max_completed_day {
     option.Some(day) -> program.succeed(option.Some(add_days(day, 1)))
-    option.None ->
-      analytics_effect.get_first_metrics_source_day(start_of_day(today))
+    option.None -> analytics_effect.get_first_metrics_source_day(today)
   }
 }
 
@@ -57,12 +56,6 @@ fn calendar_date(
   ts: timestamp.Timestamp,
 ) -> #(calendar.Date, calendar.TimeOfDay) {
   timestamp.to_calendar(ts, calendar.utc_offset)
-}
-
-fn start_of_day(day: calendar.Date) -> timestamp.Timestamp {
-  let midnight =
-    calendar.TimeOfDay(hours: 0, minutes: 0, seconds: 0, nanoseconds: 0)
-  timestamp.from_calendar(day, midnight, calendar.utc_offset)
 }
 
 fn add_days(

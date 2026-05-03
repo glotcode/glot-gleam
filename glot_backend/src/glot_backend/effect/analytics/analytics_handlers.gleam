@@ -2,7 +2,6 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/calendar
-import gleam/time/timestamp
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
@@ -12,7 +11,7 @@ pub type AnalyticsHandlers {
   AnalyticsHandlers(
     get_max_completed_metrics_day: fn() ->
       Result(option.Option(calendar.Date), error.DbQueryError),
-    get_first_metrics_source_day: fn(timestamp.Timestamp) ->
+    get_first_metrics_source_day: fn(calendar.Date) ->
       Result(option.Option(calendar.Date), error.DbQueryError),
     insert_metrics_pageview_day: fn(calendar.Date) ->
       Result(Nil, error.DbCommandError),
@@ -69,7 +68,7 @@ pub fn get_max_completed_metrics_day(
 
 pub fn get_first_metrics_source_day(
   db: pog.Connection,
-  before: timestamp.Timestamp,
+  before: calendar.Date,
 ) -> Result(option.Option(calendar.Date), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
   use returned <- result.try(

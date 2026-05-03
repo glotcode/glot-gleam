@@ -1,6 +1,5 @@
 import gleam/option.{type Option}
 import gleam/time/calendar.{type Date}
-import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 
 pub type AnalyticsEffect(next) {
@@ -8,7 +7,7 @@ pub type AnalyticsEffect(next) {
     next: fn(Result(Option(Date), error.DbQueryError)) -> next,
   )
   GetFirstMetricsSourceDay(
-    before: Timestamp,
+    before: Date,
     next: fn(Result(Option(Date), error.DbQueryError)) -> next,
   )
   InsertMetricsPageviewDay(

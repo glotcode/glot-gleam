@@ -11,7 +11,7 @@ FROM (
   FROM (
     SELECT DATE_TRUNC('day', pageview_log.created_at AT TIME ZONE 'UTC')::date AS day
     FROM pageview_log
-    WHERE DATE_TRUNC('day', pageview_log.created_at AT TIME ZONE 'UTC')::date < @before_day
+    WHERE DATE_TRUNC('day', pageview_log.created_at AT TIME ZONE 'UTC')::date < @before_day::date
     ORDER BY day ASC
     LIMIT 1
   ) AS pageview_source_day
@@ -22,7 +22,7 @@ FROM (
   FROM (
     SELECT DATE_TRUNC('day', sessions.created_at AT TIME ZONE 'UTC')::date AS day
     FROM sessions
-    WHERE DATE_TRUNC('day', sessions.created_at AT TIME ZONE 'UTC')::date < @before_day
+    WHERE DATE_TRUNC('day', sessions.created_at AT TIME ZONE 'UTC')::date < @before_day::date
     ORDER BY day ASC
     LIMIT 1
   ) AS sessions_source_day
@@ -33,7 +33,7 @@ FROM (
   FROM (
     SELECT DATE_TRUNC('day', snippets.created_at AT TIME ZONE 'UTC')::date AS day
     FROM snippets
-    WHERE DATE_TRUNC('day', snippets.created_at AT TIME ZONE 'UTC')::date < @before_day
+    WHERE DATE_TRUNC('day', snippets.created_at AT TIME ZONE 'UTC')::date < @before_day::date
     ORDER BY day ASC
     LIMIT 1
   ) AS snippets_source_day
@@ -44,7 +44,7 @@ FROM (
   FROM (
     SELECT DATE_TRUNC('day', page_log.created_at AT TIME ZONE 'UTC')::date AS day
     FROM page_log
-    WHERE DATE_TRUNC('day', page_log.created_at AT TIME ZONE 'UTC')::date < @before_day
+    WHERE DATE_TRUNC('day', page_log.created_at AT TIME ZONE 'UTC')::date < @before_day::date
     ORDER BY day ASC
     LIMIT 1
   ) AS page_log_source_day
@@ -55,7 +55,7 @@ FROM (
   FROM (
     SELECT DATE_TRUNC('day', run_log.created_at AT TIME ZONE 'UTC')::date AS day
     FROM run_log
-    WHERE DATE_TRUNC('day', run_log.created_at AT TIME ZONE 'UTC')::date < @before_day
+    WHERE DATE_TRUNC('day', run_log.created_at AT TIME ZONE 'UTC')::date < @before_day::date
     ORDER BY day ASC
     LIMIT 1
   ) AS run_log_source_day
@@ -66,7 +66,7 @@ FROM (
   FROM (
     SELECT DATE_TRUNC('day', api_log.created_at AT TIME ZONE 'UTC')::date AS day
     FROM api_log
-    WHERE DATE_TRUNC('day', api_log.created_at AT TIME ZONE 'UTC')::date < @before_day
+    WHERE DATE_TRUNC('day', api_log.created_at AT TIME ZONE 'UTC')::date < @before_day::date
     ORDER BY day ASC
     LIMIT 1
   ) AS api_log_source_day

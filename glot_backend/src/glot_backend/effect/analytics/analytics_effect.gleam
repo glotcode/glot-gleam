@@ -1,6 +1,5 @@
 import gleam/option.{type Option}
 import gleam/time/calendar.{type Date}
-import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/error
 import glot_backend/effect/program_types
@@ -16,7 +15,7 @@ pub fn get_max_completed_metrics_day() -> program_types.Program(Option(Date)) {
 }
 
 pub fn get_first_metrics_source_day(
-  before: Timestamp,
+  before: Date,
 ) -> program_types.Program(Option(Date)) {
   program_types.Impure(
     program_types.DbEffect(
