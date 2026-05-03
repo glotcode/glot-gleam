@@ -642,6 +642,30 @@ pub fn count_user_actions_by_ip_decoder() -> decode.Decoder(
   decode.success(CountUserActionsByIp(unit:, count:))
 }
 
+pub type ListAppConfig {
+  ListAppConfig(namespace: String, key: String, value: String, version: Int)
+}
+
+pub fn list_app_config() {
+  let sql =
+    "SELECT
+  namespace,
+  key,
+  value::text AS value,
+  version
+FROM app_config
+ORDER BY namespace ASC, key ASC"
+  #(sql, [], list_app_config_decoder())
+}
+
+pub fn list_app_config_decoder() -> decode.Decoder(ListAppConfig) {
+  use namespace <- decode.field(0, decode.string)
+  use key <- decode.field(1, decode.string)
+  use value <- decode.field(2, decode.string)
+  use version <- decode.field(3, decode.int)
+  decode.success(ListAppConfig(namespace:, key:, value:, version:))
+}
+
 pub type GetSnippetById {
   GetSnippetById(
     id: BitArray,

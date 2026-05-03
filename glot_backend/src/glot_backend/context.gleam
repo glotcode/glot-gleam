@@ -1,12 +1,9 @@
 import gleam/dict.{type Dict}
 import gleam/int
-import gleam/list
 import gleam/option.{type Option}
 import gleam/regexp
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
-import glot_core/api_action
-import glot_core/rate_limit.{type RateLimit}
 import youid/uuid.{type Uuid}
 
 pub type Context {
@@ -30,7 +27,6 @@ pub type Config {
     docker_run: DockerRunConfig,
     auth: AuthConfig,
     cleanup: CleanupConfig,
-    rate_limits: RateLimitsConfig,
   )
 }
 
@@ -54,7 +50,6 @@ pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) 
     docker_run: docker_run,
     auth: auth,
     cleanup: cleanup_config_from_dict(values),
-    rate_limits: rate_limits_config_from_dict(values),
   ))
 }
 
@@ -188,101 +183,6 @@ fn cleanup_config_from_dict(values: Dict(String, String)) -> CleanupConfig {
       |> result.try(string_to_int)
       |> result.unwrap(90),
   )
-}
-
-pub type RateLimitsConfig =
-  Dict(api_action.ApiAction, List(RateLimit))
-
-fn rate_limits_config_from_dict(
-  values: Dict(String, String),
-) -> RateLimitsConfig {
-  dict.from_list([
-    #(
-      api_action.TrackPageviewAction,
-      lookup_rate_limits(values, "TRACK_PAGEVIEW"),
-    ),
-    #(api_action.GetSessionAction, lookup_rate_limits(values, "GET_SESSION")),
-    #(api_action.LogoutAction, lookup_rate_limits(values, "LOGOUT")),
-    #(api_action.GetAccountAction, lookup_rate_limits(values, "GET_ACCOUNT")),
-    #(
-      api_action.UpdateAccountAction,
-      lookup_rate_limits(values, "UPDATE_ACCOUNT"),
-    ),
-    #(
-      api_action.ScheduleDeleteAccountAction,
-      lookup_rate_limits(values, "SCHEDULE_DELETE_ACCOUNT"),
-    ),
-    #(
-      api_action.CancelDeleteAccountAction,
-      lookup_rate_limits(values, "CANCEL_DELETE_ACCOUNT"),
-    ),
-    #(api_action.GetSnippetAction, lookup_rate_limits(values, "GET_SNIPPET")),
-    #(
-      api_action.ListPublicSnippetsAction,
-      lookup_rate_limits(values, "LIST_PUBLIC_SNIPPETS"),
-    ),
-    #(
-      api_action.ListSessionSnippetsAction,
-      lookup_rate_limits(values, "LIST_SESSION_SNIPPETS"),
-    ),
-    #(
-      api_action.SendLoginTokenAction,
-      lookup_rate_limits(values, "SEND_LOGIN_TOKEN"),
-    ),
-    #(api_action.LoginAction, lookup_rate_limits(values, "LOGIN")),
-    #(
-      api_action.CreateSnippetAction,
-      lookup_rate_limits(values, "CREATE_SNIPPET"),
-    ),
-    #(
-      api_action.UpdateSnippetAction,
-      lookup_rate_limits(values, "UPDATE_SNIPPET"),
-    ),
-    #(
-      api_action.DeleteSnippetAction,
-      lookup_rate_limits(values, "DELETE_SNIPPET"),
-    ),
-    #(api_action.RunAction, lookup_rate_limits(values, "RUN")),
-  ])
-}
-
-fn lookup_rate_limits(
-  dict: Dict(String, String),
-  action: String,
-) -> List(RateLimit) {
-  let second =
-    lookup(dict, "RATE_LIMIT_SECOND__" <> action)
-    |> result.try(string_to_int)
-    |> option.from_result
-
-  let minute =
-    lookup(dict, "RATE_LIMIT_MINUTE__" <> action)
-    |> result.try(string_to_int)
-    |> option.from_result
-
-  let hour =
-    lookup(dict, "RATE_LIMIT_HOUR__" <> action)
-    |> result.try(string_to_int)
-    |> option.from_result
-
-  let day =
-    lookup(dict, "RATE_LIMIT_DAY__" <> action)
-    |> result.try(string_to_int)
-    |> option.from_result
-
-  [
-    #(rate_limit.Second, second),
-    #(rate_limit.Minute, minute),
-    #(rate_limit.Hour, hour),
-    #(rate_limit.Day, day),
-  ]
-  |> list.map(fn(pair) {
-    let #(unit, maybe_max) = pair
-    option.map(maybe_max, fn(max_requests) {
-      rate_limit.RateLimit(unit: unit, max_requests: max_requests)
-    })
-  })
-  |> option.values
 }
 
 fn lookup(dict: Dict(String, String), key: String) -> Result(String, String) {

@@ -1,3 +1,4 @@
+import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import gleam/dynamic
@@ -117,6 +118,8 @@ fn map_effect(
   f: fn(a) -> b,
 ) -> program_types.Effect(b) {
   case effect {
+    program_types.AppConfigEffect(effect) ->
+      program_types.AppConfigEffect(app_config_algebra.map(effect, f))
     program_types.BasicEffect(effect) ->
       program_types.BasicEffect(basic_algebra.map(effect, f))
     program_types.EmailEffect(effect) ->

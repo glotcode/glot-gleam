@@ -1,8 +1,9 @@
-import gleam/dict
 import gleam/list
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
+import glot_backend/dynamic_config
+import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
@@ -10,6 +11,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action.{type ApiAction}
+import glot_core/auth/account_model.{type AccountTier}
 import glot_core/rate_limit
 import glot_core/user_action
 import youid/uuid.{type Uuid}
@@ -17,9 +19,14 @@ import youid/uuid.{type Uuid}
 pub fn enforce(
   ctx ctx: context.Context,
   user_id user_id: Option(Uuid),
+  account_tier account_tier: Option(AccountTier),
   action action: ApiAction,
 ) -> program_types.Program(user_action.UserAction) {
-  let action_rate_limits = lookup_rate_limits(ctx.config.rate_limits, action)
+  use config <- program.and_then(
+    app_config_effect.get_dynamic_config(),
+  )
+  let action_rate_limits =
+    lookup_rate_limits(config, action, actor_from_account_tier(account_tier))
 
   use _ <- program.and_then(program.when(
     list.is_empty(action_rate_limits),
@@ -86,13 +93,24 @@ fn user_action_filter(
   }
 }
 
+fn actor_from_account_tier(
+  account_tier: Option(AccountTier),
+) -> dynamic_config.RateLimitActor {
+  case account_tier {
+    option.Some(account_tier) ->
+      dynamic_config.AuthenticatedActor(account_tier: account_tier)
+    option.None -> dynamic_config.AnonymousActor
+  }
+}
+
 fn lookup_rate_limits(
-  rate_limits: context.RateLimitsConfig,
+  config: dynamic_config.DynamicConfig,
   action: ApiAction,
+  actor: dynamic_config.RateLimitActor,
 ) -> List(rate_limit.RateLimit) {
-  case dict.get(rate_limits, action) {
-    Ok(rate_limits) -> rate_limits
-    Error(_) -> []
+  case dynamic_config.lookup_rate_limit_policy(config, action) {
+    option.Some(policy) -> dynamic_config.select_rate_limits(policy, actor)
+    option.None -> []
   }
 }
 

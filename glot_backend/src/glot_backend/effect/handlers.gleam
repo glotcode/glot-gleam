@@ -1,3 +1,4 @@
+import glot_backend/effect/app_config/app_config_handlers
 import glot_backend/effect/analytics/analytics_handlers
 import glot_backend/effect/api_log/api_log_handlers
 import glot_backend/effect/auth/auth_handlers
@@ -7,17 +8,18 @@ import glot_backend/effect/email/email_handlers
 import glot_backend/effect/get_language_version/get_language_version_handlers
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/job_log/job_log_handlers
-import glot_backend/effect/periodic_job/periodic_job_handlers
 import glot_backend/effect/page_log/page_log_handlers
 import glot_backend/effect/pageview_log/pageview_log_handlers
-import glot_backend/effect/snippet/snippet_handlers
+import glot_backend/effect/periodic_job/periodic_job_handlers
 import glot_backend/effect/run_log/run_log_handlers
+import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
 import pog
 
 pub type Handlers {
   Handlers(
+    app_config: app_config_handlers.AppConfigHandlers,
     api_log: api_log_handlers.ApiLogHandlers,
     analytics: analytics_handlers.AnalyticsHandlers,
     basic: basic_handlers.BasicHandlers,
@@ -39,6 +41,7 @@ pub type Handlers {
 
 pub fn new(db: pog.Connection) -> Handlers {
   Handlers(
+    app_config: app_config_handlers.new(db),
     api_log: api_log_handlers.new(db),
     analytics: analytics_handlers.new(db),
     basic: basic_handlers.new(),

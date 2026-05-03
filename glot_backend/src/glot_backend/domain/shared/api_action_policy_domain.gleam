@@ -6,14 +6,14 @@ import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_core/api_action.{type ApiAction}
-import glot_core/auth/account_model.{type AccountState}
+import glot_core/auth/account_model.{type AccountState, type AccountTier}
 import glot_core/auth/user_model
 import glot_core/user_action
 import youid/uuid.{type Uuid}
 
 pub type ActionActor {
   Anonymous
-  KnownUser(user_id: Uuid, account_state: AccountState)
+  KnownUser(user_id: Uuid, account_state: AccountState, account_tier: AccountTier)
 }
 
 type AccountStatePolicy {
@@ -34,6 +34,7 @@ pub fn enforce(
   rate_limit_domain.enforce(
     ctx: ctx,
     user_id: actor_user_id(actor),
+    account_tier: actor_account_tier(actor),
     action: action,
   )
 }
@@ -46,6 +47,7 @@ pub fn actor_from_user(
       KnownUser(
         user_id: user.identity.id,
         account_state: user.account.identity.account_state,
+        account_tier: user.account.identity.account_tier,
       )
     option.None -> Anonymous
   }
@@ -73,14 +75,21 @@ fn enforce_account_state(
 fn actor_user_id(actor: ActionActor) -> Option(Uuid) {
   case actor {
     Anonymous -> option.None
-    KnownUser(user_id, _) -> option.Some(user_id)
+    KnownUser(user_id, _, _) -> option.Some(user_id)
   }
 }
 
 fn actor_account_state(actor: ActionActor) -> Option(AccountState) {
   case actor {
     Anonymous -> option.None
-    KnownUser(_, account_state) -> option.Some(account_state)
+    KnownUser(_, account_state, _) -> option.Some(account_state)
+  }
+}
+
+fn actor_account_tier(actor: ActionActor) -> Option(AccountTier) {
+  case actor {
+    Anonymous -> option.None
+    KnownUser(_, _, account_tier) -> option.Some(account_tier)
   }
 }
 

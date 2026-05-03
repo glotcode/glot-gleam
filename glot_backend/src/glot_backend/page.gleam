@@ -19,6 +19,7 @@ import glot_backend/page_response
 import glot_backend/server_timing
 import glot_backend/snippets_page
 import glot_backend/worker/log_worker
+import glot_backend/worker/app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker
 import glot_core/route
 import lustre/attribute
@@ -33,6 +34,9 @@ pub type PageRequest {
 pub fn handle_request(
   db: pog.Connection,
   ctx: context.Context,
+  app_config_cache_subject: process.Subject(
+    app_config_cache_worker.Message,
+  ),
   language_version_cache_subject: process.Subject(
     language_version_cache_worker.Message,
   ),
@@ -41,7 +45,13 @@ pub fn handle_request(
 ) -> wisp.Response {
   let page_request = page_request_from_request(req)
   let page_response =
-    handle_page_request(db, ctx, language_version_cache_subject, page_request)
+    handle_page_request(
+      db,
+      ctx,
+      app_config_cache_subject,
+      language_version_cache_subject,
+      page_request,
+    )
   let total_duration_ns = erlang.perf_counter_ns() - ctx.started_at
   insert_log_entry(
     ctx,
@@ -72,12 +82,20 @@ fn page_request_from_request(req: wisp.Request) -> PageRequest {
 fn handle_page_request(
   db: pog.Connection,
   ctx: context.Context,
+  app_config_cache_subject: process.Subject(
+    app_config_cache_worker.Message,
+  ),
   language_version_cache_subject: process.Subject(
     language_version_cache_worker.Message,
   ),
   page_request: PageRequest,
 ) -> page_response.PageResponse {
-  let runtime = runtime.new(db, language_version_cache_subject)
+  let runtime =
+    runtime.new(
+      db,
+      app_config_cache_subject,
+      language_version_cache_subject,
+    )
 
   case page_request.route {
     route.Home -> {

@@ -1,3 +1,4 @@
+import glot_backend/effect/app_config/app_config_interpreter
 import gleam/list
 import glot_backend/context
 import glot_backend/effect/basic/basic_interpreter
@@ -42,6 +43,8 @@ pub fn run_with_state(
     program_types.Fail(error) -> #(Error(error), state)
     program_types.Impure(effect) ->
       case effect {
+        program_types.AppConfigEffect(effect) ->
+          app_config_interpreter.run(effect, runtime, state, continue)
         program_types.BasicEffect(effect) ->
           basic_interpreter.run(effect, ctx, runtime.handlers, state, continue)
         program_types.EmailEffect(effect) ->

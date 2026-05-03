@@ -1,4 +1,3 @@
-import gleam/dict
 import gleam/erlang/process
 import gleam/option
 import gleam/regexp
@@ -327,7 +326,6 @@ fn test_context() -> context.Context {
         login_tokens_retention_days: 30,
         user_actions_retention_days: 30,
       ),
-      rate_limits: dict.new(),
     ),
     regexes: context.Regexes(is_email: is_email),
     request_id: uuid.nil,

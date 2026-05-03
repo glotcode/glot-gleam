@@ -29,6 +29,7 @@ pub fn get_account(
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,
       account_state: session.user.account.identity.account_state,
+      account_tier: session.user.account.identity.account_tier,
     ),
   ))
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))

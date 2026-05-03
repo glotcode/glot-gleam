@@ -28,6 +28,7 @@ pub fn logout(ctx: context.Context) -> program_types.Program(Nil) {
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,
       account_state: session.user.account.identity.account_state,
+      account_tier: session.user.account.identity.account_tier,
     ),
   ))
 

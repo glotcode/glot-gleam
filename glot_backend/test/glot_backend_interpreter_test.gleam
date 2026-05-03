@@ -1,4 +1,3 @@
-import gleam/dict
 import gleam/json
 import gleam/option
 import gleam/regexp
@@ -8,6 +7,7 @@ import gleeunit
 import glot_backend/api
 import glot_backend/context
 import glot_backend/crypto_token
+import glot_backend/effect/app_config/app_config_handlers
 import glot_backend/effect/analytics/analytics_handlers
 import glot_backend/effect/api_log/api_log_handlers
 import glot_backend/effect/auth/auth_handlers
@@ -210,6 +210,9 @@ pub fn api_error_detail_codes_test() {
 
 fn test_handlers() -> handlers.Handlers {
   handlers.Handlers(
+    app_config: app_config_handlers.AppConfigHandlers(
+      list_entries: fn() { Ok([]) },
+    ),
     api_log: api_log_handlers.ApiLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     analytics: analytics_handlers.AnalyticsHandlers(
       get_max_completed_metrics_day: fn() { Ok(option.None) },
@@ -342,7 +345,6 @@ fn test_context() -> context.Context {
         login_tokens_retention_days: 30,
         user_actions_retention_days: 30,
       ),
-      rate_limits: dict.new(),
     ),
     regexes: context.Regexes(is_email: is_email),
     request_id: uuid.nil,

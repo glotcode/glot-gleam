@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/json
+import gleam/option
 
 pub type ApiAction {
   TrackPageviewAction
@@ -23,25 +24,9 @@ pub type ApiAction {
 
 pub fn decoder() -> decode.Decoder(ApiAction) {
   use action <- decode.then(decode.string)
-  case action {
-    "track_pageview" -> decode.success(TrackPageviewAction)
-    "run" -> decode.success(RunAction)
-    "get_language_version" -> decode.success(GetLanguageVersionAction)
-    "get_session" -> decode.success(GetSessionAction)
-    "logout" -> decode.success(LogoutAction)
-    "get_account" -> decode.success(GetAccountAction)
-    "update_account" -> decode.success(UpdateAccountAction)
-    "schedule_delete_account" -> decode.success(ScheduleDeleteAccountAction)
-    "cancel_delete_account" -> decode.success(CancelDeleteAccountAction)
-    "get_snippet" -> decode.success(GetSnippetAction)
-    "list_public_snippets" -> decode.success(ListPublicSnippetsAction)
-    "list_session_snippets" -> decode.success(ListSessionSnippetsAction)
-    "create_snippet" -> decode.success(CreateSnippetAction)
-    "update_snippet" -> decode.success(UpdateSnippetAction)
-    "delete_snippet" -> decode.success(DeleteSnippetAction)
-    "send_login_token" -> decode.success(SendLoginTokenAction)
-    "login" -> decode.success(LoginAction)
-    _ -> decode.failure(RunAction, "ApiAction")
+  case from_string(action) {
+    option.Some(action) -> decode.success(action)
+    option.None -> decode.failure(RunAction, "ApiAction")
   }
 }
 
@@ -68,5 +53,28 @@ pub fn to_string(action: ApiAction) -> String {
     DeleteSnippetAction -> "delete_snippet"
     SendLoginTokenAction -> "send_login_token"
     LoginAction -> "login"
+  }
+}
+
+pub fn from_string(action: String) -> option.Option(ApiAction) {
+  case action {
+    "track_pageview" -> option.Some(TrackPageviewAction)
+    "run" -> option.Some(RunAction)
+    "get_language_version" -> option.Some(GetLanguageVersionAction)
+    "get_session" -> option.Some(GetSessionAction)
+    "logout" -> option.Some(LogoutAction)
+    "get_account" -> option.Some(GetAccountAction)
+    "update_account" -> option.Some(UpdateAccountAction)
+    "schedule_delete_account" -> option.Some(ScheduleDeleteAccountAction)
+    "cancel_delete_account" -> option.Some(CancelDeleteAccountAction)
+    "get_snippet" -> option.Some(GetSnippetAction)
+    "list_public_snippets" -> option.Some(ListPublicSnippetsAction)
+    "list_session_snippets" -> option.Some(ListSessionSnippetsAction)
+    "create_snippet" -> option.Some(CreateSnippetAction)
+    "update_snippet" -> option.Some(UpdateSnippetAction)
+    "delete_snippet" -> option.Some(DeleteSnippetAction)
+    "send_login_token" -> option.Some(SendLoginTokenAction)
+    "login" -> option.Some(LoginAction)
+    _ -> option.None
   }
 }

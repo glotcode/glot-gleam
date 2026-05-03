@@ -1,0 +1,46 @@
+import gleam/option
+import gleam/result
+import glot_backend/dynamic_config
+import glot_backend/effect/app_config/app_config_algebra
+import glot_backend/effect/effect_trace
+import glot_backend/effect/error
+import glot_backend/effect/program_state
+import glot_backend/effect/program_types
+import glot_backend/effect/runtime
+import glot_backend/erlang
+import glot_backend/worker/app_config_cache_worker
+
+pub fn run(
+  effect: app_config_algebra.AppConfigEffect(program_types.Program(a)),
+  runtime: runtime.Runtime,
+  state: program_state.State,
+  continue: fn(program_types.Program(a), program_state.State) -> #(b, program_state.State),
+) -> #(b, program_state.State) {
+  case effect {
+    app_config_algebra.GetDynamicConfig(next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        case runtime.app_config_cache_subject {
+          option.Some(subject) -> app_config_cache_worker.get_config(subject)
+          option.None ->
+            runtime.handlers.app_config.list_entries()
+            |> result.try(fn(entries) {
+              dynamic_config.from_entries(entries)
+              |> result.map_error(error.DbQueryError)
+            })
+        }
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.GetDynamicConfigEffectName,
+          ),
+          effect_trace.DbReadEffectCategory,
+          started_at,
+        ),
+      )
+    }
+  }
+}

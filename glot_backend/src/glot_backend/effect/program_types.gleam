@@ -1,3 +1,4 @@
+import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import glot_backend/effect/auth/auth_algebra
@@ -28,6 +29,7 @@ pub type TransactionProgram(a) {
 }
 
 pub type Effect(next) {
+  AppConfigEffect(app_config_algebra.AppConfigEffect(next))
   BasicEffect(basic_algebra.BasicEffect(next))
   EmailEffect(email_algebra.EmailEffect(next))
   DockerRunEffect(docker_run_algebra.DockerRunEffect(next))

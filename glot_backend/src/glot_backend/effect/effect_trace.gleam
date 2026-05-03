@@ -1,3 +1,4 @@
+import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import gleam/json
@@ -18,6 +19,7 @@ import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/user_action/user_action_algebra
 
 pub type EffectName {
+  AppConfigEffectName(app_config_algebra.EffectName)
   ApiLogEffectName(api_log_algebra.EffectName)
   AnalyticsEffectName(analytics_algebra.EffectName)
   BasicEffectName(basic_algebra.EffectName)
@@ -42,6 +44,7 @@ pub type EffectName {
 
 pub fn effect_name_to_string(effect_name: EffectName) -> String {
   case effect_name {
+    AppConfigEffectName(name) -> app_config_algebra.effect_name_to_string(name)
     ApiLogEffectName(name) -> api_log_algebra.effect_name_to_string(name)
     AnalyticsEffectName(name) -> analytics_algebra.effect_name_to_string(name)
     BasicEffectName(name) -> basic_algebra.effect_name_to_string(name)
@@ -68,6 +71,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
 
 pub fn effect_name_to_family(effect_name: EffectName) -> String {
   case effect_name {
+    AppConfigEffectName(_) -> "app_config"
     ApiLogEffectName(_) -> "api_log"
     AnalyticsEffectName(_) -> "analytics"
     BasicEffectName(_) -> "basic"

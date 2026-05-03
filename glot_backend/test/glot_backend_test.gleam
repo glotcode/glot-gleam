@@ -6,6 +6,7 @@ import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
+import glot_backend/dynamic_config
 import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
@@ -34,6 +35,7 @@ import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
+import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
@@ -47,6 +49,7 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/job/job_model
 import glot_core/language
+import glot_core/rate_limit
 import glot_core/run
 import glot_core/run_log_model
 import glot_core/helpers/timestamp_helpers
@@ -68,6 +71,46 @@ pub fn get_session_without_token_returns_none_test() {
     run_test_program(session_domain.get_session(ctx), ctx, empty_test_db())
 
   assert run_result == Ok(option.None)
+}
+
+pub fn rate_limit_policy_prefers_tier_specific_rule_test() {
+  let policy =
+    dynamic_config.RateLimitPolicy(rules: [
+      dynamic_config.RateLimitRule(
+        match: dynamic_config.AnonymousMatch,
+        limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 2)],
+      ),
+      dynamic_config.RateLimitRule(
+        match: dynamic_config.AuthenticatedMatch(account_tiers: option.None),
+        limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 5)],
+      ),
+      dynamic_config.RateLimitRule(
+        match: dynamic_config.AuthenticatedMatch(account_tiers: option.Some([
+          account_model.FreeTier,
+        ])),
+        limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)],
+      ),
+    ])
+
+  assert dynamic_config.select_rate_limits(
+    policy,
+    dynamic_config.AuthenticatedActor(account_tier: account_model.FreeTier),
+  ) == [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)]
+}
+
+pub fn rate_limit_policy_falls_back_to_anonymous_rule_test() {
+  let policy =
+    dynamic_config.RateLimitPolicy(rules: [
+      dynamic_config.RateLimitRule(
+        match: dynamic_config.AnonymousMatch,
+        limits: [rate_limit.RateLimit(unit: rate_limit.Hour, max_requests: 10)],
+      ),
+    ])
+
+  assert dynamic_config.select_rate_limits(
+    policy,
+    dynamic_config.AnonymousActor,
+  ) == [rate_limit.RateLimit(unit: rate_limit.Hour, max_requests: 10)]
 }
 
 pub fn get_session_with_missing_db_session_returns_none_test() {
@@ -1005,6 +1048,8 @@ fn run_test_program(
           run_test_docker_run_effect(docker_run_effect, db)
         program_types.GetLanguageVersionEffect(get_language_version_effect) ->
           run_test_get_language_version_effect(get_language_version_effect, db)
+        program_types.AppConfigEffect(app_config_effect) ->
+          run_test_app_config_effect(app_config_effect, ctx, db)
         program_types.DbEffect(db_effect) ->
           run_test_db_effect(db_effect, ctx, db)
         program_types.TransactionEffect(program_types.Run(program: tx_program)) ->
@@ -1086,6 +1131,19 @@ fn run_test_get_language_version_effect(
       Error(error.RunError(error.InternalRunRequestError("unused in test"))),
       db,
     )
+  }
+}
+
+fn run_test_app_config_effect(
+  effect: app_config_algebra.AppConfigEffect(
+    program_types.Program(a),
+  ),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    app_config_algebra.GetDynamicConfig(next:) ->
+      run_test_program(next(Ok(dynamic_config.empty())), ctx, db)
   }
 }
 
@@ -2143,7 +2201,6 @@ fn test_context() -> context.Context {
         login_tokens_retention_days: 30,
         user_actions_retention_days: 30,
       ),
-      rate_limits: dict.new(),
     ),
     regexes: context.Regexes(is_email: is_email),
     request_id: uuid.nil,

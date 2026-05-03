@@ -60,6 +60,7 @@ fn run_in_transaction(
     let transaction_runtime =
       runtime.from_parts(
         handlers.new(tx),
+        runtime.app_config_cache_subject,
         runtime.language_version_cache_subject,
       )
 

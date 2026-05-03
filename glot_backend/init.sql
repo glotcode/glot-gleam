@@ -142,6 +142,17 @@ CREATE INDEX idx_user_actions_user_action_created_at
   ON user_actions (user_id, action, created_at)
   WHERE user_id IS NOT NULL;
 
+-- APP CONFIG
+
+CREATE TABLE IF NOT EXISTS app_config (
+  namespace TEXT NOT NULL,
+  key TEXT NOT NULL,
+  value JSONB NOT NULL,
+  version INT NOT NULL DEFAULT 1,
+  updated_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (namespace, key)
+);
+
 -- API LOG
 
 CREATE TABLE IF NOT EXISTS api_log (
