@@ -8,10 +8,11 @@ import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/pageview_dto
 import glot_core/route
+import glot_frontend/account_page
 import glot_frontend/admin_config_page
+import glot_frontend/admin_jobs_page
 import glot_frontend/admin_page
 import glot_frontend/admin_rate_limits_page
-import glot_frontend/account_page
 import glot_frontend/api
 import glot_frontend/app_dialog
 import glot_frontend/app_event
@@ -54,6 +55,7 @@ type PageModel {
   LoginPage(login_page.Model)
   AccountPage(account_page.Model)
   AdminPage(admin_page.Model)
+  AdminJobsPage(admin_jobs_page.Model)
   AdminConfigPage(admin_config_page.Model)
   AdminRateLimitsPage(admin_rate_limits_page.Model)
   ManageSnippetsPage(manage_snippets_page.Model)
@@ -99,14 +101,24 @@ fn init_page(
       #(AdminPage(m), effect.map(eff, AdminPageMsg))
     }
 
+    route.AdminJobs -> {
+      let #(m, eff) = admin_jobs_page.init()
+      let admin_effect = case session_is_admin(session) {
+        True -> effect.map(admin_jobs_page.ensure_loaded(m).1, AdminJobsPageMsg)
+        False -> effect.none()
+      }
+
+      #(
+        AdminJobsPage(m),
+        effect.batch([effect.map(eff, AdminJobsPageMsg), admin_effect]),
+      )
+    }
+
     route.AdminConfig -> {
       let #(m, eff) = admin_config_page.init()
       let admin_effect = case session_is_admin(session) {
         True ->
-          effect.map(
-            admin_config_page.ensure_loaded(m).1,
-            AdminConfigPageMsg,
-          )
+          effect.map(admin_config_page.ensure_loaded(m).1, AdminConfigPageMsg)
         False -> effect.none()
       }
 
@@ -219,6 +231,7 @@ type Msg {
   LoginPageMsg(login_page.Msg)
   AccountPageMsg(account_page.Msg)
   AdminPageMsg(admin_page.Msg)
+  AdminJobsPageMsg(admin_jobs_page.Msg)
   AdminConfigPageMsg(admin_config_page.Msg)
   AdminRateLimitsPageMsg(admin_rate_limits_page.Msg)
   ManageSnippetsPageMsg(manage_snippets_page.Msg)
@@ -243,16 +256,24 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       let next_model = Model(..model, session: session)
 
       case model.route {
-        route.Admin | route.AdminConfig | route.AdminRateLimits ->
+        route.Admin
+        | route.AdminJobs
+        | route.AdminConfig
+        | route.AdminRateLimits ->
           case session_is_admin(session), model.route, model.page_model {
+            True, route.AdminJobs, AdminJobsPage(page_model) -> {
+              let #(new_page_model, page_effect) =
+                admin_jobs_page.ensure_loaded(page_model)
+              #(
+                Model(..next_model, page_model: AdminJobsPage(new_page_model)),
+                effect.map(page_effect, AdminJobsPageMsg),
+              )
+            }
             True, route.AdminConfig, AdminConfigPage(page_model) -> {
               let #(new_page_model, page_effect) =
                 admin_config_page.ensure_loaded(page_model)
               #(
-                Model(
-                  ..next_model,
-                  page_model: AdminConfigPage(new_page_model),
-                ),
+                Model(..next_model, page_model: AdminConfigPage(new_page_model)),
                 effect.map(page_effect, AdminConfigPageMsg),
               )
             }
@@ -260,7 +281,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               let #(new_page_model, page_effect) =
                 admin_rate_limits_page.ensure_loaded(page_model)
               #(
-                Model(..next_model, page_model: AdminRateLimitsPage(new_page_model)),
+                Model(
+                  ..next_model,
+                  page_model: AdminRateLimitsPage(new_page_model),
+                ),
                 effect.map(page_effect, AdminRateLimitsPageMsg),
               )
             }
@@ -362,9 +386,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     AdminPageMsg(page_msg), AdminPage(page_model) -> {
-      let #(new_page_model, page_effect) = admin_page.update(page_model, page_msg)
+      let #(new_page_model, page_effect) =
+        admin_page.update(page_model, page_msg)
       let new_model = Model(..model, page_model: AdminPage(new_page_model))
       #(new_model, effect.map(page_effect, AdminPageMsg))
+    }
+
+    AdminJobsPageMsg(page_msg), AdminJobsPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_jobs_page.update(page_model, page_msg)
+      let new_model = Model(..model, page_model: AdminJobsPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminJobsPageMsg))
     }
 
     AdminConfigPageMsg(page_msg), AdminConfigPage(page_model) -> {
@@ -429,68 +461,76 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 fn view(model: Model) -> Element(Msg) {
-  let page_content =
-    case model.page_model {
-      EmptyPageModel -> {
-        not_found_view()
-      }
+  let page_content = case model.page_model {
+    EmptyPageModel -> {
+      not_found_view()
+    }
 
-      HomePageModel(page_model) -> {
-        let elem = home_page.view(page_model)
-        element.map(elem, HomePageMsg)
-      }
+    HomePageModel(page_model) -> {
+      let elem = home_page.view(page_model)
+      element.map(elem, HomePageMsg)
+    }
 
-      LoginPage(page_model) -> {
-        let elem = login_page.view(page_model)
-        element.map(elem, LoginPageMsg)
-      }
+    LoginPage(page_model) -> {
+      let elem = login_page.view(page_model)
+      element.map(elem, LoginPageMsg)
+    }
 
-      AccountPage(page_model) -> {
-        let elem = account_page.view(page_model, model.now)
-        element.map(elem, AccountPageMsg)
-      }
+    AccountPage(page_model) -> {
+      let elem = account_page.view(page_model, model.now)
+      element.map(elem, AccountPageMsg)
+    }
 
-      AdminPage(page_model) -> {
-        case session_is_admin(model.session) {
-          True -> admin_page.view(page_model) |> element.map(AdminPageMsg)
-          False -> not_found_view()
-        }
-      }
-
-      AdminConfigPage(page_model) -> {
-        case session_is_admin(model.session) {
-          True ->
-            admin_config_page.view(page_model)
-            |> element.map(AdminConfigPageMsg)
-          False -> not_found_view()
-        }
-      }
-
-      AdminRateLimitsPage(page_model) -> {
-        case session_is_admin(model.session) {
-          True ->
-            admin_rate_limits_page.view(page_model)
-            |> element.map(AdminRateLimitsPageMsg)
-          False -> not_found_view()
-        }
-      }
-
-      ManageSnippetsPage(page_model) -> {
-        let elem = manage_snippets_page.view(page_model, model.now)
-        element.map(elem, ManageSnippetsPageMsg)
-      }
-
-      SnippetsPage(page_model) -> {
-        let elem = snippets_page.view(page_model, model.now)
-        element.map(elem, SnippetsPageMsg)
-      }
-
-      EditorPage(page_model) -> {
-        let elem =
-          editor_page.view(page_model, current_user_id(model.session), model.now)
-        element.map(elem, EditorPageMsg)
+    AdminPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True -> admin_page.view(page_model) |> element.map(AdminPageMsg)
+        False -> not_found_view()
       }
     }
+
+    AdminJobsPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_jobs_page.view(page_model, model.now)
+          |> element.map(AdminJobsPageMsg)
+        False -> not_found_view()
+      }
+    }
+
+    AdminConfigPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_config_page.view(page_model)
+          |> element.map(AdminConfigPageMsg)
+        False -> not_found_view()
+      }
+    }
+
+    AdminRateLimitsPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_rate_limits_page.view(page_model)
+          |> element.map(AdminRateLimitsPageMsg)
+        False -> not_found_view()
+      }
+    }
+
+    ManageSnippetsPage(page_model) -> {
+      let elem = manage_snippets_page.view(page_model, model.now)
+      element.map(elem, ManageSnippetsPageMsg)
+    }
+
+    SnippetsPage(page_model) -> {
+      let elem = snippets_page.view(page_model, model.now)
+      element.map(elem, SnippetsPageMsg)
+    }
+
+    EditorPage(page_model) -> {
+      let elem =
+        editor_page.view(page_model, current_user_id(model.session), model.now)
+      element.map(elem, EditorPageMsg)
+    }
+  }
 
   site_chrome.view(
     top_bar_model: top_bar_model(model),
@@ -583,6 +623,7 @@ fn page_actions(
     | LoginPage(_)
     | AccountPage(_)
     | AdminPage(_)
+    | AdminJobsPage(_)
     | AdminConfigPage(_)
     | AdminRateLimitsPage(_)
     | ManageSnippetsPage(_)
@@ -691,10 +732,7 @@ fn filtered_quick_action_sections_for_state(
       ),
       #(
         2,
-        top_bar.Section(
-          title: "Languages",
-          actions: language_actions(query),
-        ),
+        top_bar.Section(title: "Languages", actions: language_actions(query)),
       ),
     ],
     query,
@@ -756,7 +794,7 @@ fn authorized_route(
   session: SessionState,
 ) -> route.Route {
   case target_route {
-    route.Admin | route.AdminConfig | route.AdminRateLimits ->
+    route.Admin | route.AdminJobs | route.AdminConfig | route.AdminRateLimits ->
       case session_is_admin(session) {
         True -> target_route
         False -> admin_fallback_route(session)

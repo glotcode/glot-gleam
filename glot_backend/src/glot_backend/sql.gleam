@@ -288,6 +288,280 @@ pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
   ))
 }
 
+pub type ListJobsAfter {
+  ListJobsAfter(
+    id: BitArray,
+    request_id: Option(BitArray),
+    periodic_job_id: Option(BitArray),
+    job_type: String,
+    payload: Option(String),
+    status: String,
+    attempts: Int,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    run_at: Timestamp,
+    started_at: Option(Timestamp),
+    completed_at: Option(Timestamp),
+    last_error: Option(String),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn list_jobs_after(
+  statuses statuses: List(String),
+  job_types job_types: List(String),
+  after_id after_id: Option(BitArray),
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  periodic_job_id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  run_at,
+  started_at,
+  completed_at,
+  last_error,
+  created_at,
+  updated_at
+FROM jobs
+WHERE (
+    cardinality($1::text[]) = 0
+    OR status = ANY($1::text[])
+  )
+  AND (
+    cardinality($2::text[]) = 0
+    OR job_type = ANY($2::text[])
+  )
+  AND (
+    $3::uuid IS NULL
+    OR id < $3::uuid
+  )
+ORDER BY id DESC
+LIMIT $4"
+  #(
+    sql,
+    [
+      dev.ParamList(list.map(statuses, dev.ParamString)),
+      dev.ParamList(list.map(job_types, dev.ParamString)),
+      dev.ParamNullable(option.map(after_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamInt(page_limit),
+    ],
+    list_jobs_after_decoder(),
+  )
+}
+
+pub fn list_jobs_after_decoder() -> decode.Decoder(ListJobsAfter) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use periodic_job_id <- decode.field(2, decode.optional(decode.bit_array))
+  use job_type <- decode.field(3, decode.string)
+  use payload <- decode.field(4, decode.optional(decode.string))
+  use status <- decode.field(5, decode.string)
+  use attempts <- decode.field(6, decode.int)
+  use max_attempts <- decode.field(7, decode.int)
+  use timeout_seconds <- decode.field(8, decode.int)
+  use run_at <- decode.field(9, dev.datetime_decoder())
+  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(12, decode.optional(decode.string))
+  use created_at <- decode.field(13, dev.datetime_decoder())
+  use updated_at <- decode.field(14, dev.datetime_decoder())
+  decode.success(ListJobsAfter(
+    id:,
+    request_id:,
+    periodic_job_id:,
+    job_type:,
+    payload:,
+    status:,
+    attempts:,
+    max_attempts:,
+    timeout_seconds:,
+    run_at:,
+    started_at:,
+    completed_at:,
+    last_error:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
+pub type ListJobsBefore {
+  ListJobsBefore(
+    id: BitArray,
+    request_id: Option(BitArray),
+    periodic_job_id: Option(BitArray),
+    job_type: String,
+    payload: Option(String),
+    status: String,
+    attempts: Int,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    run_at: Timestamp,
+    started_at: Option(Timestamp),
+    completed_at: Option(Timestamp),
+    last_error: Option(String),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn list_jobs_before(
+  statuses statuses: List(String),
+  job_types job_types: List(String),
+  before_id before_id: Option(BitArray),
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  periodic_job_id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  run_at,
+  started_at,
+  completed_at,
+  last_error,
+  created_at,
+  updated_at
+FROM jobs
+WHERE (
+    cardinality($1::text[]) = 0
+    OR status = ANY($1::text[])
+  )
+  AND (
+    cardinality($2::text[]) = 0
+    OR job_type = ANY($2::text[])
+  )
+  AND (
+    $3::uuid IS NULL
+    OR id > $3::uuid
+  )
+ORDER BY id ASC
+LIMIT $4"
+  #(
+    sql,
+    [
+      dev.ParamList(list.map(statuses, dev.ParamString)),
+      dev.ParamList(list.map(job_types, dev.ParamString)),
+      dev.ParamNullable(option.map(before_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamInt(page_limit),
+    ],
+    list_jobs_before_decoder(),
+  )
+}
+
+pub fn list_jobs_before_decoder() -> decode.Decoder(ListJobsBefore) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use periodic_job_id <- decode.field(2, decode.optional(decode.bit_array))
+  use job_type <- decode.field(3, decode.string)
+  use payload <- decode.field(4, decode.optional(decode.string))
+  use status <- decode.field(5, decode.string)
+  use attempts <- decode.field(6, decode.int)
+  use max_attempts <- decode.field(7, decode.int)
+  use timeout_seconds <- decode.field(8, decode.int)
+  use run_at <- decode.field(9, dev.datetime_decoder())
+  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(12, decode.optional(decode.string))
+  use created_at <- decode.field(13, dev.datetime_decoder())
+  use updated_at <- decode.field(14, dev.datetime_decoder())
+  decode.success(ListJobsBefore(
+    id:,
+    request_id:,
+    periodic_job_id:,
+    job_type:,
+    payload:,
+    status:,
+    attempts:,
+    max_attempts:,
+    timeout_seconds:,
+    run_at:,
+    started_at:,
+    completed_at:,
+    last_error:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
+pub type SummarizeJobs {
+  SummarizeJobs(
+    total_count: Int,
+    pending_count: Int,
+    running_count: Int,
+    failed_count: Int,
+    done_count: Int,
+    overdue_count: Int,
+  )
+}
+
+pub fn summarize_jobs(
+  now now: Timestamp,
+  statuses statuses: List(String),
+  job_types job_types: List(String),
+) {
+  let sql =
+    "SELECT
+  COUNT(*)::int AS total_count,
+  COUNT(*) FILTER (WHERE status = 'pending')::int AS pending_count,
+  COUNT(*) FILTER (WHERE status = 'running')::int AS running_count,
+  COUNT(*) FILTER (WHERE status = 'failed')::int AS failed_count,
+  COUNT(*) FILTER (WHERE status = 'done')::int AS done_count,
+  COUNT(*) FILTER (
+    WHERE status = 'pending'
+      AND run_at < $1
+  )::int AS overdue_count
+FROM jobs
+WHERE (
+    cardinality($2::text[]) = 0
+    OR status = ANY($2::text[])
+  )
+  AND (
+    cardinality($3::text[]) = 0
+    OR job_type = ANY($3::text[])
+  )"
+  #(
+    sql,
+    [
+      dev.ParamTimestamp(now),
+      dev.ParamList(list.map(statuses, dev.ParamString)),
+      dev.ParamList(list.map(job_types, dev.ParamString)),
+    ],
+    summarize_jobs_decoder(),
+  )
+}
+
+pub fn summarize_jobs_decoder() -> decode.Decoder(SummarizeJobs) {
+  use total_count <- decode.field(0, decode.int)
+  use pending_count <- decode.field(1, decode.int)
+  use running_count <- decode.field(2, decode.int)
+  use failed_count <- decode.field(3, decode.int)
+  use done_count <- decode.field(4, decode.int)
+  use overdue_count <- decode.field(5, decode.int)
+  decode.success(SummarizeJobs(
+    total_count:,
+    pending_count:,
+    running_count:,
+    failed_count:,
+    done_count:,
+    overdue_count:,
+  ))
+}
+
 pub type GetNextPeriodicJob {
   GetNextPeriodicJob(
     id: BitArray,

@@ -9,6 +9,7 @@ import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/account_dto
@@ -56,12 +57,7 @@ pub fn track_pageview(
 ) -> effect.Effect(msg) {
   let req = ApiRequest(api_action.TrackPageviewAction, request)
 
-  send_api_request(
-    req,
-    pageview_dto.encode,
-    nil_decoder(),
-    to_msg,
-  )
+  send_api_request(req, pageview_dto.encode, nil_decoder(), to_msg)
 }
 
 pub fn login(
@@ -287,7 +283,8 @@ pub fn update_account(
 }
 
 pub fn get_admin_rate_limit_policies(
-  to_msg: fn(ApiResponse(rate_limit_config_dto.RateLimitPoliciesResponse)) -> msg,
+  to_msg: fn(ApiResponse(rate_limit_config_dto.RateLimitPoliciesResponse)) ->
+    msg,
 ) -> effect.Effect(msg) {
   let req = ApiRequest(api_action.GetAdminRateLimitPoliciesAction, Nil)
 
@@ -362,6 +359,20 @@ pub fn get_admin_cleanup_config(
     req,
     fn(_) { json.null() },
     cleanup_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_jobs(
+  request: job_dto.ListJobsRequest,
+  to_msg: fn(ApiResponse(job_dto.ListJobsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminJobsAction, request)
+
+  send_api_request(
+    req,
+    job_dto.encode_list_request,
+    job_dto.list_response_decoder(),
     to_msg,
   )
 }

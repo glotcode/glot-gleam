@@ -8,9 +8,9 @@ import glot_backend/api
 import glot_backend/app_config
 import glot_backend/context
 import glot_backend/crypto_token
-import glot_backend/effect/app_config/app_config_handlers
 import glot_backend/effect/analytics/analytics_handlers
 import glot_backend/effect/api_log/api_log_handlers
+import glot_backend/effect/app_config/app_config_handlers
 import glot_backend/effect/auth/auth_handlers
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/basic/basic_effect
@@ -27,8 +27,8 @@ import glot_backend/effect/job_log/job_log_handlers
 import glot_backend/effect/page_log/page_log_handlers
 import glot_backend/effect/pageview_log/pageview_log_handlers
 import glot_backend/effect/periodic_job/periodic_job_handlers
-import glot_backend/effect/run_log/run_log_handlers
 import glot_backend/effect/program
+import glot_backend/effect/run_log/run_log_handlers
 import glot_backend/effect/runtime
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/transaction/transaction_algebra
@@ -172,16 +172,22 @@ pub fn rolled_back_transaction_effect_is_marked_test() {
 
 pub fn api_error_status_mapping_test() {
   assert api.error_status(error.ValidationError("bad input")) == 400
-  assert api.error_status(error.NotFoundError("snippet_not_found", "missing")) == 404
-  assert api.error_status(
-    error.ConflictError("account_delete_not_scheduled", "no pending delete"),
-  ) == 409
-  assert api.error_status(error.SessionError(error.MissingSessionTokenError)) == 401
+  assert api.error_status(error.NotFoundError("snippet_not_found", "missing"))
+    == 404
+  assert api.error_status(error.ConflictError(
+      "account_delete_not_scheduled",
+      "no pending delete",
+    ))
+    == 409
+  assert api.error_status(error.SessionError(error.MissingSessionTokenError))
+    == 401
   assert api.error_status(error.AuthorizationError(error.NotOwnerError)) == 403
-  assert api.error_status(error.TooManyRequestsError(3, test_rate_limit())) == 429
+  assert api.error_status(error.TooManyRequestsError(3, test_rate_limit()))
+    == 429
   assert api.error_status(
-    error.RunError(error.InternalRunRequestError("docker unavailable")),
-  ) == 500
+      error.RunError(error.InternalRunRequestError("docker unavailable")),
+    )
+    == 500
 }
 
 pub fn api_error_detail_codes_test() {
@@ -193,15 +199,25 @@ pub fn api_error_detail_codes_test() {
     == #(401, "session_expired", "Session expired")
   assert api.api_error_details(error.AuthorizationError(error.NotOwnerError))
     == #(403, "authorization_not_owner", "Not authorized")
-  assert api.api_error_details(
-    error.ValidationError("files must contain at least one file"),
-  ) == #(400, "validation_files_missing", "files must contain at least one file")
-  assert api.api_error_details(
-    error.ValidationError("title must be at most 200 characters"),
-  ) == #(400, "validation_title_too_long", "title must be at most 200 characters")
-  assert api.api_error_details(
-    error.ValidationError("files[0].content must be at most 100000 characters"),
-  )
+  assert api.api_error_details(error.ValidationError(
+      "files must contain at least one file",
+    ))
+    == #(
+      400,
+      "validation_files_missing",
+      "files must contain at least one file",
+    )
+  assert api.api_error_details(error.ValidationError(
+      "title must be at most 200 characters",
+    ))
+    == #(
+      400,
+      "validation_title_too_long",
+      "title must be at most 200 characters",
+    )
+  assert api.api_error_details(error.ValidationError(
+      "files[0].content must be at most 100000 characters",
+    ))
     == #(
       400,
       "validation_files_0_content_too_long",
@@ -248,6 +264,17 @@ fn test_handlers() -> handlers.Handlers {
       },
     ),
     job: job_handlers.JobHandlers(
+      list_jobs: fn(_, _) { Ok([]) },
+      summarize_jobs: fn(_, _) {
+        Ok(job_model.Summary(
+          total_count: 0,
+          pending_count: 0,
+          running_count: 0,
+          failed_count: 0,
+          done_count: 0,
+          overdue_count: 0,
+        ))
+      },
       get_next_job: fn(_: timestamp.Timestamp, _: job_model.Status) {
         Ok(option.None)
       },
@@ -259,9 +286,9 @@ fn test_handlers() -> handlers.Handlers {
     ),
     job_log: job_log_handlers.JobLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     page_log: page_log_handlers.PageLogHandlers(delete_before: fn(_) { Ok(Nil) }),
-    pageview_log: pageview_log_handlers.PageviewLogHandlers(delete_before: fn(_) {
-      Ok(Nil)
-    }),
+    pageview_log: pageview_log_handlers.PageviewLogHandlers(
+      delete_before: fn(_) { Ok(Nil) },
+    ),
     periodic_job: periodic_job_handlers.PeriodicJobHandlers(
       get_next_periodic_job: fn(_) { Ok(option.None) },
       create_periodic_job: fn(_) { Ok(Nil) },
@@ -314,10 +341,7 @@ fn test_runtime() -> runtime.Runtime {
 }
 
 fn test_rate_limit() -> rate_limit.RateLimit {
-  rate_limit.RateLimit(
-    unit: rate_limit.Minute,
-    max_requests: 2,
-  )
+  rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 2)
 }
 
 fn test_context() -> context.Context {

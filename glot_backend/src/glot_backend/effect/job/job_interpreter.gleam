@@ -13,6 +13,56 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
+    job_algebra.ListJobs(filter:, pagination:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.job.list_jobs(filter, pagination)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.JobEffectName(job_algebra.ListJobsEffectName),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.JobEffectName(job_algebra.ListJobsEffectName),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    job_algebra.SummarizeJobs(filter:, now:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.job.summarize_jobs(filter, now)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.JobEffectName(job_algebra.SummarizeJobsEffectName),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.JobEffectName(job_algebra.SummarizeJobsEffectName),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     job_algebra.GetNextJob(now:, pending_status:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.job.get_next_job(now, pending_status)

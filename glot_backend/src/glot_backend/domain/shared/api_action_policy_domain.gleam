@@ -13,7 +13,11 @@ import youid/uuid.{type Uuid}
 
 pub type ActionActor {
   Anonymous
-  KnownUser(user_id: Uuid, account_state: AccountState, account_tier: AccountTier)
+  KnownUser(
+    user_id: Uuid,
+    account_state: AccountState,
+    account_tier: AccountTier,
+  )
 }
 
 type AccountStatePolicy {
@@ -199,6 +203,11 @@ fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
         account_model.ReadOnly,
       ])
     api_action.UpsertAdminCleanupConfigAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.GetAdminJobsAction ->
       AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,

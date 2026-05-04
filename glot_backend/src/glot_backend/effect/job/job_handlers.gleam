@@ -8,11 +8,16 @@ import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/helpers/uuid_helpers
 import glot_core/job/job_model
+import glot_core/pagination_model
 import pog
 import youid/uuid
 
 pub type JobHandlers {
   JobHandlers(
+    list_jobs: fn(job_model.ListJobsFilter, pagination_model.CursorPagination) ->
+      Result(List(job_model.Job), error.DbQueryError),
+    summarize_jobs: fn(job_model.ListJobsFilter, Timestamp) ->
+      Result(job_model.Summary, error.DbQueryError),
     get_next_job: fn(Timestamp, job_model.Status) ->
       Result(option.Option(job_model.Job), error.DbQueryError),
     get_job_by_id: fn(uuid.Uuid) ->
@@ -27,6 +32,8 @@ pub type JobHandlers {
 
 pub fn new(db: pog.Connection) -> JobHandlers {
   JobHandlers(
+    list_jobs: fn(filter, pagination) { list_jobs(db, filter, pagination) },
+    summarize_jobs: fn(filter, now) { summarize_jobs(db, filter, now) },
     get_next_job: fn(now, pending_status) {
       get_next_job(db, now, pending_status)
     },
@@ -34,10 +41,96 @@ pub fn new(db: pog.Connection) -> JobHandlers {
     create_job: fn(job) { create_job(db, job) },
     update_job: fn(job) { update_job(db, job) },
     delete_job: fn(id) { delete_job(db, id) },
-    delete_before: fn(before, statuses) {
-      delete_before(db, before, statuses)
-    },
+    delete_before: fn(before, statuses) { delete_before(db, before, statuses) },
   )
+}
+
+pub fn list_jobs(
+  db: pog.Connection,
+  filter: job_model.ListJobsFilter,
+  pagination: pagination_model.CursorPagination,
+) -> Result(List(job_model.Job), error.DbQueryError) {
+  let #(statuses, job_types) = filter_params(filter)
+
+  case pagination {
+    pagination_model.BeforePage(before_id, limit) ->
+      decode_cursor(before_id)
+      |> result.try(fn(before_uuid) {
+        db_helpers.query(
+          db,
+          sql.list_jobs_before(
+            statuses: statuses,
+            job_types: job_types,
+            before_id: option.Some(uuid.to_bit_array(before_uuid)),
+            page_limit: limit,
+          ),
+          fn(err) { error.DbQueryError(string.inspect(err)) },
+        )
+        |> result.try(fn(returned) {
+          returned.rows
+          |> list.map(get_job_from_list_before_row)
+          |> result.all
+          |> result.map(list.reverse)
+        })
+      })
+    pagination_model.InitialPage(limit) | pagination_model.AfterPage(_, limit) -> {
+      let after_id = case pagination {
+        pagination_model.AfterPage(cursor, _) ->
+          decode_cursor(cursor) |> result.map(option.Some)
+        pagination_model.InitialPage(_) -> Ok(option.None)
+        pagination_model.BeforePage(_, _) -> Ok(option.None)
+      }
+
+      after_id
+      |> result.try(fn(after_uuid) {
+        db_helpers.query(
+          db,
+          sql.list_jobs_after(
+            statuses: statuses,
+            job_types: job_types,
+            after_id: after_uuid |> option.map(uuid.to_bit_array),
+            page_limit: limit,
+          ),
+          fn(err) { error.DbQueryError(string.inspect(err)) },
+        )
+        |> result.try(fn(returned) {
+          returned.rows
+          |> list.map(get_job_from_list_after_row)
+          |> result.all
+        })
+      })
+    }
+  }
+}
+
+pub fn summarize_jobs(
+  db: pog.Connection,
+  filter: job_model.ListJobsFilter,
+  now: Timestamp,
+) -> Result(job_model.Summary, error.DbQueryError) {
+  let #(statuses, job_types) = filter_params(filter)
+
+  use returned <- result.try(
+    db_helpers.query(
+      db,
+      sql.summarize_jobs(statuses: statuses, job_types: job_types, now: now),
+      fn(err) { error.DbQueryError(string.inspect(err)) },
+    ),
+  )
+
+  case returned.rows {
+    [summary] ->
+      Ok(job_model.Summary(
+        total_count: summary.total_count,
+        pending_count: summary.pending_count,
+        running_count: summary.running_count,
+        failed_count: summary.failed_count,
+        done_count: summary.done_count,
+        overdue_count: summary.overdue_count,
+      ))
+    [] -> Error(error.DbQueryError("Expected one jobs summary row"))
+    _ -> Error(error.DbQueryError("Expected at most one jobs summary row"))
+  }
 }
 
 pub fn get_next_job(
@@ -185,6 +278,68 @@ fn get_job_from_next_job_row(
     row.created_at,
     row.updated_at,
   )
+}
+
+fn get_job_from_list_after_row(
+  row: sql.ListJobsAfter,
+) -> Result(job_model.Job, error.DbQueryError) {
+  get_job(
+    row.id,
+    row.request_id,
+    row.periodic_job_id,
+    row.job_type,
+    row.payload,
+    row.status,
+    row.attempts,
+    row.max_attempts,
+    row.timeout_seconds,
+    row.run_at,
+    row.started_at,
+    row.completed_at,
+    row.last_error,
+    row.created_at,
+    row.updated_at,
+  )
+}
+
+fn get_job_from_list_before_row(
+  row: sql.ListJobsBefore,
+) -> Result(job_model.Job, error.DbQueryError) {
+  get_job(
+    row.id,
+    row.request_id,
+    row.periodic_job_id,
+    row.job_type,
+    row.payload,
+    row.status,
+    row.attempts,
+    row.max_attempts,
+    row.timeout_seconds,
+    row.run_at,
+    row.started_at,
+    row.completed_at,
+    row.last_error,
+    row.created_at,
+    row.updated_at,
+  )
+}
+
+fn filter_params(
+  filter: job_model.ListJobsFilter,
+) -> #(List(String), List(String)) {
+  #(
+    list.map(filter.statuses, job_model.status_to_string),
+    list.map(filter.job_types, job_model.job_type_to_string),
+  )
+}
+
+fn decode_cursor(
+  cursor: pagination_model.Cursor,
+) -> Result(uuid.Uuid, error.DbQueryError) {
+  case uuid.from_string(pagination_model.to_string(cursor)) {
+    Ok(value) -> Ok(value)
+    Error(_) -> Error(error.DbQueryError("Invalid jobs cursor"))
+  }
 }
 
 fn get_job_from_job_by_id_row(

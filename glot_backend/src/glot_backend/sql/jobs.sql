@@ -43,6 +43,93 @@ ORDER BY run_at ASC, created_at ASC
 LIMIT 1
 FOR UPDATE SKIP LOCKED;
 
+-- name: ListJobsAfter :many
+SELECT
+  id,
+  request_id,
+  periodic_job_id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  run_at,
+  started_at,
+  completed_at,
+  last_error,
+  created_at,
+  updated_at
+FROM jobs
+WHERE (
+    cardinality(sqlc.arg(statuses)::text[]) = 0
+    OR status = ANY(sqlc.arg(statuses)::text[])
+  )
+  AND (
+    cardinality(sqlc.arg(job_types)::text[]) = 0
+    OR job_type = ANY(sqlc.arg(job_types)::text[])
+  )
+  AND (
+    sqlc.narg(after_id)::uuid IS NULL
+    OR id < sqlc.narg(after_id)::uuid
+  )
+ORDER BY id DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListJobsBefore :many
+SELECT
+  id,
+  request_id,
+  periodic_job_id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  run_at,
+  started_at,
+  completed_at,
+  last_error,
+  created_at,
+  updated_at
+FROM jobs
+WHERE (
+    cardinality(sqlc.arg(statuses)::text[]) = 0
+    OR status = ANY(sqlc.arg(statuses)::text[])
+  )
+  AND (
+    cardinality(sqlc.arg(job_types)::text[]) = 0
+    OR job_type = ANY(sqlc.arg(job_types)::text[])
+  )
+  AND (
+    sqlc.narg(before_id)::uuid IS NULL
+    OR id > sqlc.narg(before_id)::uuid
+  )
+ORDER BY id ASC
+LIMIT sqlc.arg(page_limit);
+
+-- name: SummarizeJobs :one
+SELECT
+  COUNT(*)::int AS total_count,
+  COUNT(*) FILTER (WHERE status = 'pending')::int AS pending_count,
+  COUNT(*) FILTER (WHERE status = 'running')::int AS running_count,
+  COUNT(*) FILTER (WHERE status = 'failed')::int AS failed_count,
+  COUNT(*) FILTER (WHERE status = 'done')::int AS done_count,
+  COUNT(*) FILTER (
+    WHERE status = 'pending'
+      AND run_at < @now
+  )::int AS overdue_count
+FROM jobs
+WHERE (
+    cardinality(sqlc.arg(statuses)::text[]) = 0
+    OR status = ANY(sqlc.arg(statuses)::text[])
+  )
+  AND (
+    cardinality(sqlc.arg(job_types)::text[]) = 0
+    OR job_type = ANY(sqlc.arg(job_types)::text[])
+  );
+
 -- name: GetNextPeriodicJob :one
 SELECT
   id,

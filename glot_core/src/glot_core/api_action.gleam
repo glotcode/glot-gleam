@@ -26,6 +26,7 @@ pub type ApiAction {
   UpsertAdminAuthConfigAction
   GetAdminCleanupConfigAction
   UpsertAdminCleanupConfigAction
+  GetAdminJobsAction
   GetAdminRateLimitPoliciesAction
   UpsertAdminRateLimitPolicyAction
   GetAdminDockerRunConfigAction
@@ -57,6 +58,7 @@ pub fn list() -> List(ApiAction) {
     UpsertAdminAuthConfigAction,
     GetAdminCleanupConfigAction,
     UpsertAdminCleanupConfigAction,
+    GetAdminJobsAction,
     GetAdminRateLimitPoliciesAction,
     UpsertAdminRateLimitPolicyAction,
     GetAdminDockerRunConfigAction,
@@ -101,6 +103,7 @@ pub fn to_string(action: ApiAction) -> String {
     UpsertAdminAuthConfigAction -> "upsert_admin_auth_config"
     GetAdminCleanupConfigAction -> "get_admin_cleanup_config"
     UpsertAdminCleanupConfigAction -> "upsert_admin_cleanup_config"
+    GetAdminJobsAction -> "get_admin_jobs"
     GetAdminRateLimitPoliciesAction -> "get_admin_rate_limit_policies"
     UpsertAdminRateLimitPolicyAction -> "upsert_admin_rate_limit_policy"
     GetAdminDockerRunConfigAction -> "get_admin_docker_run_config"
@@ -132,14 +135,13 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "get_admin_auth_config" -> option.Some(GetAdminAuthConfigAction)
     "upsert_admin_auth_config" -> option.Some(UpsertAdminAuthConfigAction)
     "get_admin_cleanup_config" -> option.Some(GetAdminCleanupConfigAction)
-    "upsert_admin_cleanup_config" ->
-      option.Some(UpsertAdminCleanupConfigAction)
+    "upsert_admin_cleanup_config" -> option.Some(UpsertAdminCleanupConfigAction)
+    "get_admin_jobs" -> option.Some(GetAdminJobsAction)
     "get_admin_rate_limit_policies" ->
       option.Some(GetAdminRateLimitPoliciesAction)
     "upsert_admin_rate_limit_policy" ->
       option.Some(UpsertAdminRateLimitPolicyAction)
-    "get_admin_docker_run_config" ->
-      option.Some(GetAdminDockerRunConfigAction)
+    "get_admin_docker_run_config" -> option.Some(GetAdminDockerRunConfigAction)
     "upsert_admin_docker_run_config" ->
       option.Some(UpsertAdminDockerRunConfigAction)
     _ -> option.None

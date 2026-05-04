@@ -8,20 +8,21 @@ import gleam/list
 import gleam/option
 import gleam/string
 import glot_backend/context
+import glot_backend/domain/account/cancel_delete_account_domain
+import glot_backend/domain/account/get_account_domain
+import glot_backend/domain/account/schedule_delete_account_domain
+import glot_backend/domain/account/update_account_domain
 import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/get_jobs_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_cleanup_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
-import glot_backend/domain/account/cancel_delete_account_domain
-import glot_backend/domain/account/get_account_domain
-import glot_backend/domain/account/schedule_delete_account_domain
-import glot_backend/domain/account/update_account_domain
 import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/logout_domain
@@ -45,15 +46,16 @@ import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/server_timing
+import glot_backend/worker/app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
-import glot_backend/worker/app_config_cache_worker
-import glot_core/api_action
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/job_dto
 import glot_core/admin/rate_limit_config_dto
+import glot_core/api_action
 import glot_core/auth/account_dto
 import glot_core/auth/account_model
 import glot_core/auth/session_dto
@@ -65,9 +67,7 @@ import wisp
 pub fn handle_request(
   db: pog.Connection,
   ctx: context.Context,
-  app_config_cache_subject: process.Subject(
-    app_config_cache_worker.Message,
-  ),
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   language_version_cache_subject: process.Subject(
     language_version_cache_worker.Message,
   ),
@@ -76,11 +76,7 @@ pub fn handle_request(
 ) -> wisp.Response {
   use api_request <- require_api_request(req)
   let effect_runtime =
-    runtime.new(
-      db,
-      app_config_cache_subject,
-      language_version_cache_subject,
-    )
+    runtime.new(db, app_config_cache_subject, language_version_cache_subject)
 
   let #(api_result, state) =
     handle_api_request(ctx, api_request)
@@ -241,6 +237,13 @@ fn handle_api_request(
       upsert_cleanup_config_domain.upsert_cleanup_config(ctx, request)
       |> program.map(CleanupConfigResponse)
     }
+    api_action.GetAdminJobsAction -> {
+      use request <- program.and_then(get_jobs_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      get_jobs_domain.get_jobs(ctx, request)
+      |> program.map(AdminJobsResponse)
+    }
     api_action.GetAdminRateLimitPoliciesAction ->
       get_rate_limit_policies_domain.get_rate_limit_policies(ctx)
       |> program.map(RateLimitPoliciesResponse)
@@ -312,6 +315,7 @@ type ApiResult {
   DebugConfigResponse(debug_config_dto.DebugConfigResponse)
   AuthConfigResponse(auth_config_dto.AuthConfigResponse)
   CleanupConfigResponse(cleanup_config_dto.CleanupConfigResponse)
+  AdminJobsResponse(job_dto.ListJobsResponse)
   RateLimitPoliciesResponse(rate_limit_config_dto.RateLimitPoliciesResponse)
   RateLimitPolicyResponse(rate_limit_config_dto.RateLimitPolicyResponse)
   DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
@@ -343,6 +347,8 @@ fn api_result_to_response(
       success_response(auth_config_dto.encode_response(response))
     CleanupConfigResponse(response) ->
       success_response(cleanup_config_dto.encode_response(response))
+    AdminJobsResponse(response) ->
+      success_response(job_dto.encode_list_response(response))
     RateLimitPoliciesResponse(response) ->
       success_response(rate_limit_config_dto.encode_response(response))
     RateLimitPolicyResponse(response) ->
@@ -435,21 +441,18 @@ fn insert_pageview_log_entry(
     Ok(TrackPageviewResponse(pageview)) ->
       process.send(
         log_worker_subject,
-        log_worker.InsertPageview(
-          log_worker.PageviewLogEntry(
-            id: pageview.id,
-            created_at: ctx.timestamp,
-            session_id: pageview.session_id,
-            user_id: pageview.user_id,
-            route: pageview.route,
-            path: pageview.path,
-            user_agent: ctx.client_info.user_agent,
-            ip: ctx.client_info.ip,
-          ),
-        ),
+        log_worker.InsertPageview(log_worker.PageviewLogEntry(
+          id: pageview.id,
+          created_at: ctx.timestamp,
+          session_id: pageview.session_id,
+          user_id: pageview.user_id,
+          route: pageview.route,
+          path: pageview.path,
+          user_agent: ctx.client_info.user_agent,
+          ip: ctx.client_info.ip,
+        )),
       )
-    Ok(_)
-    | Error(_) -> Nil
+    Ok(_) | Error(_) -> Nil
   }
 }
 
@@ -501,8 +504,7 @@ fn error_to_response(error: error.Error) -> wisp.Response {
   let #(status, code, message) = api_error_details(error)
 
   case error {
-    error.JsonParseError(_error) ->
-      error_response(status, code, message)
+    error.JsonParseError(_error) -> error_response(status, code, message)
     error.DecodeError(_errors) -> error_response(status, code, message)
     error.EmailInvalidError(_message) -> error_response(status, code, message)
     error.ValidationError(message) -> {
@@ -626,70 +628,127 @@ pub fn error_status(error: error.Error) -> Int {
 
 pub fn api_error_details(error: error.Error) -> #(Int, String, String) {
   case error {
-    error.JsonParseError(parse_error) ->
-      #(400, "json_parse_error", "Decode error: " <> string.inspect(parse_error))
-    error.DecodeError(errors) ->
-      #(400, "decode_error", "Decode error: " <> string.inspect(errors))
-    error.EmailInvalidError(message) ->
-      #(400, "email_invalid", "Invalid email: " <> message)
-    error.ValidationError(message) ->
-      #(400, validation_error_code(message), message)
+    error.JsonParseError(parse_error) -> #(
+      400,
+      "json_parse_error",
+      "Decode error: " <> string.inspect(parse_error),
+    )
+    error.DecodeError(errors) -> #(
+      400,
+      "decode_error",
+      "Decode error: " <> string.inspect(errors),
+    )
+    error.EmailInvalidError(message) -> #(
+      400,
+      "email_invalid",
+      "Invalid email: " <> message,
+    )
+    error.ValidationError(message) -> #(
+      400,
+      validation_error_code(message),
+      message,
+    )
     error.NotFoundError(code, message) -> #(404, code, message)
     error.ConflictError(code, message) -> #(409, code, message)
-    error.TooManyRequestsError(count, config) ->
-      #(
-        429,
-        "too_many_requests",
-        "Too many requests: "
-          <> int.to_string(count)
-          <> " / "
-          <> int.to_string(config.max_requests),
-      )
+    error.TooManyRequestsError(count, config) -> #(
+      429,
+      "too_many_requests",
+      "Too many requests: "
+        <> int.to_string(count)
+        <> " / "
+        <> int.to_string(config.max_requests),
+    )
     error.QueryError(_) -> #(500, "query_error", "Failed to query data")
     error.CommandError(_) -> #(500, "command_error", "Failed to run command")
-    error.TransactionError(_) -> #(500, "transaction_error", "Transaction failed")
-    error.ClientInfoError(_) ->
-      #(500, "client_info_error", "Missing user_id and ip")
+    error.TransactionError(_) -> #(
+      500,
+      "transaction_error",
+      "Transaction failed",
+    )
+    error.ClientInfoError(_) -> #(
+      500,
+      "client_info_error",
+      "Missing user_id and ip",
+    )
     error.LoginError(login_error) ->
       case login_error {
-        error.InvalidTokenError ->
-          #(401, "login_invalid_token", "Invalid login token")
-        error.TokenUsedError ->
-          #(409, "login_token_used", "Login token already used")
-        error.TokenExpiredError ->
-          #(401, "login_token_expired", "Login token expired")
+        error.InvalidTokenError -> #(
+          401,
+          "login_invalid_token",
+          "Invalid login token",
+        )
+        error.TokenUsedError -> #(
+          409,
+          "login_token_used",
+          "Login token already used",
+        )
+        error.TokenExpiredError -> #(
+          401,
+          "login_token_expired",
+          "Login token expired",
+        )
       }
     error.SendEmailError(send_email_error) ->
       case send_email_error {
-        error.PublicSendEmailError(message: message) ->
-          #(400, "send_email_public_error", message)
-        error.InternalSendEmailError(message: _) ->
-          #(500, "send_email_internal_error", "Failed to send email")
+        error.PublicSendEmailError(message: message) -> #(
+          400,
+          "send_email_public_error",
+          message,
+        )
+        error.InternalSendEmailError(message: _) -> #(
+          500,
+          "send_email_internal_error",
+          "Failed to send email",
+        )
       }
     error.SessionError(session_error) ->
       case session_error {
-        error.MissingSessionTokenError ->
-          #(401, "session_missing_token", "Missing session token")
-        error.SessionNotFoundError ->
-          #(401, "session_not_found", "Session not found")
-        error.SessionExpiredError ->
-          #(401, "session_expired", "Session expired")
+        error.MissingSessionTokenError -> #(
+          401,
+          "session_missing_token",
+          "Missing session token",
+        )
+        error.SessionNotFoundError -> #(
+          401,
+          "session_not_found",
+          "Session not found",
+        )
+        error.SessionExpiredError -> #(
+          401,
+          "session_expired",
+          "Session expired",
+        )
       }
     error.AuthorizationError(authorization_error) ->
       case authorization_error {
-        error.NotOwnerError ->
-          #(403, "authorization_not_owner", "Not authorized")
-        error.AdminRequiredError ->
-          #(403, "authorization_admin_required", "Admin access required")
+        error.NotOwnerError -> #(
+          403,
+          "authorization_not_owner",
+          "Not authorized",
+        )
+        error.AdminRequiredError -> #(
+          403,
+          "authorization_admin_required",
+          "Admin access required",
+        )
       }
-    error.AccountStateError(_) ->
-      #(403, "account_state_forbidden", "Account state not allowed")
+    error.AccountStateError(_) -> #(
+      403,
+      "account_state_forbidden",
+      "Account state not allowed",
+    )
     error.RunError(run_request_error) ->
       case run_request_error {
-        error.PublicRunRequestError(message: message) ->
-          #(400, "run_public_error", message)
-        error.InternalRunRequestError(message: _) ->
-          #(500, "run_internal_error", "Failed to run code")
+        error.PublicRunRequestError(message: message) -> #(
+          400,
+          "run_public_error",
+          message,
+        )
+        error.InternalRunRequestError(message: _) -> #(
+          500,
+          "run_internal_error",
+          "Failed to run code",
+        )
       }
   }
 }
@@ -699,7 +758,8 @@ fn validation_error_code(message: String) -> String {
     "files must contain at least one file" -> "validation_files_missing"
     _ ->
       case string.split_once(message, " must not be empty") {
-        Ok(#(field, "")) -> "validation_" <> validation_field_slug(field) <> "_empty"
+        Ok(#(field, "")) ->
+          "validation_" <> validation_field_slug(field) <> "_empty"
         Ok(#(_, _)) ->
           case is_spam_validation_message(message) {
             True -> "validation_spam_detected"

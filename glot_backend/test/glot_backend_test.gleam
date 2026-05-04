@@ -7,17 +7,16 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/app_config
 import glot_backend/context
-import glot_backend/dynamic_config
-import glot_backend/domain/admin/get_rate_limit_policies_domain
+import glot_backend/domain/account/cancel_delete_account_domain
+import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/admin/get_auth_config_domain
-import glot_backend/domain/admin/get_docker_run_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
+import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/get_rate_limit_policies_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
-import glot_backend/domain/account/cancel_delete_account_domain
-import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/cleanup/clean_jobs_domain
@@ -27,11 +26,13 @@ import glot_backend/domain/cleanup/clean_user_actions_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
 import glot_backend/domain/run_code/get_language_version_domain
-import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/shared/session_domain
+import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
-import glot_backend/effect/api_log/api_log_algebra
+import glot_backend/dynamic_config
 import glot_backend/effect/analytics/analytics_algebra
+import glot_backend/effect/api_log/api_log_algebra
+import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
@@ -44,15 +45,14 @@ import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
-import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
-import glot_core/api_action
 import glot_core/admin/auth_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
+import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
@@ -60,13 +60,13 @@ import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import glot_core/helpers/timestamp_helpers
 import glot_core/job/job_model
 import glot_core/language
+import glot_core/periodic_job/periodic_job_model
 import glot_core/rate_limit
 import glot_core/run
 import glot_core/run_log_model
-import glot_core/helpers/timestamp_helpers
-import glot_core/periodic_job/periodic_job_model
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_core/snippet/snippet_spam
@@ -98,17 +98,20 @@ pub fn rate_limit_policy_prefers_tier_specific_rule_test() {
         limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 5)],
       ),
       dynamic_config.RateLimitRule(
-        match: dynamic_config.AuthenticatedMatch(account_tiers: option.Some([
-          account_model.FreeTier,
-        ])),
+        match: dynamic_config.AuthenticatedMatch(
+          account_tiers: option.Some([
+            account_model.FreeTier,
+          ]),
+        ),
         limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)],
       ),
     ])
 
   assert dynamic_config.select_rate_limits(
-    policy,
-    dynamic_config.AuthenticatedActor(account_tier: account_model.FreeTier),
-  ) == [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)]
+      policy,
+      dynamic_config.AuthenticatedActor(account_tier: account_model.FreeTier),
+    )
+    == [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)]
 }
 
 pub fn app_config_decodes_docker_run_config_test() {
@@ -159,19 +162,24 @@ pub fn rate_limit_policy_matches_free_plus_rule_test() {
         limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 5)],
       ),
       dynamic_config.RateLimitRule(
-        match: dynamic_config.AuthenticatedMatch(account_tiers: option.Some([
-          account_model.FreePlusTier,
-        ])),
-        limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 12)],
+        match: dynamic_config.AuthenticatedMatch(
+          account_tiers: option.Some([
+            account_model.FreePlusTier,
+          ]),
+        ),
+        limits: [
+          rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 12),
+        ],
       ),
     ])
 
   assert dynamic_config.select_rate_limits(
-    policy,
-    dynamic_config.AuthenticatedActor(
-      account_tier: account_model.FreePlusTier,
-    ),
-  ) == [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 12)]
+      policy,
+      dynamic_config.AuthenticatedActor(
+        account_tier: account_model.FreePlusTier,
+      ),
+    )
+    == [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 12)]
 }
 
 pub fn rate_limit_policy_falls_back_to_anonymous_rule_test() {
@@ -184,13 +192,19 @@ pub fn rate_limit_policy_falls_back_to_anonymous_rule_test() {
     ])
 
   assert dynamic_config.select_rate_limits(
-    policy,
-    dynamic_config.AnonymousActor,
-  ) == [rate_limit.RateLimit(unit: rate_limit.Hour, max_requests: 10)]
+      policy,
+      dynamic_config.AnonymousActor,
+    )
+    == [rate_limit.RateLimit(unit: rate_limit.Hour, max_requests: 10)]
 }
 
 pub fn get_rate_limit_policies_requires_admin_role_test() {
-  let fixture = integration_fixture(next_uuids: [], jobs: [], account_delete_job_id: option.None)
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
 
   let #(run_result, _) =
     run_test_program(
@@ -203,7 +217,12 @@ pub fn get_rate_limit_policies_requires_admin_role_test() {
 }
 
 pub fn get_docker_run_config_requires_admin_role_test() {
-  let fixture = integration_fixture(next_uuids: [], jobs: [], account_delete_job_id: option.None)
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
 
   let #(run_result, _) =
     run_test_program(
@@ -216,7 +235,12 @@ pub fn get_docker_run_config_requires_admin_role_test() {
 }
 
 pub fn get_auth_config_requires_admin_role_test() {
-  let fixture = integration_fixture(next_uuids: [], jobs: [], account_delete_job_id: option.None)
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
 
   let #(run_result, _) =
     run_test_program(
@@ -229,7 +253,12 @@ pub fn get_auth_config_requires_admin_role_test() {
 }
 
 pub fn get_debug_config_requires_admin_role_test() {
-  let fixture = integration_fixture(next_uuids: [], jobs: [], account_delete_job_id: option.None)
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
 
   let #(run_result, _) =
     run_test_program(
@@ -282,10 +311,11 @@ pub fn upsert_rate_limit_policy_allows_admin_role_test() {
       fixture.db,
     )
 
-  assert run_result == Ok(rate_limit_config_dto.RateLimitPolicyResponse(
-    action: api_action.RunAction,
-    rules: request.rules,
-  ))
+  assert run_result
+    == Ok(rate_limit_config_dto.RateLimitPolicyResponse(
+      action: api_action.RunAction,
+      rules: request.rules,
+    ))
   assert updated_db.user_action_count == 1
 }
 
@@ -307,10 +337,11 @@ pub fn upsert_docker_run_config_allows_admin_role_test() {
       fixture.db,
     )
 
-  assert run_result == Ok(docker_run_config_dto.DockerRunConfigResponse(
-    base_url: request.base_url,
-    access_token: request.access_token,
-  ))
+  assert run_result
+    == Ok(docker_run_config_dto.DockerRunConfigResponse(
+      base_url: request.base_url,
+      access_token: request.access_token,
+    ))
   assert updated_db.user_action_count == 1
 }
 
@@ -318,26 +349,24 @@ pub fn upsert_auth_config_allows_admin_role_test() {
   let fixture = admin_integration_fixture()
   let request =
     auth_config_dto.UpsertAuthConfigRequest(
-      login_token_max_age: 1_200,
+      login_token_max_age: 1200,
       session_token_max_age: 172_800,
       session_cookie_max_age: 172_800,
     )
 
   let #(run_result, updated_db) =
     run_test_program(
-      upsert_auth_config_domain.upsert_auth_config(
-        fixture.ctx,
-        request,
-      ),
+      upsert_auth_config_domain.upsert_auth_config(fixture.ctx, request),
       fixture.ctx,
       fixture.db,
     )
 
-  assert run_result == Ok(auth_config_dto.AuthConfigResponse(
-    login_token_max_age: request.login_token_max_age,
-    session_token_max_age: request.session_token_max_age,
-    session_cookie_max_age: request.session_cookie_max_age,
-  ))
+  assert run_result
+    == Ok(auth_config_dto.AuthConfigResponse(
+      login_token_max_age: request.login_token_max_age,
+      session_token_max_age: request.session_token_max_age,
+      session_cookie_max_age: request.session_cookie_max_age,
+    ))
   assert updated_db.user_action_count == 1
 }
 
@@ -663,11 +692,9 @@ pub fn update_snippet_rejects_too_long_file_content_test() {
     )
 
   assert run_result
-    == Error(
-      error.ValidationError(
-        "files[0].content must be at most 100000 characters",
-      ),
-    )
+    == Error(error.ValidationError(
+      "files[0].content must be at most 100000 characters",
+    ))
   assert db.write_steps == []
 }
 
@@ -858,7 +885,8 @@ pub fn enqueue_next_due_periodic_job_creates_job_and_advances_schedule_test() {
     )
 
   assert run_result == Ok(True)
-  let assert Ok(enqueued_job) = dict.get(updated_db.jobs, uuid_key(enqueued_job_id))
+  let assert Ok(enqueued_job) =
+    dict.get(updated_db.jobs, uuid_key(enqueued_job_id))
   let assert Ok(updated_periodic_job) =
     dict.get(updated_db.periodic_jobs, uuid_key(periodic_job_id))
 
@@ -918,19 +946,32 @@ pub fn clean_jobs_deletes_only_done_jobs_before_cutoff_test() {
       max_attempts: 5,
       timeout_seconds: 120,
       run_at: timestamp.from_unix_seconds_and_nanoseconds(1_650_000_000, 0),
-      started_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(1_650_000_010, 0)),
-      completed_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0)),
+      started_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(
+        1_650_000_010,
+        0,
+      )),
+      completed_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(
+        1_697_300_000,
+        0,
+      )),
       last_error: option.None,
       created_at: timestamp.from_unix_seconds_and_nanoseconds(1_650_000_000, 0),
       updated_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),
     )
   let old_failed_job =
-    job_model.Job(..old_done_job, id: must_uuid("00000000-0000-0000-0000-000000000a02"), status: job_model.Failed)
+    job_model.Job(
+      ..old_done_job,
+      id: must_uuid("00000000-0000-0000-0000-000000000a02"),
+      status: job_model.Failed,
+    )
   let recent_done_job =
     job_model.Job(
       ..old_done_job,
       id: must_uuid("00000000-0000-0000-0000-000000000a03"),
-      completed_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(1_699_900_000, 0)),
+      completed_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(
+        1_699_900_000,
+        0,
+      )),
       updated_at: timestamp.from_unix_seconds_and_nanoseconds(1_699_900_000, 0),
     )
   let ctx =
@@ -953,8 +994,10 @@ pub fn clean_jobs_deletes_only_done_jobs_before_cutoff_test() {
 
   assert run_result == Ok(Nil)
   assert dict.get(updated_db.jobs, uuid_key(old_done_job.id)) == Error(Nil)
-  assert dict.get(updated_db.jobs, uuid_key(old_failed_job.id)) == Ok(old_failed_job)
-  assert dict.get(updated_db.jobs, uuid_key(recent_done_job.id)) == Ok(recent_done_job)
+  assert dict.get(updated_db.jobs, uuid_key(old_failed_job.id))
+    == Ok(old_failed_job)
+  assert dict.get(updated_db.jobs, uuid_key(recent_done_job.id))
+    == Ok(recent_done_job)
 }
 
 pub fn clean_run_log_deletes_only_old_rows_test() {
@@ -967,7 +1010,7 @@ pub fn clean_run_log_deletes_only_old_rows_test() {
       user_id: option.None,
       language: language.Python,
       outcome: run_log_model.RunSucceeded,
-      duration_ns: option.Some(1_000),
+      duration_ns: option.Some(1000),
       failure_message: option.None,
     )
   let recent_run_log =
@@ -1033,7 +1076,8 @@ pub fn clean_user_actions_deletes_only_old_rows_test() {
     run_test_program(clean_user_actions_domain.clean_user_actions(ctx), ctx, db)
 
   assert run_result == Ok(Nil)
-  assert dict.get(updated_db.user_actions, uuid_key(old_action.id)) == Error(Nil)
+  assert dict.get(updated_db.user_actions, uuid_key(old_action.id))
+    == Error(Nil)
   assert dict.get(updated_db.user_actions, uuid_key(recent_action.id))
     == Ok(recent_action)
 }
@@ -1069,11 +1113,7 @@ pub fn clean_login_tokens_deletes_only_old_rows_test() {
     )
 
   let #(run_result, updated_db) =
-    run_test_program(
-      clean_login_tokens_domain.clean_login_tokens(ctx),
-      ctx,
-      db,
-    )
+    run_test_program(clean_login_tokens_domain.clean_login_tokens(ctx), ctx, db)
 
   assert run_result == Ok(Nil)
   assert dict.get(updated_db.login_tokens, uuid_key(old_login_token.id))
@@ -1237,7 +1277,11 @@ fn suspended_integration_fixture(
 
 fn admin_integration_fixture() -> TestFixture {
   let fixture =
-    integration_fixture(next_uuids: [], jobs: [], account_delete_job_id: option.None)
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
   let admin_user = user_model.User(..fixture.user, role: user_model.AdminUser)
   let db =
     TestDb(
@@ -1380,56 +1424,72 @@ fn run_test_get_language_version_effect(
 }
 
 fn run_test_app_config_effect(
-  effect: app_config_algebra.AppConfigEffect(
-    program_types.Program(a),
-  ),
+  effect: app_config_algebra.AppConfigEffect(program_types.Program(a)),
   ctx: context.Context,
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
     app_config_algebra.GetDynamicConfig(next:) ->
       run_test_program(next(Ok(test_dynamic_config())), ctx, db)
-    app_config_algebra.UpsertDebugConfig(config: config, updated_at: _, next: next) ->
+    app_config_algebra.UpsertDebugConfig(
+      config: config,
+      updated_at: _,
+      next: next,
+    ) ->
       run_test_program(
-        next(Ok(dynamic_config.DynamicConfig(
-          debug: config,
-          auth: dynamic_config.AuthConfig(
-            login_token_max_age: 900,
-            session_token_max_age: 86_400,
-            session_cookie_max_age: 86_400,
-          ),
-          cleanup: test_cleanup_config(),
-          docker_run: option.None,
-          rate_limit_policies: dict.new(),
-        ))),
+        next(
+          Ok(dynamic_config.DynamicConfig(
+            debug: config,
+            auth: dynamic_config.AuthConfig(
+              login_token_max_age: 900,
+              session_token_max_age: 86_400,
+              session_cookie_max_age: 86_400,
+            ),
+            cleanup: test_cleanup_config(),
+            docker_run: option.None,
+            rate_limit_policies: dict.new(),
+          )),
+        ),
         ctx,
         db,
       )
-    app_config_algebra.UpsertAuthConfig(config: config, updated_at: _, next: next) ->
+    app_config_algebra.UpsertAuthConfig(
+      config: config,
+      updated_at: _,
+      next: next,
+    ) ->
       run_test_program(
-        next(Ok(dynamic_config.DynamicConfig(
-          debug: dynamic_config.DebugConfig(enabled: False),
-          auth: config,
-          cleanup: test_cleanup_config(),
-          docker_run: option.None,
-          rate_limit_policies: dict.new(),
-        ))),
+        next(
+          Ok(dynamic_config.DynamicConfig(
+            debug: dynamic_config.DebugConfig(enabled: False),
+            auth: config,
+            cleanup: test_cleanup_config(),
+            docker_run: option.None,
+            rate_limit_policies: dict.new(),
+          )),
+        ),
         ctx,
         db,
       )
-    app_config_algebra.UpsertCleanupConfig(config: config, updated_at: _, next: next) ->
+    app_config_algebra.UpsertCleanupConfig(
+      config: config,
+      updated_at: _,
+      next: next,
+    ) ->
       run_test_program(
-        next(Ok(dynamic_config.DynamicConfig(
-          debug: dynamic_config.DebugConfig(enabled: False),
-          auth: dynamic_config.AuthConfig(
-            login_token_max_age: 900,
-            session_token_max_age: 86_400,
-            session_cookie_max_age: 86_400,
-          ),
-          cleanup: config,
-          docker_run: option.None,
-          rate_limit_policies: dict.new(),
-        ))),
+        next(
+          Ok(dynamic_config.DynamicConfig(
+            debug: dynamic_config.DebugConfig(enabled: False),
+            auth: dynamic_config.AuthConfig(
+              login_token_max_age: 900,
+              session_token_max_age: 86_400,
+              session_cookie_max_age: 86_400,
+            ),
+            cleanup: config,
+            docker_run: option.None,
+            rate_limit_policies: dict.new(),
+          )),
+        ),
         ctx,
         db,
       )
@@ -1438,21 +1498,26 @@ fn run_test_app_config_effect(
       policy: _,
       updated_at: _,
       next: next,
+    ) -> run_test_program(next(Ok(test_dynamic_config())), ctx, db)
+    app_config_algebra.UpsertDockerRunConfig(
+      config: config,
+      updated_at: _,
+      next: next,
     ) ->
-      run_test_program(next(Ok(test_dynamic_config())), ctx, db)
-    app_config_algebra.UpsertDockerRunConfig(config: config, updated_at: _, next: next) ->
       run_test_program(
-        next(Ok(dynamic_config.DynamicConfig(
-          debug: dynamic_config.DebugConfig(enabled: False),
-          auth: dynamic_config.AuthConfig(
-            login_token_max_age: 900,
-            session_token_max_age: 86_400,
-            session_cookie_max_age: 86_400,
-          ),
-          cleanup: test_cleanup_config(),
-          docker_run: option.Some(config),
-          rate_limit_policies: dict.new(),
-        ))),
+        next(
+          Ok(dynamic_config.DynamicConfig(
+            debug: dynamic_config.DebugConfig(enabled: False),
+            auth: dynamic_config.AuthConfig(
+              login_token_max_age: 900,
+              session_token_max_age: 86_400,
+              session_cookie_max_age: 86_400,
+            ),
+            cleanup: test_cleanup_config(),
+            docker_run: option.Some(config),
+            rate_limit_policies: dict.new(),
+          )),
+        ),
         ctx,
         db,
       )
@@ -1585,9 +1650,7 @@ fn run_test_analytics_effect(
 }
 
 fn run_test_analytics_tx_effect(
-  effect: analytics_algebra.AnalyticsEffect(
-    program_types.TransactionProgram(a),
-  ),
+  effect: analytics_algebra.AnalyticsEffect(program_types.TransactionProgram(a)),
   ctx: context.Context,
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
@@ -1694,9 +1757,17 @@ fn run_test_periodic_job_tx_effect(
     periodic_job_algebra.GetNextPeriodicJob(now:, next:) ->
       run_test_tx_program(next(find_next_periodic_job(db, now)), ctx, db)
     periodic_job_algebra.CreatePeriodicJob(periodic_job, next) ->
-      run_test_tx_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        put_periodic_job(db, periodic_job),
+      )
     periodic_job_algebra.UpdatePeriodicJob(periodic_job, next) ->
-      run_test_tx_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        put_periodic_job(db, periodic_job),
+      )
   }
 }
 
@@ -1722,7 +1793,11 @@ fn run_test_run_log_tx_effect(
     run_log_algebra.CreateRunLog(run_log: _, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, db)
     run_log_algebra.DeleteRunLogBefore(before:, next:) ->
-      run_test_tx_program(next(Ok(Nil)), ctx, delete_run_logs_before(db, before))
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_run_logs_before(db, before),
+      )
   }
 }
 
@@ -1856,6 +1931,27 @@ fn run_test_job_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    job_algebra.ListJobs(filter:, pagination:, next:) -> {
+      let _ = filter
+      let _ = pagination
+      run_test_program(next([]), ctx, db)
+    }
+    job_algebra.SummarizeJobs(filter:, now:, next:) -> {
+      let _ = filter
+      let _ = now
+      run_test_program(
+        next(job_model.Summary(
+          total_count: 0,
+          pending_count: 0,
+          running_count: 0,
+          failed_count: 0,
+          done_count: 0,
+          overdue_count: 0,
+        )),
+        ctx,
+        db,
+      )
+    }
     job_algebra.GetNextJob(now:, pending_status:, next:) -> {
       let _ = now
       let _ = pending_status
@@ -1895,6 +1991,27 @@ fn run_test_job_tx_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    job_algebra.ListJobs(filter:, pagination:, next:) -> {
+      let _ = filter
+      let _ = pagination
+      run_test_tx_program(next([]), ctx, db)
+    }
+    job_algebra.SummarizeJobs(filter:, now:, next:) -> {
+      let _ = filter
+      let _ = now
+      run_test_tx_program(
+        next(job_model.Summary(
+          total_count: 0,
+          pending_count: 0,
+          running_count: 0,
+          failed_count: 0,
+          done_count: 0,
+          overdue_count: 0,
+        )),
+        ctx,
+        db,
+      )
+    }
     job_algebra.GetNextJob(now:, pending_status:, next:) -> {
       let _ = now
       let _ = pending_status
@@ -2011,7 +2128,11 @@ fn run_test_user_action_effect(
       run_test_program(next(Ok(Nil)), ctx, increment_user_action_count(db))
     }
     user_action_algebra.DeleteBefore(before:, next:) ->
-      run_test_program(next(Ok(Nil)), ctx, delete_user_actions_before(db, before))
+      run_test_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_user_actions_before(db, before),
+      )
   }
 }
 
@@ -2032,7 +2153,11 @@ fn run_test_user_action_tx_effect(
       run_test_tx_program(next(Ok(Nil)), ctx, increment_user_action_count(db))
     }
     user_action_algebra.DeleteBefore(before:, next:) ->
-      run_test_tx_program(next(Ok(Nil)), ctx, delete_user_actions_before(db, before))
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_user_actions_before(db, before),
+      )
   }
 }
 
@@ -2062,7 +2187,7 @@ fn find_next_periodic_job(
   |> list.filter(fn(periodic_job) {
     periodic_job.enabled
     && timestamp_helpers.to_microseconds(periodic_job.next_run_at)
-      <= timestamp_helpers.to_microseconds(now)
+    <= timestamp_helpers.to_microseconds(now)
   })
   |> list.sort(fn(a, b) {
     case
@@ -2241,10 +2366,7 @@ fn upsert_login_token(
   )
 }
 
-fn delete_login_tokens_before(
-  db: TestDb,
-  before: timestamp.Timestamp,
-) -> TestDb {
+fn delete_login_tokens_before(db: TestDb, before: timestamp.Timestamp) -> TestDb {
   let before_microseconds = timestamp_helpers.to_microseconds(before)
   let kept_login_tokens =
     db.login_tokens
@@ -2259,17 +2381,15 @@ fn delete_login_tokens_before(
   TestDb(..db, login_tokens: kept_login_tokens)
 }
 
-fn delete_run_logs_before(
-  db: TestDb,
-  before: timestamp.Timestamp,
-) -> TestDb {
+fn delete_run_logs_before(db: TestDb, before: timestamp.Timestamp) -> TestDb {
   let before_microseconds = timestamp_helpers.to_microseconds(before)
   let kept_run_logs =
     db.run_logs
     |> dict.to_list
     |> list.filter(fn(entry) {
       let #(_, run_log) = entry
-      timestamp_helpers.to_microseconds(run_log.created_at) >= before_microseconds
+      timestamp_helpers.to_microseconds(run_log.created_at)
+      >= before_microseconds
     })
     |> dict.from_list
 
@@ -2412,10 +2532,7 @@ fn increment_user_action_count(db: TestDb) -> TestDb {
   ])
 }
 
-fn delete_user_actions_before(
-  db: TestDb,
-  before: timestamp.Timestamp,
-) -> TestDb {
+fn delete_user_actions_before(db: TestDb, before: timestamp.Timestamp) -> TestDb {
   let before_microseconds = timestamp_helpers.to_microseconds(before)
   let kept_user_actions =
     db.user_actions

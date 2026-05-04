@@ -2,30 +2,29 @@ import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_core/job/job_model
+import glot_core/pagination_model.{type CursorPagination}
 import youid/uuid.{type Uuid}
 
 pub type JobEffect(next) {
+  ListJobs(
+    filter: job_model.ListJobsFilter,
+    pagination: CursorPagination,
+    next: fn(List(job_model.Job)) -> next,
+  )
+  SummarizeJobs(
+    filter: job_model.ListJobsFilter,
+    now: Timestamp,
+    next: fn(job_model.Summary) -> next,
+  )
   GetNextJob(
     now: Timestamp,
     pending_status: job_model.Status,
     next: fn(Option(job_model.Job)) -> next,
   )
-  GetJobById(
-    id: Uuid,
-    next: fn(Option(job_model.Job)) -> next,
-  )
-  CreateJob(
-    job_model.Job,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
-  )
-  UpdateJob(
-    job_model.Job,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
-  )
-  DeleteJob(
-    id: Uuid,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
-  )
+  GetJobById(id: Uuid, next: fn(Option(job_model.Job)) -> next)
+  CreateJob(job_model.Job, next: fn(Result(Nil, error.DbCommandError)) -> next)
+  UpdateJob(job_model.Job, next: fn(Result(Nil, error.DbCommandError)) -> next)
+  DeleteJob(id: Uuid, next: fn(Result(Nil, error.DbCommandError)) -> next)
   DeleteBefore(
     before: Timestamp,
     statuses: List(job_model.Status),
@@ -35,27 +34,31 @@ pub type JobEffect(next) {
 
 pub fn map(effect: JobEffect(a), f: fn(a) -> b) -> JobEffect(b) {
   case effect {
+    ListJobs(filter:, pagination:, next:) ->
+      ListJobs(filter: filter, pagination: pagination, next: fn(value) {
+        f(next(value))
+      })
+    SummarizeJobs(filter:, now:, next:) ->
+      SummarizeJobs(filter: filter, now: now, next: fn(value) { f(next(value)) })
     GetNextJob(now:, pending_status:, next:) ->
-      GetNextJob(
-        now: now,
-        pending_status: pending_status,
-        next: fn(value) { f(next(value)) },
-      )
+      GetNextJob(now: now, pending_status: pending_status, next: fn(value) {
+        f(next(value))
+      })
     GetJobById(id:, next:) ->
       GetJobById(id: id, next: fn(value) { f(next(value)) })
     CreateJob(job, next) -> CreateJob(job, next: fn(value) { f(next(value)) })
     UpdateJob(job, next) -> UpdateJob(job, next: fn(value) { f(next(value)) })
     DeleteJob(id, next) -> DeleteJob(id, next: fn(value) { f(next(value)) })
     DeleteBefore(before:, statuses:, next:) ->
-      DeleteBefore(
-        before: before,
-        statuses: statuses,
-        next: fn(value) { f(next(value)) },
-      )
+      DeleteBefore(before: before, statuses: statuses, next: fn(value) {
+        f(next(value))
+      })
   }
 }
 
 pub type EffectName {
+  ListJobsEffectName
+  SummarizeJobsEffectName
   GetNextJobEffectName
   GetJobByIdEffectName
   CreateJobEffectName
@@ -66,6 +69,8 @@ pub type EffectName {
 
 pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
+    ListJobsEffectName -> "list_jobs"
+    SummarizeJobsEffectName -> "summarize_jobs"
     GetNextJobEffectName -> "get_next_job"
     GetJobByIdEffectName -> "get_job_by_id"
     CreateJobEffectName -> "create_job"

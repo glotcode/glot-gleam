@@ -62,6 +62,39 @@ pub type Status {
   Failed
 }
 
+pub type ListJobsFilter {
+  ListJobsFilter(statuses: List(Status), job_types: List(JobType))
+}
+
+pub fn new_list_filter() -> ListJobsFilter {
+  ListJobsFilter(statuses: [], job_types: [])
+}
+
+pub fn with_statuses(
+  filter: ListJobsFilter,
+  statuses: List(Status),
+) -> ListJobsFilter {
+  ListJobsFilter(..filter, statuses: statuses)
+}
+
+pub fn with_job_types(
+  filter: ListJobsFilter,
+  job_types: List(JobType),
+) -> ListJobsFilter {
+  ListJobsFilter(..filter, job_types: job_types)
+}
+
+pub type Summary {
+  Summary(
+    total_count: Int,
+    pending_count: Int,
+    running_count: Int,
+    failed_count: Int,
+    done_count: Int,
+    overdue_count: Int,
+  )
+}
+
 pub fn status_to_string(status: Status) -> String {
   case status {
     Pending -> "pending"
@@ -150,8 +183,8 @@ pub fn send_email_job(
     now,
     option.Some(
       email
-        |> email_model.encode
-        |> json.to_string,
+      |> email_model.encode
+      |> json.to_string,
     ),
   )
 }
@@ -207,14 +240,7 @@ pub fn periodic_job_execution(
   job_type: JobType,
   payload: Option(String),
 ) -> Job {
-  new(
-    id,
-    option.None,
-    option.Some(periodic_job_id),
-    job_type,
-    now,
-    payload,
-  )
+  new(id, option.None, option.Some(periodic_job_id), job_type, now, payload)
 }
 
 pub fn done(job: Job, now: Timestamp) -> Job {

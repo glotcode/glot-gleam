@@ -4,6 +4,7 @@ import glot_backend/effect/error
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/program_types
 import glot_core/job/job_model
+import glot_core/pagination_model.{type CursorPagination}
 import youid/uuid.{type Uuid}
 
 pub fn get_next_job(
@@ -14,6 +15,32 @@ pub fn get_next_job(
     program_types.DbEffect(get_next_job_effect(
       now,
       pending_status,
+      program_types.Pure,
+    )),
+  )
+}
+
+pub fn list_jobs(
+  filter filter: job_model.ListJobsFilter,
+  pagination pagination: CursorPagination,
+) -> program_types.Program(List(job_model.Job)) {
+  program_types.Impure(
+    program_types.DbEffect(list_jobs_effect(
+      filter,
+      pagination,
+      program_types.Pure,
+    )),
+  )
+}
+
+pub fn summarize_jobs(
+  filter filter: job_model.ListJobsFilter,
+  now now: Timestamp,
+) -> program_types.Program(job_model.Summary) {
+  program_types.Impure(
+    program_types.DbEffect(summarize_jobs_effect(
+      filter,
+      now,
       program_types.Pure,
     )),
   )
@@ -50,11 +77,7 @@ pub fn delete_before(
   statuses: List(job_model.Status),
 ) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.DbEffect(delete_before_effect(
-      before,
-      statuses,
-      command_next,
-    )),
+    program_types.DbEffect(delete_before_effect(before, statuses, command_next)),
   )
 }
 
@@ -104,11 +127,7 @@ pub fn delete_before_tx(
   before: Timestamp,
   statuses: List(job_model.Status),
 ) -> program_types.TransactionProgram(Nil) {
-  program_types.TxImpure(delete_before_effect(
-    before,
-    statuses,
-    tx_command_next,
-  ))
+  program_types.TxImpure(delete_before_effect(before, statuses, tx_command_next))
 }
 
 fn tx_command_next(
@@ -128,6 +147,30 @@ fn get_next_job_effect(
   program_types.JobEffect(job_algebra.GetNextJob(
     now:,
     pending_status:,
+    next: next,
+  ))
+}
+
+fn list_jobs_effect(
+  filter: job_model.ListJobsFilter,
+  pagination: CursorPagination,
+  next: fn(List(job_model.Job)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.JobEffect(job_algebra.ListJobs(
+    filter: filter,
+    pagination: pagination,
+    next: next,
+  ))
+}
+
+fn summarize_jobs_effect(
+  filter: job_model.ListJobsFilter,
+  now: Timestamp,
+  next: fn(job_model.Summary) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.JobEffect(job_algebra.SummarizeJobs(
+    filter: filter,
+    now: now,
     next: next,
   ))
 }

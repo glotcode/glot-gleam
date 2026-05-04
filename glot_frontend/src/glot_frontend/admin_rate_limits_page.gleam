@@ -42,20 +42,11 @@ pub type PolicyEditor {
 }
 
 pub type PolicyTabs {
-  PolicyTabs(
-    anonymous: LimitFields,
-    free: LimitFields,
-    free_plus: LimitFields,
-  )
+  PolicyTabs(anonymous: LimitFields, free: LimitFields, free_plus: LimitFields)
 }
 
 pub type LimitFields {
-  LimitFields(
-    second: String,
-    minute: String,
-    hour: String,
-    day: String,
-  )
+  LimitFields(second: String, minute: String, hour: String, day: String)
 }
 
 pub type ActiveEditor {
@@ -76,7 +67,9 @@ pub type EditorState {
 }
 
 pub type Msg {
-  PoliciesLoaded(api.ApiResponse(rate_limit_config_dto.RateLimitPoliciesResponse))
+  PoliciesLoaded(
+    api.ApiResponse(rate_limit_config_dto.RateLimitPoliciesResponse),
+  )
   EditClicked(api_action.ApiAction)
   EditDialogClosed
   TabSelected(api_action.ApiAction, EditorTab)
@@ -98,8 +91,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
   case model.status {
-    NotLoaded ->
-      #(Model(..model, status: Loading), load_policies())
+    NotLoaded -> #(Model(..model, status: Loading), load_policies())
     Loading | Ready | LoadError(_) -> #(model, effect.none())
   }
 }
@@ -121,7 +113,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load rate limit policies.")),
+          Model(
+            ..model,
+            status: LoadError("Could not load rate limit policies."),
+          ),
           effect.none(),
         )
       }
@@ -142,14 +137,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       )
     }
 
-    EditDialogClosed ->
-      #(
-        Model(..model, active_editor: option.None),
-        effect.none(),
-      )
+    EditDialogClosed -> #(
+      Model(..model, active_editor: option.None),
+      effect.none(),
+    )
 
     TabSelected(action, tab) -> #(
-      Model(..model, active_editor: option.Some(ActiveEditor(action:, tab: tab))),
+      Model(
+        ..model,
+        active_editor: option.Some(ActiveEditor(action:, tab: tab)),
+      ),
       effect.none(),
     )
 
@@ -186,10 +183,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                   PolicyEditor(..row, state: Saving)
                 }),
               ),
-              api.upsert_admin_rate_limit_policy(
-                request,
-                fn(result) { SaveFinished(action, result) },
-              ),
+              api.upsert_admin_rate_limit_policy(request, fn(result) {
+                SaveFinished(action, result)
+              }),
             )
             Error(message) -> #(
               Model(
@@ -262,7 +258,9 @@ pub fn view(model: Model) -> Element(Msg) {
               html.text("Admin rate limits"),
             ]),
             html.p([attribute.class("admin-page__status")], [
-              html.text("Each action shows its current limits. Edit opens a compact modal."),
+              html.text(
+                "Each action shows its current limits. Edit opens a compact modal.",
+              ),
             ]),
           ]),
         ]),
@@ -282,10 +280,9 @@ fn status_banner(status: Status) -> Element(Msg) {
         html.text("Loading policies..."),
       ])
     LoadError(message) ->
-      html.p(
-        [attribute.class("admin-page__status admin-page__status--error")],
-        [html.text(message)],
-      )
+      html.p([attribute.class("admin-page__status admin-page__status--error")], [
+        html.text(message),
+      ])
   }
 }
 
@@ -327,23 +324,30 @@ fn summary_rows(tabs: PolicyTabs) -> Element(Msg) {
       ])
     False ->
       html.div([attribute.class("admin-page__summary")], [
-        html.div([attribute.class("admin-page__summary-row admin-page__summary-row--head")], [
-          html.span([attribute.class("admin-page__summary-label")], [
-            html.text("Tier"),
-          ]),
-          html.span([attribute.class("admin-page__summary-unit")], [
-            html.text("Second"),
-          ]),
-          html.span([attribute.class("admin-page__summary-unit")], [
-            html.text("Minute"),
-          ]),
-          html.span([attribute.class("admin-page__summary-unit")], [
-            html.text("Hour"),
-          ]),
-          html.span([attribute.class("admin-page__summary-unit")], [
-            html.text("Day"),
-          ]),
-        ]),
+        html.div(
+          [
+            attribute.class(
+              "admin-page__summary-row admin-page__summary-row--head",
+            ),
+          ],
+          [
+            html.span([attribute.class("admin-page__summary-label")], [
+              html.text("Tier"),
+            ]),
+            html.span([attribute.class("admin-page__summary-unit")], [
+              html.text("Second"),
+            ]),
+            html.span([attribute.class("admin-page__summary-unit")], [
+              html.text("Minute"),
+            ]),
+            html.span([attribute.class("admin-page__summary-unit")], [
+              html.text("Hour"),
+            ]),
+            html.span([attribute.class("admin-page__summary-unit")], [
+              html.text("Day"),
+            ]),
+          ],
+        ),
         summary_row("Anonymous", tabs.anonymous),
         summary_row("Free", tabs.free),
         summary_row("FreePlus", tabs.free_plus),
@@ -409,7 +413,9 @@ fn edit_dialog_form(
               html.text(action_label(action)),
             ]),
             html.p([attribute.class("app-dialog__copy")], [
-              html.text("Leave an input empty to remove that limit for the selected tab."),
+              html.text(
+                "Leave an input empty to remove that limit for the selected tab.",
+              ),
             ]),
           ]),
           html.button(
@@ -423,10 +429,34 @@ fn edit_dialog_form(
         ]),
         tab_buttons(action, active_tab),
         html.div([attribute.class("admin-page__modal-grid")], [
-          unit_input(action, active_tab, rate_limit.Second, "Per second", active_fields.second),
-          unit_input(action, active_tab, rate_limit.Minute, "Per minute", active_fields.minute),
-          unit_input(action, active_tab, rate_limit.Hour, "Per hour", active_fields.hour),
-          unit_input(action, active_tab, rate_limit.Day, "Per day", active_fields.day),
+          unit_input(
+            action,
+            active_tab,
+            rate_limit.Second,
+            "Per second",
+            active_fields.second,
+          ),
+          unit_input(
+            action,
+            active_tab,
+            rate_limit.Minute,
+            "Per minute",
+            active_fields.minute,
+          ),
+          unit_input(
+            action,
+            active_tab,
+            rate_limit.Hour,
+            "Per hour",
+            active_fields.hour,
+          ),
+          unit_input(
+            action,
+            active_tab,
+            rate_limit.Day,
+            "Per day",
+            active_fields.day,
+          ),
         ]),
         modal_status(policy),
       ]),
@@ -452,7 +482,10 @@ fn edit_dialog_form(
   )
 }
 
-fn tab_buttons(action: api_action.ApiAction, active_tab: EditorTab) -> Element(Msg) {
+fn tab_buttons(
+  action: api_action.ApiAction,
+  active_tab: EditorTab,
+) -> Element(Msg) {
   html.div([attribute.class("admin-page__tab-row")], [
     tab_button(action, AnonymousTab, active_tab, "Anonymous"),
     tab_button(action, FreeTab, active_tab, "Free"),
@@ -501,9 +534,7 @@ fn unit_input(
   ])
 }
 
-fn active_policy(
-  model: Model,
-) -> option.Option(#(PolicyEditor, ActiveEditor)) {
+fn active_policy(model: Model) -> option.Option(#(PolicyEditor, ActiveEditor)) {
   case model.active_editor {
     option.Some(active) ->
       case find_policy(model.policies, active.action) {
@@ -531,7 +562,10 @@ fn build_policies(
   case actions {
     [] -> []
     [action, ..rest] -> [
-      policy_editor_from_response(action, find_policy_response(responses, action)),
+      policy_editor_from_response(
+        action,
+        find_policy_response(responses, action),
+      ),
       ..build_policies(rest, responses)
     ]
   }
@@ -563,7 +597,9 @@ fn policy_editor_from_response(
   }
 }
 
-fn policy_tabs_from_rules(rules: List(rate_limit_config_dto.RateLimitRule)) -> PolicyTabs {
+fn policy_tabs_from_rules(
+  rules: List(rate_limit_config_dto.RateLimitRule),
+) -> PolicyTabs {
   list.fold(rules, empty_policy_tabs(), fn(tabs, rule) {
     let fields = limit_fields_from_limits(rule.limits)
 
@@ -614,7 +650,10 @@ fn policy_to_request(
     |> append_rule_from_tab(FreePlusTab, policy.draft_tabs.free_plus)
 
   case rules {
-    [] -> Error("Add at least one limit in Anonymous, Free, or FreePlus before saving.")
+    [] ->
+      Error(
+        "Add at least one limit in Anonymous, Free, or FreePlus before saving.",
+      )
     _ ->
       Ok(rate_limit_config_dto.UpsertRateLimitPolicyRequest(
         action: policy.action,
@@ -641,9 +680,14 @@ fn rate_limit_rule(
 ) -> rate_limit_config_dto.RateLimitRule {
   let rule_match = case tab {
     AnonymousTab -> rate_limit_config_dto.AnonymousMatch
-    FreeTab -> rate_limit_config_dto.AuthenticatedMatch(account_tiers: [account_model.FreeTier])
+    FreeTab ->
+      rate_limit_config_dto.AuthenticatedMatch(account_tiers: [
+        account_model.FreeTier,
+      ])
     FreePlusTab ->
-      rate_limit_config_dto.AuthenticatedMatch(account_tiers: [account_model.FreePlusTier])
+      rate_limit_config_dto.AuthenticatedMatch(account_tiers: [
+        account_model.FreePlusTier,
+      ])
   }
 
   rate_limit_config_dto.RateLimitRule(match: rule_match, limits: limits)
@@ -652,9 +696,21 @@ fn rate_limit_rule(
 fn limits_from_fields(
   fields: LimitFields,
 ) -> Result(List(rate_limit.RateLimit), String) {
-  use second <- result.try(optional_limit(fields.second, rate_limit.Second, "Per second"))
-  use minute <- result.try(optional_limit(fields.minute, rate_limit.Minute, "Per minute"))
-  use hour <- result.try(optional_limit(fields.hour, rate_limit.Hour, "Per hour"))
+  use second <- result.try(optional_limit(
+    fields.second,
+    rate_limit.Second,
+    "Per second",
+  ))
+  use minute <- result.try(optional_limit(
+    fields.minute,
+    rate_limit.Minute,
+    "Per minute",
+  ))
+  use hour <- result.try(optional_limit(
+    fields.hour,
+    rate_limit.Hour,
+    "Per hour",
+  ))
   use day <- result.try(optional_limit(fields.day, rate_limit.Day, "Per day"))
 
   Ok(
@@ -676,7 +732,9 @@ fn optional_limit(
     _ ->
       case int.parse(value) {
         Ok(max_requests) if max_requests > 0 ->
-          Ok(option.Some(rate_limit.RateLimit(unit:, max_requests: max_requests)))
+          Ok(
+            option.Some(rate_limit.RateLimit(unit:, max_requests: max_requests)),
+          )
         Ok(_) -> Error(label <> " must be greater than 0.")
         Error(_) -> Error(label <> " must be a whole number.")
       }
@@ -774,10 +832,9 @@ fn modal_status(policy: PolicyEditor) -> Element(Msg) {
   case policy.state, dirty {
     Idle, False -> html.div([], [])
     _, _ ->
-      html.p(
-        [attribute.class(editor_status_class(policy.state, dirty))],
-        [html.text(editor_status_text(policy.state, dirty))],
-      )
+      html.p([attribute.class(editor_status_class(policy.state, dirty))], [
+        html.text(editor_status_text(policy.state, dirty)),
+      ])
   }
 }
 
@@ -835,6 +892,7 @@ fn action_label(action: api_action.ApiAction) -> String {
     api_action.UpsertAdminAuthConfigAction -> "Save auth config"
     api_action.GetAdminCleanupConfigAction -> "Get cleanup config"
     api_action.UpsertAdminCleanupConfigAction -> "Save cleanup config"
+    api_action.GetAdminJobsAction -> "Get admin jobs"
     api_action.GetAdminRateLimitPoliciesAction -> "Get admin rate limits"
     api_action.UpsertAdminRateLimitPolicyAction -> "Save admin rate limits"
     api_action.GetAdminDockerRunConfigAction -> "Get docker run config"

@@ -41,7 +41,9 @@ pub fn view(_model: Model) -> Element(Msg) {
               html.text("Configuration"),
             ]),
             html.p([attribute.class("admin-page__group-copy")], [
-              html.text("Runtime settings are organized into dedicated pages so more sections can be added cleanly."),
+              html.text(
+                "Runtime settings are organized into dedicated pages so more sections can be added cleanly.",
+              ),
             ]),
           ]),
           html.div([attribute.class("admin-page__section-grid")], [
@@ -58,7 +60,9 @@ pub fn view(_model: Model) -> Element(Msg) {
               html.text("Tools"),
             ]),
             html.p([attribute.class("admin-page__group-copy")], [
-              html.text("Dedicated admin workflows that do not fit the shared config page."),
+              html.text(
+                "Dedicated admin workflows that do not fit the shared config page.",
+              ),
             ]),
           ]),
           html.div([attribute.class("admin-page__section-grid")], [
@@ -66,6 +70,11 @@ pub fn view(_model: Model) -> Element(Msg) {
               title: "Rate limits",
               description: "Review and update API rate limit policies.",
               target: route.AdminRateLimits,
+            ),
+            link_card(
+              title: "Jobs",
+              description: "Inspect the execution queue and iterate on the admin jobs workflow.",
+              target: route.AdminJobs,
             ),
           ]),
         ]),
@@ -79,23 +88,26 @@ fn link_card(
   description description: String,
   target target: route.Route,
 ) -> Element(Msg) {
-  html.article([attribute.class("admin-page__policy admin-page__policy--config")], [
-    html.div([attribute.class("admin-page__policy-header")], [
-      html.div([], [
-        html.h3([attribute.class("admin-page__policy-title")], [
-          html.text(title),
+  html.article(
+    [attribute.class("admin-page__policy admin-page__policy--config")],
+    [
+      html.div([attribute.class("admin-page__policy-header")], [
+        html.div([], [
+          html.h3([attribute.class("admin-page__policy-title")], [
+            html.text(title),
+          ]),
+          html.p([attribute.class("admin-page__policy-subtitle")], [
+            html.text(description),
+          ]),
         ]),
-        html.p([attribute.class("admin-page__policy-subtitle")], [
-          html.text(description),
-        ]),
+        html.a(
+          [
+            attribute.class("admin-page__button admin-page__button--secondary"),
+            route.href(target),
+          ],
+          [html.text("Open")],
+        ),
       ]),
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(target),
-        ],
-        [html.text("Open")],
-      ),
-    ]),
-  ])
+    ],
+  )
 }
