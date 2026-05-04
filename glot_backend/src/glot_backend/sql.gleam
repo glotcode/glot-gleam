@@ -8,22 +8,197 @@ import gleam/time/calendar.{type Date}
 import gleam/time/timestamp.{type Timestamp}
 import parrot/dev
 
-pub fn insert_login_token(
-  id id: BitArray,
-  email email: String,
-  token token: String,
-  created_at created_at: Timestamp,
-  used_at used_at: Option(Timestamp),
+pub type CountUserActionsByIp {
+  CountUserActionsByIp(unit: String, count: Int)
+}
+
+pub fn count_user_actions_by_ip(
+  ip ip: Option(String),
+  action action: String,
+  windows windows: String,
 ) {
   let sql =
-    "INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2, $3, $4, $5)"
+    "WITH windows AS (
+  SELECT
+    (w->>'unit')::text AS unit,
+    (w->>'cutoff')::timestamptz AS cutoff
+  FROM jsonb_array_elements($3::jsonb) AS w
+)
+SELECT
+  w.unit,
+  COUNT(a.*) AS count
+FROM windows w
+LEFT JOIN user_actions a
+  ON a.ip = $1
+ AND a.action = $2
+ AND a.created_at >= w.cutoff
+GROUP BY w.unit"
+  #(
+    sql,
+    [
+      dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
+      dev.ParamString(action),
+      dev.ParamString(windows),
+    ],
+    count_user_actions_by_ip_decoder(),
+  )
+}
+
+pub fn count_user_actions_by_ip_decoder() -> decode.Decoder(
+  CountUserActionsByIp,
+) {
+  use unit <- decode.field(0, decode.string)
+  use count <- decode.field(1, decode.int)
+  decode.success(CountUserActionsByIp(unit:, count:))
+}
+
+pub type CountUserActionsByUser {
+  CountUserActionsByUser(unit: String, count: Int)
+}
+
+pub fn count_user_actions_by_user(
+  user_id user_id: Option(BitArray),
+  action action: String,
+  windows windows: String,
+) {
+  let sql =
+    "WITH windows AS (
+  SELECT
+    (w->>'unit')::text AS unit,
+    (w->>'cutoff')::timestamptz AS cutoff
+  FROM jsonb_array_elements($3::jsonb) AS w
+)
+SELECT
+  w.unit,
+  COUNT(a.*) AS count
+FROM windows w
+LEFT JOIN user_actions a
+  ON a.user_id = $1
+ AND a.action = $2
+ AND a.created_at >= w.cutoff
+GROUP BY w.unit"
+  #(
+    sql,
+    [
+      dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamString(action),
+      dev.ParamString(windows),
+    ],
+    count_user_actions_by_user_decoder(),
+  )
+}
+
+pub fn count_user_actions_by_user_decoder() -> decode.Decoder(
+  CountUserActionsByUser,
+) {
+  use unit <- decode.field(0, decode.string)
+  use count <- decode.field(1, decode.int)
+  decode.success(CountUserActionsByUser(unit:, count:))
+}
+
+pub fn insert_user_action(
+  id id: BitArray,
+  request_id request_id: BitArray,
+  action action: String,
+  ip ip: Option(String),
+  user_id user_id: Option(BitArray),
+  created_at created_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO user_actions (id, request_id, action, ip, user_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
   #(sql, [
     dev.ParamBitArray(id),
-    dev.ParamString(email),
-    dev.ParamString(token),
+    dev.ParamBitArray(request_id),
+    dev.ParamString(action),
+    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
     dev.ParamTimestamp(created_at),
-    dev.ParamNullable(option.map(used_at, fn(v) { dev.ParamTimestamp(v) })),
   ])
+}
+
+pub fn delete_user_actions_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM user_actions
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
+pub type GetJobById {
+  GetJobById(
+    id: BitArray,
+    request_id: Option(BitArray),
+    periodic_job_id: Option(BitArray),
+    job_type: String,
+    payload: Option(String),
+    status: String,
+    attempts: Int,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    run_at: Timestamp,
+    started_at: Option(Timestamp),
+    completed_at: Option(Timestamp),
+    last_error: Option(String),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn get_job_by_id(id id: BitArray) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  periodic_job_id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  run_at,
+  started_at,
+  completed_at,
+  last_error,
+  created_at,
+  updated_at
+FROM jobs
+WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)], get_job_by_id_decoder())
+}
+
+pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use periodic_job_id <- decode.field(2, decode.optional(decode.bit_array))
+  use job_type <- decode.field(3, decode.string)
+  use payload <- decode.field(4, decode.optional(decode.string))
+  use status <- decode.field(5, decode.string)
+  use attempts <- decode.field(6, decode.int)
+  use max_attempts <- decode.field(7, decode.int)
+  use timeout_seconds <- decode.field(8, decode.int)
+  use run_at <- decode.field(9, dev.datetime_decoder())
+  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(12, decode.optional(decode.string))
+  use created_at <- decode.field(13, dev.datetime_decoder())
+  use updated_at <- decode.field(14, dev.datetime_decoder())
+  decode.success(GetJobById(
+    id:,
+    request_id:,
+    periodic_job_id:,
+    job_type:,
+    payload:,
+    status:,
+    attempts:,
+    max_attempts:,
+    timeout_seconds:,
+    run_at:,
+    started_at:,
+    completed_at:,
+    last_error:,
+    created_at:,
+    updated_at:,
+  ))
 }
 
 pub type GetNextJob {
@@ -113,56 +288,90 @@ pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
   ))
 }
 
-pub fn insert_user_action(
-  id id: BitArray,
-  request_id request_id: BitArray,
-  action action: String,
-  ip ip: Option(String),
-  user_id user_id: Option(BitArray),
-  created_at created_at: Timestamp,
-) {
-  let sql =
-    "INSERT INTO user_actions (id, request_id, action, ip, user_id, created_at) VALUES ($1, $2, $3, $4, $5, $6)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamBitArray(request_id),
-    dev.ParamString(action),
-    dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamTimestamp(created_at),
-  ])
-}
-
-pub fn delete_run_log_before(created_at created_at: Timestamp) {
-  let sql =
-    "DELETE FROM run_log
-WHERE created_at < $1"
-  #(sql, [dev.ParamTimestamp(created_at)])
-}
-
-pub type GetJobById {
-  GetJobById(
+pub type GetNextPeriodicJob {
+  GetNextPeriodicJob(
     id: BitArray,
-    request_id: Option(BitArray),
-    periodic_job_id: Option(BitArray),
     job_type: String,
     payload: Option(String),
-    status: String,
-    attempts: Int,
-    max_attempts: Int,
-    timeout_seconds: Int,
-    run_at: Timestamp,
-    started_at: Option(Timestamp),
-    completed_at: Option(Timestamp),
-    last_error: Option(String),
+    interval_seconds: Int,
+    enabled: Bool,
+    next_run_at: Timestamp,
+    last_enqueued_at: Option(Timestamp),
+    last_enqueue_error: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
   )
 }
 
-pub fn get_job_by_id(id id: BitArray) {
+pub fn get_next_periodic_job(now now: Timestamp) {
   let sql =
     "SELECT
+  id,
+  job_type,
+  payload,
+  interval_seconds,
+  enabled,
+  next_run_at,
+  last_enqueued_at,
+  last_enqueue_error,
+  created_at,
+  updated_at
+FROM periodic_jobs
+WHERE enabled = TRUE
+  AND next_run_at <= $1
+ORDER BY next_run_at ASC, created_at ASC
+LIMIT 1
+FOR UPDATE SKIP LOCKED"
+  #(sql, [dev.ParamTimestamp(now)], get_next_periodic_job_decoder())
+}
+
+pub fn get_next_periodic_job_decoder() -> decode.Decoder(GetNextPeriodicJob) {
+  use id <- decode.field(0, decode.bit_array)
+  use job_type <- decode.field(1, decode.string)
+  use payload <- decode.field(2, decode.optional(decode.string))
+  use interval_seconds <- decode.field(3, decode.int)
+  use enabled <- decode.field(4, dev.bool_decoder())
+  use next_run_at <- decode.field(5, dev.datetime_decoder())
+  use last_enqueued_at <- decode.field(
+    6,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use last_enqueue_error <- decode.field(7, decode.optional(decode.string))
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  decode.success(GetNextPeriodicJob(
+    id:,
+    job_type:,
+    payload:,
+    interval_seconds:,
+    enabled:,
+    next_run_at:,
+    last_enqueued_at:,
+    last_enqueue_error:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
+pub fn insert_job(
+  id id: BitArray,
+  request_id request_id: Option(BitArray),
+  periodic_job_id periodic_job_id: Option(BitArray),
+  job_type job_type: String,
+  payload payload: Option(String),
+  status status: String,
+  attempts attempts: Int,
+  max_attempts max_attempts: Int,
+  timeout_seconds timeout_seconds: Int,
+  run_at run_at: Timestamp,
+  started_at started_at: Option(Timestamp),
+  completed_at completed_at: Option(Timestamp),
+  last_error last_error: Option(String),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO jobs (
   id,
   request_id,
   periodic_job_id,
@@ -178,87 +387,589 @@ pub fn get_job_by_id(id id: BitArray) {
   last_error,
   created_at,
   updated_at
-FROM jobs
-WHERE id = $1"
-  #(sql, [dev.ParamBitArray(id)], get_job_by_id_decoder())
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamNullable(
+      option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
+    ),
+    dev.ParamString(job_type),
+    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
+    dev.ParamString(status),
+    dev.ParamInt(attempts),
+    dev.ParamInt(max_attempts),
+    dev.ParamInt(timeout_seconds),
+    dev.ParamTimestamp(run_at),
+    dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
 }
 
-pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
-  use id <- decode.field(0, decode.bit_array)
-  use request_id <- decode.field(1, decode.optional(decode.bit_array))
-  use periodic_job_id <- decode.field(2, decode.optional(decode.bit_array))
-  use job_type <- decode.field(3, decode.string)
-  use payload <- decode.field(4, decode.optional(decode.string))
-  use status <- decode.field(5, decode.string)
-  use attempts <- decode.field(6, decode.int)
-  use max_attempts <- decode.field(7, decode.int)
-  use timeout_seconds <- decode.field(8, decode.int)
-  use run_at <- decode.field(9, dev.datetime_decoder())
-  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(12, decode.optional(decode.string))
-  use created_at <- decode.field(13, dev.datetime_decoder())
-  use updated_at <- decode.field(14, dev.datetime_decoder())
-  decode.success(GetJobById(
-    id:,
-    request_id:,
-    periodic_job_id:,
-    job_type:,
-    payload:,
-    status:,
-    attempts:,
-    max_attempts:,
-    timeout_seconds:,
-    run_at:,
-    started_at:,
-    completed_at:,
-    last_error:,
-    created_at:,
-    updated_at:,
-  ))
-}
-
-pub fn delete_api_log_before(created_at created_at: Timestamp) {
+pub fn insert_periodic_job(
+  id id: BitArray,
+  job_type job_type: String,
+  payload payload: Option(String),
+  interval_seconds interval_seconds: Int,
+  enabled enabled: Bool,
+  next_run_at next_run_at: Timestamp,
+  last_enqueued_at last_enqueued_at: Option(Timestamp),
+  last_enqueue_error last_enqueue_error: Option(String),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
   let sql =
-    "DELETE FROM api_log
+    "INSERT INTO periodic_jobs (
+  id,
+  job_type,
+  payload,
+  interval_seconds,
+  enabled,
+  next_run_at,
+  last_enqueued_at,
+  last_enqueue_error,
+  created_at,
+  updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(job_type),
+    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
+    dev.ParamInt(interval_seconds),
+    dev.ParamBool(enabled),
+    dev.ParamTimestamp(next_run_at),
+    dev.ParamNullable(
+      option.map(last_enqueued_at, fn(v) { dev.ParamTimestamp(v) }),
+    ),
+    dev.ParamNullable(
+      option.map(last_enqueue_error, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn insert_job_log(
+  id id: BitArray,
+  request_id request_id: Option(BitArray),
+  job_id job_id: BitArray,
+  job_type job_type: String,
+  attempt attempt: Int,
+  created_at created_at: Timestamp,
+  duration_ns duration_ns: Int,
+  info info: Option(String),
+  warnings warnings: Option(String),
+  debug debug: Option(String),
+  error error: Option(String),
+  effects effects: Option(String),
+) {
+  let sql =
+    "INSERT INTO job_log (id, request_id, job_id, job_type, attempt, created_at, duration_ns, info, warnings, debug, error, effects)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamBitArray(job_id),
+    dev.ParamString(job_type),
+    dev.ParamInt(attempt),
+    dev.ParamTimestamp(created_at),
+    dev.ParamInt(duration_ns),
+    dev.ParamNullable(option.map(info, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(warnings, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(debug, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(effects, fn(v) { dev.ParamString(v) })),
+  ])
+}
+
+pub fn update_job(
+  id id: BitArray,
+  request_id request_id: Option(BitArray),
+  periodic_job_id periodic_job_id: Option(BitArray),
+  job_type job_type: String,
+  payload payload: Option(String),
+  status status: String,
+  attempts attempts: Int,
+  max_attempts max_attempts: Int,
+  timeout_seconds timeout_seconds: Int,
+  run_at run_at: Timestamp,
+  started_at started_at: Option(Timestamp),
+  completed_at completed_at: Option(Timestamp),
+  last_error last_error: Option(String),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "UPDATE jobs
+SET request_id = $2,
+    periodic_job_id = $3,
+    job_type = $4,
+    payload = $5,
+    status = $6,
+    attempts = $7,
+    max_attempts = $8,
+    timeout_seconds = $9,
+    run_at = $10,
+    started_at = $11,
+    completed_at = $12,
+    last_error = $13,
+    created_at = $14,
+    updated_at = $15
+WHERE id = $1"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamNullable(
+      option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
+    ),
+    dev.ParamString(job_type),
+    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
+    dev.ParamString(status),
+    dev.ParamInt(attempts),
+    dev.ParamInt(max_attempts),
+    dev.ParamInt(timeout_seconds),
+    dev.ParamTimestamp(run_at),
+    dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn update_periodic_job(
+  id id: BitArray,
+  job_type job_type: String,
+  payload payload: Option(String),
+  interval_seconds interval_seconds: Int,
+  enabled enabled: Bool,
+  next_run_at next_run_at: Timestamp,
+  last_enqueued_at last_enqueued_at: Option(Timestamp),
+  last_enqueue_error last_enqueue_error: Option(String),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "UPDATE periodic_jobs
+SET job_type = $2,
+    payload = $3,
+    interval_seconds = $4,
+    enabled = $5,
+    next_run_at = $6,
+    last_enqueued_at = $7,
+    last_enqueue_error = $8,
+    created_at = $9,
+    updated_at = $10
+WHERE id = $1"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(job_type),
+    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
+    dev.ParamInt(interval_seconds),
+    dev.ParamBool(enabled),
+    dev.ParamTimestamp(next_run_at),
+    dev.ParamNullable(
+      option.map(last_enqueued_at, fn(v) { dev.ParamTimestamp(v) }),
+    ),
+    dev.ParamNullable(
+      option.map(last_enqueue_error, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn delete_job(id id: BitArray) {
+  let sql =
+    "DELETE FROM jobs
+WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)])
+}
+
+pub fn delete_before(
+  before before: Option(Timestamp),
+  statuses statuses: List(String),
+) {
+  let sql =
+    "DELETE FROM jobs
+WHERE completed_at IS NOT NULL
+  AND completed_at < $1
+  AND status = ANY($2::text[])"
+  #(sql, [
+    dev.ParamNullable(option.map(before, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamList(list.map(statuses, dev.ParamString)),
+  ])
+}
+
+pub fn delete_job_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM job_log
 WHERE created_at < $1"
   #(sql, [dev.ParamTimestamp(created_at)])
 }
 
-pub type ListLoginTokensByEmail {
-  ListLoginTokensByEmail(
+pub type ListAppConfig {
+  ListAppConfig(namespace: String, key: String, value: String)
+}
+
+pub fn list_app_config() {
+  let sql =
+    "SELECT
+  namespace,
+  key,
+  value::text AS value
+FROM app_config
+ORDER BY namespace ASC, key ASC"
+  #(sql, [], list_app_config_decoder())
+}
+
+pub fn list_app_config_decoder() -> decode.Decoder(ListAppConfig) {
+  use namespace <- decode.field(0, decode.string)
+  use key <- decode.field(1, decode.string)
+  use value <- decode.field(2, decode.string)
+  decode.success(ListAppConfig(namespace:, key:, value:))
+}
+
+pub fn upsert_app_config(
+  namespace namespace: String,
+  key key: String,
+  value value: String,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO app_config (
+  namespace,
+  key,
+  value,
+  updated_at
+)
+VALUES (
+  $1,
+  $2,
+  $3::jsonb,
+  $4
+)
+ON CONFLICT (namespace, key) DO UPDATE SET
+  value = EXCLUDED.value,
+  updated_at = EXCLUDED.updated_at"
+  #(sql, [
+    dev.ParamString(namespace),
+    dev.ParamString(key),
+    dev.ParamString(value),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub type GetSnippetById {
+  GetSnippetById(
     id: BitArray,
-    email: String,
-    token: String,
+    slug: String,
+    language: String,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_instructions: Option(String),
+    files: String,
     created_at: Timestamp,
-    used_at: Option(Timestamp),
+    updated_at: Timestamp,
+    user_id: BitArray,
+    user_account_id: BitArray,
+    user_email: String,
+    user_username: String,
+    user_role: String,
+    user_last_login_at: Timestamp,
+    user_created_at: Timestamp,
+    user_updated_at: Timestamp,
   )
 }
 
-pub fn list_login_tokens_by_email(email email: String, limit limit: Int) {
+pub fn get_snippet_by_id(id id: BitArray) {
   let sql =
-    "SELECT id, email, token, created_at, used_at FROM login_tokens WHERE email = $1 ORDER BY created_at DESC LIMIT $2"
+    "SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE snippets.id = $1"
+  #(sql, [dev.ParamBitArray(id)], get_snippet_by_id_decoder())
+}
+
+pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
+  use id <- decode.field(0, decode.bit_array)
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
+  decode.success(GetSnippetById(
+    id:,
+    slug:,
+    language:,
+    title:,
+    visibility:,
+    stdin:,
+    run_instructions:,
+    files:,
+    created_at:,
+    updated_at:,
+    user_id:,
+    user_account_id:,
+    user_email:,
+    user_username:,
+    user_role:,
+    user_last_login_at:,
+    user_created_at:,
+    user_updated_at:,
+  ))
+}
+
+pub type GetSnippetBySlug {
+  GetSnippetBySlug(
+    id: BitArray,
+    slug: String,
+    language: String,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_instructions: Option(String),
+    files: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    user_id: BitArray,
+    user_account_id: BitArray,
+    user_email: String,
+    user_username: String,
+    user_role: String,
+    user_last_login_at: Timestamp,
+    user_created_at: Timestamp,
+    user_updated_at: Timestamp,
+  )
+}
+
+pub fn get_snippet_by_slug(slug slug: String) {
+  let sql =
+    "SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE snippets.slug = $1"
+  #(sql, [dev.ParamString(slug)], get_snippet_by_slug_decoder())
+}
+
+pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
+  use id <- decode.field(0, decode.bit_array)
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
+  decode.success(GetSnippetBySlug(
+    id:,
+    slug:,
+    language:,
+    title:,
+    visibility:,
+    stdin:,
+    run_instructions:,
+    files:,
+    created_at:,
+    updated_at:,
+    user_id:,
+    user_account_id:,
+    user_email:,
+    user_username:,
+    user_role:,
+    user_last_login_at:,
+    user_created_at:,
+    user_updated_at:,
+  ))
+}
+
+pub type ListSnippetsAfter {
+  ListSnippetsAfter(
+    id: BitArray,
+    slug: String,
+    language: String,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_instructions: Option(String),
+    files: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    user_id: BitArray,
+    user_account_id: BitArray,
+    user_email: String,
+    user_username: String,
+    user_role: String,
+    user_last_login_at: Timestamp,
+    user_created_at: Timestamp,
+    user_updated_at: Timestamp,
+  )
+}
+
+pub fn list_snippets_after(
+  visibilities visibilities: List(String),
+  usernames usernames: List(String),
+  user_ids user_ids: List(BitArray),
+  skip_user_ids skip_user_ids: List(BitArray),
+  after_slug after_slug: Option(String),
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE
+  (
+    cardinality($1::text[]) = 0
+    OR snippets.visibility = ANY($1::text[])
+  )
+  AND (
+    cardinality($2::text[]) = 0
+    OR users.username = ANY($2::text[])
+  )
+  AND (
+    cardinality($3::uuid[]) = 0
+    OR users.id = ANY($3::uuid[])
+  )
+  AND NOT users.id = ANY($4::uuid[])
+  AND (
+    $5::text IS NULL
+    OR snippets.slug < $5::text
+  )
+ORDER BY snippets.slug DESC
+LIMIT $6"
   #(
     sql,
-    [dev.ParamString(email), dev.ParamInt(limit)],
-    list_login_tokens_by_email_decoder(),
+    [
+      dev.ParamList(list.map(visibilities, dev.ParamString)),
+      dev.ParamList(list.map(usernames, dev.ParamString)),
+      dev.ParamList(list.map(user_ids, dev.ParamBitArray)),
+      dev.ParamList(list.map(skip_user_ids, dev.ParamBitArray)),
+      dev.ParamNullable(option.map(after_slug, fn(v) { dev.ParamString(v) })),
+      dev.ParamInt(page_limit),
+    ],
+    list_snippets_after_decoder(),
   )
 }
 
-pub fn list_login_tokens_by_email_decoder() -> decode.Decoder(
-  ListLoginTokensByEmail,
-) {
+pub fn list_snippets_after_decoder() -> decode.Decoder(ListSnippetsAfter) {
   use id <- decode.field(0, decode.bit_array)
-  use email <- decode.field(1, decode.string)
-  use token <- decode.field(2, decode.string)
-  use created_at <- decode.field(3, dev.datetime_decoder())
-  use used_at <- decode.field(4, decode.optional(dev.datetime_decoder()))
-  decode.success(ListLoginTokensByEmail(
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
+  decode.success(ListSnippetsAfter(
     id:,
-    email:,
-    token:,
+    slug:,
+    language:,
+    title:,
+    visibility:,
+    stdin:,
+    run_instructions:,
+    files:,
     created_at:,
-    used_at:,
+    updated_at:,
+    user_id:,
+    user_account_id:,
+    user_email:,
+    user_username:,
+    user_role:,
+    user_last_login_at:,
+    user_created_at:,
+    user_updated_at:,
   ))
 }
 
@@ -390,137 +1101,84 @@ pub fn list_snippets_before_decoder() -> decode.Decoder(ListSnippetsBefore) {
   ))
 }
 
+pub fn insert_snippet(
+  id id: BitArray,
+  slug slug: String,
+  user_id user_id: BitArray,
+  language language: String,
+  title title: String,
+  visibility visibility: String,
+  stdin stdin: String,
+  run_instructions run_instructions: Option(String),
+  files files: String,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO snippets (id, slug, user_id, language, title, visibility, stdin, run_instructions, files, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(slug),
+    dev.ParamBitArray(user_id),
+    dev.ParamString(language),
+    dev.ParamString(title),
+    dev.ParamString(visibility),
+    dev.ParamString(stdin),
+    dev.ParamNullable(
+      option.map(run_instructions, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamString(files),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn update_snippet(
+  slug slug: String,
+  user_id user_id: BitArray,
+  language language: String,
+  title title: String,
+  visibility visibility: String,
+  stdin stdin: String,
+  run_instructions run_instructions: Option(String),
+  files files: String,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+  id id: BitArray,
+) {
+  let sql =
+    "UPDATE snippets SET slug = $1, user_id = $2, language = $3, title = $4, visibility = $5, stdin = $6, run_instructions = $7, files = $8, created_at = $9, updated_at = $10 WHERE id = $11"
+  #(sql, [
+    dev.ParamString(slug),
+    dev.ParamBitArray(user_id),
+    dev.ParamString(language),
+    dev.ParamString(title),
+    dev.ParamString(visibility),
+    dev.ParamString(stdin),
+    dev.ParamNullable(
+      option.map(run_instructions, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamString(files),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+    dev.ParamBitArray(id),
+  ])
+}
+
 pub fn delete_snippet(id id: BitArray) {
   let sql = "DELETE FROM snippets WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)])
 }
 
-pub type ListSnippetsAfter {
-  ListSnippetsAfter(
-    id: BitArray,
-    slug: String,
-    language: String,
-    title: String,
-    visibility: String,
-    stdin: String,
-    run_instructions: Option(String),
-    files: String,
-    created_at: Timestamp,
-    updated_at: Timestamp,
-    user_id: BitArray,
-    user_account_id: BitArray,
-    user_email: String,
-    user_username: String,
-    user_role: String,
-    user_last_login_at: Timestamp,
-    user_created_at: Timestamp,
-    user_updated_at: Timestamp,
-  )
-}
-
-pub fn list_snippets_after(
-  visibilities visibilities: List(String),
-  usernames usernames: List(String),
-  user_ids user_ids: List(BitArray),
-  skip_user_ids skip_user_ids: List(BitArray),
-  after_slug after_slug: Option(String),
-  page_limit page_limit: Int,
-) {
+pub fn delete_snippets_by_account_id(account_id account_id: BitArray) {
   let sql =
-    "SELECT
-  snippets.id,
-  snippets.slug,
-  snippets.language,
-  snippets.title,
-  snippets.visibility,
-  snippets.stdin,
-  snippets.run_instructions,
-  snippets.files,
-  snippets.created_at,
-  snippets.updated_at,
-  users.id AS user_id,
-  users.account_id AS user_account_id,
-  users.email AS user_email,
-  users.username AS user_username,
-  users.role AS user_role,
-  users.last_login_at AS user_last_login_at,
-  users.created_at AS user_created_at,
-  users.updated_at AS user_updated_at
-FROM snippets
-INNER JOIN users ON users.id = snippets.user_id
-WHERE
-  (
-    cardinality($1::text[]) = 0
-    OR snippets.visibility = ANY($1::text[])
-  )
-  AND (
-    cardinality($2::text[]) = 0
-    OR users.username = ANY($2::text[])
-  )
-  AND (
-    cardinality($3::uuid[]) = 0
-    OR users.id = ANY($3::uuid[])
-  )
-  AND NOT users.id = ANY($4::uuid[])
-  AND (
-    $5::text IS NULL
-    OR snippets.slug < $5::text
-  )
-ORDER BY snippets.slug DESC
-LIMIT $6"
-  #(
-    sql,
-    [
-      dev.ParamList(list.map(visibilities, dev.ParamString)),
-      dev.ParamList(list.map(usernames, dev.ParamString)),
-      dev.ParamList(list.map(user_ids, dev.ParamBitArray)),
-      dev.ParamList(list.map(skip_user_ids, dev.ParamBitArray)),
-      dev.ParamNullable(option.map(after_slug, fn(v) { dev.ParamString(v) })),
-      dev.ParamInt(page_limit),
-    ],
-    list_snippets_after_decoder(),
-  )
-}
-
-pub fn list_snippets_after_decoder() -> decode.Decoder(ListSnippetsAfter) {
-  use id <- decode.field(0, decode.bit_array)
-  use slug <- decode.field(1, decode.string)
-  use language <- decode.field(2, decode.string)
-  use title <- decode.field(3, decode.string)
-  use visibility <- decode.field(4, decode.string)
-  use stdin <- decode.field(5, decode.string)
-  use run_instructions <- decode.field(6, decode.optional(decode.string))
-  use files <- decode.field(7, decode.string)
-  use created_at <- decode.field(8, dev.datetime_decoder())
-  use updated_at <- decode.field(9, dev.datetime_decoder())
-  use user_id <- decode.field(10, decode.bit_array)
-  use user_account_id <- decode.field(11, decode.bit_array)
-  use user_email <- decode.field(12, decode.string)
-  use user_username <- decode.field(13, decode.string)
-  use user_role <- decode.field(14, decode.string)
-  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
-  use user_created_at <- decode.field(16, dev.datetime_decoder())
-  use user_updated_at <- decode.field(17, dev.datetime_decoder())
-  decode.success(ListSnippetsAfter(
-    id:,
-    slug:,
-    language:,
-    title:,
-    visibility:,
-    stdin:,
-    run_instructions:,
-    files:,
-    created_at:,
-    updated_at:,
-    user_id:,
-    user_account_id:,
-    user_email:,
-    user_username:,
-    user_role:,
-    user_last_login_at:,
-    user_created_at:,
-    user_updated_at:,
-  ))
+    "DELETE FROM snippets
+WHERE user_id IN (
+  SELECT id
+  FROM users
+  WHERE account_id = $1
+)"
+  #(sql, [dev.ParamBitArray(account_id)])
 }
 
 pub type GetUserByEmail {
@@ -598,736 +1256,41 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
   ))
 }
 
-pub fn upsert_app_config(
-  namespace namespace: String,
-  key key: String,
-  value value: String,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "INSERT INTO app_config (
-  namespace,
-  key,
-  value,
-  updated_at
-)
-VALUES (
-  $1,
-  $2,
-  $3::jsonb,
-  $4
-)
-ON CONFLICT (namespace, key) DO UPDATE SET
-  value = EXCLUDED.value,
-  updated_at = EXCLUDED.updated_at"
-  #(sql, [
-    dev.ParamString(namespace),
-    dev.ParamString(key),
-    dev.ParamString(value),
-    dev.ParamTimestamp(updated_at),
-  ])
+pub type ListLoginTokensByEmail {
+  ListLoginTokensByEmail(
+    id: BitArray,
+    email: String,
+    token: String,
+    created_at: Timestamp,
+    used_at: Option(Timestamp),
+  )
 }
 
-pub type CountUserActionsByIp {
-  CountUserActionsByIp(unit: String, count: Int)
-}
-
-pub fn count_user_actions_by_ip(
-  ip ip: Option(String),
-  action action: String,
-  windows windows: String,
-) {
+pub fn list_login_tokens_by_email(email email: String, limit limit: Int) {
   let sql =
-    "WITH windows AS (
-  SELECT
-    (w->>'unit')::text AS unit,
-    (w->>'cutoff')::timestamptz AS cutoff
-  FROM jsonb_array_elements($3::jsonb) AS w
-)
-SELECT
-  w.unit,
-  COUNT(a.*) AS count
-FROM windows w
-LEFT JOIN user_actions a
-  ON a.ip = $1
- AND a.action = $2
- AND a.created_at >= w.cutoff
-GROUP BY w.unit"
+    "SELECT id, email, token, created_at, used_at FROM login_tokens WHERE email = $1 ORDER BY created_at DESC LIMIT $2"
   #(
     sql,
-    [
-      dev.ParamNullable(option.map(ip, fn(v) { dev.ParamString(v) })),
-      dev.ParamString(action),
-      dev.ParamString(windows),
-    ],
-    count_user_actions_by_ip_decoder(),
+    [dev.ParamString(email), dev.ParamInt(limit)],
+    list_login_tokens_by_email_decoder(),
   )
 }
 
-pub fn count_user_actions_by_ip_decoder() -> decode.Decoder(
-  CountUserActionsByIp,
+pub fn list_login_tokens_by_email_decoder() -> decode.Decoder(
+  ListLoginTokensByEmail,
 ) {
-  use unit <- decode.field(0, decode.string)
-  use count <- decode.field(1, decode.int)
-  decode.success(CountUserActionsByIp(unit:, count:))
-}
-
-pub type ListAppConfig {
-  ListAppConfig(namespace: String, key: String, value: String)
-}
-
-pub fn list_app_config() {
-  let sql =
-    "SELECT
-  namespace,
-  key,
-  value::text AS value
-FROM app_config
-ORDER BY namespace ASC, key ASC"
-  #(sql, [], list_app_config_decoder())
-}
-
-pub fn list_app_config_decoder() -> decode.Decoder(ListAppConfig) {
-  use namespace <- decode.field(0, decode.string)
-  use key <- decode.field(1, decode.string)
-  use value <- decode.field(2, decode.string)
-  decode.success(ListAppConfig(namespace:, key:, value:))
-}
-
-pub type GetSnippetById {
-  GetSnippetById(
-    id: BitArray,
-    slug: String,
-    language: String,
-    title: String,
-    visibility: String,
-    stdin: String,
-    run_instructions: Option(String),
-    files: String,
-    created_at: Timestamp,
-    updated_at: Timestamp,
-    user_id: BitArray,
-    user_account_id: BitArray,
-    user_email: String,
-    user_username: String,
-    user_role: String,
-    user_last_login_at: Timestamp,
-    user_created_at: Timestamp,
-    user_updated_at: Timestamp,
-  )
-}
-
-pub fn get_snippet_by_id(id id: BitArray) {
-  let sql =
-    "SELECT
-  snippets.id,
-  snippets.slug,
-  snippets.language,
-  snippets.title,
-  snippets.visibility,
-  snippets.stdin,
-  snippets.run_instructions,
-  snippets.files,
-  snippets.created_at,
-  snippets.updated_at,
-  users.id AS user_id,
-  users.account_id AS user_account_id,
-  users.email AS user_email,
-  users.username AS user_username,
-  users.role AS user_role,
-  users.last_login_at AS user_last_login_at,
-  users.created_at AS user_created_at,
-  users.updated_at AS user_updated_at
-FROM snippets
-INNER JOIN users ON users.id = snippets.user_id
-WHERE snippets.id = $1"
-  #(sql, [dev.ParamBitArray(id)], get_snippet_by_id_decoder())
-}
-
-pub fn get_snippet_by_id_decoder() -> decode.Decoder(GetSnippetById) {
   use id <- decode.field(0, decode.bit_array)
-  use slug <- decode.field(1, decode.string)
-  use language <- decode.field(2, decode.string)
-  use title <- decode.field(3, decode.string)
-  use visibility <- decode.field(4, decode.string)
-  use stdin <- decode.field(5, decode.string)
-  use run_instructions <- decode.field(6, decode.optional(decode.string))
-  use files <- decode.field(7, decode.string)
-  use created_at <- decode.field(8, dev.datetime_decoder())
-  use updated_at <- decode.field(9, dev.datetime_decoder())
-  use user_id <- decode.field(10, decode.bit_array)
-  use user_account_id <- decode.field(11, decode.bit_array)
-  use user_email <- decode.field(12, decode.string)
-  use user_username <- decode.field(13, decode.string)
-  use user_role <- decode.field(14, decode.string)
-  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
-  use user_created_at <- decode.field(16, dev.datetime_decoder())
-  use user_updated_at <- decode.field(17, dev.datetime_decoder())
-  decode.success(GetSnippetById(
+  use email <- decode.field(1, decode.string)
+  use token <- decode.field(2, decode.string)
+  use created_at <- decode.field(3, dev.datetime_decoder())
+  use used_at <- decode.field(4, decode.optional(dev.datetime_decoder()))
+  decode.success(ListLoginTokensByEmail(
     id:,
-    slug:,
-    language:,
-    title:,
-    visibility:,
-    stdin:,
-    run_instructions:,
-    files:,
+    email:,
+    token:,
     created_at:,
-    updated_at:,
-    user_id:,
-    user_account_id:,
-    user_email:,
-    user_username:,
-    user_role:,
-    user_last_login_at:,
-    user_created_at:,
-    user_updated_at:,
+    used_at:,
   ))
-}
-
-pub fn delete_before(
-  before before: Option(Timestamp),
-  statuses statuses: List(String),
-) {
-  let sql =
-    "DELETE FROM jobs
-WHERE completed_at IS NOT NULL
-  AND completed_at < $1
-  AND status = ANY($2::text[])"
-  #(sql, [
-    dev.ParamNullable(option.map(before, fn(v) { dev.ParamTimestamp(v) })),
-    dev.ParamList(list.map(statuses, dev.ParamString)),
-  ])
-}
-
-pub fn update_snippet(
-  slug slug: String,
-  user_id user_id: BitArray,
-  language language: String,
-  title title: String,
-  visibility visibility: String,
-  stdin stdin: String,
-  run_instructions run_instructions: Option(String),
-  files files: String,
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-  id id: BitArray,
-) {
-  let sql =
-    "UPDATE snippets SET slug = $1, user_id = $2, language = $3, title = $4, visibility = $5, stdin = $6, run_instructions = $7, files = $8, created_at = $9, updated_at = $10 WHERE id = $11"
-  #(sql, [
-    dev.ParamString(slug),
-    dev.ParamBitArray(user_id),
-    dev.ParamString(language),
-    dev.ParamString(title),
-    dev.ParamString(visibility),
-    dev.ParamString(stdin),
-    dev.ParamNullable(
-      option.map(run_instructions, fn(v) { dev.ParamString(v) }),
-    ),
-    dev.ParamString(files),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-    dev.ParamBitArray(id),
-  ])
-}
-
-pub fn insert_job(
-  id id: BitArray,
-  request_id request_id: Option(BitArray),
-  periodic_job_id periodic_job_id: Option(BitArray),
-  job_type job_type: String,
-  payload payload: Option(String),
-  status status: String,
-  attempts attempts: Int,
-  max_attempts max_attempts: Int,
-  timeout_seconds timeout_seconds: Int,
-  run_at run_at: Timestamp,
-  started_at started_at: Option(Timestamp),
-  completed_at completed_at: Option(Timestamp),
-  last_error last_error: Option(String),
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "INSERT INTO jobs (
-  id,
-  request_id,
-  periodic_job_id,
-  job_type,
-  payload,
-  status,
-  attempts,
-  max_attempts,
-  timeout_seconds,
-  run_at,
-  started_at,
-  completed_at,
-  last_error,
-  created_at,
-  updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamNullable(
-      option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
-    ),
-    dev.ParamString(job_type),
-    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
-    dev.ParamString(status),
-    dev.ParamInt(attempts),
-    dev.ParamInt(max_attempts),
-    dev.ParamInt(timeout_seconds),
-    dev.ParamTimestamp(run_at),
-    dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
-    dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
-    dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-  ])
-}
-
-pub fn delete_snippets_by_account_id(account_id account_id: BitArray) {
-  let sql =
-    "DELETE FROM snippets
-WHERE user_id IN (
-  SELECT id
-  FROM users
-  WHERE account_id = $1
-)"
-  #(sql, [dev.ParamBitArray(account_id)])
-}
-
-pub fn insert_snippet(
-  id id: BitArray,
-  slug slug: String,
-  user_id user_id: BitArray,
-  language language: String,
-  title title: String,
-  visibility visibility: String,
-  stdin stdin: String,
-  run_instructions run_instructions: Option(String),
-  files files: String,
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "INSERT INTO snippets (id, slug, user_id, language, title, visibility, stdin, run_instructions, files, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamString(slug),
-    dev.ParamBitArray(user_id),
-    dev.ParamString(language),
-    dev.ParamString(title),
-    dev.ParamString(visibility),
-    dev.ParamString(stdin),
-    dev.ParamNullable(
-      option.map(run_instructions, fn(v) { dev.ParamString(v) }),
-    ),
-    dev.ParamString(files),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-  ])
-}
-
-pub fn insert_page_log(entries entries: String) {
-  let sql =
-    "INSERT INTO page_log (id, request_id, created_at, route, path, status_code, render_mode, duration_ns, ip, user_agent, referrer, info, warnings, debug, error, effects)
-SELECT
-  id,
-  request_id,
-  created_at,
-  route,
-  path,
-  status_code,
-  render_mode,
-  duration_ns,
-  ip,
-  user_agent,
-  referrer,
-  info,
-  warnings,
-  debug,
-  error,
-  effects
-FROM jsonb_to_recordset($1::JSONB) AS rows(
-  id UUID,
-  request_id UUID,
-  created_at TIMESTAMPTZ,
-  route TEXT,
-  path TEXT,
-  status_code INT,
-  render_mode TEXT,
-  duration_ns BIGINT,
-  ip TEXT,
-  user_agent TEXT,
-  referrer TEXT,
-  info JSONB,
-  warnings JSONB,
-  debug JSONB,
-  error JSONB,
-  effects JSONB
-)"
-  #(sql, [dev.ParamString(entries)])
-}
-
-pub fn insert_user(
-  id id: BitArray,
-  account_id account_id: BitArray,
-  email email: String,
-  username username: String,
-  role role: String,
-  last_login_at last_login_at: Timestamp,
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "INSERT INTO users (id, account_id, email, username, role, last_login_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamBitArray(account_id),
-    dev.ParamString(email),
-    dev.ParamString(username),
-    dev.ParamString(role),
-    dev.ParamTimestamp(last_login_at),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-  ])
-}
-
-pub fn insert_periodic_job(
-  id id: BitArray,
-  job_type job_type: String,
-  payload payload: Option(String),
-  interval_seconds interval_seconds: Int,
-  enabled enabled: Bool,
-  next_run_at next_run_at: Timestamp,
-  last_enqueued_at last_enqueued_at: Option(Timestamp),
-  last_enqueue_error last_enqueue_error: Option(String),
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "INSERT INTO periodic_jobs (
-  id,
-  job_type,
-  payload,
-  interval_seconds,
-  enabled,
-  next_run_at,
-  last_enqueued_at,
-  last_enqueue_error,
-  created_at,
-  updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamString(job_type),
-    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
-    dev.ParamInt(interval_seconds),
-    dev.ParamBool(enabled),
-    dev.ParamTimestamp(next_run_at),
-    dev.ParamNullable(
-      option.map(last_enqueued_at, fn(v) { dev.ParamTimestamp(v) }),
-    ),
-    dev.ParamNullable(
-      option.map(last_enqueue_error, fn(v) { dev.ParamString(v) }),
-    ),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-  ])
-}
-
-pub fn delete_session(id id: BitArray) {
-  let sql = "DELETE FROM sessions WHERE id = $1"
-  #(sql, [dev.ParamBitArray(id)])
-}
-
-pub fn update_job(
-  id id: BitArray,
-  request_id request_id: Option(BitArray),
-  periodic_job_id periodic_job_id: Option(BitArray),
-  job_type job_type: String,
-  payload payload: Option(String),
-  status status: String,
-  attempts attempts: Int,
-  max_attempts max_attempts: Int,
-  timeout_seconds timeout_seconds: Int,
-  run_at run_at: Timestamp,
-  started_at started_at: Option(Timestamp),
-  completed_at completed_at: Option(Timestamp),
-  last_error last_error: Option(String),
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "UPDATE jobs
-SET request_id = $2,
-    periodic_job_id = $3,
-    job_type = $4,
-    payload = $5,
-    status = $6,
-    attempts = $7,
-    max_attempts = $8,
-    timeout_seconds = $9,
-    run_at = $10,
-    started_at = $11,
-    completed_at = $12,
-    last_error = $13,
-    created_at = $14,
-    updated_at = $15
-WHERE id = $1"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamNullable(
-      option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
-    ),
-    dev.ParamString(job_type),
-    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
-    dev.ParamString(status),
-    dev.ParamInt(attempts),
-    dev.ParamInt(max_attempts),
-    dev.ParamInt(timeout_seconds),
-    dev.ParamTimestamp(run_at),
-    dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
-    dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
-    dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-  ])
-}
-
-pub fn insert_run_log(
-  id id: BitArray,
-  request_id request_id: BitArray,
-  created_at created_at: Timestamp,
-  session_id session_id: Option(BitArray),
-  user_id user_id: Option(BitArray),
-  language language: String,
-  outcome outcome: String,
-  duration_ns duration_ns: Option(Int),
-  failure_message failure_message: Option(String),
-) {
-  let sql =
-    "INSERT INTO run_log (
-  id,
-  request_id,
-  created_at,
-  session_id,
-  user_id,
-  language,
-  outcome,
-  duration_ns,
-  failure_message
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamBitArray(request_id),
-    dev.ParamTimestamp(created_at),
-    dev.ParamNullable(option.map(session_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamString(language),
-    dev.ParamString(outcome),
-    dev.ParamNullable(option.map(duration_ns, fn(v) { dev.ParamInt(v) })),
-    dev.ParamNullable(option.map(failure_message, fn(v) { dev.ParamString(v) })),
-  ])
-}
-
-pub fn insert_job_log(
-  id id: BitArray,
-  request_id request_id: Option(BitArray),
-  job_id job_id: BitArray,
-  job_type job_type: String,
-  attempt attempt: Int,
-  created_at created_at: Timestamp,
-  duration_ns duration_ns: Int,
-  info info: Option(String),
-  warnings warnings: Option(String),
-  debug debug: Option(String),
-  error error: Option(String),
-  effects effects: Option(String),
-) {
-  let sql =
-    "INSERT INTO job_log (id, request_id, job_id, job_type, attempt, created_at, duration_ns, info, warnings, debug, error, effects)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamBitArray(job_id),
-    dev.ParamString(job_type),
-    dev.ParamInt(attempt),
-    dev.ParamTimestamp(created_at),
-    dev.ParamInt(duration_ns),
-    dev.ParamNullable(option.map(info, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(warnings, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(debug, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(error, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(effects, fn(v) { dev.ParamString(v) })),
-  ])
-}
-
-pub fn delete_pageview_log_before(created_at created_at: Timestamp) {
-  let sql =
-    "DELETE FROM pageview_log
-WHERE created_at < $1"
-  #(sql, [dev.ParamTimestamp(created_at)])
-}
-
-pub fn delete_login_tokens_before(created_at created_at: Timestamp) {
-  let sql =
-    "DELETE FROM login_tokens
-WHERE created_at < $1"
-  #(sql, [dev.ParamTimestamp(created_at)])
-}
-
-pub fn delete_user_actions_before(created_at created_at: Timestamp) {
-  let sql =
-    "DELETE FROM user_actions
-WHERE created_at < $1"
-  #(sql, [dev.ParamTimestamp(created_at)])
-}
-
-pub fn delete_account(id id: BitArray) {
-  let sql =
-    "DELETE FROM accounts
-WHERE id = $1"
-  #(sql, [dev.ParamBitArray(id)])
-}
-
-pub type GetNextPeriodicJob {
-  GetNextPeriodicJob(
-    id: BitArray,
-    job_type: String,
-    payload: Option(String),
-    interval_seconds: Int,
-    enabled: Bool,
-    next_run_at: Timestamp,
-    last_enqueued_at: Option(Timestamp),
-    last_enqueue_error: Option(String),
-    created_at: Timestamp,
-    updated_at: Timestamp,
-  )
-}
-
-pub fn get_next_periodic_job(now now: Timestamp) {
-  let sql =
-    "SELECT
-  id,
-  job_type,
-  payload,
-  interval_seconds,
-  enabled,
-  next_run_at,
-  last_enqueued_at,
-  last_enqueue_error,
-  created_at,
-  updated_at
-FROM periodic_jobs
-WHERE enabled = TRUE
-  AND next_run_at <= $1
-ORDER BY next_run_at ASC, created_at ASC
-LIMIT 1
-FOR UPDATE SKIP LOCKED"
-  #(sql, [dev.ParamTimestamp(now)], get_next_periodic_job_decoder())
-}
-
-pub fn get_next_periodic_job_decoder() -> decode.Decoder(GetNextPeriodicJob) {
-  use id <- decode.field(0, decode.bit_array)
-  use job_type <- decode.field(1, decode.string)
-  use payload <- decode.field(2, decode.optional(decode.string))
-  use interval_seconds <- decode.field(3, decode.int)
-  use enabled <- decode.field(4, dev.bool_decoder())
-  use next_run_at <- decode.field(5, dev.datetime_decoder())
-  use last_enqueued_at <- decode.field(
-    6,
-    decode.optional(dev.datetime_decoder()),
-  )
-  use last_enqueue_error <- decode.field(7, decode.optional(decode.string))
-  use created_at <- decode.field(8, dev.datetime_decoder())
-  use updated_at <- decode.field(9, dev.datetime_decoder())
-  decode.success(GetNextPeriodicJob(
-    id:,
-    job_type:,
-    payload:,
-    interval_seconds:,
-    enabled:,
-    next_run_at:,
-    last_enqueued_at:,
-    last_enqueue_error:,
-    created_at:,
-    updated_at:,
-  ))
-}
-
-pub type CountUserActionsByUser {
-  CountUserActionsByUser(unit: String, count: Int)
-}
-
-pub fn count_user_actions_by_user(
-  user_id user_id: Option(BitArray),
-  action action: String,
-  windows windows: String,
-) {
-  let sql =
-    "WITH windows AS (
-  SELECT
-    (w->>'unit')::text AS unit,
-    (w->>'cutoff')::timestamptz AS cutoff
-  FROM jsonb_array_elements($3::jsonb) AS w
-)
-SELECT
-  w.unit,
-  COUNT(a.*) AS count
-FROM windows w
-LEFT JOIN user_actions a
-  ON a.user_id = $1
- AND a.action = $2
- AND a.created_at >= w.cutoff
-GROUP BY w.unit"
-  #(
-    sql,
-    [
-      dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
-      dev.ParamString(action),
-      dev.ParamString(windows),
-    ],
-    count_user_actions_by_user_decoder(),
-  )
-}
-
-pub fn count_user_actions_by_user_decoder() -> decode.Decoder(
-  CountUserActionsByUser,
-) {
-  use unit <- decode.field(0, decode.string)
-  use count <- decode.field(1, decode.int)
-  decode.success(CountUserActionsByUser(unit:, count:))
-}
-
-pub fn delete_job_log_before(created_at created_at: Timestamp) {
-  let sql =
-    "DELETE FROM job_log
-WHERE created_at < $1"
-  #(sql, [dev.ParamTimestamp(created_at)])
-}
-
-pub fn delete_sessions_by_account_id(account_id account_id: BitArray) {
-  let sql =
-    "DELETE FROM sessions
-WHERE user_id IN (
-  SELECT id
-  FROM users
-  WHERE account_id = $1
-)"
-  #(sql, [dev.ParamBitArray(account_id)])
-}
-
-pub fn delete_page_log_before(created_at created_at: Timestamp) {
-  let sql =
-    "DELETE FROM page_log
-WHERE created_at < $1"
-  #(sql, [dev.ParamTimestamp(created_at)])
 }
 
 pub type GetSessionByToken {
@@ -1432,6 +1395,72 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
   ))
 }
 
+pub fn insert_user(
+  id id: BitArray,
+  account_id account_id: BitArray,
+  email email: String,
+  username username: String,
+  role role: String,
+  last_login_at last_login_at: Timestamp,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO users (id, account_id, email, username, role, last_login_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamBitArray(account_id),
+    dev.ParamString(email),
+    dev.ParamString(username),
+    dev.ParamString(role),
+    dev.ParamTimestamp(last_login_at),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn insert_account(
+  id id: BitArray,
+  account_state account_state: String,
+  account_state_reason account_state_reason: Option(String),
+  account_tier account_tier: String,
+  delete_job_id delete_job_id: Option(BitArray),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO accounts (id, account_state, account_state_reason, account_tier, delete_job_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(account_state),
+    dev.ParamNullable(
+      option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamString(account_tier),
+    dev.ParamNullable(option.map(delete_job_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn insert_login_token(
+  id id: BitArray,
+  email email: String,
+  token token: String,
+  created_at created_at: Timestamp,
+  used_at used_at: Option(Timestamp),
+) {
+  let sql =
+    "INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2, $3, $4, $5)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(email),
+    dev.ParamString(token),
+    dev.ParamTimestamp(created_at),
+    dev.ParamNullable(option.map(used_at, fn(v) { dev.ParamTimestamp(v) })),
+  ])
+}
+
 pub fn insert_session(
   id id: BitArray,
   user_id user_id: BitArray,
@@ -1452,6 +1481,111 @@ pub fn insert_session(
   ])
 }
 
+pub fn update_account(
+  id id: BitArray,
+  account_state account_state: String,
+  account_state_reason account_state_reason: Option(String),
+  account_tier account_tier: String,
+  delete_job_id delete_job_id: Option(BitArray),
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "UPDATE accounts
+SET account_state = $2,
+    account_state_reason = $3,
+    account_tier = $4,
+    delete_job_id = $5,
+    created_at = $6,
+    updated_at = $7
+WHERE id = $1"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamString(account_state),
+    dev.ParamNullable(
+      option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamString(account_tier),
+    dev.ParamNullable(option.map(delete_job_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+  ])
+}
+
+pub fn update_user(
+  account_id account_id: BitArray,
+  email email: String,
+  username username: String,
+  role role: String,
+  last_login_at last_login_at: Timestamp,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+  id id: BitArray,
+) {
+  let sql =
+    "UPDATE users
+SET
+  account_id = $1,
+  email = $2,
+  username = $3,
+  role = $4,
+  last_login_at = $5,
+  created_at = $6,
+  updated_at = $7
+WHERE id = $8"
+  #(sql, [
+    dev.ParamBitArray(account_id),
+    dev.ParamString(email),
+    dev.ParamString(username),
+    dev.ParamString(role),
+    dev.ParamTimestamp(last_login_at),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+    dev.ParamBitArray(id),
+  ])
+}
+
+pub fn update_login_token(
+  email email: String,
+  token token: String,
+  created_at created_at: Timestamp,
+  used_at used_at: Option(Timestamp),
+  id id: BitArray,
+) {
+  let sql =
+    "UPDATE login_tokens SET email = $1, token = $2, created_at = $3, used_at = $4 WHERE id = $5"
+  #(sql, [
+    dev.ParamString(email),
+    dev.ParamString(token),
+    dev.ParamTimestamp(created_at),
+    dev.ParamNullable(option.map(used_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamBitArray(id),
+  ])
+}
+
+pub fn delete_session(id id: BitArray) {
+  let sql = "DELETE FROM sessions WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)])
+}
+
+pub fn delete_sessions_by_account_id(account_id account_id: BitArray) {
+  let sql =
+    "DELETE FROM sessions
+WHERE user_id IN (
+  SELECT id
+  FROM users
+  WHERE account_id = $1
+)"
+  #(sql, [dev.ParamBitArray(account_id)])
+}
+
+pub fn delete_login_tokens_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM login_tokens
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
 pub fn delete_users_by_account_id(account_id account_id: BitArray) {
   let sql =
     "DELETE FROM users
@@ -1459,11 +1593,186 @@ WHERE account_id = $1"
   #(sql, [dev.ParamBitArray(account_id)])
 }
 
-pub fn delete_job(id id: BitArray) {
+pub fn delete_account(id id: BitArray) {
   let sql =
-    "DELETE FROM jobs
+    "DELETE FROM accounts
 WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)])
+}
+
+pub fn insert_api_log(entries entries: String) {
+  let sql =
+    "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, info, warnings, debug, error, effects)
+SELECT
+  id,
+  request_id,
+  created_at,
+  action,
+  body_bytes,
+  duration_ns,
+  ip,
+  user_agent,
+  info,
+  warnings,
+  debug,
+  error,
+  effects
+FROM jsonb_to_recordset($1::JSONB) AS rows(
+  id UUID,
+  request_id UUID,
+  created_at TIMESTAMPTZ,
+  action TEXT,
+  body_bytes BIGINT,
+  duration_ns BIGINT,
+  ip TEXT,
+  user_agent TEXT,
+  info JSONB,
+  warnings JSONB,
+  debug JSONB,
+  error JSONB,
+  effects JSONB
+)"
+  #(sql, [dev.ParamString(entries)])
+}
+
+pub fn insert_page_log(entries entries: String) {
+  let sql =
+    "INSERT INTO page_log (id, request_id, created_at, route, path, status_code, render_mode, duration_ns, ip, user_agent, referrer, info, warnings, debug, error, effects)
+SELECT
+  id,
+  request_id,
+  created_at,
+  route,
+  path,
+  status_code,
+  render_mode,
+  duration_ns,
+  ip,
+  user_agent,
+  referrer,
+  info,
+  warnings,
+  debug,
+  error,
+  effects
+FROM jsonb_to_recordset($1::JSONB) AS rows(
+  id UUID,
+  request_id UUID,
+  created_at TIMESTAMPTZ,
+  route TEXT,
+  path TEXT,
+  status_code INT,
+  render_mode TEXT,
+  duration_ns BIGINT,
+  ip TEXT,
+  user_agent TEXT,
+  referrer TEXT,
+  info JSONB,
+  warnings JSONB,
+  debug JSONB,
+  error JSONB,
+  effects JSONB
+)"
+  #(sql, [dev.ParamString(entries)])
+}
+
+pub fn insert_pageview_log(entries entries: String) {
+  let sql =
+    "INSERT INTO pageview_log (
+  id,
+  created_at,
+  session_id,
+  user_id,
+  route,
+  path,
+  user_agent,
+  ip
+)
+SELECT
+  id,
+  created_at,
+  session_id,
+  user_id,
+  route,
+  path,
+  user_agent,
+  ip
+FROM jsonb_to_recordset($1::JSONB) AS rows(
+  id UUID,
+  created_at TIMESTAMPTZ,
+  session_id UUID,
+  user_id UUID,
+  route TEXT,
+  path TEXT,
+  user_agent TEXT,
+  ip TEXT
+)
+ON CONFLICT (id) DO NOTHING"
+  #(sql, [dev.ParamString(entries)])
+}
+
+pub fn insert_run_log(
+  id id: BitArray,
+  request_id request_id: BitArray,
+  created_at created_at: Timestamp,
+  session_id session_id: Option(BitArray),
+  user_id user_id: Option(BitArray),
+  language language: String,
+  outcome outcome: String,
+  duration_ns duration_ns: Option(Int),
+  failure_message failure_message: Option(String),
+) {
+  let sql =
+    "INSERT INTO run_log (
+  id,
+  request_id,
+  created_at,
+  session_id,
+  user_id,
+  language,
+  outcome,
+  duration_ns,
+  failure_message
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamBitArray(request_id),
+    dev.ParamTimestamp(created_at),
+    dev.ParamNullable(option.map(session_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamString(language),
+    dev.ParamString(outcome),
+    dev.ParamNullable(option.map(duration_ns, fn(v) { dev.ParamInt(v) })),
+    dev.ParamNullable(option.map(failure_message, fn(v) { dev.ParamString(v) })),
+  ])
+}
+
+pub fn delete_api_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM api_log
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
+pub fn delete_page_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM page_log
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
+pub fn delete_pageview_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM pageview_log
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
+pub fn delete_run_log_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM run_log
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
 }
 
 pub type GetMaxCompletedMetricsDay {
@@ -1714,313 +2023,4 @@ pub fn insert_metrics_completed_day(day day: Date) {
 VALUES ($1)
 ON CONFLICT (day) DO NOTHING"
   #(sql, [dev.ParamDate(day)])
-}
-
-pub fn update_account(
-  id id: BitArray,
-  account_state account_state: String,
-  account_state_reason account_state_reason: Option(String),
-  account_tier account_tier: String,
-  delete_job_id delete_job_id: Option(BitArray),
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "UPDATE accounts
-SET account_state = $2,
-    account_state_reason = $3,
-    account_tier = $4,
-    delete_job_id = $5,
-    created_at = $6,
-    updated_at = $7
-WHERE id = $1"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamString(account_state),
-    dev.ParamNullable(
-      option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
-    ),
-    dev.ParamString(account_tier),
-    dev.ParamNullable(option.map(delete_job_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-  ])
-}
-
-pub fn insert_api_log(entries entries: String) {
-  let sql =
-    "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, info, warnings, debug, error, effects)
-SELECT
-  id,
-  request_id,
-  created_at,
-  action,
-  body_bytes,
-  duration_ns,
-  ip,
-  user_agent,
-  info,
-  warnings,
-  debug,
-  error,
-  effects
-FROM jsonb_to_recordset($1::JSONB) AS rows(
-  id UUID,
-  request_id UUID,
-  created_at TIMESTAMPTZ,
-  action TEXT,
-  body_bytes BIGINT,
-  duration_ns BIGINT,
-  ip TEXT,
-  user_agent TEXT,
-  info JSONB,
-  warnings JSONB,
-  debug JSONB,
-  error JSONB,
-  effects JSONB
-)"
-  #(sql, [dev.ParamString(entries)])
-}
-
-pub fn insert_account(
-  id id: BitArray,
-  account_state account_state: String,
-  account_state_reason account_state_reason: Option(String),
-  account_tier account_tier: String,
-  delete_job_id delete_job_id: Option(BitArray),
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "INSERT INTO accounts (id, account_state, account_state_reason, account_tier, delete_job_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamString(account_state),
-    dev.ParamNullable(
-      option.map(account_state_reason, fn(v) { dev.ParamString(v) }),
-    ),
-    dev.ParamString(account_tier),
-    dev.ParamNullable(option.map(delete_job_id, fn(v) { dev.ParamBitArray(v) })),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-  ])
-}
-
-pub fn update_user(
-  account_id account_id: BitArray,
-  email email: String,
-  username username: String,
-  role role: String,
-  last_login_at last_login_at: Timestamp,
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-  id id: BitArray,
-) {
-  let sql =
-    "UPDATE users
-SET
-  account_id = $1,
-  email = $2,
-  username = $3,
-  role = $4,
-  last_login_at = $5,
-  created_at = $6,
-  updated_at = $7
-WHERE id = $8"
-  #(sql, [
-    dev.ParamBitArray(account_id),
-    dev.ParamString(email),
-    dev.ParamString(username),
-    dev.ParamString(role),
-    dev.ParamTimestamp(last_login_at),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-    dev.ParamBitArray(id),
-  ])
-}
-
-pub fn update_periodic_job(
-  id id: BitArray,
-  job_type job_type: String,
-  payload payload: Option(String),
-  interval_seconds interval_seconds: Int,
-  enabled enabled: Bool,
-  next_run_at next_run_at: Timestamp,
-  last_enqueued_at last_enqueued_at: Option(Timestamp),
-  last_enqueue_error last_enqueue_error: Option(String),
-  created_at created_at: Timestamp,
-  updated_at updated_at: Timestamp,
-) {
-  let sql =
-    "UPDATE periodic_jobs
-SET job_type = $2,
-    payload = $3,
-    interval_seconds = $4,
-    enabled = $5,
-    next_run_at = $6,
-    last_enqueued_at = $7,
-    last_enqueue_error = $8,
-    created_at = $9,
-    updated_at = $10
-WHERE id = $1"
-  #(sql, [
-    dev.ParamBitArray(id),
-    dev.ParamString(job_type),
-    dev.ParamNullable(option.map(payload, fn(v) { dev.ParamString(v) })),
-    dev.ParamInt(interval_seconds),
-    dev.ParamBool(enabled),
-    dev.ParamTimestamp(next_run_at),
-    dev.ParamNullable(
-      option.map(last_enqueued_at, fn(v) { dev.ParamTimestamp(v) }),
-    ),
-    dev.ParamNullable(
-      option.map(last_enqueue_error, fn(v) { dev.ParamString(v) }),
-    ),
-    dev.ParamTimestamp(created_at),
-    dev.ParamTimestamp(updated_at),
-  ])
-}
-
-pub type GetSnippetBySlug {
-  GetSnippetBySlug(
-    id: BitArray,
-    slug: String,
-    language: String,
-    title: String,
-    visibility: String,
-    stdin: String,
-    run_instructions: Option(String),
-    files: String,
-    created_at: Timestamp,
-    updated_at: Timestamp,
-    user_id: BitArray,
-    user_account_id: BitArray,
-    user_email: String,
-    user_username: String,
-    user_role: String,
-    user_last_login_at: Timestamp,
-    user_created_at: Timestamp,
-    user_updated_at: Timestamp,
-  )
-}
-
-pub fn get_snippet_by_slug(slug slug: String) {
-  let sql =
-    "SELECT
-  snippets.id,
-  snippets.slug,
-  snippets.language,
-  snippets.title,
-  snippets.visibility,
-  snippets.stdin,
-  snippets.run_instructions,
-  snippets.files,
-  snippets.created_at,
-  snippets.updated_at,
-  users.id AS user_id,
-  users.account_id AS user_account_id,
-  users.email AS user_email,
-  users.username AS user_username,
-  users.role AS user_role,
-  users.last_login_at AS user_last_login_at,
-  users.created_at AS user_created_at,
-  users.updated_at AS user_updated_at
-FROM snippets
-INNER JOIN users ON users.id = snippets.user_id
-WHERE snippets.slug = $1"
-  #(sql, [dev.ParamString(slug)], get_snippet_by_slug_decoder())
-}
-
-pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
-  use id <- decode.field(0, decode.bit_array)
-  use slug <- decode.field(1, decode.string)
-  use language <- decode.field(2, decode.string)
-  use title <- decode.field(3, decode.string)
-  use visibility <- decode.field(4, decode.string)
-  use stdin <- decode.field(5, decode.string)
-  use run_instructions <- decode.field(6, decode.optional(decode.string))
-  use files <- decode.field(7, decode.string)
-  use created_at <- decode.field(8, dev.datetime_decoder())
-  use updated_at <- decode.field(9, dev.datetime_decoder())
-  use user_id <- decode.field(10, decode.bit_array)
-  use user_account_id <- decode.field(11, decode.bit_array)
-  use user_email <- decode.field(12, decode.string)
-  use user_username <- decode.field(13, decode.string)
-  use user_role <- decode.field(14, decode.string)
-  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
-  use user_created_at <- decode.field(16, dev.datetime_decoder())
-  use user_updated_at <- decode.field(17, dev.datetime_decoder())
-  decode.success(GetSnippetBySlug(
-    id:,
-    slug:,
-    language:,
-    title:,
-    visibility:,
-    stdin:,
-    run_instructions:,
-    files:,
-    created_at:,
-    updated_at:,
-    user_id:,
-    user_account_id:,
-    user_email:,
-    user_username:,
-    user_role:,
-    user_last_login_at:,
-    user_created_at:,
-    user_updated_at:,
-  ))
-}
-
-pub fn update_login_token(
-  email email: String,
-  token token: String,
-  created_at created_at: Timestamp,
-  used_at used_at: Option(Timestamp),
-  id id: BitArray,
-) {
-  let sql =
-    "UPDATE login_tokens SET email = $1, token = $2, created_at = $3, used_at = $4 WHERE id = $5"
-  #(sql, [
-    dev.ParamString(email),
-    dev.ParamString(token),
-    dev.ParamTimestamp(created_at),
-    dev.ParamNullable(option.map(used_at, fn(v) { dev.ParamTimestamp(v) })),
-    dev.ParamBitArray(id),
-  ])
-}
-
-pub fn insert_pageview_log(entries entries: String) {
-  let sql =
-    "INSERT INTO pageview_log (
-  id,
-  created_at,
-  session_id,
-  user_id,
-  route,
-  path,
-  user_agent,
-  ip
-)
-SELECT
-  id,
-  created_at,
-  session_id,
-  user_id,
-  route,
-  path,
-  user_agent,
-  ip
-FROM jsonb_to_recordset($1::JSONB) AS rows(
-  id UUID,
-  created_at TIMESTAMPTZ,
-  session_id UUID,
-  user_id UUID,
-  route TEXT,
-  path TEXT,
-  user_agent TEXT,
-  ip TEXT
-)
-ON CONFLICT (id) DO NOTHING"
-  #(sql, [dev.ParamString(entries)])
 }
