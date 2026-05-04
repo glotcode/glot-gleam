@@ -377,6 +377,20 @@ pub fn get_admin_jobs(
   )
 }
 
+pub fn get_admin_job(
+  request: job_dto.GetJobRequest,
+  to_msg: fn(ApiResponse(job_dto.GetJobResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminJobAction, request)
+
+  send_api_request(
+    req,
+    job_dto.encode_get_request,
+    job_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn upsert_admin_cleanup_config(
   request: cleanup_config_dto.UpsertCleanupConfigRequest,
   to_msg: fn(ApiResponse(cleanup_config_dto.CleanupConfigResponse)) -> msg,

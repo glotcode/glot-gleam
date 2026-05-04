@@ -10,6 +10,7 @@ import glot_core/pageview_dto
 import glot_core/route
 import glot_frontend/account_page
 import glot_frontend/admin_config_page
+import glot_frontend/admin_job_page
 import glot_frontend/admin_jobs_page
 import glot_frontend/admin_page
 import glot_frontend/admin_rate_limits_page
@@ -56,6 +57,7 @@ type PageModel {
   AccountPage(account_page.Model)
   AdminPage(admin_page.Model)
   AdminJobsPage(admin_jobs_page.Model)
+  AdminJobPage(admin_job_page.Model)
   AdminConfigPage(admin_config_page.Model)
   AdminRateLimitsPage(admin_rate_limits_page.Model)
   ManageSnippetsPage(manage_snippets_page.Model)
@@ -111,6 +113,19 @@ fn init_page(
       #(
         AdminJobsPage(m),
         effect.batch([effect.map(eff, AdminJobsPageMsg), admin_effect]),
+      )
+    }
+
+    route.AdminJob(job_id) -> {
+      let #(m, eff) = admin_job_page.init(job_id)
+      let admin_effect = case session_is_admin(session) {
+        True -> effect.map(admin_job_page.ensure_loaded(m).1, AdminJobPageMsg)
+        False -> effect.none()
+      }
+
+      #(
+        AdminJobPage(m),
+        effect.batch([effect.map(eff, AdminJobPageMsg), admin_effect]),
       )
     }
 
@@ -232,6 +247,7 @@ type Msg {
   AccountPageMsg(account_page.Msg)
   AdminPageMsg(admin_page.Msg)
   AdminJobsPageMsg(admin_jobs_page.Msg)
+  AdminJobPageMsg(admin_job_page.Msg)
   AdminConfigPageMsg(admin_config_page.Msg)
   AdminRateLimitsPageMsg(admin_rate_limits_page.Msg)
   ManageSnippetsPageMsg(manage_snippets_page.Msg)
@@ -258,6 +274,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case model.route {
         route.Admin
         | route.AdminJobs
+        | route.AdminJob(_)
         | route.AdminConfig
         | route.AdminRateLimits ->
           case session_is_admin(session), model.route, model.page_model {
@@ -267,6 +284,14 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               #(
                 Model(..next_model, page_model: AdminJobsPage(new_page_model)),
                 effect.map(page_effect, AdminJobsPageMsg),
+              )
+            }
+            True, route.AdminJob(_), AdminJobPage(page_model) -> {
+              let #(new_page_model, page_effect) =
+                admin_job_page.ensure_loaded(page_model)
+              #(
+                Model(..next_model, page_model: AdminJobPage(new_page_model)),
+                effect.map(page_effect, AdminJobPageMsg),
               )
             }
             True, route.AdminConfig, AdminConfigPage(page_model) -> {
@@ -399,6 +424,13 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(new_model, effect.map(page_effect, AdminJobsPageMsg))
     }
 
+    AdminJobPageMsg(page_msg), AdminJobPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_job_page.update(page_model, page_msg)
+      let new_model = Model(..model, page_model: AdminJobPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminJobPageMsg))
+    }
+
     AdminConfigPageMsg(page_msg), AdminConfigPage(page_model) -> {
       let #(new_page_model, page_effect) =
         admin_config_page.update(page_model, page_msg)
@@ -493,6 +525,15 @@ fn view(model: Model) -> Element(Msg) {
         True ->
           admin_jobs_page.view(page_model, model.now)
           |> element.map(AdminJobsPageMsg)
+        False -> not_found_view()
+      }
+    }
+
+    AdminJobPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_job_page.view(page_model, model.now)
+          |> element.map(AdminJobPageMsg)
         False -> not_found_view()
       }
     }
@@ -624,6 +665,7 @@ fn page_actions(
     | AccountPage(_)
     | AdminPage(_)
     | AdminJobsPage(_)
+    | AdminJobPage(_)
     | AdminConfigPage(_)
     | AdminRateLimitsPage(_)
     | ManageSnippetsPage(_)
@@ -794,7 +836,11 @@ fn authorized_route(
   session: SessionState,
 ) -> route.Route {
   case target_route {
-    route.Admin | route.AdminJobs | route.AdminConfig | route.AdminRateLimits ->
+    route.Admin
+    | route.AdminJobs
+    | route.AdminJob(_)
+    | route.AdminConfig
+    | route.AdminRateLimits ->
       case session_is_admin(session) {
         True -> target_route
         False -> admin_fallback_route(session)

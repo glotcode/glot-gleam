@@ -5,6 +5,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_core/admin/job_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
+import glot_core/route
 import glot_frontend/api
 import glot_frontend/string_helpers
 import lustre/attribute
@@ -468,13 +469,12 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
     ]),
     html.div([attribute.class("jobs-table__cell jobs-table__cell--actions")], [
       cell_label("Action"),
-      html.button(
+      html.a(
         [
           attribute.class("admin-page__button admin-page__button--secondary"),
-          attribute.attribute("type", "button"),
-          attribute.disabled(True),
+          route.href(route.AdminJob(job.id)),
         ],
-        [html.text("Details next")],
+        [html.text("Open")],
       ),
     ]),
   ])

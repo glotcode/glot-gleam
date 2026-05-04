@@ -16,6 +16,7 @@ import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_jobs_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
@@ -244,6 +245,13 @@ fn handle_api_request(
       get_jobs_domain.get_jobs(ctx, request)
       |> program.map(AdminJobsResponse)
     }
+    api_action.GetAdminJobAction -> {
+      use request <- program.and_then(get_job_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      get_job_domain.get_job(ctx, request)
+      |> program.map(AdminJobResponse)
+    }
     api_action.GetAdminRateLimitPoliciesAction ->
       get_rate_limit_policies_domain.get_rate_limit_policies(ctx)
       |> program.map(RateLimitPoliciesResponse)
@@ -316,6 +324,7 @@ type ApiResult {
   AuthConfigResponse(auth_config_dto.AuthConfigResponse)
   CleanupConfigResponse(cleanup_config_dto.CleanupConfigResponse)
   AdminJobsResponse(job_dto.ListJobsResponse)
+  AdminJobResponse(job_dto.GetJobResponse)
   RateLimitPoliciesResponse(rate_limit_config_dto.RateLimitPoliciesResponse)
   RateLimitPolicyResponse(rate_limit_config_dto.RateLimitPolicyResponse)
   DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
@@ -349,6 +358,8 @@ fn api_result_to_response(
       success_response(cleanup_config_dto.encode_response(response))
     AdminJobsResponse(response) ->
       success_response(job_dto.encode_list_response(response))
+    AdminJobResponse(response) ->
+      success_response(job_dto.encode_get_response(response))
     RateLimitPoliciesResponse(response) ->
       success_response(rate_limit_config_dto.encode_response(response))
     RateLimitPolicyResponse(response) ->

@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option
 import gleam/time/timestamp
 import glot_core/helpers/timestamp_helpers
+import glot_core/helpers/uuid_helpers
 import glot_core/job/job_model
 import glot_core/pagination_model
 import youid/uuid
@@ -29,6 +30,19 @@ pub type ListJobsRequest {
     status_filter: StatusFilter,
     job_type_filter: JobTypeFilter,
   )
+}
+
+pub type GetJobRequest {
+  GetJobRequest(id: uuid.Uuid)
+}
+
+pub fn get_request_decoder() -> decode.Decoder(GetJobRequest) {
+  use id <- decode.field("id", uuid_helpers.decoder())
+  decode.success(GetJobRequest(id: id))
+}
+
+pub fn encode_get_request(request: GetJobRequest) -> json.Json {
+  json.object([#("id", encode_uuid(request.id))])
 }
 
 pub fn list_request_decoder() -> decode.Decoder(ListJobsRequest) {
@@ -93,6 +107,31 @@ pub type ListJobsResponse {
   )
 }
 
+pub type JobDetailResponse {
+  JobDetailResponse(
+    id: uuid.Uuid,
+    request_id: option.Option(uuid.Uuid),
+    periodic_job_id: option.Option(uuid.Uuid),
+    job_type: String,
+    payload: option.Option(String),
+    status: String,
+    attempts: Int,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    run_at: timestamp.Timestamp,
+    started_at: option.Option(timestamp.Timestamp),
+    completed_at: option.Option(timestamp.Timestamp),
+    last_error: option.Option(String),
+    created_at: timestamp.Timestamp,
+    updated_at: timestamp.Timestamp,
+    overdue: Bool,
+  )
+}
+
+pub type GetJobResponse {
+  GetJobResponse(job: JobDetailResponse)
+}
+
 pub fn list_response_decoder() -> decode.Decoder(ListJobsResponse) {
   use summary <- decode.field("summary", summary_decoder())
   use page <- decode.field(
@@ -107,6 +146,15 @@ pub fn encode_list_response(response: ListJobsResponse) -> json.Json {
     #("summary", encode_summary(response.summary)),
     #("page", pagination_model.encode_page(response.page, "jobs", encode_job)),
   ])
+}
+
+pub fn get_response_decoder() -> decode.Decoder(GetJobResponse) {
+  use job <- decode.field("job", job_detail_decoder())
+  decode.success(GetJobResponse(job: job))
+}
+
+pub fn encode_get_response(response: GetJobResponse) -> json.Json {
+  json.object([#("job", encode_job_detail(response.job))])
 }
 
 pub fn from_jobs(
@@ -136,6 +184,30 @@ pub fn empty_summary() -> JobsSummary {
     done_count: 0,
     overdue_count: 0,
   )
+}
+
+pub fn from_job_detail(
+  job: job_model.Job,
+  now: timestamp.Timestamp,
+) -> GetJobResponse {
+  GetJobResponse(job: JobDetailResponse(
+    id: job.id,
+    request_id: job.request_id,
+    periodic_job_id: job.periodic_job_id,
+    job_type: job_model.job_type_to_string(job.job_type),
+    payload: job.payload,
+    status: job_model.status_to_string(job.status),
+    attempts: job.attempts,
+    max_attempts: job.max_attempts,
+    timeout_seconds: job.timeout_seconds,
+    run_at: job.run_at,
+    started_at: job.started_at,
+    completed_at: job.completed_at,
+    last_error: job.last_error,
+    created_at: job.created_at,
+    updated_at: job.updated_at,
+    overdue: is_overdue(job, now),
+  ))
 }
 
 pub fn from_job(job: job_model.Job, now: timestamp.Timestamp) -> JobResponse {
@@ -180,11 +252,14 @@ fn is_before(a: timestamp.Timestamp, b: timestamp.Timestamp) -> Bool {
 }
 
 fn job_decoder() -> decode.Decoder(JobResponse) {
-  use id <- decode.field("id", uuid_decoder())
-  use request_id <- decode.field("requestId", decode.optional(uuid_decoder()))
+  use id <- decode.field("id", uuid_helpers.decoder())
+  use request_id <- decode.field(
+    "requestId",
+    decode.optional(uuid_helpers.decoder()),
+  )
   use periodic_job_id <- decode.field(
     "periodicJobId",
-    decode.optional(uuid_decoder()),
+    decode.optional(uuid_helpers.decoder()),
   )
   use job_type <- decode.field("jobType", decode.string)
   use status <- decode.field("status", decode.string)
@@ -224,12 +299,80 @@ fn job_decoder() -> decode.Decoder(JobResponse) {
   ))
 }
 
+fn job_detail_decoder() -> decode.Decoder(JobDetailResponse) {
+  use id <- decode.field("id", uuid_helpers.decoder())
+  use request_id <- decode.field("requestId", decode.optional(uuid_helpers.decoder()))
+  use periodic_job_id <- decode.field(
+    "periodicJobId",
+    decode.optional(uuid_helpers.decoder()),
+  )
+  use job_type <- decode.field("jobType", decode.string)
+  use payload <- decode.field("payload", decode.optional(decode.string))
+  use status <- decode.field("status", decode.string)
+  use attempts <- decode.field("attempts", decode.int)
+  use max_attempts <- decode.field("maxAttempts", decode.int)
+  use timeout_seconds <- decode.field("timeoutSeconds", decode.int)
+  use run_at <- decode.field("runAt", timestamp_helpers.decoder())
+  use started_at <- decode.field(
+    "startedAt",
+    decode.optional(timestamp_helpers.decoder()),
+  )
+  use completed_at <- decode.field(
+    "completedAt",
+    decode.optional(timestamp_helpers.decoder()),
+  )
+  use last_error <- decode.field("lastError", decode.optional(decode.string))
+  use created_at <- decode.field("createdAt", timestamp_helpers.decoder())
+  use updated_at <- decode.field("updatedAt", timestamp_helpers.decoder())
+  use overdue <- decode.field("overdue", decode.bool)
+
+  decode.success(JobDetailResponse(
+    id: id,
+    request_id: request_id,
+    periodic_job_id: periodic_job_id,
+    job_type: job_type,
+    payload: payload,
+    status: status,
+    attempts: attempts,
+    max_attempts: max_attempts,
+    timeout_seconds: timeout_seconds,
+    run_at: run_at,
+    started_at: started_at,
+    completed_at: completed_at,
+    last_error: last_error,
+    created_at: created_at,
+    updated_at: updated_at,
+    overdue: overdue,
+  ))
+}
+
 fn encode_job(job: JobResponse) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(job.id))),
     #("requestId", json.nullable(job.request_id, encode_uuid)),
     #("periodicJobId", json.nullable(job.periodic_job_id, encode_uuid)),
     #("jobType", json.string(job.job_type)),
+    #("status", json.string(job.status)),
+    #("attempts", json.int(job.attempts)),
+    #("maxAttempts", json.int(job.max_attempts)),
+    #("timeoutSeconds", json.int(job.timeout_seconds)),
+    #("runAt", timestamp_helpers.encode(job.run_at)),
+    #("startedAt", json.nullable(job.started_at, timestamp_helpers.encode)),
+    #("completedAt", json.nullable(job.completed_at, timestamp_helpers.encode)),
+    #("lastError", json.nullable(job.last_error, json.string)),
+    #("createdAt", timestamp_helpers.encode(job.created_at)),
+    #("updatedAt", timestamp_helpers.encode(job.updated_at)),
+    #("overdue", json.bool(job.overdue)),
+  ])
+}
+
+fn encode_job_detail(job: JobDetailResponse) -> json.Json {
+  json.object([
+    #("id", encode_uuid(job.id)),
+    #("requestId", json.nullable(job.request_id, encode_uuid)),
+    #("periodicJobId", json.nullable(job.periodic_job_id, encode_uuid)),
+    #("jobType", json.string(job.job_type)),
+    #("payload", json.nullable(job.payload, json.string)),
     #("status", json.string(job.status)),
     #("attempts", json.int(job.attempts)),
     #("maxAttempts", json.int(job.max_attempts)),
@@ -315,15 +458,6 @@ fn encode_job_type_filter(filter: JobTypeFilter) -> json.Json {
     UserLifecycleJobs -> json.string("user_lifecycle")
     InfrastructureJobs -> json.string("infrastructure")
   }
-}
-
-fn uuid_decoder() -> decode.Decoder(uuid.Uuid) {
-  decode.then(decode.string, fn(value) {
-    case uuid.from_string(value) {
-      Ok(id) -> decode.success(id)
-      Error(_) -> decode.failure(uuid.nil, "Uuid")
-    }
-  })
 }
 
 fn encode_uuid(id: uuid.Uuid) -> json.Json {

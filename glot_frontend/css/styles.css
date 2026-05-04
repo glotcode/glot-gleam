@@ -379,6 +379,7 @@ a {
   color: #ffffff;
   font: inherit;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .admin-page__button:hover,
@@ -491,6 +492,65 @@ a {
 .admin-jobs-page__filter-group {
   display: grid;
   gap: 0.55rem;
+}
+
+.admin-job-page__content {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-job-page__summary-grid,
+.admin-job-page__detail-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-job-page__summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-job-page__detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-job-page__summary-card,
+.admin-job-page__detail-item {
+  gap: 0.35rem;
+}
+
+.admin-job-page__eyebrow {
+  color: #66789f;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-job-page__summary-value,
+.admin-job-page__detail-value {
+  color: #1f2c45;
+  overflow-wrap: anywhere;
+}
+
+.admin-job-page__summary-value {
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.admin-job-page__meta,
+.admin-job-page__body-text {
+  margin: 0;
+  color: #58667f;
+  line-height: 1.55;
+}
+
+.admin-job-page__code-block {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #172033;
+  font-size: 0.88rem;
+  line-height: 1.6;
 }
 
 .jobs-table {
@@ -624,6 +684,11 @@ a {
 
   .admin-jobs-page__summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-job-page__summary-grid,
+  .admin-job-page__detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 

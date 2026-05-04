@@ -123,6 +123,7 @@ fn handle_page_request(
     route.Account -> spa_page("glot.io - account")
     route.Admin -> spa_page("glot.io - admin")
     route.AdminJobs -> spa_page("glot.io - admin jobs")
+    route.AdminJob(_) -> spa_page("glot.io - admin job")
     route.AdminConfig -> spa_page("glot.io - admin config")
     route.AdminRateLimits -> spa_page("glot.io - admin rate limits")
     route.AccountSnippets(_, _) -> spa_page("glot.io - account snippets")

@@ -27,6 +27,7 @@ pub type ApiAction {
   GetAdminCleanupConfigAction
   UpsertAdminCleanupConfigAction
   GetAdminJobsAction
+  GetAdminJobAction
   GetAdminRateLimitPoliciesAction
   UpsertAdminRateLimitPolicyAction
   GetAdminDockerRunConfigAction
@@ -59,6 +60,7 @@ pub fn list() -> List(ApiAction) {
     GetAdminCleanupConfigAction,
     UpsertAdminCleanupConfigAction,
     GetAdminJobsAction,
+    GetAdminJobAction,
     GetAdminRateLimitPoliciesAction,
     UpsertAdminRateLimitPolicyAction,
     GetAdminDockerRunConfigAction,
@@ -104,6 +106,7 @@ pub fn to_string(action: ApiAction) -> String {
     GetAdminCleanupConfigAction -> "get_admin_cleanup_config"
     UpsertAdminCleanupConfigAction -> "upsert_admin_cleanup_config"
     GetAdminJobsAction -> "get_admin_jobs"
+    GetAdminJobAction -> "get_admin_job"
     GetAdminRateLimitPoliciesAction -> "get_admin_rate_limit_policies"
     UpsertAdminRateLimitPolicyAction -> "upsert_admin_rate_limit_policy"
     GetAdminDockerRunConfigAction -> "get_admin_docker_run_config"
@@ -137,6 +140,7 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "get_admin_cleanup_config" -> option.Some(GetAdminCleanupConfigAction)
     "upsert_admin_cleanup_config" -> option.Some(UpsertAdminCleanupConfigAction)
     "get_admin_jobs" -> option.Some(GetAdminJobsAction)
+    "get_admin_job" -> option.Some(GetAdminJobAction)
     "get_admin_rate_limit_policies" ->
       option.Some(GetAdminRateLimitPoliciesAction)
     "upsert_admin_rate_limit_policy" ->

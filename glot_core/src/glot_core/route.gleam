@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option
 import gleam/uri.{type Uri}
 import lustre/attribute.{type Attribute}
+import youid/uuid
 
 pub type Route {
   Home
@@ -9,6 +10,7 @@ pub type Route {
   Account
   Admin
   AdminJobs
+  AdminJob(id: uuid.Uuid)
   AdminConfig
   AdminRateLimits
   AccountSnippets(after: option.Option(String), before: option.Option(String))
@@ -29,6 +31,11 @@ pub fn from_uri(uri: Uri) -> Route {
     ["account"] -> Account
     ["admin"] -> Admin
     ["admin", "jobs"] -> AdminJobs
+    ["admin", "jobs", job_id] ->
+      case uuid.from_string(job_id) {
+        Ok(id) -> AdminJob(id)
+        Error(_) -> NotFound(uri:)
+      }
     ["admin", "config"] -> AdminConfig
     ["admin", "rate-limits"] -> AdminRateLimits
     ["account", "snippets"] -> {
@@ -52,6 +59,7 @@ pub fn to_string(route: Route) -> String {
     Account -> "/account"
     Admin -> "/admin"
     AdminJobs -> "/admin/jobs"
+    AdminJob(id) -> "/admin/jobs/" <> uuid.to_string(id)
     AdminConfig -> "/admin/config"
     AdminRateLimits -> "/admin/rate-limits"
     AccountSnippets(after:, before:) -> {
@@ -81,6 +89,7 @@ pub fn name(route: Route) -> String {
     Account -> "account"
     Admin -> "admin"
     AdminJobs -> "admin_jobs"
+    AdminJob(_) -> "admin_job"
     AdminConfig -> "admin_config"
     AdminRateLimits -> "admin_rate_limits"
     AccountSnippets(_, _) -> "account_snippets"
