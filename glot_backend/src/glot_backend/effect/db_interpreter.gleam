@@ -1,4 +1,5 @@
 import glot_backend/effect/analytics/analytics_interpreter
+import glot_backend/effect/admin_log/admin_log_interpreter
 import glot_backend/effect/api_log/api_log_interpreter
 import glot_backend/context
 import glot_backend/effect/auth/auth_interpreter
@@ -26,6 +27,8 @@ pub fn run(
   case effect {
     program_types.AnalyticsEffect(effect) ->
       analytics_interpreter.run(effect, handlers, state, continue)
+    program_types.AdminLogEffect(effect) ->
+      admin_log_interpreter.run(effect, handlers, state, continue)
     program_types.ApiLogEffect(effect) ->
       api_log_interpreter.run(effect, handlers, state, continue)
     program_types.AuthEffect(effect) ->

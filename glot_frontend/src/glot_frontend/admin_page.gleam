@@ -67,6 +67,16 @@ pub fn view(_model: Model) -> Element(Msg) {
           ]),
           html.div([attribute.class("admin-page__section-grid")], [
             link_card(
+              title: "API logs",
+              description: "Review retained API request logging by request ID.",
+              target: route.AdminApiLogs,
+            ),
+            link_card(
+              title: "Job logs",
+              description: "Scan operational job log output separately from the primary jobs queue view.",
+              target: route.AdminJobLogs,
+            ),
+            link_card(
               title: "Rate limits",
               description: "Review and update API rate limit policies.",
               target: route.AdminRateLimits,

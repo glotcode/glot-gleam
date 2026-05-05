@@ -30,6 +30,7 @@ import glot_backend/domain/shared/session_domain
 import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/dynamic_config
+import glot_backend/effect/admin_log/admin_log_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import glot_backend/effect/app_config/app_config_algebra
@@ -1557,6 +1558,8 @@ fn run_test_db_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    program_types.AdminLogEffect(admin_log_effect) ->
+      run_test_admin_log_effect(admin_log_effect, ctx, db)
     program_types.AnalyticsEffect(analytics_effect) ->
       run_test_analytics_effect(analytics_effect, ctx, db)
     program_types.ApiLogEffect(api_log_effect) ->
@@ -1588,6 +1591,8 @@ fn run_test_tx_db_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    program_types.AdminLogEffect(admin_log_effect) ->
+      run_test_admin_log_tx_effect(admin_log_effect, ctx, db)
     program_types.AnalyticsEffect(analytics_effect) ->
       run_test_analytics_tx_effect(analytics_effect, ctx, db)
     program_types.ApiLogEffect(api_log_effect) ->
@@ -1621,6 +1626,40 @@ fn run_test_api_log_effect(
   case effect {
     api_log_algebra.DeleteApiLogBefore(before: _, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_admin_log_effect(
+  effect: admin_log_algebra.AdminLogEffect(program_types.Program(a)),
+  _ctx: context.Context,
+  _db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    admin_log_algebra.ListApiLogs(_, _) ->
+      panic as "Admin log list API effects are not used in backend tests"
+    admin_log_algebra.GetApiLog(_, _) ->
+      panic as "Admin log API detail effects are not used in backend tests"
+    admin_log_algebra.ListJobLogs(_, _) ->
+      panic as "Admin log list job effects are not used in backend tests"
+    admin_log_algebra.GetJobLog(_, _) ->
+      panic as "Admin log job detail effects are not used in backend tests"
+  }
+}
+
+fn run_test_admin_log_tx_effect(
+  effect: admin_log_algebra.AdminLogEffect(program_types.TransactionProgram(a)),
+  _ctx: context.Context,
+  _db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    admin_log_algebra.ListApiLogs(_, _) ->
+      panic as "Admin log list API tx effects are not used in backend tests"
+    admin_log_algebra.GetApiLog(_, _) ->
+      panic as "Admin log API detail tx effects are not used in backend tests"
+    admin_log_algebra.ListJobLogs(_, _) ->
+      panic as "Admin log list job tx effects are not used in backend tests"
+    admin_log_algebra.GetJobLog(_, _) ->
+      panic as "Admin log job detail tx effects are not used in backend tests"
   }
 }
 

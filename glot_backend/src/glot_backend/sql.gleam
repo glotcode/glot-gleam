@@ -1874,6 +1874,502 @@ WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)])
 }
 
+pub type ListAdminApiLogsAfter {
+  ListAdminApiLogsAfter(
+    request_id: BitArray,
+    created_at: Timestamp,
+    action: String,
+    duration_ns: Int,
+    has_error: Bool,
+  )
+}
+
+pub fn list_admin_api_logs_after(
+  filter_by_request_id filter_by_request_id: Bool,
+  request_id request_id: BitArray,
+  has_errors_only has_errors_only: Bool,
+  has_after_cursor has_after_cursor: Bool,
+  after_created_at after_created_at: Timestamp,
+  after_request_id after_request_id: BitArray,
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  request_id,
+  created_at,
+  action,
+  duration_ns,
+  (error IS NOT NULL)::boolean AS has_error
+FROM api_log
+WHERE (
+    NOT $1::boolean
+    OR request_id = $2::uuid
+  )
+  AND (
+    NOT $3::boolean
+    OR error IS NOT NULL
+  )
+  AND (
+    NOT $4::boolean
+    OR (created_at, request_id) < ($5::timestamptz, $6::uuid)
+  )
+ORDER BY created_at DESC, request_id DESC
+LIMIT $7"
+  #(
+    sql,
+    [
+      dev.ParamBool(filter_by_request_id),
+      dev.ParamBitArray(request_id),
+      dev.ParamBool(has_errors_only),
+      dev.ParamBool(has_after_cursor),
+      dev.ParamTimestamp(after_created_at),
+      dev.ParamBitArray(after_request_id),
+      dev.ParamInt(page_limit),
+    ],
+    list_admin_api_logs_after_decoder(),
+  )
+}
+
+pub fn list_admin_api_logs_after_decoder() -> decode.Decoder(
+  ListAdminApiLogsAfter,
+) {
+  use request_id <- decode.field(0, decode.bit_array)
+  use created_at <- decode.field(1, dev.datetime_decoder())
+  use action <- decode.field(2, decode.string)
+  use duration_ns <- decode.field(3, decode.int)
+  use has_error <- decode.field(4, dev.bool_decoder())
+  decode.success(ListAdminApiLogsAfter(
+    request_id:,
+    created_at:,
+    action:,
+    duration_ns:,
+    has_error:,
+  ))
+}
+
+pub type ListAdminApiLogsBefore {
+  ListAdminApiLogsBefore(
+    request_id: BitArray,
+    created_at: Timestamp,
+    action: String,
+    duration_ns: Int,
+    has_error: Bool,
+  )
+}
+
+pub fn list_admin_api_logs_before(
+  filter_by_request_id filter_by_request_id: Bool,
+  request_id request_id: BitArray,
+  has_errors_only has_errors_only: Bool,
+  has_before_cursor has_before_cursor: Bool,
+  before_created_at before_created_at: Timestamp,
+  before_request_id before_request_id: BitArray,
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  request_id,
+  created_at,
+  action,
+  duration_ns,
+  (error IS NOT NULL)::boolean AS has_error
+FROM api_log
+WHERE (
+    NOT $1::boolean
+    OR request_id = $2::uuid
+  )
+  AND (
+    NOT $3::boolean
+    OR error IS NOT NULL
+  )
+  AND (
+    NOT $4::boolean
+    OR (created_at, request_id) > ($5::timestamptz, $6::uuid)
+  )
+ORDER BY created_at ASC, request_id ASC
+LIMIT $7"
+  #(
+    sql,
+    [
+      dev.ParamBool(filter_by_request_id),
+      dev.ParamBitArray(request_id),
+      dev.ParamBool(has_errors_only),
+      dev.ParamBool(has_before_cursor),
+      dev.ParamTimestamp(before_created_at),
+      dev.ParamBitArray(before_request_id),
+      dev.ParamInt(page_limit),
+    ],
+    list_admin_api_logs_before_decoder(),
+  )
+}
+
+pub fn list_admin_api_logs_before_decoder() -> decode.Decoder(
+  ListAdminApiLogsBefore,
+) {
+  use request_id <- decode.field(0, decode.bit_array)
+  use created_at <- decode.field(1, dev.datetime_decoder())
+  use action <- decode.field(2, decode.string)
+  use duration_ns <- decode.field(3, decode.int)
+  use has_error <- decode.field(4, dev.bool_decoder())
+  decode.success(ListAdminApiLogsBefore(
+    request_id:,
+    created_at:,
+    action:,
+    duration_ns:,
+    has_error:,
+  ))
+}
+
+pub type GetAdminApiLog {
+  GetAdminApiLog(
+    request_id: BitArray,
+    created_at: Timestamp,
+    action: String,
+    body_bytes: Int,
+    duration_ns: Int,
+    ip: Option(String),
+    user_agent: Option(String),
+    info: Option(decode.Dynamic),
+    warnings: Option(decode.Dynamic),
+    debug: Option(decode.Dynamic),
+    error: Option(decode.Dynamic),
+    effects: Option(decode.Dynamic),
+  )
+}
+
+pub fn get_admin_api_log(request_id request_id: BitArray) {
+  let sql =
+    "SELECT
+  a.request_id AS request_id,
+  a.created_at AS created_at,
+  a.action AS action,
+  a.body_bytes AS body_bytes,
+  a.duration_ns AS duration_ns,
+  a.ip AS ip,
+  a.user_agent AS user_agent,
+  COALESCE(a.info::text, '') AS info,
+  COALESCE(a.warnings::text, '') AS warnings,
+  COALESCE(a.debug::text, '') AS debug,
+  COALESCE(a.error::text, '') AS error,
+  COALESCE(a.effects::text, '') AS effects
+FROM api_log a
+WHERE a.request_id = $1::uuid"
+  #(sql, [dev.ParamBitArray(request_id)], get_admin_api_log_decoder())
+}
+
+pub fn get_admin_api_log_decoder() -> decode.Decoder(GetAdminApiLog) {
+  use request_id <- decode.field(0, decode.bit_array)
+  use created_at <- decode.field(1, dev.datetime_decoder())
+  use action <- decode.field(2, decode.string)
+  use body_bytes <- decode.field(3, decode.int)
+  use duration_ns <- decode.field(4, decode.int)
+  use ip <- decode.field(5, decode.optional(decode.string))
+  use user_agent <- decode.field(6, decode.optional(decode.string))
+  use info <- decode.field(7, decode.optional(decode.dynamic))
+  use warnings <- decode.field(8, decode.optional(decode.dynamic))
+  use debug <- decode.field(9, decode.optional(decode.dynamic))
+  use error <- decode.field(10, decode.optional(decode.dynamic))
+  use effects <- decode.field(11, decode.optional(decode.dynamic))
+  decode.success(GetAdminApiLog(
+    request_id:,
+    created_at:,
+    action:,
+    body_bytes:,
+    duration_ns:,
+    ip:,
+    user_agent:,
+    info:,
+    warnings:,
+    debug:,
+    error:,
+    effects:,
+  ))
+}
+
+pub type ListAdminJobLogsAfter {
+  ListAdminJobLogsAfter(
+    id: BitArray,
+    request_id: Option(BitArray),
+    job_id: BitArray,
+    job_type: String,
+    attempt: Int,
+    created_at: Timestamp,
+    duration_ns: Int,
+    info: Option(decode.Dynamic),
+    warnings: Option(decode.Dynamic),
+    debug: Option(decode.Dynamic),
+    error: Option(decode.Dynamic),
+    effects: Option(decode.Dynamic),
+  )
+}
+
+pub fn list_admin_job_logs_after(
+  filter_by_request_id filter_by_request_id: Bool,
+  request_id request_id: BitArray,
+  filter_by_job_id filter_by_job_id: Bool,
+  job_id job_id: BitArray,
+  has_errors_only has_errors_only: Bool,
+  has_after_cursor has_after_cursor: Bool,
+  after_created_at after_created_at: Timestamp,
+  after_id after_id: BitArray,
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  job_id,
+  job_type,
+  attempt,
+  created_at,
+  duration_ns,
+  COALESCE(info::text, '') AS info,
+  COALESCE(warnings::text, '') AS warnings,
+  COALESCE(debug::text, '') AS debug,
+  COALESCE(error::text, '') AS error,
+  COALESCE(effects::text, '') AS effects
+FROM job_log
+WHERE (
+    NOT $1::boolean
+    OR request_id = $2::uuid
+  )
+  AND (
+    NOT $3::boolean
+    OR job_id = $4::uuid
+  )
+  AND (
+    NOT $5::boolean
+    OR error IS NOT NULL
+  )
+  AND (
+    NOT $6::boolean
+    OR (created_at, id) < ($7::timestamptz, $8::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $9"
+  #(
+    sql,
+    [
+      dev.ParamBool(filter_by_request_id),
+      dev.ParamBitArray(request_id),
+      dev.ParamBool(filter_by_job_id),
+      dev.ParamBitArray(job_id),
+      dev.ParamBool(has_errors_only),
+      dev.ParamBool(has_after_cursor),
+      dev.ParamTimestamp(after_created_at),
+      dev.ParamBitArray(after_id),
+      dev.ParamInt(page_limit),
+    ],
+    list_admin_job_logs_after_decoder(),
+  )
+}
+
+pub fn list_admin_job_logs_after_decoder() -> decode.Decoder(
+  ListAdminJobLogsAfter,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use job_id <- decode.field(2, decode.bit_array)
+  use job_type <- decode.field(3, decode.string)
+  use attempt <- decode.field(4, decode.int)
+  use created_at <- decode.field(5, dev.datetime_decoder())
+  use duration_ns <- decode.field(6, decode.int)
+  use info <- decode.field(7, decode.optional(decode.dynamic))
+  use warnings <- decode.field(8, decode.optional(decode.dynamic))
+  use debug <- decode.field(9, decode.optional(decode.dynamic))
+  use error <- decode.field(10, decode.optional(decode.dynamic))
+  use effects <- decode.field(11, decode.optional(decode.dynamic))
+  decode.success(ListAdminJobLogsAfter(
+    id:,
+    request_id:,
+    job_id:,
+    job_type:,
+    attempt:,
+    created_at:,
+    duration_ns:,
+    info:,
+    warnings:,
+    debug:,
+    error:,
+    effects:,
+  ))
+}
+
+pub type ListAdminJobLogsBefore {
+  ListAdminJobLogsBefore(
+    id: BitArray,
+    request_id: Option(BitArray),
+    job_id: BitArray,
+    job_type: String,
+    attempt: Int,
+    created_at: Timestamp,
+    duration_ns: Int,
+    info: Option(decode.Dynamic),
+    warnings: Option(decode.Dynamic),
+    debug: Option(decode.Dynamic),
+    error: Option(decode.Dynamic),
+    effects: Option(decode.Dynamic),
+  )
+}
+
+pub fn list_admin_job_logs_before(
+  filter_by_request_id filter_by_request_id: Bool,
+  request_id request_id: BitArray,
+  filter_by_job_id filter_by_job_id: Bool,
+  job_id job_id: BitArray,
+  has_errors_only has_errors_only: Bool,
+  has_before_cursor has_before_cursor: Bool,
+  before_created_at before_created_at: Timestamp,
+  before_id before_id: BitArray,
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  job_id,
+  job_type,
+  attempt,
+  created_at,
+  duration_ns,
+  COALESCE(info::text, '') AS info,
+  COALESCE(warnings::text, '') AS warnings,
+  COALESCE(debug::text, '') AS debug,
+  COALESCE(error::text, '') AS error,
+  COALESCE(effects::text, '') AS effects
+FROM job_log
+WHERE (
+    NOT $1::boolean
+    OR request_id = $2::uuid
+  )
+  AND (
+    NOT $3::boolean
+    OR job_id = $4::uuid
+  )
+  AND (
+    NOT $5::boolean
+    OR error IS NOT NULL
+  )
+  AND (
+    NOT $6::boolean
+    OR (created_at, id) > ($7::timestamptz, $8::uuid)
+  )
+ORDER BY created_at ASC, id ASC
+LIMIT $9"
+  #(
+    sql,
+    [
+      dev.ParamBool(filter_by_request_id),
+      dev.ParamBitArray(request_id),
+      dev.ParamBool(filter_by_job_id),
+      dev.ParamBitArray(job_id),
+      dev.ParamBool(has_errors_only),
+      dev.ParamBool(has_before_cursor),
+      dev.ParamTimestamp(before_created_at),
+      dev.ParamBitArray(before_id),
+      dev.ParamInt(page_limit),
+    ],
+    list_admin_job_logs_before_decoder(),
+  )
+}
+
+pub fn list_admin_job_logs_before_decoder() -> decode.Decoder(
+  ListAdminJobLogsBefore,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use job_id <- decode.field(2, decode.bit_array)
+  use job_type <- decode.field(3, decode.string)
+  use attempt <- decode.field(4, decode.int)
+  use created_at <- decode.field(5, dev.datetime_decoder())
+  use duration_ns <- decode.field(6, decode.int)
+  use info <- decode.field(7, decode.optional(decode.dynamic))
+  use warnings <- decode.field(8, decode.optional(decode.dynamic))
+  use debug <- decode.field(9, decode.optional(decode.dynamic))
+  use error <- decode.field(10, decode.optional(decode.dynamic))
+  use effects <- decode.field(11, decode.optional(decode.dynamic))
+  decode.success(ListAdminJobLogsBefore(
+    id:,
+    request_id:,
+    job_id:,
+    job_type:,
+    attempt:,
+    created_at:,
+    duration_ns:,
+    info:,
+    warnings:,
+    debug:,
+    error:,
+    effects:,
+  ))
+}
+
+pub type GetAdminJobLog {
+  GetAdminJobLog(
+    id: BitArray,
+    request_id: Option(BitArray),
+    job_id: BitArray,
+    job_type: String,
+    attempt: Int,
+    created_at: Timestamp,
+    duration_ns: Int,
+    info: Option(decode.Dynamic),
+    warnings: Option(decode.Dynamic),
+    debug: Option(decode.Dynamic),
+    error: Option(decode.Dynamic),
+    effects: Option(decode.Dynamic),
+  )
+}
+
+pub fn get_admin_job_log(id id: BitArray) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  job_id,
+  job_type,
+  attempt,
+  created_at,
+  duration_ns,
+  COALESCE(info::text, '') AS info,
+  COALESCE(warnings::text, '') AS warnings,
+  COALESCE(debug::text, '') AS debug,
+  COALESCE(error::text, '') AS error,
+  COALESCE(effects::text, '') AS effects
+FROM job_log
+WHERE id = $1::uuid"
+  #(sql, [dev.ParamBitArray(id)], get_admin_job_log_decoder())
+}
+
+pub fn get_admin_job_log_decoder() -> decode.Decoder(GetAdminJobLog) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use job_id <- decode.field(2, decode.bit_array)
+  use job_type <- decode.field(3, decode.string)
+  use attempt <- decode.field(4, decode.int)
+  use created_at <- decode.field(5, dev.datetime_decoder())
+  use duration_ns <- decode.field(6, decode.int)
+  use info <- decode.field(7, decode.optional(decode.dynamic))
+  use warnings <- decode.field(8, decode.optional(decode.dynamic))
+  use debug <- decode.field(9, decode.optional(decode.dynamic))
+  use error <- decode.field(10, decode.optional(decode.dynamic))
+  use effects <- decode.field(11, decode.optional(decode.dynamic))
+  decode.success(GetAdminJobLog(
+    id:,
+    request_id:,
+    job_id:,
+    job_type:,
+    attempt:,
+    created_at:,
+    duration_ns:,
+    info:,
+    warnings:,
+    debug:,
+    error:,
+    effects:,
+  ))
+}
+
 pub fn insert_api_log(entries entries: String) {
   let sql =
     "INSERT INTO api_log (id, request_id, created_at, action, body_bytes, duration_ns, ip, user_agent, info, warnings, debug, error, effects)

@@ -217,6 +217,26 @@ fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
         account_model.Active,
         account_model.ReadOnly,
       ])
+    api_action.GetAdminApiLogsAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.GetAdminApiLogAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.GetAdminJobLogsAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.GetAdminJobLogAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
     api_action.GetAdminRateLimitPoliciesAction ->
       AllowedAccountStates([
         account_model.Active,

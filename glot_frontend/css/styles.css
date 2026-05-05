@@ -494,7 +494,101 @@ a {
   gap: 0.55rem;
 }
 
+.admin-request-logs-page__filters,
+.admin-job-logs-page__filters {
+  gap: 1rem;
+}
+
+.admin-request-logs-page__filter-row,
+.admin-job-logs-page__filter-row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-request-logs-page__filter-group,
+.admin-job-logs-page__filter-group {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.admin-request-logs-page__apply,
+.admin-job-logs-page__apply {
+  display: flex;
+  align-items: end;
+}
+
+.admin-job-logs-page__field-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-request-logs-page__head {
+  grid-template-columns: minmax(12rem, 1.35fr) minmax(8rem, 0.8fr) minmax(12rem, 1fr) minmax(8rem, 0.7fr) minmax(7rem, 0.65fr) minmax(7rem, 0.65fr);
+}
+
+.admin-job-logs-page__head {
+  grid-template-columns: minmax(12rem, 1.15fr) minmax(8rem, 0.8fr) minmax(12rem, 1fr) minmax(12rem, 1fr) minmax(11rem, 0.95fr) minmax(6rem, 0.55fr) minmax(7rem, 0.6fr) minmax(7rem, 0.6fr) minmax(7rem, 0.65fr);
+}
+
+.admin-request-logs-page__row {
+  grid-template-columns: minmax(12rem, 1.35fr) minmax(8rem, 0.8fr) minmax(12rem, 1fr) minmax(8rem, 0.7fr) minmax(7rem, 0.65fr) minmax(7rem, 0.65fr);
+}
+
+.admin-job-logs-page__row {
+  grid-template-columns: minmax(12rem, 1.15fr) minmax(8rem, 0.8fr) minmax(12rem, 1fr) minmax(12rem, 1fr) minmax(11rem, 0.95fr) minmax(6rem, 0.55fr) minmax(7rem, 0.6fr) minmax(7rem, 0.6fr) minmax(7rem, 0.65fr);
+}
+
+.admin-request-logs-page__link,
+.admin-job-logs-page__link {
+  color: #1f2c45;
+  text-decoration: none;
+}
+
+.admin-request-logs-page__link:hover,
+.admin-job-logs-page__link:hover {
+  text-decoration: underline;
+}
+
+.admin-request-logs-page__surface-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.admin-request-logs-page__surface-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.48rem;
+  border: 1px solid #c8d7ef;
+  background: #edf4ff;
+  color: #2853a6;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
 .admin-job-page__content {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-request-log-page__summary-grid,
+.admin-job-log-page__summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.admin-request-log-page__detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-request-log-page__section {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-request-log-page__raw-grid,
+.admin-job-log-page__raw-grid {
   display: grid;
   gap: 1rem;
 }
@@ -686,9 +780,32 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .admin-job-logs-page__field-grid,
   .admin-job-page__summary-grid,
-  .admin-job-page__detail-grid {
+  .admin-job-page__detail-grid,
+  .admin-request-log-page__detail-grid {
     grid-template-columns: 1fr;
+  }
+
+  .jobs-table__head {
+    display: none;
+  }
+
+  .admin-request-logs-page__row,
+  .admin-job-logs-page__row,
+  .jobs-table__row {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .jobs-table__cell-label {
+    display: block;
+    margin-bottom: 0.2rem;
+    color: #66789f;
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 }
 

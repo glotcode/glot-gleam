@@ -9,8 +9,12 @@ pub type Route {
   Login
   Account
   Admin
+  AdminApiLogs
+  AdminApiLog(request_id: uuid.Uuid)
   AdminJobs
   AdminJob(id: uuid.Uuid)
+  AdminJobLogs
+  AdminJobLog(id: uuid.Uuid)
   AdminConfig
   AdminRateLimits
   AccountSnippets(after: option.Option(String), before: option.Option(String))
@@ -30,10 +34,22 @@ pub fn from_uri(uri: Uri) -> Route {
     ["login"] -> Login
     ["account"] -> Account
     ["admin"] -> Admin
+    ["admin", "logs", "api"] -> AdminApiLogs
+    ["admin", "logs", "api", request_id] ->
+      case uuid.from_string(request_id) {
+        Ok(id) -> AdminApiLog(id)
+        Error(_) -> NotFound(uri:)
+      }
     ["admin", "jobs"] -> AdminJobs
     ["admin", "jobs", job_id] ->
       case uuid.from_string(job_id) {
         Ok(id) -> AdminJob(id)
+        Error(_) -> NotFound(uri:)
+      }
+    ["admin", "logs", "job-logs"] -> AdminJobLogs
+    ["admin", "logs", "job-logs", id] ->
+      case uuid.from_string(id) {
+        Ok(id) -> AdminJobLog(id)
         Error(_) -> NotFound(uri:)
       }
     ["admin", "config"] -> AdminConfig
@@ -58,8 +74,13 @@ pub fn to_string(route: Route) -> String {
     Login -> "/login"
     Account -> "/account"
     Admin -> "/admin"
+    AdminApiLogs -> "/admin/logs/api"
+    AdminApiLog(request_id) ->
+      "/admin/logs/api/" <> uuid.to_string(request_id)
     AdminJobs -> "/admin/jobs"
     AdminJob(id) -> "/admin/jobs/" <> uuid.to_string(id)
+    AdminJobLogs -> "/admin/logs/job-logs"
+    AdminJobLog(id) -> "/admin/logs/job-logs/" <> uuid.to_string(id)
     AdminConfig -> "/admin/config"
     AdminRateLimits -> "/admin/rate-limits"
     AccountSnippets(after:, before:) -> {
@@ -88,8 +109,12 @@ pub fn name(route: Route) -> String {
     Login -> "login"
     Account -> "account"
     Admin -> "admin"
+    AdminApiLogs -> "admin_api_logs"
+    AdminApiLog(_) -> "admin_api_log"
     AdminJobs -> "admin_jobs"
     AdminJob(_) -> "admin_job"
+    AdminJobLogs -> "admin_job_logs"
+    AdminJobLog(_) -> "admin_job_log"
     AdminConfig -> "admin_config"
     AdminRateLimits -> "admin_rate_limits"
     AccountSnippets(_, _) -> "account_snippets"

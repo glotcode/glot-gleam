@@ -986,7 +986,7 @@ fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
           ),
           html.span([attribute.class("admin-page__field-help")], [
             html.text(
-              "When enabled, debug fields are persisted with request logs. Toggle to change the draft value.",
+              "When enabled, debug fields are persisted with API logs. Toggle to change the draft value.",
             ),
           ]),
         ]),

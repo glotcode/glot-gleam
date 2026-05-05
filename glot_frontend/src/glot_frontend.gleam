@@ -10,9 +10,13 @@ import glot_core/pageview_dto
 import glot_core/route
 import glot_frontend/account_page
 import glot_frontend/admin_config_page
+import glot_frontend/admin_job_log_page
+import glot_frontend/admin_job_logs_page
 import glot_frontend/admin_job_page
 import glot_frontend/admin_jobs_page
 import glot_frontend/admin_page
+import glot_frontend/admin_api_log_page
+import glot_frontend/admin_api_logs_page
 import glot_frontend/admin_rate_limits_page
 import glot_frontend/api
 import glot_frontend/app_dialog
@@ -56,8 +60,12 @@ type PageModel {
   LoginPage(login_page.Model)
   AccountPage(account_page.Model)
   AdminPage(admin_page.Model)
+  AdminApiLogsPage(admin_api_logs_page.Model)
+  AdminApiLogPage(admin_api_log_page.Model)
   AdminJobsPage(admin_jobs_page.Model)
   AdminJobPage(admin_job_page.Model)
+  AdminJobLogsPage(admin_job_logs_page.Model)
+  AdminJobLogPage(admin_job_log_page.Model)
   AdminConfigPage(admin_config_page.Model)
   AdminRateLimitsPage(admin_rate_limits_page.Model)
   ManageSnippetsPage(manage_snippets_page.Model)
@@ -103,6 +111,40 @@ fn init_page(
       #(AdminPage(m), effect.map(eff, AdminPageMsg))
     }
 
+    route.AdminApiLogs -> {
+      let #(m, eff) = admin_api_logs_page.init()
+      let admin_effect = case session_is_admin(session) {
+        True ->
+          effect.map(
+            admin_api_logs_page.ensure_loaded(m).1,
+            AdminApiLogsPageMsg,
+          )
+        False -> effect.none()
+      }
+
+      #(
+        AdminApiLogsPage(m),
+        effect.batch([effect.map(eff, AdminApiLogsPageMsg), admin_effect]),
+      )
+    }
+
+    route.AdminApiLog(request_id) -> {
+      let #(m, eff) = admin_api_log_page.init(request_id)
+      let admin_effect = case session_is_admin(session) {
+        True ->
+          effect.map(
+            admin_api_log_page.ensure_loaded(m).1,
+            AdminApiLogPageMsg,
+          )
+        False -> effect.none()
+      }
+
+      #(
+        AdminApiLogPage(m),
+        effect.batch([effect.map(eff, AdminApiLogPageMsg), admin_effect]),
+      )
+    }
+
     route.AdminJobs -> {
       let #(m, eff) = admin_jobs_page.init()
       let admin_effect = case session_is_admin(session) {
@@ -126,6 +168,37 @@ fn init_page(
       #(
         AdminJobPage(m),
         effect.batch([effect.map(eff, AdminJobPageMsg), admin_effect]),
+      )
+    }
+
+    route.AdminJobLogs -> {
+      let #(m, eff) = admin_job_logs_page.init()
+      let admin_effect = case session_is_admin(session) {
+        True ->
+          effect.map(
+            admin_job_logs_page.ensure_loaded(m).1,
+            AdminJobLogsPageMsg,
+          )
+        False -> effect.none()
+      }
+
+      #(
+        AdminJobLogsPage(m),
+        effect.batch([effect.map(eff, AdminJobLogsPageMsg), admin_effect]),
+      )
+    }
+
+    route.AdminJobLog(id) -> {
+      let #(m, eff) = admin_job_log_page.init(id)
+      let admin_effect = case session_is_admin(session) {
+        True ->
+          effect.map(admin_job_log_page.ensure_loaded(m).1, AdminJobLogPageMsg)
+        False -> effect.none()
+      }
+
+      #(
+        AdminJobLogPage(m),
+        effect.batch([effect.map(eff, AdminJobLogPageMsg), admin_effect]),
       )
     }
 
@@ -246,8 +319,12 @@ type Msg {
   LoginPageMsg(login_page.Msg)
   AccountPageMsg(account_page.Msg)
   AdminPageMsg(admin_page.Msg)
+  AdminApiLogsPageMsg(admin_api_logs_page.Msg)
+  AdminApiLogPageMsg(admin_api_log_page.Msg)
   AdminJobsPageMsg(admin_jobs_page.Msg)
   AdminJobPageMsg(admin_job_page.Msg)
+  AdminJobLogsPageMsg(admin_job_logs_page.Msg)
+  AdminJobLogPageMsg(admin_job_log_page.Msg)
   AdminConfigPageMsg(admin_config_page.Msg)
   AdminRateLimitsPageMsg(admin_rate_limits_page.Msg)
   ManageSnippetsPageMsg(manage_snippets_page.Msg)
@@ -273,11 +350,37 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
       case model.route {
         route.Admin
+        | route.AdminApiLogs
+        | route.AdminApiLog(_)
         | route.AdminJobs
         | route.AdminJob(_)
+        | route.AdminJobLogs
+        | route.AdminJobLog(_)
         | route.AdminConfig
         | route.AdminRateLimits ->
           case session_is_admin(session), model.route, model.page_model {
+            True, route.AdminApiLogs, AdminApiLogsPage(page_model) -> {
+              let #(new_page_model, page_effect) =
+                admin_api_logs_page.ensure_loaded(page_model)
+              #(
+                Model(
+                  ..next_model,
+                  page_model: AdminApiLogsPage(new_page_model),
+                ),
+                effect.map(page_effect, AdminApiLogsPageMsg),
+              )
+            }
+            True, route.AdminApiLog(_), AdminApiLogPage(page_model) -> {
+              let #(new_page_model, page_effect) =
+                admin_api_log_page.ensure_loaded(page_model)
+              #(
+                Model(
+                  ..next_model,
+                  page_model: AdminApiLogPage(new_page_model),
+                ),
+                effect.map(page_effect, AdminApiLogPageMsg),
+              )
+            }
             True, route.AdminJobs, AdminJobsPage(page_model) -> {
               let #(new_page_model, page_effect) =
                 admin_jobs_page.ensure_loaded(page_model)
@@ -292,6 +395,25 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               #(
                 Model(..next_model, page_model: AdminJobPage(new_page_model)),
                 effect.map(page_effect, AdminJobPageMsg),
+              )
+            }
+            True, route.AdminJobLogs, AdminJobLogsPage(page_model) -> {
+              let #(new_page_model, page_effect) =
+                admin_job_logs_page.ensure_loaded(page_model)
+              #(
+                Model(
+                  ..next_model,
+                  page_model: AdminJobLogsPage(new_page_model),
+                ),
+                effect.map(page_effect, AdminJobLogsPageMsg),
+              )
+            }
+            True, route.AdminJobLog(_), AdminJobLogPage(page_model) -> {
+              let #(new_page_model, page_effect) =
+                admin_job_log_page.ensure_loaded(page_model)
+              #(
+                Model(..next_model, page_model: AdminJobLogPage(new_page_model)),
+                effect.map(page_effect, AdminJobLogPageMsg),
               )
             }
             True, route.AdminConfig, AdminConfigPage(page_model) -> {
@@ -417,6 +539,22 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(new_model, effect.map(page_effect, AdminPageMsg))
     }
 
+    AdminApiLogsPageMsg(page_msg), AdminApiLogsPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_api_logs_page.update(page_model, page_msg)
+      let new_model =
+        Model(..model, page_model: AdminApiLogsPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminApiLogsPageMsg))
+    }
+
+    AdminApiLogPageMsg(page_msg), AdminApiLogPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_api_log_page.update(page_model, page_msg)
+      let new_model =
+        Model(..model, page_model: AdminApiLogPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminApiLogPageMsg))
+    }
+
     AdminJobsPageMsg(page_msg), AdminJobsPage(page_model) -> {
       let #(new_page_model, page_effect) =
         admin_jobs_page.update(page_model, page_msg)
@@ -429,6 +567,21 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         admin_job_page.update(page_model, page_msg)
       let new_model = Model(..model, page_model: AdminJobPage(new_page_model))
       #(new_model, effect.map(page_effect, AdminJobPageMsg))
+    }
+
+    AdminJobLogsPageMsg(page_msg), AdminJobLogsPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_job_logs_page.update(page_model, page_msg)
+      let new_model =
+        Model(..model, page_model: AdminJobLogsPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminJobLogsPageMsg))
+    }
+
+    AdminJobLogPageMsg(page_msg), AdminJobLogPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_job_log_page.update(page_model, page_msg)
+      let new_model = Model(..model, page_model: AdminJobLogPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminJobLogPageMsg))
     }
 
     AdminConfigPageMsg(page_msg), AdminConfigPage(page_model) -> {
@@ -520,6 +673,24 @@ fn view(model: Model) -> Element(Msg) {
       }
     }
 
+    AdminApiLogsPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_api_logs_page.view(page_model, model.now)
+          |> element.map(AdminApiLogsPageMsg)
+        False -> not_found_view()
+      }
+    }
+
+    AdminApiLogPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_api_log_page.view(page_model)
+          |> element.map(AdminApiLogPageMsg)
+        False -> not_found_view()
+      }
+    }
+
     AdminJobsPage(page_model) -> {
       case session_is_admin(model.session) {
         True ->
@@ -534,6 +705,24 @@ fn view(model: Model) -> Element(Msg) {
         True ->
           admin_job_page.view(page_model, model.now)
           |> element.map(AdminJobPageMsg)
+        False -> not_found_view()
+      }
+    }
+
+    AdminJobLogsPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_job_logs_page.view(page_model, model.now)
+          |> element.map(AdminJobLogsPageMsg)
+        False -> not_found_view()
+      }
+    }
+
+    AdminJobLogPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_job_log_page.view(page_model)
+          |> element.map(AdminJobLogPageMsg)
         False -> not_found_view()
       }
     }
@@ -664,8 +853,12 @@ fn page_actions(
     | LoginPage(_)
     | AccountPage(_)
     | AdminPage(_)
+    | AdminApiLogsPage(_)
+    | AdminApiLogPage(_)
     | AdminJobsPage(_)
     | AdminJobPage(_)
+    | AdminJobLogsPage(_)
+    | AdminJobLogPage(_)
     | AdminConfigPage(_)
     | AdminRateLimitsPage(_)
     | ManageSnippetsPage(_)
@@ -837,8 +1030,12 @@ fn authorized_route(
 ) -> route.Route {
   case target_route {
     route.Admin
+    | route.AdminApiLogs
+    | route.AdminApiLog(_)
     | route.AdminJobs
     | route.AdminJob(_)
+    | route.AdminJobLogs
+    | route.AdminJobLog(_)
     | route.AdminConfig
     | route.AdminRateLimits ->
       case session_is_admin(session) {

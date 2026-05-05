@@ -1,4 +1,5 @@
 import glot_backend/effect/analytics/analytics_algebra
+import glot_backend/effect/admin_log/admin_log_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import gleam/list
 import gleam/option
@@ -93,6 +94,8 @@ fn map_db_effect(
   case effect {
     program_types.AnalyticsEffect(effect) ->
       program_types.AnalyticsEffect(analytics_algebra.map(effect, f))
+    program_types.AdminLogEffect(effect) ->
+      program_types.AdminLogEffect(admin_log_algebra.map(effect, f))
     program_types.ApiLogEffect(effect) ->
       program_types.ApiLogEffect(api_log_algebra.map(effect, f))
     program_types.AuthEffect(effect) ->

@@ -16,6 +16,10 @@ import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/get_api_log_domain
+import glot_backend/domain/admin/get_api_logs_domain
+import glot_backend/domain/admin/get_job_log_domain
+import glot_backend/domain/admin/get_job_logs_domain
 import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_jobs_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
@@ -50,10 +54,12 @@ import glot_backend/server_timing
 import glot_backend/worker/app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
+import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/job_log_dto
 import glot_core/admin/job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action
@@ -252,6 +258,34 @@ fn handle_api_request(
       get_job_domain.get_job(ctx, request)
       |> program.map(AdminJobResponse)
     }
+    api_action.GetAdminApiLogsAction -> {
+      use request <- program.and_then(
+        get_api_logs_domain.request_from_dynamic(api_request.data),
+      )
+      get_api_logs_domain.get_api_logs(ctx, request)
+      |> program.map(AdminApiLogsResponse)
+    }
+    api_action.GetAdminApiLogAction -> {
+      use request <- program.and_then(
+        get_api_log_domain.request_from_dynamic(api_request.data),
+      )
+      get_api_log_domain.get_api_log(ctx, request)
+      |> program.map(AdminApiLogResponse)
+    }
+    api_action.GetAdminJobLogsAction -> {
+      use request <- program.and_then(
+        get_job_logs_domain.request_from_dynamic(api_request.data),
+      )
+      get_job_logs_domain.get_job_logs(ctx, request)
+      |> program.map(AdminJobLogsResponse)
+    }
+    api_action.GetAdminJobLogAction -> {
+      use request <- program.and_then(
+        get_job_log_domain.request_from_dynamic(api_request.data),
+      )
+      get_job_log_domain.get_job_log(ctx, request)
+      |> program.map(AdminJobLogResponse)
+    }
     api_action.GetAdminRateLimitPoliciesAction ->
       get_rate_limit_policies_domain.get_rate_limit_policies(ctx)
       |> program.map(RateLimitPoliciesResponse)
@@ -325,6 +359,10 @@ type ApiResult {
   CleanupConfigResponse(cleanup_config_dto.CleanupConfigResponse)
   AdminJobsResponse(job_dto.ListJobsResponse)
   AdminJobResponse(job_dto.GetJobResponse)
+  AdminApiLogsResponse(api_log_dto.ListApiLogsResponse)
+  AdminApiLogResponse(api_log_dto.GetApiLogResponse)
+  AdminJobLogsResponse(job_log_dto.ListJobLogsResponse)
+  AdminJobLogResponse(job_log_dto.GetJobLogResponse)
   RateLimitPoliciesResponse(rate_limit_config_dto.RateLimitPoliciesResponse)
   RateLimitPolicyResponse(rate_limit_config_dto.RateLimitPolicyResponse)
   DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
@@ -360,6 +398,14 @@ fn api_result_to_response(
       success_response(job_dto.encode_list_response(response))
     AdminJobResponse(response) ->
       success_response(job_dto.encode_get_response(response))
+    AdminApiLogsResponse(response) ->
+      success_response(api_log_dto.encode_list_response(response))
+    AdminApiLogResponse(response) ->
+      success_response(api_log_dto.encode_get_response(response))
+    AdminJobLogsResponse(response) ->
+      success_response(job_log_dto.encode_list_response(response))
+    AdminJobLogResponse(response) ->
+      success_response(job_log_dto.encode_get_response(response))
     RateLimitPoliciesResponse(response) ->
       success_response(rate_limit_config_dto.encode_response(response))
     RateLimitPolicyResponse(response) ->

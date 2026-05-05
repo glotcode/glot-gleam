@@ -1,4 +1,5 @@
 import glot_backend/effect/app_config/app_config_algebra
+import glot_backend/effect/admin_log/admin_log_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import glot_backend/effect/auth/auth_algebra
@@ -42,6 +43,7 @@ pub type Effect(next) {
 
 pub type DbEffect(next) {
   ApiLogEffect(api_log_algebra.ApiLogEffect(next))
+  AdminLogEffect(admin_log_algebra.AdminLogEffect(next))
   AnalyticsEffect(analytics_algebra.AnalyticsEffect(next))
   AuthEffect(auth_algebra.AuthEffect(next))
   JobEffect(job_algebra.JobEffect(next))

@@ -9,6 +9,8 @@ import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/api_log_dto
+import glot_core/admin/job_log_dto
 import glot_core/admin/job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action.{type ApiAction}
@@ -387,6 +389,62 @@ pub fn get_admin_job(
     req,
     job_dto.encode_get_request,
     job_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_api_logs(
+  request: api_log_dto.ListApiLogsRequest,
+  to_msg: fn(ApiResponse(api_log_dto.ListApiLogsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminApiLogsAction, request)
+
+  send_api_request(
+    req,
+    api_log_dto.encode_list_request,
+    api_log_dto.list_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_api_log(
+  request: api_log_dto.GetApiLogRequest,
+  to_msg: fn(ApiResponse(api_log_dto.GetApiLogResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminApiLogAction, request)
+
+  send_api_request(
+    req,
+    api_log_dto.encode_get_request,
+    api_log_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_job_logs(
+  request: job_log_dto.ListJobLogsRequest,
+  to_msg: fn(ApiResponse(job_log_dto.ListJobLogsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminJobLogsAction, request)
+
+  send_api_request(
+    req,
+    job_log_dto.encode_list_request,
+    job_log_dto.list_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_job_log(
+  request: job_log_dto.GetJobLogRequest,
+  to_msg: fn(ApiResponse(job_log_dto.GetJobLogResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminJobLogAction, request)
+
+  send_api_request(
+    req,
+    job_log_dto.encode_get_request,
+    job_log_dto.get_response_decoder(),
     to_msg,
   )
 }

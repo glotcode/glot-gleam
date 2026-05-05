@@ -8,6 +8,7 @@ import glot_backend/api
 import glot_backend/app_config
 import glot_backend/context
 import glot_backend/crypto_token
+import glot_backend/effect/admin_log/admin_log_handlers
 import glot_backend/effect/analytics/analytics_handlers
 import glot_backend/effect/api_log/api_log_handlers
 import glot_backend/effect/app_config/app_config_handlers
@@ -238,6 +239,12 @@ fn test_handlers() -> handlers.Handlers {
         ])
       },
       upsert_entry: fn(_, _, _, _) { Ok(Nil) },
+    ),
+    admin_log: admin_log_handlers.AdminLogHandlers(
+      list_api_logs: fn(_) { Ok([]) },
+      get_api_log: fn(_) { Ok(option.None) },
+      list_job_logs: fn(_) { Ok([]) },
+      get_job_log: fn(_) { Ok(option.None) },
     ),
     api_log: api_log_handlers.ApiLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     analytics: analytics_handlers.AnalyticsHandlers(
