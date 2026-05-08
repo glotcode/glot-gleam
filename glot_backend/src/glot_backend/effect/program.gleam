@@ -51,14 +51,22 @@ pub fn map(
   and_then(effect, fn(value) { succeed(f(value)) })
 }
 
-pub fn to_result(
+/// Runs a program and, if it fails at any layer of interpretation, continues
+/// with the provided recovery program instead.
+pub fn attempt(
   effect: program_types.Program(a),
-) -> program_types.Program(Result(a, error.Error)) {
+  on_error: fn(error.Error) -> program_types.Program(a),
+) -> program_types.Program(a) {
   case effect {
-    program_types.Pure(value) -> succeed(Ok(value))
-    program_types.Fail(err) -> succeed(Error(err))
+    program_types.Pure(value) -> succeed(value)
+    program_types.Fail(err) -> on_error(err)
     program_types.Impure(inner) ->
-      program_types.Impure(map_effect(inner, to_result))
+      program_types.Impure(
+        program_types.AttemptEffect(
+          effect: map_effect(inner, fn(value) { attempt(value, on_error) }),
+          on_error: on_error,
+        ),
+      )
   }
 }
 
@@ -130,6 +138,11 @@ fn map_effect(
     program_types.GetLanguageVersionEffect(effect) ->
       program_types.GetLanguageVersionEffect(
         get_language_version_algebra.map(effect, f),
+      )
+    program_types.AttemptEffect(effect:, on_error:) ->
+      program_types.AttemptEffect(
+        effect: map_effect(effect, f),
+        on_error: fn(err) { f(on_error(err)) },
       )
     program_types.DbEffect(effect) ->
       program_types.DbEffect(map_db_effect(effect, f))

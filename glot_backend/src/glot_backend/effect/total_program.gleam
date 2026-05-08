@@ -15,13 +15,7 @@ pub fn from_program(
   recover: fn(error.Error) -> a,
 ) -> TotalProgram(a) {
   effect
-  |> program.to_result
-  |> program.map(fn(result) {
-    case result {
-      Ok(value) -> value
-      Error(err) -> recover(err)
-    }
-  })
+  |> program.attempt(fn(err) { program.succeed(recover(err)) })
   |> TotalProgram
 }
 

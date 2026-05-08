@@ -52,14 +52,14 @@ pub fn process_job(
   ctx: context.Context,
   job: job_model.Job,
 ) -> program_types.Program(Nil) {
-  use result <- program.and_then(delegate_job(ctx, job) |> program.to_result())
-  case result {
-    Ok(Nil) -> complete_job(job)
-    Error(err) -> {
+  use _ <- program.and_then(
+    delegate_job(ctx, job)
+    |> program.attempt(fn(err) {
       use _ <- program.and_then(reschedule_job(job, err))
       program.fail(err)
-    }
-  }
+    }),
+  )
+  complete_job(job)
 }
 
 fn delegate_job(

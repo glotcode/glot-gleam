@@ -44,17 +44,6 @@ pub fn map(
   and_then(program, fn(value) { succeed(f(value)) })
 }
 
-pub fn to_result(
-  program: program_types.TransactionProgram(a),
-) -> program_types.TransactionProgram(Result(a, error.Error)) {
-  case program {
-    program_types.TxPure(value) -> succeed(Ok(value))
-    program_types.TxFail(err) -> succeed(Error(err))
-    program_types.TxImpure(effect) ->
-      program_types.TxImpure(map_db_effect(effect, to_result))
-  }
-}
-
 pub fn from_result(
   value: Result(a, error.Error),
 ) -> program_types.TransactionProgram(a) {

@@ -5,21 +5,6 @@ import glot_backend/effect/program_types
 import glot_core/language.{type Language}
 import glot_core/run
 
-pub fn get_language_version_result(
-  cfg: context.Config,
-  language: Language,
-) -> program_types.Program(Result(run.RunResult, error.RunRequestError)) {
-  program_types.Impure(
-    program_types.GetLanguageVersionEffect(
-      get_language_version_algebra.GetLanguageVersion(
-        cfg,
-        language,
-        program_types.Pure,
-      ),
-    ),
-  )
-}
-
 pub fn get_language_version(
   cfg: context.Config,
   language: Language,

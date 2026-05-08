@@ -41,22 +41,39 @@ pub fn run_with_state(
   case effect {
     program_types.Pure(value) -> #(Ok(value), state)
     program_types.Fail(error) -> #(Error(error), state)
-    program_types.Impure(effect) ->
-      case effect {
-        program_types.AppConfigEffect(effect) ->
-          app_config_interpreter.run(effect, runtime, state, continue)
-        program_types.BasicEffect(effect) ->
-          basic_interpreter.run(effect, ctx, runtime, state, continue)
-        program_types.EmailEffect(effect) ->
-          email_interpreter.run(effect, ctx, runtime.handlers, state, continue)
-        program_types.DockerRunEffect(effect) ->
-          docker_run_interpreter.run(effect, runtime, state, continue)
-        program_types.GetLanguageVersionEffect(effect) ->
-          get_language_version_interpreter.run(effect, runtime, state, continue)
-        program_types.DbEffect(effect) ->
-          db_interpreter.run(effect, ctx, runtime.handlers, state, continue)
-        program_types.TransactionEffect(effect) ->
-          transaction_interpreter.run(effect, runtime, ctx, state, continue)
+    program_types.Impure(effect) -> run_effect(effect, runtime, ctx, state, continue)
+  }
+}
+
+fn run_effect(
+  effect: program_types.Effect(program_types.Program(a)),
+  runtime: runtime.Runtime,
+  ctx: context.Context,
+  state: program_state.State,
+  continue: fn(program_types.Program(a), program_state.State) ->
+    #(Result(a, error.Error), program_state.State),
+) -> #(Result(a, error.Error), program_state.State) {
+  case effect {
+    program_types.AppConfigEffect(effect) ->
+      app_config_interpreter.run(effect, runtime, state, continue)
+    program_types.BasicEffect(effect) ->
+      basic_interpreter.run(effect, ctx, runtime, state, continue)
+    program_types.EmailEffect(effect) ->
+      email_interpreter.run(effect, ctx, runtime.handlers, state, continue)
+    program_types.DockerRunEffect(effect) ->
+      docker_run_interpreter.run(effect, runtime, state, continue)
+    program_types.GetLanguageVersionEffect(effect) ->
+      get_language_version_interpreter.run(effect, runtime, state, continue)
+    program_types.AttemptEffect(effect:, on_error:) ->
+      // Recover from any interpreter-level failure of the wrapped effect by
+      // resuming with the supplied continuation.
+      case run_effect(effect, runtime, ctx, state, continue) {
+        #(Ok(value), next_state) -> #(Ok(value), next_state)
+        #(Error(err), next_state) -> continue(on_error(err), next_state)
       }
+    program_types.DbEffect(effect) ->
+      db_interpreter.run(effect, ctx, runtime.handlers, state, continue)
+    program_types.TransactionEffect(effect) ->
+      transaction_interpreter.run(effect, runtime, ctx, state, continue)
   }
 }

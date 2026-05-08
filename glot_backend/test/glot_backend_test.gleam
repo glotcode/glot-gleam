@@ -1330,6 +1330,11 @@ fn run_test_program(
     program_types.Fail(err) -> #(Error(err), db)
     program_types.Impure(next_effect) ->
       case next_effect {
+        program_types.AttemptEffect(effect:, on_error:) ->
+          case run_test_program(program_types.Impure(effect), ctx, db) {
+            #(Ok(value), next_db) -> #(Ok(value), next_db)
+            #(Error(err), next_db) -> run_test_program(on_error(err), ctx, next_db)
+          }
         program_types.BasicEffect(basic_effect) ->
           run_test_basic_effect(basic_effect, ctx, db)
         program_types.EmailEffect(email_effect) ->
@@ -1342,11 +1347,14 @@ fn run_test_program(
           run_test_app_config_effect(app_config_effect, ctx, db)
         program_types.DbEffect(db_effect) ->
           run_test_db_effect(db_effect, ctx, db)
-        program_types.TransactionEffect(program_types.Run(program: tx_program)) ->
-          case run_test_tx_program(tx_program, ctx, db) {
-            #(Ok(next_program), next_db) ->
-              run_test_program(next_program, ctx, next_db)
-            #(Error(err), next_db) -> #(Error(err), next_db)
+        program_types.TransactionEffect(transaction_effect) ->
+          case transaction_effect {
+            program_types.Run(program: tx_program) ->
+              case run_test_tx_program(tx_program, ctx, db) {
+                #(Ok(next_program), next_db) ->
+                  run_test_program(next_program, ctx, next_db)
+                #(Error(err), next_db) -> #(Error(err), next_db)
+              }
           }
       }
   }

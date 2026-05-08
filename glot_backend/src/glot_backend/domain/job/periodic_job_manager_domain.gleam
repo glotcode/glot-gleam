@@ -23,15 +23,10 @@ pub fn enqueue_next_due_periodic_job(
     option.None -> program.succeed(False)
     option.Some(periodic_job) -> {
       use job_id <- program.and_then(basic_effect.uuid_v7())
-      use enqueue_result <- program.and_then(
+      use _ <- program.and_then(
         enqueue_next_due_periodic_job_tx(ctx, job_id, periodic_job)
         |> transaction_effect.run()
-        |> program.to_result(),
-      )
-
-      case enqueue_result {
-        Ok(_) -> program.succeed(True)
-        Error(enqueue_error) -> {
+        |> program.attempt(fn(enqueue_error) {
           let failed_periodic_job =
             periodic_job_model.enqueue_failed(
               periodic_job,
@@ -42,8 +37,9 @@ pub fn enqueue_next_due_periodic_job(
             periodic_job_effect.update_periodic_job(failed_periodic_job),
           )
           program.fail(enqueue_error)
-        }
-      }
+        }),
+      )
+      program.succeed(True)
     }
   }
 }

@@ -37,6 +37,11 @@ pub type Effect(next) {
   GetLanguageVersionEffect(
     get_language_version_algebra.GetLanguageVersionEffect(next),
   )
+  // Re-routes interpreter-emitted errors into an explicit recovery continuation.
+  AttemptEffect(
+    effect: Effect(next),
+    on_error: fn(error.Error) -> next,
+  )
   DbEffect(DbEffect(next))
   TransactionEffect(TransactionEffect(next))
 }
