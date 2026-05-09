@@ -69,6 +69,32 @@ pub fn process_job_shaped_recovery_after_rollback_test() {
   assert state.updated_job_ids == [uuid.to_string(rescheduled_job.id)]
 }
 
+pub fn program_attempt_retries_recovery_only_once_when_recovery_refails_test() {
+  let rescheduled_job =
+    test_job(must_uuid("00000000-0000-0000-0000-000000000203"))
+
+  let effect =
+    transaction_effect.run({
+      use _ <- transaction_program.and_then(job_effect.create_job_tx(
+        test_job(must_uuid("00000000-0000-0000-0000-000000000204")),
+      ))
+      transaction_program.fail(error.ValidationError("force rollback"))
+    })
+    |> program.attempt(fn(err) {
+      use _ <- program.and_then(job_effect.update_job(rescheduled_job))
+      program.fail(err)
+    })
+
+  let #(result, state) =
+    run_program(effect, TestState(created_job_ids: [], updated_job_ids: []))
+
+  assert result == Error(error.TransactionError(error.DbTransactionError(
+    "validation_error:force rollback",
+  )))
+  assert state.created_job_ids == []
+  assert state.updated_job_ids == [uuid.to_string(rescheduled_job.id)]
+}
+
 pub fn program_attempt_recovers_from_non_transaction_interpreter_failure_test() {
   let fallback = successful_run("fallback")
   let effect =
@@ -90,13 +116,13 @@ fn run_program(
   case effect {
     program_types.Pure(value) -> #(Ok(value), state)
     program_types.Fail(err) -> #(Error(err), state)
+    program_types.Attempt(program:, on_error:) ->
+      case run_program(program, state) {
+        #(Ok(value), next_state) -> #(Ok(value), next_state)
+        #(Error(err), next_state) -> run_program(on_error(err), next_state)
+      }
     program_types.Impure(effect) ->
       case effect {
-        program_types.AttemptEffect(effect:, on_error:) ->
-          case run_program(program_types.Impure(effect), state) {
-            #(Ok(value), next_state) -> #(Ok(value), next_state)
-            #(Error(err), next_state) -> run_program(on_error(err), next_state)
-          }
         program_types.DbEffect(db_effect) -> run_db_effect(db_effect, state)
         program_types.TransactionEffect(transaction_effect) ->
           case transaction_effect {

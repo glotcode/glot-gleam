@@ -21,6 +21,7 @@ pub type Program(a) {
   Pure(a)
   Fail(error.Error)
   Impure(Effect(Program(a)))
+  Attempt(program: Program(a), on_error: fn(error.Error) -> Program(a))
 }
 
 pub type TransactionProgram(a) {
@@ -36,11 +37,6 @@ pub type Effect(next) {
   DockerRunEffect(docker_run_algebra.DockerRunEffect(next))
   GetLanguageVersionEffect(
     get_language_version_algebra.GetLanguageVersionEffect(next),
-  )
-  // Re-routes interpreter-emitted errors into an explicit recovery continuation.
-  AttemptEffect(
-    effect: Effect(next),
-    on_error: fn(error.Error) -> next,
   )
   DbEffect(DbEffect(next))
   TransactionEffect(TransactionEffect(next))

@@ -42,6 +42,11 @@ pub fn run_with_state(
     program_types.Pure(value) -> #(Ok(value), state)
     program_types.Fail(error) -> #(Error(error), state)
     program_types.Impure(effect) -> run_effect(effect, runtime, ctx, state, continue)
+    program_types.Attempt(program:, on_error:) ->
+      case run_with_state(program, runtime, ctx, state) {
+        #(Ok(value), next_state) -> #(Ok(value), next_state)
+        #(Error(err), next_state) -> run_with_state(on_error(err), runtime, ctx, next_state)
+      }
   }
 }
 
@@ -64,13 +69,6 @@ fn run_effect(
       docker_run_interpreter.run(effect, runtime, state, continue)
     program_types.GetLanguageVersionEffect(effect) ->
       get_language_version_interpreter.run(effect, runtime, state, continue)
-    program_types.AttemptEffect(effect:, on_error:) ->
-      // Recover from any interpreter-level failure of the wrapped effect by
-      // resuming with the supplied continuation.
-      case run_effect(effect, runtime, ctx, state, continue) {
-        #(Ok(value), next_state) -> #(Ok(value), next_state)
-        #(Error(err), next_state) -> continue(on_error(err), next_state)
-      }
     program_types.DbEffect(effect) ->
       db_interpreter.run(effect, ctx, runtime.handlers, state, continue)
     program_types.TransactionEffect(effect) ->

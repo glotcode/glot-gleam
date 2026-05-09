@@ -41,6 +41,11 @@ pub fn and_then(
     program_types.Fail(error) -> program_types.Fail(error)
     program_types.Impure(effect) ->
       program_types.Impure(map_effect(effect, fn(value) { and_then(value, f) }))
+    program_types.Attempt(program:, on_error:) ->
+      program_types.Attempt(
+        program: and_then(program, f),
+        on_error: fn(err) { and_then(on_error(err), f) },
+      )
   }
 }
 
@@ -57,17 +62,7 @@ pub fn attempt(
   effect: program_types.Program(a),
   on_error: fn(error.Error) -> program_types.Program(a),
 ) -> program_types.Program(a) {
-  case effect {
-    program_types.Pure(value) -> succeed(value)
-    program_types.Fail(err) -> on_error(err)
-    program_types.Impure(inner) ->
-      program_types.Impure(
-        program_types.AttemptEffect(
-          effect: map_effect(inner, fn(value) { attempt(value, on_error) }),
-          on_error: on_error,
-        ),
-      )
-  }
+  program_types.Attempt(program: effect, on_error: on_error)
 }
 
 pub fn from_result(value: Result(a, error.Error)) -> program_types.Program(a) {
@@ -138,11 +133,6 @@ fn map_effect(
     program_types.GetLanguageVersionEffect(effect) ->
       program_types.GetLanguageVersionEffect(
         get_language_version_algebra.map(effect, f),
-      )
-    program_types.AttemptEffect(effect:, on_error:) ->
-      program_types.AttemptEffect(
-        effect: map_effect(effect, f),
-        on_error: fn(err) { f(on_error(err)) },
       )
     program_types.DbEffect(effect) ->
       program_types.DbEffect(map_db_effect(effect, f))

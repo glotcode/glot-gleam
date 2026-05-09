@@ -1328,13 +1328,13 @@ fn run_test_program(
   case effect {
     program_types.Pure(value) -> #(Ok(value), db)
     program_types.Fail(err) -> #(Error(err), db)
+    program_types.Attempt(program:, on_error:) ->
+      case run_test_program(program, ctx, db) {
+        #(Ok(value), next_db) -> #(Ok(value), next_db)
+        #(Error(err), next_db) -> run_test_program(on_error(err), ctx, next_db)
+      }
     program_types.Impure(next_effect) ->
       case next_effect {
-        program_types.AttemptEffect(effect:, on_error:) ->
-          case run_test_program(program_types.Impure(effect), ctx, db) {
-            #(Ok(value), next_db) -> #(Ok(value), next_db)
-            #(Error(err), next_db) -> run_test_program(on_error(err), ctx, next_db)
-          }
         program_types.BasicEffect(basic_effect) ->
           run_test_basic_effect(basic_effect, ctx, db)
         program_types.EmailEffect(email_effect) ->
