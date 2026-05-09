@@ -12,7 +12,7 @@ WHERE (
   )
   AND (
     NOT @has_errors_only::boolean
-    OR api_has_error
+    OR error IS NOT NULL
   )
   AND (
     NOT @has_after_cursor::boolean
@@ -35,7 +35,7 @@ WHERE (
   )
   AND (
     NOT @has_errors_only::boolean
-    OR api_has_error
+    OR error IS NOT NULL
   )
   AND (
     NOT @has_before_cursor::boolean

@@ -2053,7 +2053,7 @@ WHERE (
   )
   AND (
     NOT $3::boolean
-    OR api_has_error
+    OR error IS NOT NULL
   )
   AND (
     NOT $4::boolean
@@ -2126,7 +2126,7 @@ WHERE (
   )
   AND (
     NOT $3::boolean
-    OR api_has_error
+    OR error IS NOT NULL
   )
   AND (
     NOT $4::boolean
