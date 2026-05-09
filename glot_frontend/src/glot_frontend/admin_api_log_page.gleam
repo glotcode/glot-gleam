@@ -17,7 +17,7 @@ import youid/uuid
 
 pub type Model {
   Model(
-    request_id: uuid.Uuid,
+    id: uuid.Uuid,
     log: option.Option(api_log_dto.ApiLogDetailResponse),
     status: Status,
   )
@@ -34,11 +34,8 @@ pub type Msg {
   LogLoaded(api.ApiResponse(api_log_dto.GetApiLogResponse))
 }
 
-pub fn init(request_id: uuid.Uuid) -> #(Model, Effect(Msg)) {
-  #(
-    Model(request_id: request_id, log: option.None, status: NotLoaded),
-    effect.none(),
-  )
+pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
+  #(Model(id: id, log: option.None, status: NotLoaded), effect.none())
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
@@ -46,7 +43,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
     NotLoaded -> #(
       Model(..model, status: Loading),
       api.get_admin_api_log(
-        api_log_dto.GetApiLogRequest(request_id: model.request_id),
+        api_log_dto.GetApiLogRequest(id: model.id),
         LogLoaded,
       ),
     )
@@ -145,9 +142,14 @@ fn detail_view(model: Model) -> Element(Msg) {
           ],
           [
             summary_card(
+              "Log ID",
+              uuid.to_string(log.id),
+              "Primary identifier",
+            ),
+            summary_card(
               "Request ID",
               uuid.to_string(log.request_id),
-              "Primary identifier",
+              "Request correlation",
             ),
             summary_card("Created at", format_timestamp(log.created_at), "UTC"),
             summary_card("Action", log.log.action, "Captured API request"),
@@ -156,7 +158,7 @@ fn detail_view(model: Model) -> Element(Msg) {
         section_view(
           "API log",
           "Request-handling metadata and raw API log payloads.",
-          option.Some(api_log_content(log.log)),
+          option.Some(api_log_content(log)),
           "",
         ),
       ])
@@ -184,17 +186,28 @@ fn section_view(
   ])
 }
 
-fn api_log_content(log: api_log_dto.ApiLogEntryResponse) -> Element(Msg) {
+fn api_log_content(log: api_log_dto.ApiLogDetailResponse) -> Element(Msg) {
   html.div([attribute.class("admin-request-log-page__section")], [
     html.div([attribute.class("admin-job-page__detail-grid")], [
+      detail_item("Log ID", uuid.to_string(log.id)),
+      detail_item("Request ID", uuid.to_string(log.request_id)),
       detail_item("Created at", format_timestamp(log.created_at)),
-      detail_item("Action", log.action),
-      detail_item("Body bytes", int.to_string(log.body_bytes)),
-      detail_item("Duration", duration_label.duration_in_ms_label(log.duration_ns)),
-      detail_item("IP", optional_text(log.ip)),
-      detail_item("User agent", optional_text(log.user_agent)),
+      detail_item("Action", log.log.action),
+      detail_item("Body bytes", int.to_string(log.log.body_bytes)),
+      detail_item(
+        "Duration",
+        duration_label.duration_in_ms_label(log.log.duration_ns),
+      ),
+      detail_item("IP", optional_text(log.log.ip)),
+      detail_item("User agent", optional_text(log.log.user_agent)),
     ]),
-    raw_blocks(log.info, log.warnings, log.debug, log.error, log.effects),
+    raw_blocks(
+      log.log.info,
+      log.log.warnings,
+      log.log.debug,
+      log.log.error,
+      log.log.effects,
+    ),
   ])
 }
 

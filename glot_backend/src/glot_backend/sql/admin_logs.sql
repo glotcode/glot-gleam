@@ -1,5 +1,6 @@
 -- name: ListAdminApiLogsAfter :many
 SELECT
+  id,
   request_id,
   created_at,
   action,
@@ -16,13 +17,14 @@ WHERE (
   )
   AND (
     NOT @has_after_cursor::boolean
-    OR (created_at, request_id) < (@after_created_at::timestamptz, @after_request_id::uuid)
+    OR (created_at, id) < (@after_created_at::timestamptz, @after_id::uuid)
   )
-ORDER BY created_at DESC, request_id DESC
+ORDER BY created_at DESC, id DESC
 LIMIT @page_limit;
 
 -- name: ListAdminApiLogsBefore :many
 SELECT
+  id,
   request_id,
   created_at,
   action,
@@ -39,13 +41,14 @@ WHERE (
   )
   AND (
     NOT @has_before_cursor::boolean
-    OR (created_at, request_id) > (@before_created_at::timestamptz, @before_request_id::uuid)
+    OR (created_at, id) > (@before_created_at::timestamptz, @before_id::uuid)
   )
-ORDER BY created_at ASC, request_id ASC
+ORDER BY created_at ASC, id ASC
 LIMIT @page_limit;
 
 -- name: GetAdminApiLog :one
 SELECT
+  a.id AS id,
   a.request_id AS request_id,
   a.created_at AS created_at,
   a.action AS action,
@@ -59,7 +62,7 @@ SELECT
   COALESCE(a.error::text, '') AS error,
   COALESCE(a.effects::text, '') AS effects
 FROM api_log a
-WHERE a.request_id = @request_id::uuid;
+WHERE a.id = @id::uuid;
 
 -- name: ListAdminJobLogsAfter :many
 SELECT

@@ -32,7 +32,7 @@ pub type AdminLogHandlers {
 pub fn new(db: pog.Connection) -> AdminLogHandlers {
   AdminLogHandlers(
     list_api_logs: fn(request) { list_api_logs(db, request) },
-    get_api_log: fn(request_id) { get_api_log(db, request_id) },
+    get_api_log: fn(id) { get_api_log(db, id) },
     list_job_logs: fn(request) { list_job_logs(db, request) },
     get_job_log: fn(id) { get_job_log(db, id) },
   )
@@ -60,7 +60,7 @@ pub fn list_api_logs(
             has_errors_only: has_errors_only,
             has_before_cursor: True,
             before_created_at: decoded_cursor.0,
-            before_request_id: uuid.to_bit_array(decoded_cursor.1),
+            before_id: uuid.to_bit_array(decoded_cursor.1),
             page_limit: limit,
           ),
           fn(err) { error.DbQueryError(string.inspect(err)) },
@@ -91,7 +91,7 @@ pub fn list_api_logs(
             has_errors_only: has_errors_only,
             has_after_cursor: option.is_some(cursor),
             after_created_at: cursor_timestamp(cursor),
-            after_request_id: cursor_request_id(cursor),
+            after_id: cursor_id(cursor),
             page_limit: limit,
           ),
           fn(err) { error.DbQueryError(string.inspect(err)) },
@@ -106,12 +106,12 @@ pub fn list_api_logs(
 
 pub fn get_api_log(
   db: pog.Connection,
-  request_id: uuid.Uuid,
+  id: uuid.Uuid,
 ) -> Result(option.Option(api_log_model.ApiLogDetail), error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
-      sql.get_admin_api_log(request_id: uuid.to_bit_array(request_id)),
+      sql.get_admin_api_log(id: uuid.to_bit_array(id)),
       fn(err) { error.DbQueryError(string.inspect(err)) },
     ),
   )
@@ -216,6 +216,7 @@ fn get_api_log_summary_from_after_row(
   row: sql.ListAdminApiLogsAfter,
 ) -> api_log_model.ApiLogSummary {
   api_log_summary(
+    id: uuid_helpers.from_bit_array(row.id),
     request_id: uuid_helpers.from_bit_array(row.request_id),
     created_at: row.created_at,
     action: row.action,
@@ -228,6 +229,7 @@ fn get_api_log_summary_from_before_row(
   row: sql.ListAdminApiLogsBefore,
 ) -> api_log_model.ApiLogSummary {
   api_log_summary(
+    id: uuid_helpers.from_bit_array(row.id),
     request_id: uuid_helpers.from_bit_array(row.request_id),
     created_at: row.created_at,
     action: row.action,
@@ -237,6 +239,7 @@ fn get_api_log_summary_from_before_row(
 }
 
 fn api_log_summary(
+  id id: uuid.Uuid,
   request_id request_id: uuid.Uuid,
   created_at created_at: timestamp.Timestamp,
   action action: String,
@@ -244,6 +247,7 @@ fn api_log_summary(
   has_error has_error: Bool,
 ) -> api_log_model.ApiLogSummary {
   api_log_model.ApiLogSummary(
+    id: id,
     request_id: request_id,
     created_at: created_at,
     action: action,
@@ -256,6 +260,7 @@ fn get_api_log_detail_from_row(
   row: sql.GetAdminApiLog,
 ) -> api_log_model.ApiLogDetail {
   api_log_model.ApiLogDetail(
+    id: uuid_helpers.from_bit_array(row.id),
     request_id: uuid_helpers.from_bit_array(row.request_id),
     created_at: row.created_at,
     log: api_log_model.ApiLogEntry(
@@ -345,13 +350,19 @@ fn cursor_timestamp(
   }
 }
 
-fn cursor_request_id(
+fn cursor_id(
   value: option.Option(#(timestamp.Timestamp, uuid.Uuid)),
 ) -> BitArray {
   case value {
     option.Some(cursor) -> uuid.to_bit_array(cursor.1)
     option.None -> uuid.to_bit_array(uuid.nil)
   }
+}
+
+fn cursor_request_id(
+  value: option.Option(#(timestamp.Timestamp, uuid.Uuid)),
+) -> BitArray {
+  cursor_id(value)
 }
 
 fn empty_string_to_option(value: String) -> option.Option(String) {

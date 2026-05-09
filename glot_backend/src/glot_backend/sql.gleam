@@ -2022,6 +2022,7 @@ WHERE id = $1"
 
 pub type ListAdminApiLogsAfter {
   ListAdminApiLogsAfter(
+    id: BitArray,
     request_id: BitArray,
     created_at: Timestamp,
     action: String,
@@ -2036,11 +2037,12 @@ pub fn list_admin_api_logs_after(
   has_errors_only has_errors_only: Bool,
   has_after_cursor has_after_cursor: Bool,
   after_created_at after_created_at: Timestamp,
-  after_request_id after_request_id: BitArray,
+  after_id after_id: BitArray,
   page_limit page_limit: Int,
 ) {
   let sql =
     "SELECT
+  id,
   request_id,
   created_at,
   action,
@@ -2057,9 +2059,9 @@ WHERE (
   )
   AND (
     NOT $4::boolean
-    OR (created_at, request_id) < ($5::timestamptz, $6::uuid)
+    OR (created_at, id) < ($5::timestamptz, $6::uuid)
   )
-ORDER BY created_at DESC, request_id DESC
+ORDER BY created_at DESC, id DESC
 LIMIT $7"
   #(
     sql,
@@ -2069,7 +2071,7 @@ LIMIT $7"
       dev.ParamBool(has_errors_only),
       dev.ParamBool(has_after_cursor),
       dev.ParamTimestamp(after_created_at),
-      dev.ParamBitArray(after_request_id),
+      dev.ParamBitArray(after_id),
       dev.ParamInt(page_limit),
     ],
     list_admin_api_logs_after_decoder(),
@@ -2079,12 +2081,14 @@ LIMIT $7"
 pub fn list_admin_api_logs_after_decoder() -> decode.Decoder(
   ListAdminApiLogsAfter,
 ) {
-  use request_id <- decode.field(0, decode.bit_array)
-  use created_at <- decode.field(1, dev.datetime_decoder())
-  use action <- decode.field(2, decode.string)
-  use duration_ns <- decode.field(3, decode.int)
-  use has_error <- decode.field(4, dev.bool_decoder())
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.bit_array)
+  use created_at <- decode.field(2, dev.datetime_decoder())
+  use action <- decode.field(3, decode.string)
+  use duration_ns <- decode.field(4, decode.int)
+  use has_error <- decode.field(5, dev.bool_decoder())
   decode.success(ListAdminApiLogsAfter(
+    id:,
     request_id:,
     created_at:,
     action:,
@@ -2095,6 +2099,7 @@ pub fn list_admin_api_logs_after_decoder() -> decode.Decoder(
 
 pub type ListAdminApiLogsBefore {
   ListAdminApiLogsBefore(
+    id: BitArray,
     request_id: BitArray,
     created_at: Timestamp,
     action: String,
@@ -2109,11 +2114,12 @@ pub fn list_admin_api_logs_before(
   has_errors_only has_errors_only: Bool,
   has_before_cursor has_before_cursor: Bool,
   before_created_at before_created_at: Timestamp,
-  before_request_id before_request_id: BitArray,
+  before_id before_id: BitArray,
   page_limit page_limit: Int,
 ) {
   let sql =
     "SELECT
+  id,
   request_id,
   created_at,
   action,
@@ -2130,9 +2136,9 @@ WHERE (
   )
   AND (
     NOT $4::boolean
-    OR (created_at, request_id) > ($5::timestamptz, $6::uuid)
+    OR (created_at, id) > ($5::timestamptz, $6::uuid)
   )
-ORDER BY created_at ASC, request_id ASC
+ORDER BY created_at ASC, id ASC
 LIMIT $7"
   #(
     sql,
@@ -2142,7 +2148,7 @@ LIMIT $7"
       dev.ParamBool(has_errors_only),
       dev.ParamBool(has_before_cursor),
       dev.ParamTimestamp(before_created_at),
-      dev.ParamBitArray(before_request_id),
+      dev.ParamBitArray(before_id),
       dev.ParamInt(page_limit),
     ],
     list_admin_api_logs_before_decoder(),
@@ -2152,12 +2158,14 @@ LIMIT $7"
 pub fn list_admin_api_logs_before_decoder() -> decode.Decoder(
   ListAdminApiLogsBefore,
 ) {
-  use request_id <- decode.field(0, decode.bit_array)
-  use created_at <- decode.field(1, dev.datetime_decoder())
-  use action <- decode.field(2, decode.string)
-  use duration_ns <- decode.field(3, decode.int)
-  use has_error <- decode.field(4, dev.bool_decoder())
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.bit_array)
+  use created_at <- decode.field(2, dev.datetime_decoder())
+  use action <- decode.field(3, decode.string)
+  use duration_ns <- decode.field(4, decode.int)
+  use has_error <- decode.field(5, dev.bool_decoder())
   decode.success(ListAdminApiLogsBefore(
+    id:,
     request_id:,
     created_at:,
     action:,
@@ -2168,6 +2176,7 @@ pub fn list_admin_api_logs_before_decoder() -> decode.Decoder(
 
 pub type GetAdminApiLog {
   GetAdminApiLog(
+    id: BitArray,
     request_id: BitArray,
     created_at: Timestamp,
     action: String,
@@ -2183,9 +2192,10 @@ pub type GetAdminApiLog {
   )
 }
 
-pub fn get_admin_api_log(request_id request_id: BitArray) {
+pub fn get_admin_api_log(id id: BitArray) {
   let sql =
     "SELECT
+  a.id AS id,
   a.request_id AS request_id,
   a.created_at AS created_at,
   a.action AS action,
@@ -2199,24 +2209,26 @@ pub fn get_admin_api_log(request_id request_id: BitArray) {
   COALESCE(a.error::text, '') AS error,
   COALESCE(a.effects::text, '') AS effects
 FROM api_log a
-WHERE a.request_id = $1::uuid"
-  #(sql, [dev.ParamBitArray(request_id)], get_admin_api_log_decoder())
+WHERE a.id = $1::uuid"
+  #(sql, [dev.ParamBitArray(id)], get_admin_api_log_decoder())
 }
 
 pub fn get_admin_api_log_decoder() -> decode.Decoder(GetAdminApiLog) {
-  use request_id <- decode.field(0, decode.bit_array)
-  use created_at <- decode.field(1, dev.datetime_decoder())
-  use action <- decode.field(2, decode.string)
-  use body_bytes <- decode.field(3, decode.int)
-  use duration_ns <- decode.field(4, decode.int)
-  use ip <- decode.field(5, decode.optional(decode.string))
-  use user_agent <- decode.field(6, decode.optional(decode.string))
-  use info <- decode.field(7, decode.optional(decode.dynamic))
-  use warnings <- decode.field(8, decode.optional(decode.dynamic))
-  use debug <- decode.field(9, decode.optional(decode.dynamic))
-  use error <- decode.field(10, decode.optional(decode.dynamic))
-  use effects <- decode.field(11, decode.optional(decode.dynamic))
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.bit_array)
+  use created_at <- decode.field(2, dev.datetime_decoder())
+  use action <- decode.field(3, decode.string)
+  use body_bytes <- decode.field(4, decode.int)
+  use duration_ns <- decode.field(5, decode.int)
+  use ip <- decode.field(6, decode.optional(decode.string))
+  use user_agent <- decode.field(7, decode.optional(decode.string))
+  use info <- decode.field(8, decode.optional(decode.dynamic))
+  use warnings <- decode.field(9, decode.optional(decode.dynamic))
+  use debug <- decode.field(10, decode.optional(decode.dynamic))
+  use error <- decode.field(11, decode.optional(decode.dynamic))
+  use effects <- decode.field(12, decode.optional(decode.dynamic))
   decode.success(GetAdminApiLog(
+    id:,
     request_id:,
     created_at:,
     action:,

@@ -10,7 +10,7 @@ pub type Route {
   Account
   Admin
   AdminApiLogs
-  AdminApiLog(request_id: uuid.Uuid)
+  AdminApiLog(id: uuid.Uuid)
   AdminPeriodicJobs
   AdminPeriodicJob(id: uuid.Uuid)
   AdminJobs
@@ -37,8 +37,8 @@ pub fn from_uri(uri: Uri) -> Route {
     ["account"] -> Account
     ["admin"] -> Admin
     ["admin", "logs", "api"] -> AdminApiLogs
-    ["admin", "logs", "api", request_id] ->
-      case uuid.from_string(request_id) {
+    ["admin", "logs", "api", id] ->
+      case uuid.from_string(id) {
         Ok(id) -> AdminApiLog(id)
         Error(_) -> NotFound(uri:)
       }
@@ -83,7 +83,7 @@ pub fn to_string(route: Route) -> String {
     Account -> "/account"
     Admin -> "/admin"
     AdminApiLogs -> "/admin/logs/api"
-    AdminApiLog(request_id) -> "/admin/logs/api/" <> uuid.to_string(request_id)
+    AdminApiLog(id) -> "/admin/logs/api/" <> uuid.to_string(id)
     AdminPeriodicJobs -> "/admin/periodic-jobs"
     AdminPeriodicJob(id) -> "/admin/periodic-jobs/" <> uuid.to_string(id)
     AdminJobs -> "/admin/jobs"

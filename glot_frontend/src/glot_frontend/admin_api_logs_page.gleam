@@ -299,7 +299,7 @@ fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
         html.div(
           [attribute.class("jobs-table__head admin-request-logs-page__head")],
           [
-            table_heading("Request ID"),
+            table_heading("Log ID"),
             table_heading("When"),
             table_heading("Action"),
             table_heading("Duration"),
@@ -384,16 +384,16 @@ fn log_row(
 ) -> Element(Msg) {
   html.div([attribute.class("jobs-table__row admin-request-logs-page__row")], [
     html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Request ID"),
+      cell_label("Log ID"),
       html.div([attribute.class("jobs-table__stack")], [
         html.a(
           [
             attribute.class("jobs-table__primary admin-request-logs-page__link"),
-            route.href(route.AdminApiLog(log.request_id)),
+            route.href(route.AdminApiLog(log.id)),
           ],
           [
             html.text(string_helpers.truncate_stem_middle(
-              uuid.to_string(log.request_id),
+              uuid.to_string(log.id),
               18,
             )),
           ],
@@ -431,7 +431,7 @@ fn log_row(
       html.a(
         [
           attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminApiLog(log.request_id)),
+          route.href(route.AdminApiLog(log.id)),
         ],
         [html.text("Open")],
       ),

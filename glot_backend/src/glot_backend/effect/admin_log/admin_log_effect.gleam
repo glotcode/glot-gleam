@@ -16,10 +16,10 @@ pub fn list_api_logs(
 }
 
 pub fn get_api_log(
-  request_id: Uuid,
+  id: Uuid,
 ) -> program_types.Program(option.Option(api_log_model.ApiLogDetail)) {
   program_types.Impure(
-    program_types.DbEffect(get_api_log_effect(request_id, program_types.Pure)),
+    program_types.DbEffect(get_api_log_effect(id, program_types.Pure)),
   )
 }
 
@@ -50,11 +50,11 @@ fn list_api_logs_effect(
 }
 
 fn get_api_log_effect(
-  request_id: Uuid,
+  id: Uuid,
   next: fn(option.Option(api_log_model.ApiLogDetail)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AdminLogEffect(admin_log_algebra.GetApiLog(
-    request_id: request_id,
+    id: id,
     next: next,
   ))
 }

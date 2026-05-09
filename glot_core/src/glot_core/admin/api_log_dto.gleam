@@ -24,11 +24,12 @@ pub type ListApiLogsRequest {
 }
 
 pub type GetApiLogRequest {
-  GetApiLogRequest(request_id: uuid.Uuid)
+  GetApiLogRequest(id: uuid.Uuid)
 }
 
 pub type ApiLogSummaryResponse {
   ApiLogSummaryResponse(
+    id: uuid.Uuid,
     request_id: uuid.Uuid,
     created_at: Timestamp,
     action: String,
@@ -55,6 +56,7 @@ pub type ApiLogEntryResponse {
 
 pub type ApiLogDetailResponse {
   ApiLogDetailResponse(
+    id: uuid.Uuid,
     request_id: uuid.Uuid,
     created_at: Timestamp,
     log: ApiLogEntryResponse,
@@ -94,12 +96,12 @@ pub fn encode_list_request(request: ListApiLogsRequest) -> json.Json {
 }
 
 pub fn get_request_decoder() -> decode.Decoder(GetApiLogRequest) {
-  use request_id <- decode.field("requestId", uuid_helpers.decoder())
-  decode.success(GetApiLogRequest(request_id: request_id))
+  use id <- decode.field("id", uuid_helpers.decoder())
+  decode.success(GetApiLogRequest(id: id))
 }
 
 pub fn encode_get_request(request: GetApiLogRequest) -> json.Json {
-  json.object([#("requestId", encode_uuid(request.request_id))])
+  json.object([#("id", encode_uuid(request.id))])
 }
 
 pub fn list_response_decoder() -> decode.Decoder(ListApiLogsResponse) {
@@ -143,6 +145,7 @@ pub fn from_api_logs(
 
 pub fn from_api_log_detail(log: api_log_model.ApiLogDetail) -> GetApiLogResponse {
   GetApiLogResponse(log: ApiLogDetailResponse(
+    id: log.id,
     request_id: log.request_id,
     created_at: log.created_at,
     log: from_api_log_entry(log.log),
@@ -153,6 +156,7 @@ fn from_api_log_summary(
   log: api_log_model.ApiLogSummary,
 ) -> ApiLogSummaryResponse {
   ApiLogSummaryResponse(
+    id: log.id,
     request_id: log.request_id,
     created_at: log.created_at,
     action: log.action,
@@ -178,6 +182,7 @@ fn from_api_log_entry(log: api_log_model.ApiLogEntry) -> ApiLogEntryResponse {
 }
 
 fn api_log_summary_decoder() -> decode.Decoder(ApiLogSummaryResponse) {
+  use id <- decode.field("id", uuid_helpers.decoder())
   use request_id <- decode.field("requestId", uuid_helpers.decoder())
   use created_at <- decode.field("createdAt", timestamp_helpers.decoder())
   use action <- decode.field("action", decode.string)
@@ -185,6 +190,7 @@ fn api_log_summary_decoder() -> decode.Decoder(ApiLogSummaryResponse) {
   use has_error <- decode.field("hasError", decode.bool)
 
   decode.success(ApiLogSummaryResponse(
+    id: id,
     request_id: request_id,
     created_at: created_at,
     action: action,
@@ -194,11 +200,13 @@ fn api_log_summary_decoder() -> decode.Decoder(ApiLogSummaryResponse) {
 }
 
 fn api_log_detail_decoder() -> decode.Decoder(ApiLogDetailResponse) {
+  use id <- decode.field("id", uuid_helpers.decoder())
   use request_id <- decode.field("requestId", uuid_helpers.decoder())
   use created_at <- decode.field("createdAt", timestamp_helpers.decoder())
   use log <- decode.field("log", api_log_entry_decoder())
 
   decode.success(ApiLogDetailResponse(
+    id: id,
     request_id: request_id,
     created_at: created_at,
     log: log,
@@ -238,6 +246,7 @@ fn api_log_entry_decoder() -> decode.Decoder(ApiLogEntryResponse) {
 
 fn encode_api_log_summary(log: ApiLogSummaryResponse) -> json.Json {
   json.object([
+    #("id", encode_uuid(log.id)),
     #("requestId", encode_uuid(log.request_id)),
     #("createdAt", timestamp_helpers.encode(log.created_at)),
     #("action", json.string(log.action)),
@@ -248,6 +257,7 @@ fn encode_api_log_summary(log: ApiLogSummaryResponse) -> json.Json {
 
 fn encode_api_log_detail(log: ApiLogDetailResponse) -> json.Json {
   json.object([
+    #("id", encode_uuid(log.id)),
     #("requestId", encode_uuid(log.request_id)),
     #("createdAt", timestamp_helpers.encode(log.created_at)),
     #("log", encode_api_log_entry(log.log)),

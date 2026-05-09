@@ -11,7 +11,7 @@ pub type AdminLogEffect(next) {
     next: fn(List(api_log_model.ApiLogSummary)) -> next,
   )
   GetApiLog(
-    request_id: Uuid,
+    id: Uuid,
     next: fn(Option(api_log_model.ApiLogDetail)) -> next,
   )
   ListJobLogs(
@@ -25,8 +25,8 @@ pub fn map(effect: AdminLogEffect(a), f: fn(a) -> b) -> AdminLogEffect(b) {
   case effect {
     ListApiLogs(request:, next:) ->
       ListApiLogs(request: request, next: fn(value) { f(next(value)) })
-    GetApiLog(request_id:, next:) ->
-      GetApiLog(request_id: request_id, next: fn(value) { f(next(value)) })
+    GetApiLog(id:, next:) ->
+      GetApiLog(id: id, next: fn(value) { f(next(value)) })
     ListJobLogs(request:, next:) ->
       ListJobLogs(request: request, next: fn(value) { f(next(value)) })
     GetJobLog(id:, next:) ->

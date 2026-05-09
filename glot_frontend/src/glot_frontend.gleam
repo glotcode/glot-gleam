@@ -132,8 +132,8 @@ fn init_page(
       )
     }
 
-    route.AdminApiLog(request_id) -> {
-      let #(m, eff) = admin_api_log_page.init(request_id)
+    route.AdminApiLog(id) -> {
+      let #(m, eff) = admin_api_log_page.init(id)
       let admin_effect = case session_is_admin(session) {
         True ->
           effect.map(admin_api_log_page.ensure_loaded(m).1, AdminApiLogPageMsg)

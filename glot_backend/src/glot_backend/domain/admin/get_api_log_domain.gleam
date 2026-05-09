@@ -24,7 +24,7 @@ pub fn get_api_log(
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use log <- program.and_then(
-    admin_log_effect.get_api_log(request.request_id)
+    admin_log_effect.get_api_log(request.id)
     |> program.require(error.NotFoundError(
       "api_log_not_found",
       "API log not found",

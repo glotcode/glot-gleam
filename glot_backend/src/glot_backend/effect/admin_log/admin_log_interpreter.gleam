@@ -42,9 +42,9 @@ pub fn run(
         )
       }
     }
-    admin_log_algebra.GetApiLog(request_id:, next:) -> {
+    admin_log_algebra.GetApiLog(id:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.admin_log.get_api_log(request_id)
+      let result = handlers.admin_log.get_api_log(id)
       case result {
         Ok(value) ->
           continue(

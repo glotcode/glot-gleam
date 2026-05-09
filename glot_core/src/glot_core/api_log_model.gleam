@@ -8,6 +8,7 @@ import youid/uuid
 
 pub type ApiLogSummary {
   ApiLogSummary(
+    id: uuid.Uuid,
     request_id: uuid.Uuid,
     created_at: Timestamp,
     action: String,
@@ -17,7 +18,12 @@ pub type ApiLogSummary {
 }
 
 pub type ApiLogDetail {
-  ApiLogDetail(request_id: uuid.Uuid, created_at: Timestamp, log: ApiLogEntry)
+  ApiLogDetail(
+    id: uuid.Uuid,
+    request_id: uuid.Uuid,
+    created_at: Timestamp,
+    log: ApiLogEntry,
+  )
 }
 
 pub type ApiLogEntry {
@@ -45,7 +51,7 @@ pub fn cursor(summary: ApiLogSummary) -> pagination_model.Cursor {
     <> "|"
     <> int.to_string(nanos)
     <> "|"
-    <> uuid.to_string(summary.request_id),
+    <> uuid.to_string(summary.id),
   )
 }
 
@@ -53,17 +59,17 @@ pub fn decode_cursor(
   cursor: pagination_model.Cursor,
 ) -> Result(#(Timestamp, uuid.Uuid), String) {
   case string.split(pagination_model.to_string(cursor), "|") {
-    [seconds, nanos, request_id] -> {
+    [seconds, nanos, id] -> {
       use parsed_seconds <- result.try(parse_int(seconds))
       use parsed_nanos <- result.try(parse_int(nanos))
-      use parsed_request_id <- result.try(parse_uuid(request_id))
+      use parsed_id <- result.try(parse_uuid(id))
 
       Ok(#(
         timestamp.from_unix_seconds_and_nanoseconds(
           parsed_seconds,
           parsed_nanos,
         ),
-        parsed_request_id,
+        parsed_id,
       ))
     }
     _ -> Error("Invalid api log cursor")
