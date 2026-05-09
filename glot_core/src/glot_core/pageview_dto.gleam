@@ -4,11 +4,7 @@ import glot_core/helpers/uuid_helpers
 import youid/uuid
 
 pub type PageviewRequest {
-  PageviewRequest(
-    id: uuid.Uuid,
-    route: String,
-    path: String,
-  )
+  PageviewRequest(id: uuid.Uuid, route: String, path: String)
 }
 
 pub fn encode(request: PageviewRequest) -> json.Json {

@@ -68,10 +68,15 @@ pub type File {
 }
 
 const title_max_length = 200
+
 const stdin_max_length = 20_000
-const run_command_max_length = 2_000
-const build_command_max_length = 2_000
+
+const run_command_max_length = 2000
+
+const build_command_max_length = 2000
+
 const file_name_max_length = 255
+
 const file_content_max_length = 100_000
 
 pub fn encode_file(file: File) -> json.Json {
@@ -192,9 +197,7 @@ fn validate_build_commands(
     [] -> Ok(Nil)
     [command, ..rest] -> {
       let field =
-        "runInstructions.buildCommands["
-        <> int.to_string(index)
-        <> "]"
+        "runInstructions.buildCommands[" <> int.to_string(index) <> "]"
 
       use _ <- result.try(validate_non_empty(field, command))
       use _ <- result.try(validate_max_length(

@@ -9,11 +9,7 @@ pub fn shell_button(
   children children: List(Element(msg)),
 ) -> Element(msg) {
   html.button(
-    [
-      attribute.type_("button"),
-      attribute.class(class_name),
-      ..attributes
-    ],
+    [attribute.type_("button"), attribute.class(class_name), ..attributes],
     children,
   )
 }
@@ -27,10 +23,7 @@ pub fn title_hint_button(
 ) -> Element(msg) {
   shell_button(
     class_name: class_name,
-    attributes: [
-      attribute.attribute("aria-label", aria_label),
-      ..attributes
-    ],
+    attributes: [attribute.attribute("aria-label", aria_label), ..attributes],
     children: [
       html.span([attribute.class(hint_class)], [html.text(hint_label)]),
     ],
@@ -118,10 +111,7 @@ pub fn tab_meta_button(
 ) -> Element(msg) {
   shell_button(
     class_name: "editor-shell__tab-meta-button",
-    attributes: [
-      attribute.attribute("aria-label", aria_label),
-      ..attributes
-    ],
+    attributes: [attribute.attribute("aria-label", aria_label), ..attributes],
     children: [
       html.span([attribute.class("editor-shell__tab-meta-pill")], [
         html.text(pill_label),

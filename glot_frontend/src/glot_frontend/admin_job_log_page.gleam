@@ -15,7 +15,11 @@ import lustre/element/html
 import youid/uuid
 
 pub type Model {
-  Model(id: uuid.Uuid, log: option.Option(job_log_dto.JobLogDetailResponse), status: Status)
+  Model(
+    id: uuid.Uuid,
+    log: option.Option(job_log_dto.JobLogDetailResponse),
+    status: Status,
+  )
 }
 
 pub type Status {
@@ -35,11 +39,13 @@ pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
   case model.status {
-    NotLoaded ->
-      #(
-        Model(..model, status: Loading),
-        api.get_admin_job_log(job_log_dto.GetJobLogRequest(id: model.id), LogLoaded),
-      )
+    NotLoaded -> #(
+      Model(..model, status: Loading),
+      api.get_admin_job_log(
+        job_log_dto.GetJobLogRequest(id: model.id),
+        LogLoaded,
+      ),
+    )
     Loading | Ready | LoadError(_) -> #(model, effect.none())
   }
 }
@@ -68,29 +74,36 @@ pub fn view(model: Model) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
     html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page admin-job-log-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Job log detail"),
+      html.section(
+        [attribute.class("app-panel admin-page admin-job-log-page")],
+        [
+          html.div([attribute.class("admin-page__header")], [
+            html.div([], [
+              html.h2([attribute.class("admin-page__title")], [
+                html.text("Job log detail"),
+              ]),
+              html.p([attribute.class("admin-page__status")], [
+                html.text(
+                  "Inspect one retained job log execution and its raw operator-facing payloads.",
+                ),
+              ]),
             ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text("Inspect one retained job log execution and its raw operator-facing payloads."),
+            html.div([attribute.class("admin-page__policy-actions")], [
+              html.a(
+                [
+                  attribute.class(
+                    "admin-page__button admin-page__button--secondary",
+                  ),
+                  route.href(route.AdminJobLogs),
+                ],
+                [html.text("Back to job logs")],
+              ),
             ]),
           ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            html.a(
-              [
-                attribute.class("admin-page__button admin-page__button--secondary"),
-                route.href(route.AdminJobLogs),
-              ],
-              [html.text("Back to job logs")],
-            ),
-          ]),
-        ]),
-        status_view(model),
-        detail_view(model),
-      ]),
+          status_view(model),
+          detail_view(model),
+        ],
+      ),
     ]),
   ])
 }
@@ -113,31 +126,60 @@ fn status_view(model: Model) -> Element(Msg) {
 fn detail_view(model: Model) -> Element(Msg) {
   case model.log, model.status {
     option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [html.text("Loading job log...")])
+      html.div([attribute.class("admin-page__empty")], [
+        html.text("Loading job log..."),
+      ])
     option.None, _ ->
       html.div([attribute.class("admin-page__empty")], [
         html.text("This job log could not be loaded."),
       ])
     option.Some(log), _ ->
       html.div([attribute.class("admin-job-page__content")], [
-        html.div([attribute.class("admin-job-page__summary-grid admin-job-log-page__summary-grid")], [
-          summary_card("Log ID", uuid.to_string(log.id), "Retained job log entry"),
-          summary_card("Job ID", uuid.to_string(log.job_id), "Originating job"),
-          summary_card("Request ID", optional_uuid(log.request_id), "Linked request"),
-          summary_card("Job type", log.job_type, "Execution kind"),
-          summary_card("Attempt", int.to_string(log.attempt), "Attempt number"),
-          summary_card("Created at", format_timestamp(log.created_at), "UTC"),
-          summary_card(
-            "Duration",
-            duration_label.duration_in_ms_label(log.duration_ns),
-            "Persisted runtime",
-          ),
-        ]),
+        html.div(
+          [
+            attribute.class(
+              "admin-job-page__summary-grid admin-job-log-page__summary-grid",
+            ),
+          ],
+          [
+            summary_card(
+              "Log ID",
+              uuid.to_string(log.id),
+              "Retained job log entry",
+            ),
+            summary_card(
+              "Job ID",
+              uuid.to_string(log.job_id),
+              "Originating job",
+            ),
+            summary_card(
+              "Request ID",
+              optional_uuid(log.request_id),
+              "Linked request",
+            ),
+            summary_card("Job type", log.job_type, "Execution kind"),
+            summary_card(
+              "Attempt",
+              int.to_string(log.attempt),
+              "Attempt number",
+            ),
+            summary_card("Created at", format_timestamp(log.created_at), "UTC"),
+            summary_card(
+              "Duration",
+              duration_label.duration_in_ms_label(log.duration_ns),
+              "Persisted runtime",
+            ),
+          ],
+        ),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [html.text("Raw output")]),
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Raw output"),
+            ]),
             html.p([attribute.class("admin-page__group-copy")], [
-              html.text("Stored raw blocks are expanded by default so retries and failures can be inspected immediately."),
+              html.text(
+                "Stored raw blocks are expanded by default so retries and failures can be inspected immediately.",
+              ),
             ]),
           ]),
           html.div([attribute.class("admin-job-log-page__raw-grid")], [
@@ -157,7 +199,9 @@ fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
     [attribute.class("admin-page__policy admin-job-page__summary-card")],
     [
       html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.strong([attribute.class("admin-job-page__summary-value")], [html.text(value)]),
+      html.strong([attribute.class("admin-job-page__summary-value")], [
+        html.text(value),
+      ]),
       html.span([attribute.class("admin-job-page__meta")], [html.text(meta)]),
     ],
   )

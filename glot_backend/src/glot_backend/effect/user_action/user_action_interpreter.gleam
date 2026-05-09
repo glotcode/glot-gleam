@@ -42,10 +42,7 @@ pub fn run(
         )
       }
     }
-    user_action_algebra.CreateUserAction(
-      user_action: user_action,
-      next: next,
-    ) -> {
+    user_action_algebra.CreateUserAction(user_action: user_action, next: next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.user_action.create_user_action(user_action)
       continue(

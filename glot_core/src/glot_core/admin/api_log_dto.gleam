@@ -135,7 +135,10 @@ pub fn encode_get_response(response: GetApiLogResponse) -> json.Json {
 pub fn from_api_logs(
   page: pagination_model.CursorPage(api_log_model.ApiLogSummary),
 ) -> ListApiLogsResponse {
-  ListApiLogsResponse(page: pagination_model.map_page(page, from_api_log_summary))
+  ListApiLogsResponse(page: pagination_model.map_page(
+    page,
+    from_api_log_summary,
+  ))
 }
 
 pub fn from_api_log_detail(log: api_log_model.ApiLogDetail) -> GetApiLogResponse {
@@ -146,7 +149,9 @@ pub fn from_api_log_detail(log: api_log_model.ApiLogDetail) -> GetApiLogResponse
   ))
 }
 
-fn from_api_log_summary(log: api_log_model.ApiLogSummary) -> ApiLogSummaryResponse {
+fn from_api_log_summary(
+  log: api_log_model.ApiLogSummary,
+) -> ApiLogSummaryResponse {
   ApiLogSummaryResponse(
     request_id: log.request_id,
     created_at: log.created_at,
@@ -211,7 +216,10 @@ fn api_log_entry_decoder() -> decode.Decoder(ApiLogEntryResponse) {
   use warnings <- decode.field("warnings", decode.optional(decode.string))
   use debug <- decode.field("debug", decode.optional(decode.string))
   use error <- decode.field("error", decode.optional(decode.string))
-  use effects <- decode.field("effects", decode.optional(effect_trace_dto.decoder()))
+  use effects <- decode.field(
+    "effects",
+    decode.optional(effect_trace_dto.decoder()),
+  )
 
   decode.success(ApiLogEntryResponse(
     created_at: created_at,

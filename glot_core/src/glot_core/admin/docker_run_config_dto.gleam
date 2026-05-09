@@ -18,7 +18,10 @@ pub fn response_decoder() -> decode.Decoder(DockerRunConfigResponse) {
 pub fn decoder() -> decode.Decoder(UpsertDockerRunConfigRequest) {
   use base_url <- decode.field("baseUrl", decode.string)
   use access_token <- decode.field("accessToken", decode.string)
-  decode.success(UpsertDockerRunConfigRequest(base_url:, access_token: access_token))
+  decode.success(UpsertDockerRunConfigRequest(
+    base_url:,
+    access_token: access_token,
+  ))
 }
 
 pub fn encode_response(response: DockerRunConfigResponse) -> json.Json {

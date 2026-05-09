@@ -2,11 +2,11 @@ import gleam/int
 import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
-import glot_backend/domain/analytics/aggregate_metrics_domain
 import glot_backend/domain/account/delete_account_domain
+import glot_backend/domain/analytics/aggregate_metrics_domain
 import glot_backend/domain/cleanup/clean_api_log_domain
-import glot_backend/domain/cleanup/clean_jobs_domain
 import glot_backend/domain/cleanup/clean_job_log_domain
+import glot_backend/domain/cleanup/clean_jobs_domain
 import glot_backend/domain/cleanup/clean_login_tokens_domain
 import glot_backend/domain/cleanup/clean_page_log_domain
 import glot_backend/domain/cleanup/clean_pageview_log_domain

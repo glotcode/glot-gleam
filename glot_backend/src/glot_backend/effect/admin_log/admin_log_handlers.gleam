@@ -18,9 +18,8 @@ import youid/uuid
 
 pub type AdminLogHandlers {
   AdminLogHandlers(
-    list_api_logs: fn(
-      api_log_dto.ListApiLogsRequest,
-    ) -> Result(List(api_log_model.ApiLogSummary), error.DbQueryError),
+    list_api_logs: fn(api_log_dto.ListApiLogsRequest) ->
+      Result(List(api_log_model.ApiLogSummary), error.DbQueryError),
     get_api_log: fn(uuid.Uuid) ->
       Result(option.Option(api_log_model.ApiLogDetail), error.DbQueryError),
     list_job_logs: fn(job_log_dto.ListJobLogsRequest) ->
@@ -43,11 +42,10 @@ pub fn list_api_logs(
   db: pog.Connection,
   request: api_log_dto.ListApiLogsRequest,
 ) -> Result(List(api_log_model.ApiLogSummary), error.DbQueryError) {
-  let has_errors_only =
-    case request.error_filter {
-      api_log_dto.OnlyApiLogsWithErrors -> True
-      api_log_dto.AllApiLogs -> False
-    }
+  let has_errors_only = case request.error_filter {
+    api_log_dto.OnlyApiLogsWithErrors -> True
+    api_log_dto.AllApiLogs -> False
+  }
 
   case request.pagination {
     pagination_model.BeforePage(cursor, limit) ->
@@ -129,11 +127,10 @@ pub fn list_job_logs(
   db: pog.Connection,
   request: job_log_dto.ListJobLogsRequest,
 ) -> Result(List(job_log_model.JobLog), error.DbQueryError) {
-  let has_errors_only =
-    case request.error_filter {
-      job_log_dto.OnlyJobLogsWithErrors -> True
-      job_log_dto.AllJobLogs -> False
-    }
+  let has_errors_only = case request.error_filter {
+    job_log_dto.OnlyJobLogsWithErrors -> True
+    job_log_dto.AllJobLogs -> False
+  }
 
   case request.pagination {
     pagination_model.BeforePage(cursor, limit) ->
@@ -277,7 +274,9 @@ fn get_api_log_detail_from_row(
   )
 }
 
-fn get_job_log_from_after_row(row: sql.ListAdminJobLogsAfter) -> job_log_model.JobLog {
+fn get_job_log_from_after_row(
+  row: sql.ListAdminJobLogsAfter,
+) -> job_log_model.JobLog {
   job_log_model.JobLog(
     id: uuid_helpers.from_bit_array(row.id),
     request_id: row.request_id |> option.map(uuid_helpers.from_bit_array),

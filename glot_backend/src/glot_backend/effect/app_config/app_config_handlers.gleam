@@ -10,7 +10,8 @@ import pog
 
 pub type AppConfigHandlers {
   AppConfigHandlers(
-    list_entries: fn() -> Result(List(app_config.AppConfigEntry), error.DbQueryError),
+    list_entries: fn() ->
+      Result(List(app_config.AppConfigEntry), error.DbQueryError),
     upsert_entry: fn(String, String, String, Timestamp) ->
       Result(Nil, error.DbCommandError),
   )
@@ -34,7 +35,9 @@ pub fn list_entries(
   |> result.map(fn(returned) { entries_from_rows(returned.rows) })
 }
 
-fn entries_from_rows(rows: List(sql.ListAppConfig)) -> List(app_config.AppConfigEntry) {
+fn entries_from_rows(
+  rows: List(sql.ListAppConfig),
+) -> List(app_config.AppConfigEntry) {
   list.map(rows, fn(row) {
     app_config.AppConfigEntry(
       namespace: row.namespace,

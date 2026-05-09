@@ -3,8 +3,7 @@ import glot_core/email/email_model
 
 pub type EmailHandlers {
   EmailHandlers(
-    send_email: fn(email_model.Email) ->
-      Result(Nil, error.SendEmailError),
+    send_email: fn(email_model.Email) -> Result(Nil, error.SendEmailError),
   )
 }
 

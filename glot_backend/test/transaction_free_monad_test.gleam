@@ -75,9 +75,11 @@ pub fn program_attempt_retries_recovery_only_once_when_recovery_refails_test() {
 
   let effect =
     transaction_effect.run({
-      use _ <- transaction_program.and_then(job_effect.create_job_tx(
-        test_job(must_uuid("00000000-0000-0000-0000-000000000204")),
-      ))
+      use _ <- transaction_program.and_then(
+        job_effect.create_job_tx(
+          test_job(must_uuid("00000000-0000-0000-0000-000000000204")),
+        ),
+      )
       transaction_program.fail(error.ValidationError("force rollback"))
     })
     |> program.attempt(fn(err) {
@@ -88,9 +90,12 @@ pub fn program_attempt_retries_recovery_only_once_when_recovery_refails_test() {
   let #(result, state) =
     run_program(effect, TestState(created_job_ids: [], updated_job_ids: []))
 
-  assert result == Error(error.TransactionError(error.DbTransactionError(
-    "validation_error:force rollback",
-  )))
+  assert result
+    == Error(
+      error.TransactionError(error.DbTransactionError(
+        "validation_error:force rollback",
+      )),
+    )
   assert state.created_job_ids == []
   assert state.updated_job_ids == [uuid.to_string(rescheduled_job.id)]
 }
@@ -98,7 +103,10 @@ pub fn program_attempt_retries_recovery_only_once_when_recovery_refails_test() {
 pub fn program_attempt_recovers_from_non_transaction_interpreter_failure_test() {
   let fallback = successful_run("fallback")
   let effect =
-    get_language_version_effect.get_language_version(test_config(), language.Python)
+    get_language_version_effect.get_language_version(
+      test_config(),
+      language.Python,
+    )
     |> program.attempt(fn(_) { program.succeed(fallback) })
 
   let #(result, state) =
@@ -131,9 +139,11 @@ fn run_program(
               case tx_result {
                 Ok(next_program) -> run_program(next_program, tx_state)
                 Error(err) -> #(
-                  Error(error.TransactionError(error.DbTransactionError(
-                    error.to_string(err),
-                  ))),
+                  Error(
+                    error.TransactionError(
+                      error.DbTransactionError(error.to_string(err)),
+                    ),
+                  ),
                   state,
                 )
               }
@@ -202,37 +212,34 @@ fn run_job_tx_effect(
 }
 
 fn insert_job(state: TestState, job: job_model.Job) -> TestState {
-  TestState(created_job_ids: [
-    uuid.to_string(job.id),
-    ..state.created_job_ids
-  ], updated_job_ids: state.updated_job_ids)
-}
-
-fn update_job(state: TestState, job: job_model.Job) -> TestState {
   TestState(
-    created_job_ids: state.created_job_ids,
-    updated_job_ids: [uuid.to_string(job.id), ..state.updated_job_ids],
+    created_job_ids: [uuid.to_string(job.id), ..state.created_job_ids],
+    updated_job_ids: state.updated_job_ids,
   )
 }
 
-fn unsupported_program_effect(state: TestState) -> #(
-  Result(a, error.Error),
-  TestState,
-) {
+fn update_job(state: TestState, job: job_model.Job) -> TestState {
+  TestState(created_job_ids: state.created_job_ids, updated_job_ids: [
+    uuid.to_string(job.id),
+    ..state.updated_job_ids
+  ])
+}
+
+fn unsupported_program_effect(
+  state: TestState,
+) -> #(Result(a, error.Error), TestState) {
   #(Error(error.ValidationError("Unsupported program effect in test")), state)
 }
 
-fn unsupported_db_effect(state: TestState) -> #(
-  Result(a, error.Error),
-  TestState,
-) {
+fn unsupported_db_effect(
+  state: TestState,
+) -> #(Result(a, error.Error), TestState) {
   #(Error(error.ValidationError("Unsupported db effect in test")), state)
 }
 
-fn unsupported_job_effect(state: TestState) -> #(
-  Result(a, error.Error),
-  TestState,
-) {
+fn unsupported_job_effect(
+  state: TestState,
+) -> #(Result(a, error.Error), TestState) {
   #(Error(error.ValidationError("Unsupported job effect in test")), state)
 }
 

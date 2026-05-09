@@ -10,7 +10,9 @@ pub fn title() -> String {
   "glot.io - public snippets"
 }
 
-pub fn app_attributes(view_model: snippets.ViewModel) -> List(attribute.Attribute(Nil)) {
+pub fn app_attributes(
+  view_model: snippets.ViewModel,
+) -> List(attribute.Attribute(Nil)) {
   [
     attribute.attribute(
       "data-ssr",

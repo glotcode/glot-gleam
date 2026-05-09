@@ -3,7 +3,9 @@ import glot_backend/effect/error
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
 import glot_core/pagination_model.{type CursorPagination}
-import glot_core/snippet/snippet_model.{type HydratedSnippet, type ListSnippetsFilter, type Snippet}
+import glot_core/snippet/snippet_model.{
+  type HydratedSnippet, type ListSnippetsFilter, type Snippet,
+}
 import youid/uuid
 
 pub fn get_by_id(
@@ -25,11 +27,7 @@ pub fn list(
   pagination pagination: CursorPagination,
 ) -> program_types.Program(List(HydratedSnippet)) {
   program_types.Impure(
-    program_types.DbEffect(list_effect(
-      filter,
-      pagination,
-      list_next,
-    )),
+    program_types.DbEffect(list_effect(filter, pagination, list_next)),
   )
 }
 

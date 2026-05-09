@@ -40,17 +40,13 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
     GetDynamicConfig(next:) ->
       GetDynamicConfig(next: fn(value) { f(next(value)) })
     UpsertDebugConfig(config:, updated_at:, next:) ->
-      UpsertDebugConfig(
-        config: config,
-        updated_at: updated_at,
-        next: fn(value) { f(next(value)) },
-      )
+      UpsertDebugConfig(config: config, updated_at: updated_at, next: fn(value) {
+        f(next(value))
+      })
     UpsertAuthConfig(config:, updated_at:, next:) ->
-      UpsertAuthConfig(
-        config: config,
-        updated_at: updated_at,
-        next: fn(value) { f(next(value)) },
-      )
+      UpsertAuthConfig(config: config, updated_at: updated_at, next: fn(value) {
+        f(next(value))
+      })
     UpsertCleanupConfig(config:, updated_at:, next:) ->
       UpsertCleanupConfig(
         config: config,

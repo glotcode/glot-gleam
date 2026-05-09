@@ -33,7 +33,10 @@ pub type RuleMatch {
 }
 
 pub fn response_decoder() -> decode.Decoder(RateLimitPoliciesResponse) {
-  use policies <- decode.field("policies", decode.list(policy_response_decoder()))
+  use policies <- decode.field(
+    "policies",
+    decode.list(policy_response_decoder()),
+  )
   decode.success(RateLimitPoliciesResponse(policies: policies))
 }
 
@@ -86,8 +89,7 @@ pub fn encode_rule(rule: RateLimitRule) -> json.Json {
 
 fn encode_match(rule_match: RuleMatch) -> json.Json {
   case rule_match {
-    AnonymousMatch ->
-      json.object([#("actor", json.string("anonymous"))])
+    AnonymousMatch -> json.object([#("actor", json.string("anonymous"))])
     AuthenticatedMatch(account_tiers) ->
       json.object([
         #("actor", json.string("authenticated")),

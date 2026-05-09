@@ -1,11 +1,11 @@
 import gleam/option
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_core/auth/account_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
-import gleam/time/timestamp.{type Timestamp}
 import youid/uuid.{type Uuid}
 
 pub type AuthEffect(next) {
@@ -54,10 +54,7 @@ pub type AuthEffect(next) {
     session: session_model.Session,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
-  DeleteSession(
-    id: Uuid,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
-  )
+  DeleteSession(id: Uuid, next: fn(Result(Nil, error.DbCommandError)) -> next)
   CreateLoginToken(
     login_token: login_token_model.LoginToken,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
@@ -91,39 +88,29 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
     UpdateUser(user: user, next: next) ->
       UpdateUser(user: user, next: fn(value) { f(next(value)) })
     DeleteSessionsByAccountId(account_id: account_id, next: next) ->
-      DeleteSessionsByAccountId(
-        account_id: account_id,
-        next: fn(value) { f(next(value)) },
-      )
+      DeleteSessionsByAccountId(account_id: account_id, next: fn(value) {
+        f(next(value))
+      })
     DeleteUsersByAccountId(account_id: account_id, next: next) ->
-      DeleteUsersByAccountId(
-        account_id: account_id,
-        next: fn(value) { f(next(value)) },
-      )
+      DeleteUsersByAccountId(account_id: account_id, next: fn(value) {
+        f(next(value))
+      })
     DeleteAccount(account_id: account_id, next: next) ->
       DeleteAccount(account_id: account_id, next: fn(value) { f(next(value)) })
     CreateSession(session: session, next: next) ->
-      CreateSession(
-        session: session,
-        next: fn(value) { f(next(value)) },
-      )
+      CreateSession(session: session, next: fn(value) { f(next(value)) })
     DeleteSession(id: id, next: next) ->
       DeleteSession(id: id, next: fn(value) { f(next(value)) })
     CreateLoginToken(login_token: login_token, next: next) ->
-      CreateLoginToken(
-        login_token: login_token,
-        next: fn(value) { f(next(value)) },
-      )
+      CreateLoginToken(login_token: login_token, next: fn(value) {
+        f(next(value))
+      })
     UpdateLoginToken(login_token: login_token, next: next) ->
-      UpdateLoginToken(
-        login_token: login_token,
-        next: fn(value) { f(next(value)) },
-      )
+      UpdateLoginToken(login_token: login_token, next: fn(value) {
+        f(next(value))
+      })
     DeleteLoginTokensBefore(before: before, next: next) ->
-      DeleteLoginTokensBefore(
-        before: before,
-        next: fn(value) { f(next(value)) },
-      )
+      DeleteLoginTokensBefore(before: before, next: fn(value) { f(next(value)) })
   }
 }
 

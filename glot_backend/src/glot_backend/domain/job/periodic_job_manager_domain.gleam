@@ -33,9 +33,9 @@ pub fn enqueue_next_due_periodic_job(
               error.to_string(enqueue_error),
               ctx.timestamp,
             )
-          use _ <- program.and_then(
-            periodic_job_effect.update_periodic_job(failed_periodic_job),
-          )
+          use _ <- program.and_then(periodic_job_effect.update_periodic_job(
+            failed_periodic_job,
+          ))
           program.fail(enqueue_error)
         }),
       )

@@ -6,9 +6,9 @@ import glot_backend/effect/total_program
 import glot_core/page/editor
 import glot_core/snippet/snippet_dto
 
-pub fn load_new_view_model(language_slug: String) -> total_program.TotalProgram(
-  editor.ViewModel,
-) {
+pub fn load_new_view_model(
+  language_slug: String,
+) -> total_program.TotalProgram(editor.ViewModel) {
   total_program.succeed(editor.new(language_slug))
 }
 
@@ -18,7 +18,9 @@ pub fn load_existing_view_model(
 ) -> total_program.TotalProgram(editor.ViewModel) {
   get_snippet_domain.get_snippet(ctx, snippet_dto.GetSnippetRequest(slug: slug))
   |> program.map(editor.from_snippet)
-  |> total_program.from_program(fn(err) { editor.LoadError(page_error_message(err)) })
+  |> total_program.from_program(fn(err) {
+    editor.LoadError(page_error_message(err))
+  })
 }
 
 fn page_error_message(err: error.Error) -> String {

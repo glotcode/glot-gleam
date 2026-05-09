@@ -12,17 +12,20 @@ import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/get_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/account/update_account_domain
+import glot_backend/domain/admin/get_api_log_domain
+import glot_backend/domain/admin/get_api_logs_domain
 import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
-import glot_backend/domain/admin/get_api_log_domain
-import glot_backend/domain/admin/get_api_logs_domain
+import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_job_log_domain
 import glot_backend/domain/admin/get_job_logs_domain
-import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_jobs_domain
+import glot_backend/domain/admin/get_periodic_job_domain
+import glot_backend/domain/admin/get_periodic_jobs_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
+import glot_backend/domain/admin/update_periodic_job_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_cleanup_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
@@ -59,8 +62,9 @@ import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
-import glot_core/admin/job_log_dto
 import glot_core/admin/job_dto
+import glot_core/admin/job_log_dto
+import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action
 import glot_core/auth/account_dto
@@ -244,6 +248,23 @@ fn handle_api_request(
       upsert_cleanup_config_domain.upsert_cleanup_config(ctx, request)
       |> program.map(CleanupConfigResponse)
     }
+    api_action.GetAdminPeriodicJobsAction ->
+      get_periodic_jobs_domain.get_periodic_jobs(ctx)
+      |> program.map(AdminPeriodicJobsResponse)
+    api_action.GetAdminPeriodicJobAction -> {
+      use request <- program.and_then(
+        get_periodic_job_domain.request_from_dynamic(api_request.data),
+      )
+      get_periodic_job_domain.get_periodic_job(ctx, request)
+      |> program.map(AdminPeriodicJobDetailResponse)
+    }
+    api_action.UpdateAdminPeriodicJobAction -> {
+      use request <- program.and_then(
+        update_periodic_job_domain.request_from_dynamic(api_request.data),
+      )
+      update_periodic_job_domain.update_periodic_job(ctx, request)
+      |> program.map(AdminPeriodicJobResponse)
+    }
     api_action.GetAdminJobsAction -> {
       use request <- program.and_then(get_jobs_domain.request_from_dynamic(
         api_request.data,
@@ -259,30 +280,30 @@ fn handle_api_request(
       |> program.map(AdminJobResponse)
     }
     api_action.GetAdminApiLogsAction -> {
-      use request <- program.and_then(
-        get_api_logs_domain.request_from_dynamic(api_request.data),
-      )
+      use request <- program.and_then(get_api_logs_domain.request_from_dynamic(
+        api_request.data,
+      ))
       get_api_logs_domain.get_api_logs(ctx, request)
       |> program.map(AdminApiLogsResponse)
     }
     api_action.GetAdminApiLogAction -> {
-      use request <- program.and_then(
-        get_api_log_domain.request_from_dynamic(api_request.data),
-      )
+      use request <- program.and_then(get_api_log_domain.request_from_dynamic(
+        api_request.data,
+      ))
       get_api_log_domain.get_api_log(ctx, request)
       |> program.map(AdminApiLogResponse)
     }
     api_action.GetAdminJobLogsAction -> {
-      use request <- program.and_then(
-        get_job_logs_domain.request_from_dynamic(api_request.data),
-      )
+      use request <- program.and_then(get_job_logs_domain.request_from_dynamic(
+        api_request.data,
+      ))
       get_job_logs_domain.get_job_logs(ctx, request)
       |> program.map(AdminJobLogsResponse)
     }
     api_action.GetAdminJobLogAction -> {
-      use request <- program.and_then(
-        get_job_log_domain.request_from_dynamic(api_request.data),
-      )
+      use request <- program.and_then(get_job_log_domain.request_from_dynamic(
+        api_request.data,
+      ))
       get_job_log_domain.get_job_log(ctx, request)
       |> program.map(AdminJobLogResponse)
     }
@@ -357,6 +378,9 @@ type ApiResult {
   DebugConfigResponse(debug_config_dto.DebugConfigResponse)
   AuthConfigResponse(auth_config_dto.AuthConfigResponse)
   CleanupConfigResponse(cleanup_config_dto.CleanupConfigResponse)
+  AdminPeriodicJobsResponse(periodic_job_dto.ListPeriodicJobsResponse)
+  AdminPeriodicJobDetailResponse(periodic_job_dto.GetPeriodicJobResponse)
+  AdminPeriodicJobResponse(periodic_job_dto.UpdatePeriodicJobResponse)
   AdminJobsResponse(job_dto.ListJobsResponse)
   AdminJobResponse(job_dto.GetJobResponse)
   AdminApiLogsResponse(api_log_dto.ListApiLogsResponse)
@@ -394,6 +418,12 @@ fn api_result_to_response(
       success_response(auth_config_dto.encode_response(response))
     CleanupConfigResponse(response) ->
       success_response(cleanup_config_dto.encode_response(response))
+    AdminPeriodicJobsResponse(response) ->
+      success_response(periodic_job_dto.encode_list_response(response))
+    AdminPeriodicJobDetailResponse(response) ->
+      success_response(periodic_job_dto.encode_get_response(response))
+    AdminPeriodicJobResponse(response) ->
+      success_response(periodic_job_dto.encode_update_response(response))
     AdminJobsResponse(response) ->
       success_response(job_dto.encode_list_response(response))
     AdminJobResponse(response) ->

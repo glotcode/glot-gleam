@@ -13,11 +13,11 @@ import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/effect/interpreter
-import glot_backend/job_tracker
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/helpers/db_helpers
+import glot_backend/job_tracker
 import glot_backend/log
 import glot_backend/server_mode
 import glot_backend/sql

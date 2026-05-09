@@ -17,8 +17,8 @@ import glot_core/route
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
-import glot_frontend/app_dialog
 import glot_frontend/api
+import glot_frontend/app_dialog
 import glot_frontend/duration_label
 import glot_frontend/editor_draft
 import glot_frontend/editor_settings
@@ -125,19 +125,18 @@ type SaveOperation {
 
 pub fn init_new(language: String) -> #(Model, Effect(Msg)) {
   let settings = editor_settings.load()
-  let model =
-    case init_from_ssr(settings) {
-      option.Some(model) -> model
-      option.None ->
-        case language.from_string(language) {
-          option.Some(lang) -> {
-            let draft = editor_draft.load_new_snippet(language)
-            SupportedLanguage(new_editor_model(lang, settings, draft))
-          }
-
-          option.None -> UnsupportedLanguage(language)
+  let model = case init_from_ssr(settings) {
+    option.Some(model) -> model
+    option.None ->
+      case language.from_string(language) {
+        option.Some(lang) -> {
+          let draft = editor_draft.load_new_snippet(language)
+          SupportedLanguage(new_editor_model(lang, settings, draft))
         }
-    }
+
+        option.None -> UnsupportedLanguage(language)
+      }
+  }
 
   #(model, init_new_effect_for_model(model))
 }
@@ -146,23 +145,27 @@ pub fn init_existing(slug: String) -> #(Model, Effect(Msg)) {
   let settings = editor_settings.load()
   case init_existing_from_ssr(settings) {
     option.Some(initialized) -> initialized
-    option.None ->
-      #(
-        LoadingSnippet(slug, settings),
-        api.get_snippet(snippet_dto.GetSnippetRequest(slug: slug), SnippetLoaded),
-      )
+    option.None -> #(
+      LoadingSnippet(slug, settings),
+      api.get_snippet(snippet_dto.GetSnippetRequest(slug: slug), SnippetLoaded),
+    )
   }
 }
 
-fn init_from_ssr(settings: editor_settings.EditorSettings) -> option.Option(Model) {
+fn init_from_ssr(
+  settings: editor_settings.EditorSettings,
+) -> option.Option(Model) {
   case take_ssr_view_model() {
     option.Some(editor_ssr.NewSnippet(editor_ssr.EditorModel(language:, ..))) -> {
       let draft = editor_draft.load_new_snippet(language.to_string(language))
-      option.Some(SupportedLanguage(new_editor_model(language, settings, draft)))
+      option.Some(
+        SupportedLanguage(new_editor_model(language, settings, draft)),
+      )
     }
     option.Some(editor_ssr.UnsupportedLanguage(language_slug)) ->
       option.Some(UnsupportedLanguage(language_slug))
-    option.Some(editor_ssr.LoadError(message)) -> option.Some(LoadError(message))
+    option.Some(editor_ssr.LoadError(message)) ->
+      option.Some(LoadError(message))
     option.Some(editor_ssr.ExistingSnippet(_)) | option.None -> option.None
   }
 }
@@ -246,7 +249,8 @@ pub fn update(
   case model, msg {
     LoadingSnippet(_, settings), SnippetLoaded(result) -> {
       case result {
-        api.ApiSuccess(response) -> existing_model_from_response(response, settings)
+        api.ApiSuccess(response) ->
+          existing_model_from_response(response, settings)
 
         api.ApiFailure(error) -> #(LoadError(error.message), effect.none())
 
@@ -343,10 +347,7 @@ pub fn update_helper(
       }
     }
 
-    AddEntryDialogClosed -> #(
-      reset_add_entry_draft(model),
-      focus_editor(),
-    )
+    AddEntryDialogClosed -> #(reset_add_entry_draft(model), focus_editor())
 
     SelectedTabActionClicked -> #(
       RealModel(
@@ -394,10 +395,7 @@ pub fn update_helper(
       }
     }
 
-    EditEntryDialogClosed -> #(
-      reset_edit_entry_draft(model),
-      focus_editor(),
-    )
+    EditEntryDialogClosed -> #(reset_edit_entry_draft(model), focus_editor())
 
     SettingsClicked -> #(
       RealModel(
@@ -512,10 +510,7 @@ pub fn update_helper(
       app_dialog.close(save_dialog_id),
     )
 
-    SaveDialogClosed -> #(
-      reset_save_dialog_draft(model),
-      focus_editor(),
-    )
+    SaveDialogClosed -> #(reset_save_dialog_draft(model), focus_editor())
 
     RestoreDraftAccepted -> {
       case model.pending_restore_draft {
@@ -719,24 +714,26 @@ fn view_helper(
     title: model.title,
     title_actions: [
       case show_snippet_info {
-        True -> editor_layout.title_hint_button(
-          class_name: "editor-page__title-edit-button editor-page__title-info-button",
-          aria_label: "Snippet info",
-          hint_class: "editor-page__title-hint editor-page__title-hint--info",
-          hint_label: "Info",
-          attributes: [event.on_click(SnippetInfoClicked)],
-        )
+        True ->
+          editor_layout.title_hint_button(
+            class_name: "editor-page__title-edit-button editor-page__title-info-button",
+            aria_label: "Snippet info",
+            hint_class: "editor-page__title-hint editor-page__title-hint--info",
+            hint_label: "Info",
+            attributes: [event.on_click(SnippetInfoClicked)],
+          )
 
         False -> html.div([], [])
       },
       case can_edit_title {
-        True -> editor_layout.title_hint_button(
-          class_name: "editor-page__title-edit-button",
-          aria_label: "Edit title",
-          hint_class: "editor-page__title-hint",
-          hint_label: "Edit",
-          attributes: [event.on_click(TitleClicked)],
-        )
+        True ->
+          editor_layout.title_hint_button(
+            class_name: "editor-page__title-edit-button",
+            aria_label: "Edit title",
+            hint_class: "editor-page__title-hint",
+            hint_label: "Edit",
+            attributes: [event.on_click(TitleClicked)],
+          )
 
         False -> html.div([], [])
       },
@@ -772,18 +769,18 @@ fn view_helper(
       [],
     ),
     action_buttons: [
-        action_button(
-          "editor-shell__action-button",
-          run_button_text(model.run_state),
-          model.run_state == Running,
-          RunSubmitted,
-        ),
-        action_button(
-          "editor-shell__action-button",
-          save_button_text(model.save_state),
-          model.save_state == Saving,
-          SaveClicked,
-        ),
+      action_button(
+        "editor-shell__action-button",
+        run_button_text(model.run_state),
+        model.run_state == Running,
+        RunSubmitted,
+      ),
+      action_button(
+        "editor-shell__action-button",
+        save_button_text(model.save_state),
+        model.save_state == Saving,
+        SaveClicked,
+      ),
     ],
     console: console_view(model.version_info, model.run_state, model.save_state),
   )
@@ -1402,8 +1399,14 @@ fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
               |> string.uppercase,
           ),
           snippet_info_row("URL", snippet_url(model)),
-          snippet_info_row("Created", optional_timestamp_label(model.created_at)),
-          snippet_info_row("Updated", optional_timestamp_label(model.updated_at)),
+          snippet_info_row(
+            "Created",
+            optional_timestamp_label(model.created_at),
+          ),
+          snippet_info_row(
+            "Updated",
+            optional_timestamp_label(model.updated_at),
+          ),
         ]),
         editor_layout.dialog_actions([
           html.button(
@@ -1736,11 +1739,9 @@ fn file_tab_views(
 }
 
 fn tab_button(label: String, tab: EditorTab, is_selected: Bool) -> Element(Msg) {
-  editor_layout.tab_button(
-    label: label,
-    is_selected: is_selected,
-    attributes: [event.on_click(TabSelected(tab))],
-  )
+  editor_layout.tab_button(label: label, is_selected: is_selected, attributes: [
+    event.on_click(TabSelected(tab)),
+  ])
 }
 
 fn selected_tab_action_button(model: RealModel) -> Element(Msg) {
@@ -1964,7 +1965,10 @@ fn new_editor_model(
 }
 
 fn init_new_effect_for_model(model: Model) -> Effect(Msg) {
-  effect.batch([version_run_effect_for_model(model), restore_draft_effect(model)])
+  effect.batch([
+    version_run_effect_for_model(model),
+    restore_draft_effect(model),
+  ])
 }
 
 fn restore_draft_effect(model: Model) -> Effect(Msg) {
@@ -2012,9 +2016,7 @@ fn apply_editor_draft(
   )
 }
 
-fn new_snippet_draft_from_model(
-  model: RealModel,
-) -> editor_draft.EditorDraft {
+fn new_snippet_draft_from_model(model: RealModel) -> editor_draft.EditorDraft {
   editor_draft.EditorDraft(
     title: model.title,
     language: model.language,

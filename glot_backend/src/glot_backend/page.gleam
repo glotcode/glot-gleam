@@ -3,24 +3,24 @@ import gleam/http/request
 import gleam/option
 import gleam/string
 import glot_backend/context
+import glot_backend/editor_page
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/error
 import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
 import glot_backend/effect/total_program
-import glot_backend/editor_page
 import glot_backend/erlang
 import glot_backend/home_page
-import glot_backend/page_layout
 import glot_backend/page/editor_page_domain
 import glot_backend/page/snippets_page_domain
+import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/server_timing
 import glot_backend/snippets_page
-import glot_backend/worker/log_worker
 import glot_backend/worker/app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker
+import glot_backend/worker/log_worker
 import glot_core/route
 import lustre/attribute
 import lustre/element
@@ -34,9 +34,7 @@ pub type PageRequest {
 pub fn handle_request(
   db: pog.Connection,
   ctx: context.Context,
-  app_config_cache_subject: process.Subject(
-    app_config_cache_worker.Message,
-  ),
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   language_version_cache_subject: process.Subject(
     language_version_cache_worker.Message,
   ),
@@ -70,11 +68,10 @@ pub fn handle_request(
 
 fn page_request_from_request(req: wisp.Request) -> PageRequest {
   let uri = request.to_uri(req)
-  let path =
-    case uri.query {
-      option.Some(query) -> uri.path <> "?" <> query
-      option.None -> uri.path
-    }
+  let path = case uri.query {
+    option.Some(query) -> uri.path <> "?" <> query
+    option.None -> uri.path
+  }
 
   PageRequest(route: route.from_uri(uri), path: path)
 }
@@ -82,20 +79,14 @@ fn page_request_from_request(req: wisp.Request) -> PageRequest {
 fn handle_page_request(
   db: pog.Connection,
   ctx: context.Context,
-  app_config_cache_subject: process.Subject(
-    app_config_cache_worker.Message,
-  ),
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   language_version_cache_subject: process.Subject(
     language_version_cache_worker.Message,
   ),
   page_request: PageRequest,
 ) -> page_response.PageResponse {
   let runtime =
-    runtime.new(
-      db,
-      app_config_cache_subject,
-      language_version_cache_subject,
-    )
+    runtime.new(db, app_config_cache_subject, language_version_cache_subject)
 
   case page_request.route {
     route.Home -> {
@@ -124,6 +115,8 @@ fn handle_page_request(
     route.Admin -> spa_page("glot.io - admin")
     route.AdminApiLogs -> spa_page("glot.io - api logs")
     route.AdminApiLog(_) -> spa_page("glot.io - api log")
+    route.AdminPeriodicJobs -> spa_page("glot.io - periodic jobs")
+    route.AdminPeriodicJob(_) -> spa_page("glot.io - periodic job")
     route.AdminJobs -> spa_page("glot.io - admin jobs")
     route.AdminJob(_) -> spa_page("glot.io - admin job")
     route.AdminJobLogs -> spa_page("glot.io - job logs")

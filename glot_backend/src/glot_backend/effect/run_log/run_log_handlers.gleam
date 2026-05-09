@@ -12,7 +12,8 @@ import youid/uuid
 
 pub type RunLogHandlers {
   RunLogHandlers(
-    create_run_log: fn(run_log_model.RunLog) -> Result(Nil, error.DbCommandError),
+    create_run_log: fn(run_log_model.RunLog) ->
+      Result(Nil, error.DbCommandError),
     delete_before: fn(Timestamp) -> Result(Nil, error.DbCommandError),
   )
 }

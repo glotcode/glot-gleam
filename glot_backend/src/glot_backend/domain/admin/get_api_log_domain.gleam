@@ -25,9 +25,10 @@ pub fn get_api_log(
   ))
   use log <- program.and_then(
     admin_log_effect.get_api_log(request.request_id)
-    |> program.require(
-      error.NotFoundError("api_log_not_found", "API log not found"),
-    ),
+    |> program.require(error.NotFoundError(
+      "api_log_not_found",
+      "API log not found",
+    )),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

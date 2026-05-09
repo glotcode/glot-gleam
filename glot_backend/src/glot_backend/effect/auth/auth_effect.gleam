@@ -72,7 +72,10 @@ pub fn update_user(user user: user_model.User) -> program_types.Program(Nil) {
 
 pub fn delete_sessions_by_account_id(id id: Uuid) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.DbEffect(delete_sessions_by_account_id_effect(id, command_next)),
+    program_types.DbEffect(delete_sessions_by_account_id_effect(
+      id,
+      command_next,
+    )),
   )
 }
 
@@ -184,7 +187,10 @@ pub fn update_user_tx(
 pub fn delete_sessions_by_account_id_tx(
   id id: Uuid,
 ) -> program_types.TransactionProgram(Nil) {
-  program_types.TxImpure(delete_sessions_by_account_id_effect(id, tx_command_next))
+  program_types.TxImpure(delete_sessions_by_account_id_effect(
+    id,
+    tx_command_next,
+  ))
 }
 
 pub fn delete_users_by_account_id_tx(
@@ -193,9 +199,7 @@ pub fn delete_users_by_account_id_tx(
   program_types.TxImpure(delete_users_by_account_id_effect(id, tx_command_next))
 }
 
-pub fn delete_account_tx(
-  id id: Uuid,
-) -> program_types.TransactionProgram(Nil) {
+pub fn delete_account_tx(id id: Uuid) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(delete_account_effect(id, tx_command_next))
 }
 
@@ -224,7 +228,10 @@ pub fn update_login_token_tx(
 pub fn delete_login_tokens_before_tx(
   before before: Timestamp,
 ) -> program_types.TransactionProgram(Nil) {
-  program_types.TxImpure(delete_login_tokens_before_effect(before, tx_command_next))
+  program_types.TxImpure(delete_login_tokens_before_effect(
+    before,
+    tx_command_next,
+  ))
 }
 
 fn command_next(

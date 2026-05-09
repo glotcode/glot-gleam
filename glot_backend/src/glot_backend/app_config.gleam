@@ -1,7 +1,3 @@
 pub type AppConfigEntry {
-  AppConfigEntry(
-    namespace: String,
-    key: String,
-    value: String,
-  )
+  AppConfigEntry(namespace: String, key: String, value: String)
 }

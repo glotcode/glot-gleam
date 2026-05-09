@@ -301,7 +301,10 @@ fn job_decoder() -> decode.Decoder(JobResponse) {
 
 fn job_detail_decoder() -> decode.Decoder(JobDetailResponse) {
   use id <- decode.field("id", uuid_helpers.decoder())
-  use request_id <- decode.field("requestId", decode.optional(uuid_helpers.decoder()))
+  use request_id <- decode.field(
+    "requestId",
+    decode.optional(uuid_helpers.decoder()),
+  )
   use periodic_job_id <- decode.field(
     "periodicJobId",
     decode.optional(uuid_helpers.decoder()),

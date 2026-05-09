@@ -5,26 +5,20 @@ import glot_backend/effect/run_log/run_log_algebra
 import glot_core/run_log_model.{type RunLog}
 
 pub fn create(run_log: RunLog) -> program_types.Program(Nil) {
-  program_types.Impure(
-    program_types.DbEffect(create_effect(run_log, next)),
-  )
+  program_types.Impure(program_types.DbEffect(create_effect(run_log, next)))
 }
 
 pub fn create_tx(run_log: RunLog) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(create_effect(run_log, tx_next))
 }
 
-pub fn delete_before(
-  before: Timestamp,
-) -> program_types.Program(Nil) {
+pub fn delete_before(before: Timestamp) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(delete_before_effect(before, next)),
   )
 }
 
-fn next(
-  result: Result(Nil, error.DbCommandError),
-) -> program_types.Program(Nil) {
+fn next(result: Result(Nil, error.DbCommandError)) -> program_types.Program(Nil) {
   case result {
     Ok(_) -> program_types.Pure(Nil)
     Error(err) -> program_types.Fail(error.CommandError(err))

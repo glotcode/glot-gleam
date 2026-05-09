@@ -297,7 +297,9 @@ fn test_handlers() -> handlers.Handlers {
       delete_before: fn(_) { Ok(Nil) },
     ),
     periodic_job: periodic_job_handlers.PeriodicJobHandlers(
+      list_periodic_jobs: fn() { Ok([]) },
       get_next_periodic_job: fn(_) { Ok(option.None) },
+      get_periodic_job_by_id: fn(_) { Ok(option.None) },
       create_periodic_job: fn(_) { Ok(Nil) },
       update_periodic_job: fn(_) { Ok(Nil) },
     ),

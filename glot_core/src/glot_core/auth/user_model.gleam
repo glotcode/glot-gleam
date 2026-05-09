@@ -32,7 +32,11 @@ pub fn mark_last_login(user: User, timestamp: Timestamp) -> User {
   User(..user, last_login_at: timestamp, updated_at: timestamp)
 }
 
-pub fn change_username(user: User, username: String, timestamp: Timestamp) -> User {
+pub fn change_username(
+  user: User,
+  username: String,
+  timestamp: Timestamp,
+) -> User {
   User(..user, username: username, updated_at: timestamp)
 }
 

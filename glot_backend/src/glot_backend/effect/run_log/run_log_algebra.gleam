@@ -13,16 +13,10 @@ pub type RunLogEffect(next) {
   )
 }
 
-pub fn map(
-  effect: RunLogEffect(a),
-  f: fn(a) -> b,
-) -> RunLogEffect(b) {
+pub fn map(effect: RunLogEffect(a), f: fn(a) -> b) -> RunLogEffect(b) {
   case effect {
     CreateRunLog(run_log:, next:) ->
-      CreateRunLog(
-        run_log: run_log,
-        next: fn(value) { f(next(value)) },
-      )
+      CreateRunLog(run_log: run_log, next: fn(value) { f(next(value)) })
     DeleteRunLogBefore(before:, next:) ->
       DeleteRunLogBefore(before: before, next: fn(value) { f(next(value)) })
   }

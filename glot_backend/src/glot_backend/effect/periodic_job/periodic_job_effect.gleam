@@ -4,6 +4,15 @@ import glot_backend/effect/error
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
 import glot_core/periodic_job/periodic_job_model
+import youid/uuid
+
+pub fn list_periodic_jobs() -> program_types.Program(
+  List(periodic_job_model.PeriodicJob),
+) {
+  program_types.Impure(
+    program_types.DbEffect(list_periodic_jobs_effect(program_types.Pure)),
+  )
+}
 
 pub fn get_next_periodic_job(
   now: Timestamp,
@@ -13,11 +22,22 @@ pub fn get_next_periodic_job(
   )
 }
 
+pub fn get_periodic_job_by_id(
+  id: uuid.Uuid,
+) -> program_types.Program(option.Option(periodic_job_model.PeriodicJob)) {
+  program_types.Impure(
+    program_types.DbEffect(get_periodic_job_by_id_effect(id, program_types.Pure)),
+  )
+}
+
 pub fn create_periodic_job(
   periodic_job periodic_job: periodic_job_model.PeriodicJob,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.DbEffect(create_periodic_job_effect(periodic_job, command_next)),
+    program_types.DbEffect(create_periodic_job_effect(
+      periodic_job,
+      command_next,
+    )),
   )
 }
 
@@ -25,7 +45,10 @@ pub fn update_periodic_job(
   periodic_job periodic_job: periodic_job_model.PeriodicJob,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.DbEffect(update_periodic_job_effect(periodic_job, command_next)),
+    program_types.DbEffect(update_periodic_job_effect(
+      periodic_job,
+      command_next,
+    )),
   )
 }
 
@@ -40,20 +63,28 @@ fn command_next(
 
 pub fn get_next_periodic_job_tx(
   now: Timestamp,
-) -> program_types.TransactionProgram(option.Option(periodic_job_model.PeriodicJob)) {
+) -> program_types.TransactionProgram(
+  option.Option(periodic_job_model.PeriodicJob),
+) {
   program_types.TxImpure(get_next_periodic_job_effect(now, program_types.TxPure))
 }
 
 pub fn create_periodic_job_tx(
   periodic_job periodic_job: periodic_job_model.PeriodicJob,
 ) -> program_types.TransactionProgram(Nil) {
-  program_types.TxImpure(create_periodic_job_effect(periodic_job, tx_command_next))
+  program_types.TxImpure(create_periodic_job_effect(
+    periodic_job,
+    tx_command_next,
+  ))
 }
 
 pub fn update_periodic_job_tx(
   periodic_job periodic_job: periodic_job_model.PeriodicJob,
 ) -> program_types.TransactionProgram(Nil) {
-  program_types.TxImpure(update_periodic_job_effect(periodic_job, tx_command_next))
+  program_types.TxImpure(update_periodic_job_effect(
+    periodic_job,
+    tx_command_next,
+  ))
 }
 
 fn tx_command_next(
@@ -65,12 +96,30 @@ fn tx_command_next(
   }
 }
 
+fn list_periodic_jobs_effect(
+  next: fn(List(periodic_job_model.PeriodicJob)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.PeriodicJobEffect(periodic_job_algebra.ListPeriodicJobs(
+    next: next,
+  ))
+}
+
 fn get_next_periodic_job_effect(
   now: Timestamp,
   next: fn(option.Option(periodic_job_model.PeriodicJob)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.PeriodicJobEffect(periodic_job_algebra.GetNextPeriodicJob(
     now: now,
+    next: next,
+  ))
+}
+
+fn get_periodic_job_by_id_effect(
+  id: uuid.Uuid,
+  next: fn(option.Option(periodic_job_model.PeriodicJob)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.PeriodicJobEffect(periodic_job_algebra.GetPeriodicJobById(
+    id: id,
     next: next,
   ))
 }

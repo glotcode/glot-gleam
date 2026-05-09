@@ -1,7 +1,9 @@
 import gleam/option
 import glot_backend/effect/error
 import glot_core/pagination_model.{type CursorPagination}
-import glot_core/snippet/snippet_model.{type HydratedSnippet, type ListSnippetsFilter, type Snippet}
+import glot_core/snippet/snippet_model.{
+  type HydratedSnippet, type ListSnippetsFilter, type Snippet,
+}
 import youid/uuid.{type Uuid}
 
 pub type SnippetEffect(next) {
@@ -43,18 +45,15 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
     GetSnippetBySlug(slug, next) ->
       GetSnippetBySlug(slug, next: fn(value) { f(next(value)) })
     ListSnippets(filter:, pagination:, next:) ->
-      ListSnippets(
-        filter: filter,
-        pagination: pagination,
-        next: fn(value) { f(next(value)) },
-      )
+      ListSnippets(filter: filter, pagination: pagination, next: fn(value) {
+        f(next(value))
+      })
     DeleteSnippet(id, next) ->
       DeleteSnippet(id, next: fn(value) { f(next(value)) })
     DeleteSnippetsByAccountId(account_id: account_id, next: next) ->
-      DeleteSnippetsByAccountId(
-        account_id: account_id,
-        next: fn(value) { f(next(value)) },
-      )
+      DeleteSnippetsByAccountId(account_id: account_id, next: fn(value) {
+        f(next(value))
+      })
     CreateSnippet(snippet, next) ->
       CreateSnippet(snippet, next: fn(value) { f(next(value)) })
     UpdateSnippet(snippet, next) ->

@@ -21,7 +21,9 @@ pub type StoredEditorDraft {
 
 const max_draft_age_ms = 86_400_000
 
-pub fn load_new_snippet(language_slug: String) -> option.Option(StoredEditorDraft) {
+pub fn load_new_snippet(
+  language_slug: String,
+) -> option.Option(StoredEditorDraft) {
   load(load_new_snippet_draft(language_slug, max_draft_age_ms))
 }
 

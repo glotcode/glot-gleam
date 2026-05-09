@@ -33,7 +33,9 @@ pub fn effects_block(
   ])
 }
 
-fn effects_table(effect_trace: effect_trace_dto.EffectTraceResponse) -> Element(msg) {
+fn effects_table(
+  effect_trace: effect_trace_dto.EffectTraceResponse,
+) -> Element(msg) {
   let effect_trace_dto.EffectTraceResponse(effects:) = effect_trace
   let rows = build_effect_rows(effects)
 
@@ -54,14 +56,16 @@ fn effects_table(effect_trace: effect_trace_dto.EffectTraceResponse) -> Element(
                 html.text("Category"),
               ]),
               html.th(
-                [attribute.class("admin-effects-table__heading admin-effects-table__heading--duration")],
+                [
+                  attribute.class(
+                    "admin-effects-table__heading admin-effects-table__heading--duration",
+                  ),
+                ],
                 [html.text("Duration")],
               ),
             ]),
           ]),
-          html.tbody([], {
-            rows |> list.map(effect_row)
-          }),
+          html.tbody([], { rows |> list.map(effect_row) }),
         ]),
       ])
   }
@@ -77,7 +81,11 @@ fn effect_row(row: EffectTableRow) -> Element(msg) {
       html.text(category),
     ]),
     html.td(
-      [attribute.class("admin-effects-table__cell admin-effects-table__cell--duration")],
+      [
+        attribute.class(
+          "admin-effects-table__cell admin-effects-table__cell--duration",
+        ),
+      ],
       [html.text(optional_duration_label(duration_ns))],
     ),
   ])
@@ -120,31 +128,32 @@ fn effect_rows_for_measurement(
         True -> "tx_rollback"
         False -> "tx_commit"
       }
-      let begin_row = EffectTableRow(
-        name: "tx_begin",
-        category: effect_measurement.category,
-        duration_ns: option.None,
-        is_rollback: False,
-      )
+      let begin_row =
+        EffectTableRow(
+          name: "tx_begin",
+          category: effect_measurement.category,
+          duration_ns: option.None,
+          is_rollback: False,
+        )
       let child_rows = build_effect_rows(effect_measurement.effects)
-      let end_row = EffectTableRow(
-        name: end_name,
-        category: effect_measurement.category,
-        duration_ns: option.Some(tx_duration_ns),
-        is_rollback: rolled_back,
-      )
+      let end_row =
+        EffectTableRow(
+          name: end_name,
+          category: effect_measurement.category,
+          duration_ns: option.Some(tx_duration_ns),
+          is_rollback: rolled_back,
+        )
 
       list.append([begin_row], child_rows)
       |> list.append([end_row])
     }
-    option.None ->
-      [
-        EffectTableRow(
-          name: effect_measurement.name,
-          category: effect_measurement.category,
-          duration_ns: option.Some(effect_measurement.duration_ns),
-          is_rollback: False,
-        ),
-      ]
+    option.None -> [
+      EffectTableRow(
+        name: effect_measurement.name,
+        category: effect_measurement.category,
+        duration_ns: option.Some(effect_measurement.duration_ns),
+        is_rollback: False,
+      ),
+    ]
   }
 }

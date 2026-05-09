@@ -96,12 +96,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case filter == model.error_filter {
         True -> #(model, effect.none())
         False ->
-          load_initial(Model(
-            ..model,
-            error_filter: filter,
-            request_id_error: option.None,
-            job_id_error: option.None,
-          ))
+          load_initial(
+            Model(
+              ..model,
+              error_filter: filter,
+              request_id_error: option.None,
+              job_id_error: option.None,
+            ),
+          )
       }
 
     RequestIdFilterChanged(value) -> #(
@@ -119,13 +121,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Ok(request_id) ->
           case parse_uuid_filter(model.job_id_filter, "Job ID") {
             Ok(job_id) ->
-              load_initial(Model(
-                ..model,
-                applied_request_id_filter: request_id,
-                applied_job_id_filter: job_id,
-                request_id_error: option.None,
-                job_id_error: option.None,
-              ))
+              load_initial(
+                Model(
+                  ..model,
+                  applied_request_id_filter: request_id,
+                  applied_job_id_filter: job_id,
+                  request_id_error: option.None,
+                  job_id_error: option.None,
+                ),
+              )
             Error(message) -> #(
               Model(
                 ..model,
@@ -203,22 +207,33 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               ]),
             ]),
             html.div(
-              [attribute.class("admin-page__policy admin-job-logs-page__filters")],
               [
-                html.div([attribute.class("admin-page__field-grid admin-job-logs-page__field-grid")], [
-                  text_input(
-                    label: "Request ID",
-                    help: request_id_help(model),
-                    value: model.request_id_filter,
-                    on_input: RequestIdFilterChanged,
-                  ),
-                  text_input(
-                    label: "Job ID",
-                    help: job_id_help(model),
-                    value: model.job_id_filter,
-                    on_input: JobIdFilterChanged,
-                  ),
-                ]),
+                attribute.class(
+                  "admin-page__policy admin-job-logs-page__filters",
+                ),
+              ],
+              [
+                html.div(
+                  [
+                    attribute.class(
+                      "admin-page__field-grid admin-job-logs-page__field-grid",
+                    ),
+                  ],
+                  [
+                    text_input(
+                      label: "Request ID",
+                      help: request_id_help(model),
+                      value: model.request_id_filter,
+                      on_input: RequestIdFilterChanged,
+                    ),
+                    text_input(
+                      label: "Job ID",
+                      help: job_id_help(model),
+                      value: model.job_id_filter,
+                      on_input: JobIdFilterChanged,
+                    ),
+                  ],
+                ),
                 html.div([attribute.class("admin-job-logs-page__filter-row")], [
                   filter_group(title: "Error", chips: [
                     filter_chip(
@@ -317,17 +332,20 @@ fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
 
     _, _ ->
       html.div([attribute.class("jobs-table admin-job-logs-page__table")], [
-        html.div([attribute.class("jobs-table__head admin-job-logs-page__head")], [
-          table_heading("Log ID"),
-          table_heading("When"),
-          table_heading("Job ID"),
-          table_heading("Request ID"),
-          table_heading("Job type"),
-          table_heading("Attempt"),
-          table_heading("Duration"),
-          table_heading("Error"),
-          table_heading("Open"),
-        ]),
+        html.div(
+          [attribute.class("jobs-table__head admin-job-logs-page__head")],
+          [
+            table_heading("Log ID"),
+            table_heading("When"),
+            table_heading("Job ID"),
+            table_heading("Request ID"),
+            table_heading("Job type"),
+            table_heading("Attempt"),
+            table_heading("Duration"),
+            table_heading("Error"),
+            table_heading("Open"),
+          ],
+        ),
         html.div([attribute.class("jobs-table__body")], {
           rows |> list.map(fn(log) { log_row(log, now) })
         }),
@@ -410,9 +428,10 @@ fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
             route.href(route.AdminJobLog(log.id)),
           ],
           [
-            html.text(
-              string_helpers.truncate_stem_middle(uuid.to_string(log.id), 18),
-            ),
+            html.text(string_helpers.truncate_stem_middle(
+              uuid.to_string(log.id),
+              18,
+            )),
           ],
         ),
       ]),
@@ -432,9 +451,10 @@ fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
             route.href(route.AdminJob(log.job_id)),
           ],
           [
-            html.text(
-              string_helpers.truncate_stem_middle(uuid.to_string(log.job_id), 18),
-            ),
+            html.text(string_helpers.truncate_stem_middle(
+              uuid.to_string(log.job_id),
+              18,
+            )),
           ],
         ),
       ]),
@@ -510,8 +530,7 @@ fn request_id_help(model: Model) -> String {
     option.Some(message) -> message
     option.None ->
       case model.applied_request_id_filter {
-        option.Some(request_id) ->
-          "Filtering by " <> uuid.to_string(request_id)
+        option.Some(request_id) -> "Filtering by " <> uuid.to_string(request_id)
         option.None -> "Leave blank to include all request IDs."
       }
   }

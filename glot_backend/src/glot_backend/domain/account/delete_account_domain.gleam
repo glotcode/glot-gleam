@@ -3,12 +3,13 @@ import glot_backend/context
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/job/job_effect
+import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction/transaction_effect
-import glot_backend/effect/program
 import glot_core/email/email_model
 import glot_core/job/job_model
+
 pub fn delete_account(
   ctx: context.Context,
   payload: job_model.DeleteAccountJobPayload,
@@ -35,8 +36,9 @@ pub fn delete_account(
 pub fn payload_from_json(
   json_str: String,
 ) -> program_types.Program(job_model.DeleteAccountJobPayload) {
-  use payload <- program.and_then(
-    program.parse_json(json_str, job_model.delete_account_job_payload_decoder()),
-  )
+  use payload <- program.and_then(program.parse_json(
+    json_str,
+    job_model.delete_account_job_payload_decoder(),
+  ))
   program.succeed(payload)
 }

@@ -1,3 +1,5 @@
+import gleam/option
+import gleam/result
 import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/effect/basic/basic_algebra
@@ -9,8 +11,6 @@ import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/log
 import glot_backend/worker/app_config_cache_worker
-import gleam/option
-import gleam/result
 
 pub fn run(
   effect: basic_algebra.BasicEffect(program_types.Program(a)),
@@ -113,16 +113,15 @@ pub fn run(
 }
 
 fn debug_enabled(runtime: runtime.Runtime) -> Bool {
-  let config_result =
-    case runtime.app_config_cache_subject {
-      option.Some(subject) -> app_config_cache_worker.get_config(subject)
-      option.None ->
-        runtime.handlers.app_config.list_entries()
-        |> result.try(fn(entries) {
-          dynamic_config.from_entries(entries)
-          |> result.map_error(error.DbQueryError)
-        })
-    }
+  let config_result = case runtime.app_config_cache_subject {
+    option.Some(subject) -> app_config_cache_worker.get_config(subject)
+    option.None ->
+      runtime.handlers.app_config.list_entries()
+      |> result.try(fn(entries) {
+        dynamic_config.from_entries(entries)
+        |> result.map_error(error.DbQueryError)
+      })
+  }
 
   case config_result {
     Ok(config) -> dynamic_config.debug_config(config).enabled

@@ -62,16 +62,21 @@ pub fn request_from_dynamic(
 fn validate_request(
   request: cleanup_config_dto.UpsertCleanupConfigRequest,
 ) -> program_types.Program(Nil) {
-  case list.any([
-    request.api_log_retention_days,
-    request.page_log_retention_days,
-    request.pageview_log_retention_days,
-    request.run_log_retention_days,
-    request.job_log_retention_days,
-    request.jobs_retention_days,
-    request.login_tokens_retention_days,
-    request.user_actions_retention_days,
-  ], fn(value) { value <= 0 }) {
+  case
+    list.any(
+      [
+        request.api_log_retention_days,
+        request.page_log_retention_days,
+        request.pageview_log_retention_days,
+        request.run_log_retention_days,
+        request.job_log_retention_days,
+        request.jobs_retention_days,
+        request.login_tokens_retention_days,
+        request.user_actions_retention_days,
+      ],
+      fn(value) { value <= 0 },
+    )
+  {
     True ->
       program.fail(error.ValidationError(
         "cleanup config values must be greater than 0",

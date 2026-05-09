@@ -63,32 +63,31 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
 
   case should_load_job || should_load_logs {
     False -> #(model, effect.none())
-    True ->
-      #(
-        Model(
-          ..model,
-          job_status: loading_status(model.job_status),
-          logs_status: loading_status(model.logs_status),
-        ),
-        effect.batch([
-          case should_load_job {
-            True ->
-              api.get_admin_job(
-                job_dto.GetJobRequest(id: model.job_id),
-                JobLoaded,
-              )
-            False -> effect.none()
-          },
-          case should_load_logs {
-            True ->
-              get_job_logs(
-                model,
-                pagination_model.InitialPage(limit: job_logs_page_limit),
-              )
-            False -> effect.none()
-          },
-        ]),
-      )
+    True -> #(
+      Model(
+        ..model,
+        job_status: loading_status(model.job_status),
+        logs_status: loading_status(model.logs_status),
+      ),
+      effect.batch([
+        case should_load_job {
+          True ->
+            api.get_admin_job(
+              job_dto.GetJobRequest(id: model.job_id),
+              JobLoaded,
+            )
+          False -> effect.none()
+        },
+        case should_load_logs {
+          True ->
+            get_job_logs(
+              model,
+              pagination_model.InitialPage(limit: job_logs_page_limit),
+            )
+          False -> effect.none()
+        },
+      ]),
+    )
   }
 }
 
@@ -173,7 +172,9 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
           html.div([attribute.class("admin-page__policy-actions")], [
             html.a(
               [
-                attribute.class("admin-page__button admin-page__button--secondary"),
+                attribute.class(
+                  "admin-page__button admin-page__button--secondary",
+                ),
                 route.href(route.AdminJobs),
               ],
               [html.text("Back to jobs")],
@@ -192,7 +193,9 @@ fn job_status_view(model: Model) -> Element(Msg) {
     NotLoaded | Ready ->
       html.p([attribute.class("admin-page__status")], [html.text("")])
     Loading ->
-      html.p([attribute.class("admin-page__status")], [html.text("Loading job...")])
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Loading job..."),
+      ])
     LoadError(message) ->
       html.p([attribute.class("admin-page__status admin-page__status--error")], [
         html.text(message),
@@ -203,7 +206,9 @@ fn job_status_view(model: Model) -> Element(Msg) {
 fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
   case model.job, model.job_status {
     option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [html.text("Loading job...")])
+      html.div([attribute.class("admin-page__empty")], [
+        html.text("Loading job..."),
+      ])
     option.None, _ ->
       html.div([attribute.class("admin-page__empty")], [
         html.text("This job could not be loaded."),
@@ -211,7 +216,11 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
     option.Some(job), _ ->
       html.div([attribute.class("admin-job-page__content")], [
         html.div([attribute.class("admin-job-page__summary-grid")], [
-          summary_card("Status", status_text(job), type_group_text(job.job_type)),
+          summary_card(
+            "Status",
+            status_text(job),
+            type_group_text(job.job_type),
+          ),
           summary_card(
             "Scheduled",
             timestamp_helpers.relative_label(job.run_at, now),
@@ -219,15 +228,21 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
           ),
           summary_card(
             "Attempts",
-            int.to_string(job.attempts) <> " / " <> int.to_string(job.max_attempts),
+            int.to_string(job.attempts)
+              <> " / "
+              <> int.to_string(job.max_attempts),
             "Timeout " <> int.to_string(job.timeout_seconds) <> "s",
           ),
         ]),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [html.text("Metadata")]),
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Metadata"),
+            ]),
             html.p([attribute.class("admin-page__group-copy")], [
-              html.text("Identifiers and timestamps captured for this execution."),
+              html.text(
+                "Identifiers and timestamps captured for this execution.",
+              ),
             ]),
           ]),
           html.div([attribute.class("admin-job-page__detail-grid")], [
@@ -247,9 +262,13 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
         job_logs_group(model, now),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [html.text("Notes")]),
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Notes"),
+            ]),
             html.p([attribute.class("admin-page__group-copy")], [
-              html.text("Current operator-facing interpretation of this job state."),
+              html.text(
+                "Current operator-facing interpretation of this job state.",
+              ),
             ]),
           ]),
           html.div([attribute.class("admin-page__policy")], [
@@ -260,7 +279,9 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
         ]),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [html.text("Payload")]),
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Payload"),
+            ]),
             html.p([attribute.class("admin-page__group-copy")], [
               html.text("Stored raw payload string for this job, if any."),
             ]),
@@ -269,9 +290,13 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
         ]),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [html.text("Last error")]),
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Last error"),
+            ]),
             html.p([attribute.class("admin-page__group-copy")], [
-              html.text("Latest persisted failure message, if one was recorded."),
+              html.text(
+                "Latest persisted failure message, if one was recorded.",
+              ),
             ]),
           ]),
           code_block(optional_text(job.last_error)),
@@ -282,13 +307,18 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
 
 fn job_logs_group(model: Model, now: Timestamp) -> Element(Msg) {
   let rows = pagination_model.items(model.logs_page)
-  let count_text = int.to_string(list.length(rows)) <> " log entries shown for this job."
+  let count_text =
+    int.to_string(list.length(rows)) <> " log entries shown for this job."
 
   html.div([attribute.class("admin-page__group")], [
     html.div([attribute.class("admin-page__group-header")], [
       html.div([], [
-        html.h3([attribute.class("admin-page__group-title")], [html.text("Logs")]),
-        html.p([attribute.class("admin-page__group-copy")], [html.text(count_text)]),
+        html.h3([attribute.class("admin-page__group-title")], [
+          html.text("Logs"),
+        ]),
+        html.p([attribute.class("admin-page__group-copy")], [
+          html.text(count_text),
+        ]),
       ]),
       html.div([attribute.class("admin-page__policy-actions")], [
         pagination_button(
@@ -335,14 +365,17 @@ fn job_logs_table(model: Model, now: Timestamp) -> Element(Msg) {
 
     _, _ ->
       html.div([attribute.class("jobs-table admin-job-logs-page__table")], [
-        html.div([attribute.class("jobs-table__head admin-job-logs-page__head")], [
-          table_heading("Log ID"),
-          table_heading("When"),
-          table_heading("Attempt"),
-          table_heading("Duration"),
-          table_heading("Error"),
-          table_heading("Open"),
-        ]),
+        html.div(
+          [attribute.class("jobs-table__head admin-job-logs-page__head")],
+          [
+            table_heading("Log ID"),
+            table_heading("When"),
+            table_heading("Attempt"),
+            table_heading("Duration"),
+            table_heading("Error"),
+            table_heading("Open"),
+          ],
+        ),
         html.div([attribute.class("jobs-table__body")], {
           rows |> list.map(fn(log) { job_log_row(log, now) })
         }),
@@ -361,9 +394,10 @@ fn job_log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) 
             route.href(route.AdminJobLog(log.id)),
           ],
           [
-            html.text(
-              string_helpers.truncate_stem_middle(uuid.to_string(log.id), 18),
-            ),
+            html.text(string_helpers.truncate_stem_middle(
+              uuid.to_string(log.id),
+              18,
+            )),
           ],
         ),
       ]),
@@ -409,10 +443,7 @@ fn load_job_logs_page(
   model: Model,
   pagination: pagination_model.CursorPagination,
 ) -> #(Model, Effect(Msg)) {
-  #(
-    Model(..model, logs_status: Loading),
-    get_job_logs(model, pagination),
-  )
+  #(Model(..model, logs_status: Loading), get_job_logs(model, pagination))
 }
 
 fn get_job_logs(
@@ -435,7 +466,9 @@ fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
     [attribute.class("admin-page__policy admin-job-page__summary-card")],
     [
       html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.strong([attribute.class("admin-job-page__summary-value")], [html.text(value)]),
+      html.strong([attribute.class("admin-job-page__summary-value")], [
+        html.text(value),
+      ]),
       html.span([attribute.class("admin-job-page__meta")], [html.text(meta)]),
     ],
   )
@@ -444,7 +477,9 @@ fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
 fn detail_item(label: String, value: String) -> Element(Msg) {
   html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
     html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.span([attribute.class("admin-job-page__detail-value")], [html.text(value)]),
+    html.span([attribute.class("admin-job-page__detail-value")], [
+      html.text(value),
+    ]),
   ])
 }
 

@@ -3,9 +3,7 @@ import glot_backend/effect/error
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/program_types
 
-pub fn delete_before(
-  before: Timestamp,
-) -> program_types.Program(Nil) {
+pub fn delete_before(before: Timestamp) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(delete_before_effect(before, command_next)),
   )

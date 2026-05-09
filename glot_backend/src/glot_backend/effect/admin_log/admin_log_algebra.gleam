@@ -18,16 +18,10 @@ pub type AdminLogEffect(next) {
     request: job_log_dto.ListJobLogsRequest,
     next: fn(List(job_log_model.JobLog)) -> next,
   )
-  GetJobLog(
-    id: Uuid,
-    next: fn(Option(job_log_model.JobLog)) -> next,
-  )
+  GetJobLog(id: Uuid, next: fn(Option(job_log_model.JobLog)) -> next)
 }
 
-pub fn map(
-  effect: AdminLogEffect(a),
-  f: fn(a) -> b,
-) -> AdminLogEffect(b) {
+pub fn map(effect: AdminLogEffect(a), f: fn(a) -> b) -> AdminLogEffect(b) {
   case effect {
     ListApiLogs(request:, next:) ->
       ListApiLogs(request: request, next: fn(value) { f(next(value)) })

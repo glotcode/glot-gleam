@@ -45,9 +45,10 @@ pub fn get_snippet(
 
   use snippet <- program.and_then(
     snippet_effect.get_by_slug(request.slug)
-    |> program.require(
-      error.NotFoundError("snippet_not_found", "Snippet not found"),
-    ),
+    |> program.require(error.NotFoundError(
+      "snippet_not_found",
+      "Snippet not found",
+    )),
   )
 
   let is_owner = maybe_user_id == option.Some(snippet.user.id)

@@ -27,8 +27,10 @@ pub fn list_public_snippets(
     |> program.from_result,
   )
   use maybe_session <- program.and_then(session_domain.get_session(ctx))
-  let maybe_session_id = option.map(maybe_session, fn(session) { session.identity.id })
-  let maybe_user_id = option.map(maybe_session, fn(session) { session.user.identity.id })
+  let maybe_session_id =
+    option.map(maybe_session, fn(session) { session.identity.id })
+  let maybe_user_id =
+    option.map(maybe_session, fn(session) { session.user.identity.id })
 
   use _ <- program.and_then(
     basic_effect.info(
@@ -57,9 +59,10 @@ pub fn list_public_snippets(
     pagination: pagination_model.increment_limit(pagination),
   ))
 
-  let page = pagination_model.paginate(snippets, pagination, fn(snippet) {
-    pagination_model.from_string(snippet.identity.slug)
-  })
+  let page =
+    pagination_model.paginate(snippets, pagination, fn(snippet) {
+      pagination_model.from_string(snippet.identity.slug)
+    })
 
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

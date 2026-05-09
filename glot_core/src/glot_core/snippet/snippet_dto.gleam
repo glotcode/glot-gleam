@@ -117,9 +117,7 @@ pub fn response_decoder() -> decode.Decoder(SnippetResponse) {
   ))
 }
 
-pub fn list_response_decoder() -> decode.Decoder(
-  ListSnippetsResponse,
-) {
+pub fn list_response_decoder() -> decode.Decoder(ListSnippetsResponse) {
   pagination_model.page_decoder("snippets", response_decoder())
   |> decode.map(fn(page) { ListSnippetsResponse(page: page) })
 }
@@ -162,9 +160,7 @@ pub fn from_snippets(
   ListSnippetsResponse(page: pagination_model.map_page(page, from_snippet))
 }
 
-pub fn encode_list_response(
-  response: ListSnippetsResponse,
-) -> json.Json {
+pub fn encode_list_response(response: ListSnippetsResponse) -> json.Json {
   pagination_model.encode_page(response.page, "snippets", encode_response)
 }
 

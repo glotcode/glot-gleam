@@ -22,9 +22,7 @@ pub fn enforce(
   account_tier account_tier: Option(AccountTier),
   action action: ApiAction,
 ) -> program_types.Program(user_action.UserAction) {
-  use config <- program.and_then(
-    app_config_effect.get_dynamic_config(),
-  )
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
   let action_rate_limits =
     lookup_rate_limits(config, action, actor_from_account_tier(account_tier))
 

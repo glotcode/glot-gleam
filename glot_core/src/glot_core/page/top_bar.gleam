@@ -70,7 +70,9 @@ pub fn filter_and_rank_sections(
   let normalized_query = query |> string.trim |> string.lowercase
   let sections =
     sections
-    |> list.map(fn(section) { #(section.0, filter_section_actions(section.1, normalized_query)) })
+    |> list.map(fn(section) {
+      #(section.0, filter_section_actions(section.1, normalized_query))
+    })
     |> list.filter(fn(section) { section_has_actions(section.1) })
 
   case normalized_query == "" {
@@ -184,20 +186,24 @@ pub fn navigation_actions(
   on_navigate on_navigate: fn(route.Route) -> msg,
 ) -> List(Action(msg)) {
   let shared = [
-      Action(
-        label: "Home",
-        description: "Go to the front page.",
-        shortcut: [],
-        target_route: option.Some(route.Home),
-        msg: on_navigate(route.Home),
-      ),
-      Action(
-        label: "Public snippets",
-        description: "Browse public code snippets.",
-        shortcut: [],
-        target_route: option.Some(route.Snippets(option.None, option.None, option.None)),
-        msg: on_navigate(route.Snippets(option.None, option.None, option.None)),
-      ),
+    Action(
+      label: "Home",
+      description: "Go to the front page.",
+      shortcut: [],
+      target_route: option.Some(route.Home),
+      msg: on_navigate(route.Home),
+    ),
+    Action(
+      label: "Public snippets",
+      description: "Browse public code snippets.",
+      shortcut: [],
+      target_route: option.Some(route.Snippets(
+        option.None,
+        option.None,
+        option.None,
+      )),
+      msg: on_navigate(route.Snippets(option.None, option.None, option.None)),
+    ),
   ]
 
   case navigation_state {
@@ -207,7 +213,10 @@ pub fn navigation_actions(
           label: "My snippets",
           description: "Manage snippets in your account.",
           shortcut: [],
-          target_route: option.Some(route.AccountSnippets(option.None, option.None)),
+          target_route: option.Some(route.AccountSnippets(
+            option.None,
+            option.None,
+          )),
           msg: on_navigate(route.AccountSnippets(option.None, option.None)),
         ),
         Action(
@@ -225,7 +234,10 @@ pub fn navigation_actions(
           label: "My snippets",
           description: "Manage snippets in your account.",
           shortcut: [],
-          target_route: option.Some(route.AccountSnippets(option.None, option.None)),
+          target_route: option.Some(route.AccountSnippets(
+            option.None,
+            option.None,
+          )),
           msg: on_navigate(route.AccountSnippets(option.None, option.None)),
         ),
         Action(
@@ -275,7 +287,9 @@ pub fn navigation_actions(
           ])
       }
   }
-  |> list.filter(fn(action) { !is_current_navigation_action(action, current_route) })
+  |> list.filter(fn(action) {
+    !is_current_navigation_action(action, current_route)
+  })
 }
 
 pub fn language_actions(
@@ -514,15 +528,14 @@ fn has_any_actions(model: ViewModel(msg)) -> Bool {
   }
 }
 
-fn filter_section_actions(
-  section: Section(msg),
-  query: String,
-) -> Section(msg) {
+fn filter_section_actions(section: Section(msg), query: String) -> Section(msg) {
   case section {
     Section(title:, actions:) ->
       Section(
         title:,
-        actions: list.filter(actions, fn(action) { action_matches(action, query) }),
+        actions: list.filter(actions, fn(action) {
+          action_matches(action, query)
+        }),
       )
   }
 }
@@ -535,7 +548,8 @@ fn is_current_navigation_action(
     Action(target_route:, ..) ->
       case target_route {
         option.Some(target_route) ->
-          route.path_and_query(target_route) == route.path_and_query(current_route)
+          route.path_and_query(target_route)
+          == route.path_and_query(current_route)
         option.None -> False
       }
   }
@@ -634,9 +648,7 @@ fn sort_section_actions(section: Section(msg), query: String) -> Section(msg) {
   }
 }
 
-fn compare_actions(
-  query: String,
-) -> fn(Action(msg), Action(msg)) -> order.Order {
+fn compare_actions(query: String) -> fn(Action(msg), Action(msg)) -> order.Order {
   fn(left: Action(msg), right: Action(msg)) {
     let left_score = action_score(left, query)
     let right_score = action_score(right, query)

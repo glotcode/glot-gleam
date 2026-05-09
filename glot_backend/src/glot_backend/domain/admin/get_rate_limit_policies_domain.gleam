@@ -32,7 +32,9 @@ pub fn get_rate_limit_policies(
       rate_limit_policy_response(action, policy)
     })
 
-  program.succeed(rate_limit_config_dto.RateLimitPoliciesResponse(policies: policies))
+  program.succeed(rate_limit_config_dto.RateLimitPoliciesResponse(
+    policies: policies,
+  ))
 }
 
 fn rate_limit_policy_response(

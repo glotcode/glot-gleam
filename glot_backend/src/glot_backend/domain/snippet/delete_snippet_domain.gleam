@@ -42,9 +42,10 @@ pub fn delete_snippet(
 
   use existing_snippet <- program.and_then(
     snippet_effect.get_by_slug(request.slug)
-    |> program.require(
-      error.NotFoundError("snippet_not_found", "Snippet not found"),
-    ),
+    |> program.require(error.NotFoundError(
+      "snippet_not_found",
+      "Snippet not found",
+    )),
   )
 
   use _ <- program.and_then(authorization_domain.require_owner(

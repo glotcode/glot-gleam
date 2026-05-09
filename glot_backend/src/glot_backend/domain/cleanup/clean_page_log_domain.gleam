@@ -10,9 +10,6 @@ pub fn clean_page_log(ctx: context.Context) -> program_types.Program(Nil) {
   use config <- program.and_then(app_config_effect.get_dynamic_config())
   let cleanup = dynamic_config.cleanup_config(config)
   let cutoff =
-    timestamp_helpers.days_ago(
-      ctx.timestamp,
-      cleanup.page_log_retention_days,
-    )
+    timestamp_helpers.days_ago(ctx.timestamp, cleanup.page_log_retention_days)
   page_log_effect.delete_before(cutoff)
 }

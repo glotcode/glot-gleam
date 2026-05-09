@@ -119,20 +119,11 @@ pub fn encode_request(request: UpsertCleanupConfigRequest) -> json.Json {
   json.object([
     #("apiLogRetentionDays", json.int(request.api_log_retention_days)),
     #("pageLogRetentionDays", json.int(request.page_log_retention_days)),
-    #(
-      "pageviewLogRetentionDays",
-      json.int(request.pageview_log_retention_days),
-    ),
+    #("pageviewLogRetentionDays", json.int(request.pageview_log_retention_days)),
     #("runLogRetentionDays", json.int(request.run_log_retention_days)),
     #("jobLogRetentionDays", json.int(request.job_log_retention_days)),
     #("jobsRetentionDays", json.int(request.jobs_retention_days)),
-    #(
-      "loginTokensRetentionDays",
-      json.int(request.login_tokens_retention_days),
-    ),
-    #(
-      "userActionsRetentionDays",
-      json.int(request.user_actions_retention_days),
-    ),
+    #("loginTokensRetentionDays", json.int(request.login_tokens_retention_days)),
+    #("userActionsRetentionDays", json.int(request.user_actions_retention_days)),
   ])
 }

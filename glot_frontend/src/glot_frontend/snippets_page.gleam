@@ -5,9 +5,9 @@ import glot_core/page/snippets
 import glot_core/pagination_model
 import glot_core/snippet/snippet_dto
 import glot_frontend/api
-import lustre/element.{type Element}
-import lustre/effect.{type Effect}
 import glot_frontend/ssr_data
+import lustre/effect.{type Effect}
+import lustre/element.{type Element}
 
 pub type Model {
   Model(

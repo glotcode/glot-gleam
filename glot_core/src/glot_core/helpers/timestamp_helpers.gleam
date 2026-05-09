@@ -20,7 +20,7 @@ pub fn decoder() -> decode.Decoder(Timestamp) {
 
 pub fn to_microseconds(ts: Timestamp) -> Int {
   let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
-  seconds * 1_000_000 + nanos / 1_000
+  seconds * 1_000_000 + nanos / 1000
 }
 
 pub fn from_unix_milliseconds(ms: Int) -> Timestamp {
@@ -41,7 +41,10 @@ pub fn relative_label(value: Timestamp, now: Timestamp) -> String {
   }
 }
 
-fn relative_label_with_direction(delta_seconds: Int, absolute_delta: Int) -> String {
+fn relative_label_with_direction(
+  delta_seconds: Int,
+  absolute_delta: Int,
+) -> String {
   let #(count, unit) = relative_unit(absolute_delta)
   let phrase = int.to_string(count) <> " " <> pluralize(unit, count)
 

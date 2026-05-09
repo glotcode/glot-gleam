@@ -34,7 +34,9 @@ pub fn new(db: pog.Connection) -> AnalyticsHandlers {
     get_first_metrics_source_day: fn(before) {
       get_first_metrics_source_day(db, before)
     },
-    insert_metrics_pageview_day: fn(day) { insert_metrics_pageview_day(db, day) },
+    insert_metrics_pageview_day: fn(day) {
+      insert_metrics_pageview_day(db, day)
+    },
     insert_metrics_product_event_day: fn(day) {
       insert_metrics_product_event_day(db, day)
     },
@@ -55,9 +57,11 @@ pub fn get_max_completed_metrics_day(
   db: pog.Connection,
 ) -> Result(option.Option(calendar.Date), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
-  use returned <- result.try(
-    db_helpers.query(db, sql.get_max_completed_metrics_day(), to_error),
-  )
+  use returned <- result.try(db_helpers.query(
+    db,
+    sql.get_max_completed_metrics_day(),
+    to_error,
+  ))
 
   case returned.rows {
     [] -> Ok(option.None)
@@ -71,19 +75,16 @@ pub fn get_first_metrics_source_day(
   before: calendar.Date,
 ) -> Result(option.Option(calendar.Date), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
-  use returned <- result.try(
-    db_helpers.query(
-      db,
-      sql.get_first_metrics_source_day(before_day: before),
-      to_error,
-    ),
-  )
+  use returned <- result.try(db_helpers.query(
+    db,
+    sql.get_first_metrics_source_day(before_day: before),
+    to_error,
+  ))
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> Ok(option.Some(row.day))
-    _ ->
-      Error(error.DbQueryError("Expected one first metrics source day row"))
+    _ -> Error(error.DbQueryError("Expected one first metrics source day row"))
   }
 }
 

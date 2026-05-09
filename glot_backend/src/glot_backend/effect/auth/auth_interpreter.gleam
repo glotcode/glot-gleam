@@ -188,9 +188,7 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.AuthEffectName(
-            auth_algebra.DeleteAccountEffectName,
-          ),
+          effect_trace.AuthEffectName(auth_algebra.DeleteAccountEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

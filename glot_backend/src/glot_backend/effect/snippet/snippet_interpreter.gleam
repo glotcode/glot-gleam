@@ -11,7 +11,7 @@ pub fn run(
   state: program_state.State,
   continue: fn(next_program, program_state.State) ->
     #(Result(a, error.Error), program_state.State),
-  ) -> #(Result(a, error.Error), program_state.State) {
+) -> #(Result(a, error.Error), program_state.State) {
   case effect {
     snippet_algebra.GetSnippetById(id, next) -> {
       let started_at = erlang.perf_counter_ns()
@@ -20,7 +20,9 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet_algebra.GetSnippetByIdEffectName),
+          effect_trace.SnippetEffectName(
+            snippet_algebra.GetSnippetByIdEffectName,
+          ),
           effect_trace.DbReadEffectCategory,
           started_at,
         ),
@@ -33,7 +35,9 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet_algebra.GetSnippetBySlugEffectName),
+          effect_trace.SnippetEffectName(
+            snippet_algebra.GetSnippetBySlugEffectName,
+          ),
           effect_trace.DbReadEffectCategory,
           started_at,
         ),
@@ -59,7 +63,9 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet_algebra.DeleteSnippetEffectName),
+          effect_trace.SnippetEffectName(
+            snippet_algebra.DeleteSnippetEffectName,
+          ),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
@@ -87,7 +93,9 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet_algebra.CreateSnippetEffectName),
+          effect_trace.SnippetEffectName(
+            snippet_algebra.CreateSnippetEffectName,
+          ),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
@@ -100,7 +108,9 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.SnippetEffectName(snippet_algebra.UpdateSnippetEffectName),
+          effect_trace.SnippetEffectName(
+            snippet_algebra.UpdateSnippetEffectName,
+          ),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

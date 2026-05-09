@@ -18,8 +18,16 @@ const call_timeout_ms = 5000
 const refresh_interval_ms = 60_000
 
 pub type Message {
-  GetConfig(reply: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)))
-  Refresh(reply: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)))
+  GetConfig(
+    reply: process.Subject(
+      Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    ),
+  )
+  Refresh(
+    reply: process.Subject(
+      Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    ),
+  )
   Tick
   RefreshCompleted(
     fetched_at_ns: Int,
@@ -37,7 +45,8 @@ type InFlight {
 
 pub type FetchHandlers {
   FetchHandlers(
-    fetch_config: fn() -> Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    fetch_config: fn() ->
+      Result(dynamic_config.DynamicConfig, error.DbQueryError),
     now_ns: fn() -> Int,
   )
 }
@@ -161,7 +170,9 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 fn lookup_config(
   state: State,
   now_ns: Int,
-  reply: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+  reply: process.Subject(
+    Result(dynamic_config.DynamicConfig, error.DbQueryError),
+  ),
 ) -> #(State, Result(dynamic_config.DynamicConfig, Nil)) {
   case state.cache_entry {
     option.Some(cache_entry) -> {
@@ -209,7 +220,10 @@ fn ensure_fetch_started(state: State) -> State {
         process.spawn_unlinked(fn() {
           let result = fetch_handlers.fetch_config()
           let fetched_at_ns = fetch_handlers.now_ns()
-          process.send(subject, RefreshCompleted(fetched_at_ns:, result: result))
+          process.send(
+            subject,
+            RefreshCompleted(fetched_at_ns:, result: result),
+          )
         })
 
       State(..state, in_flight: option.Some(InFlight(waiters: [])))
@@ -219,7 +233,9 @@ fn ensure_fetch_started(state: State) -> State {
 
 fn enqueue_waiter(
   state: State,
-  reply: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+  reply: process.Subject(
+    Result(dynamic_config.DynamicConfig, error.DbQueryError),
+  ),
 ) -> State {
   let in_flight = case state.in_flight {
     option.Some(in_flight) -> in_flight
@@ -249,7 +265,10 @@ fn complete_fetch(
       let next_state =
         State(
           ..next_state,
-          cache_entry: option.Some(CacheEntry(config:, refreshed_at_ns: fetched_at_ns)),
+          cache_entry: option.Some(CacheEntry(
+            config:,
+            refreshed_at_ns: fetched_at_ns,
+          )),
         )
       reply_waiters(in_flight.waiters, Ok(config))
       next_state
@@ -272,7 +291,9 @@ fn should_schedule_refreshes(state: State) -> Bool {
 }
 
 fn reply_waiters(
-  waiters: List(process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError))),
+  waiters: List(
+    process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+  ),
   result: Result(dynamic_config.DynamicConfig, error.DbQueryError),
 ) -> Nil {
   list.each(waiters, fn(reply) { process.send(reply, result) })

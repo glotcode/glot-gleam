@@ -1784,8 +1784,12 @@ fn run_test_periodic_job_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    periodic_job_algebra.ListPeriodicJobs(next:) ->
+      run_test_program(next(list_periodic_jobs(db)), ctx, db)
     periodic_job_algebra.GetNextPeriodicJob(now:, next:) ->
       run_test_program(next(find_next_periodic_job(db, now)), ctx, db)
+    periodic_job_algebra.GetPeriodicJobById(id:, next:) ->
+      run_test_program(next(find_periodic_job_by_id(db, id)), ctx, db)
     periodic_job_algebra.CreatePeriodicJob(periodic_job, next) ->
       run_test_program(next(Ok(Nil)), ctx, put_periodic_job(db, periodic_job))
     periodic_job_algebra.UpdatePeriodicJob(periodic_job, next) ->
@@ -1801,8 +1805,12 @@ fn run_test_periodic_job_tx_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    periodic_job_algebra.ListPeriodicJobs(next:) ->
+      run_test_tx_program(next(list_periodic_jobs(db)), ctx, db)
     periodic_job_algebra.GetNextPeriodicJob(now:, next:) ->
       run_test_tx_program(next(find_next_periodic_job(db, now)), ctx, db)
+    periodic_job_algebra.GetPeriodicJobById(id:, next:) ->
+      run_test_tx_program(next(find_periodic_job_by_id(db, id)), ctx, db)
     periodic_job_algebra.CreatePeriodicJob(periodic_job, next) ->
       run_test_tx_program(
         next(Ok(Nil)),
@@ -2225,12 +2233,7 @@ fn find_next_periodic_job(
   db: TestDb,
   now: timestamp.Timestamp,
 ) -> option.Option(periodic_job_model.PeriodicJob) {
-  db.periodic_jobs
-  |> dict.to_list
-  |> list.map(fn(entry) {
-    let #(_, periodic_job) = entry
-    periodic_job
-  })
+  list_periodic_jobs(db)
   |> list.filter(fn(periodic_job) {
     periodic_job.enabled
     && timestamp_helpers.to_microseconds(periodic_job.next_run_at)
@@ -2268,6 +2271,24 @@ fn find_next_periodic_job(
   })
   |> list.first
   |> option.from_result
+}
+
+fn list_periodic_jobs(db: TestDb) -> List(periodic_job_model.PeriodicJob) {
+  db.periodic_jobs
+  |> dict.to_list
+  |> list.map(fn(entry) {
+    let #(_, periodic_job) = entry
+    periodic_job
+  })
+}
+
+fn find_periodic_job_by_id(
+  db: TestDb,
+  id: uuid.Uuid,
+) -> option.Option(periodic_job_model.PeriodicJob) {
+  db.periodic_jobs
+  |> dict.get(uuid_key(id))
+  |> option.from_result()
 }
 
 fn find_user_by_email(

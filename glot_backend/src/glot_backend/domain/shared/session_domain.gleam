@@ -41,7 +41,11 @@ fn get_validated_session(
   })
 
   session_result
-  |> result.try(validate_session(_, ctx.timestamp, auth_config.session_token_max_age))
+  |> result.try(validate_session(
+    _,
+    ctx.timestamp,
+    auth_config.session_token_max_age,
+  ))
   |> program.succeed
 }
 
@@ -51,11 +55,7 @@ fn validate_session(
   session_token_max_age: Int,
 ) -> Result(session_model.HydratedSession, error.Error) {
   let expired =
-    is_expired(
-      session.identity.created_at,
-      now,
-      session_token_max_age,
-    )
+    is_expired(session.identity.created_at, now, session_token_max_age)
 
   case expired {
     True -> Error(error.SessionError(error.SessionExpiredError))

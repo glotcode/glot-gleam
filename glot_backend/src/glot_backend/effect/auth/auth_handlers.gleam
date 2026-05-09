@@ -2,8 +2,9 @@ import gleam/option
 import gleam/regexp
 import gleam/result
 import gleam/string
-import glot_backend/helpers/db_helpers
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
+import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/auth/account_model
 import glot_core/auth/login_token_model
@@ -13,7 +14,6 @@ import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
 import pog
 import youid/uuid
-import gleam/time/timestamp.{type Timestamp}
 
 pub type AuthHandlers {
   AuthHandlers(
@@ -24,24 +24,33 @@ pub type AuthHandlers {
     get_session_by_token: fn(regexp.Regexp, String) ->
       Result(option.Option(session_model.HydratedSession), error.DbQueryError),
     create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
-    create_account: fn(account_model.Account) -> Result(Nil, error.DbCommandError),
-    update_account: fn(account_model.Account) -> Result(Nil, error.DbCommandError),
+    create_account: fn(account_model.Account) ->
+      Result(Nil, error.DbCommandError),
+    update_account: fn(account_model.Account) ->
+      Result(Nil, error.DbCommandError),
     update_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
     delete_sessions_by_account_id: fn(uuid.Uuid) ->
       Result(Nil, error.DbCommandError),
-    delete_users_by_account_id: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
+    delete_users_by_account_id: fn(uuid.Uuid) ->
+      Result(Nil, error.DbCommandError),
     delete_account: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
-    create_session: fn(session_model.Session) -> Result(Nil, error.DbCommandError),
+    create_session: fn(session_model.Session) ->
+      Result(Nil, error.DbCommandError),
     delete_session: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
-    create_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
-    update_login_token: fn(login_token_model.LoginToken) -> Result(Nil, error.DbCommandError),
-    delete_login_tokens_before: fn(Timestamp) -> Result(Nil, error.DbCommandError),
+    create_login_token: fn(login_token_model.LoginToken) ->
+      Result(Nil, error.DbCommandError),
+    update_login_token: fn(login_token_model.LoginToken) ->
+      Result(Nil, error.DbCommandError),
+    delete_login_tokens_before: fn(Timestamp) ->
+      Result(Nil, error.DbCommandError),
   )
 }
 
 pub fn new(db: pog.Connection) -> AuthHandlers {
   AuthHandlers(
-    get_user_by_email: fn(is_email, email) { get_user_by_email(db, is_email, email) },
+    get_user_by_email: fn(is_email, email) {
+      get_user_by_email(db, is_email, email)
+    },
     list_login_tokens_by_email: fn(email, limit) {
       list_login_tokens_by_email(db, email, limit)
     },
@@ -59,16 +68,10 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
       delete_users_by_account_id(db, account_id)
     },
     delete_account: fn(account_id) { delete_account(db, account_id) },
-    create_session: fn(session) {
-      create_session(db, session)
-    },
+    create_session: fn(session) { create_session(db, session) },
     delete_session: fn(id) { delete_session(db, id) },
-    create_login_token: fn(login_token) {
-      create_login_token(db, login_token)
-    },
-    update_login_token: fn(login_token) {
-      update_login_token(db, login_token)
-    },
+    create_login_token: fn(login_token) { create_login_token(db, login_token) },
+    update_login_token: fn(login_token) { update_login_token(db, login_token) },
     delete_login_tokens_before: fn(before) {
       delete_login_tokens_before(db, before)
     },
@@ -325,11 +328,7 @@ pub fn delete_login_tokens_before(
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
 
-  db_helpers.execute(
-    db,
-    sql.delete_login_tokens_before(before),
-    to_error,
-  )
+  db_helpers.execute(db, sql.delete_login_tokens_before(before), to_error)
   |> result.map(fn(_) { Nil })
 }
 
@@ -388,7 +387,8 @@ fn user_from_row(
         account_state: account_state,
         account_state_reason: row.account_state_reason,
         account_tier: account_tier,
-        delete_job_id: row.delete_job_id |> option.map(uuid_helpers.from_bit_array),
+        delete_job_id: row.delete_job_id
+          |> option.map(uuid_helpers.from_bit_array),
         created_at: row.created_at,
         updated_at: row.updated_at,
       ),
@@ -497,8 +497,8 @@ fn session_from_row(
           account_state: account_state,
           account_state_reason: row.user_account_state_reason,
           account_tier: account_tier,
-          delete_job_id:
-            row.user_account_delete_job_id |> option.map(uuid_helpers.from_bit_array),
+          delete_job_id: row.user_account_delete_job_id
+            |> option.map(uuid_helpers.from_bit_array),
           created_at: row.user_created_at,
           updated_at: row.user_updated_at,
         ),

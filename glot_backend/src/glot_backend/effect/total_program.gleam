@@ -19,10 +19,7 @@ pub fn from_program(
   |> TotalProgram
 }
 
-pub fn map(
-  total_program: TotalProgram(a),
-  f: fn(a) -> b,
-) -> TotalProgram(b) {
+pub fn map(total_program: TotalProgram(a), f: fn(a) -> b) -> TotalProgram(b) {
   let TotalProgram(inner:) = total_program
   TotalProgram(program.map(inner, f))
 }

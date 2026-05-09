@@ -18,7 +18,10 @@ pub type EffectMeasurementResponse {
 }
 
 pub fn decoder() -> decode.Decoder(EffectTraceResponse) {
-  use effects <- decode.field("effects", decode.list(effect_measurement_decoder()))
+  use effects <- decode.field(
+    "effects",
+    decode.list(effect_measurement_decoder()),
+  )
   decode.success(EffectTraceResponse(effects: effects))
 }
 
@@ -75,6 +78,9 @@ fn encode_effect_measurement(
     #("name", json.string(effect_measurement.name)),
     #("duration_ns", json.int(effect_measurement.duration_ns)),
     #("rolled_back", json.nullable(effect_measurement.rolled_back, json.bool)),
-    #("effects", json.array(effect_measurement.effects, encode_effect_measurement)),
+    #(
+      "effects",
+      json.array(effect_measurement.effects, encode_effect_measurement),
+    ),
   ])
 }

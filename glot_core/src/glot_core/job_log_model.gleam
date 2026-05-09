@@ -24,7 +24,8 @@ pub type JobLog {
 }
 
 pub fn cursor(log: JobLog) -> pagination_model.Cursor {
-  let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(log.created_at)
+  let #(seconds, nanos) =
+    timestamp.to_unix_seconds_and_nanoseconds(log.created_at)
 
   pagination_model.from_string(
     int.to_string(seconds)

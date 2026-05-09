@@ -19,31 +19,31 @@ pub fn run(
   ),
   runtime: runtime.Runtime,
   state: program_state.State,
-  continue: fn(program_types.Program(a), program_state.State) -> #(b, program_state.State),
+  continue: fn(program_types.Program(a), program_state.State) ->
+    #(b, program_state.State),
 ) -> #(b, program_state.State) {
   case effect {
     get_language_version_algebra.GetLanguageVersion(_cfg, language, next) -> {
       let started_at = erlang.perf_counter_ns()
-      let run_result =
-        case runtime.language_version_cache_subject {
-          option.Some(subject) ->
-            language_version_cache_worker.get_language_version(subject, language)
-          option.None ->
-            load_config(runtime)
-            |> result.try(fn(config) {
-              case dynamic_config.docker_run_config(config) {
-                option.Some(docker_run) ->
-                  runtime.handlers.docker_run.run_code(
-                    docker_run,
-                    run_request(language),
-                  )
-                option.None ->
-                  Error(error.InternalRunRequestError(
-                    "Missing docker_run app_config",
-                  ))
-              }
-            })
-        }
+      let run_result = case runtime.language_version_cache_subject {
+        option.Some(subject) ->
+          language_version_cache_worker.get_language_version(subject, language)
+        option.None ->
+          load_config(runtime)
+          |> result.try(fn(config) {
+            case dynamic_config.docker_run_config(config) {
+              option.Some(docker_run) ->
+                runtime.handlers.docker_run.run_code(
+                  docker_run,
+                  run_request(language),
+                )
+              option.None ->
+                Error(error.InternalRunRequestError(
+                  "Missing docker_run app_config",
+                ))
+            }
+          })
+      }
 
       continue(
         next(run_result),

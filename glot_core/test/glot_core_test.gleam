@@ -155,14 +155,14 @@ pub fn pagination_validate_rejects_limit_above_max_test() {
 }
 
 pub fn timestamp_relative_label_for_past_test() {
-  let now = timestamp.from_unix_seconds_and_nanoseconds(3_600, 0)
-  let created_at = timestamp.from_unix_seconds_and_nanoseconds(3_300, 0)
+  let now = timestamp.from_unix_seconds_and_nanoseconds(3600, 0)
+  let created_at = timestamp.from_unix_seconds_and_nanoseconds(3300, 0)
 
   assert timestamp_helpers.relative_label(created_at, now) == "5 minutes ago"
 }
 
 pub fn timestamp_relative_label_for_future_test() {
-  let now = timestamp.from_unix_seconds_and_nanoseconds(3_600, 0)
+  let now = timestamp.from_unix_seconds_and_nanoseconds(3600, 0)
   let scheduled_at = timestamp.from_unix_seconds_and_nanoseconds(10_800, 0)
 
   assert timestamp_helpers.relative_label(scheduled_at, now) == "in 2 hours"

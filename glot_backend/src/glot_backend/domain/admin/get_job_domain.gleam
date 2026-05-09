@@ -25,9 +25,7 @@ pub fn get_job(
   ))
   use job <- program.and_then(
     job_effect.get_job_by_id(request.id)
-    |> program.require(
-      error.NotFoundError("job_not_found", "Job not found"),
-    ),
+    |> program.require(error.NotFoundError("job_not_found", "Job not found")),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

@@ -69,23 +69,20 @@ pub fn encode_request_fields(
   pagination: CursorPagination,
 ) -> List(#(String, json.Json)) {
   case pagination {
-    InitialPage(limit) ->
-      [
-        #("pageKind", json.string("initial")),
-        #("limit", json.int(limit)),
-      ]
-    AfterPage(cursor, limit) ->
-      [
-        #("pageKind", json.string("after")),
-        #("cursor", json.string(to_string(cursor))),
-        #("limit", json.int(limit)),
-      ]
-    BeforePage(cursor, limit) ->
-      [
-        #("pageKind", json.string("before")),
-        #("cursor", json.string(to_string(cursor))),
-        #("limit", json.int(limit)),
-      ]
+    InitialPage(limit) -> [
+      #("pageKind", json.string("initial")),
+      #("limit", json.int(limit)),
+    ]
+    AfterPage(cursor, limit) -> [
+      #("pageKind", json.string("after")),
+      #("cursor", json.string(to_string(cursor))),
+      #("limit", json.int(limit)),
+    ]
+    BeforePage(cursor, limit) -> [
+      #("pageKind", json.string("before")),
+      #("cursor", json.string(to_string(cursor))),
+      #("limit", json.int(limit)),
+    ]
   }
 }
 
@@ -198,8 +195,7 @@ pub fn validate(
         True -> Ok(Nil)
         False ->
           Error(
-            "limit must be less than or equal to "
-            <> int.to_string(max_limit),
+            "limit must be less than or equal to " <> int.to_string(max_limit),
           )
       }
   }
@@ -207,12 +203,9 @@ pub fn validate(
 
 pub fn increment_limit(pagination: CursorPagination) -> CursorPagination {
   case pagination {
-    InitialPage(limit) ->
-      InitialPage(limit: limit + 1)
-    AfterPage(cursor, limit) ->
-      AfterPage(cursor: cursor, limit: limit + 1)
-    BeforePage(cursor, limit) ->
-      BeforePage(cursor: cursor, limit: limit + 1)
+    InitialPage(limit) -> InitialPage(limit: limit + 1)
+    AfterPage(cursor, limit) -> AfterPage(cursor: cursor, limit: limit + 1)
+    BeforePage(cursor, limit) -> BeforePage(cursor: cursor, limit: limit + 1)
   }
 }
 
@@ -334,11 +327,7 @@ fn take_page_from_end(items: List(a), page_limit: Int) -> PageSlice(a) {
   |> reverse_page_slice
 }
 
-fn take_page_loop(
-  items: List(a),
-  remaining: Int,
-  acc: List(a),
-) -> PageSlice(a) {
+fn take_page_loop(items: List(a), remaining: Int, acc: List(a)) -> PageSlice(a) {
   case items {
     [] -> PageSlice(items: list.reverse(acc), has_more: False)
     [item, ..rest] ->

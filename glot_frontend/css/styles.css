@@ -573,6 +573,31 @@ a {
   gap: 1rem;
 }
 
+.admin-periodic-jobs-page__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.admin-periodic-jobs-page__summary-card,
+.admin-periodic-jobs-page__meta-grid {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-periodic-jobs-page__meta-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-periodic-jobs-page__payload-field {
+  min-width: 100%;
+}
+
+.admin-periodic-jobs-page__payload-input {
+  min-height: 8.5rem;
+  resize: vertical;
+}
+
 .admin-request-log-page__summary-grid,
 .admin-job-log-page__summary-grid {
   grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
@@ -848,6 +873,8 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .admin-periodic-jobs-page__summary-grid,
+  .admin-periodic-jobs-page__meta-grid,
   .admin-job-logs-page__field-grid,
   .admin-job-page__summary-grid,
   .admin-job-page__detail-grid,

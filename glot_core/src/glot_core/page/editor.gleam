@@ -9,8 +9,8 @@ import gleam/time/timestamp
 import glot_core/helpers/timestamp_helpers
 import glot_core/helpers/uuid_helpers
 import glot_core/language
-import glot_core/page/icons
 import glot_core/page/editor_layout
+import glot_core/page/icons
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/route
@@ -144,7 +144,7 @@ pub fn head_children(view_model: ViewModel) -> List(lustre_element.Element(Nil))
     meta_property("og:type", og_type(view_model)),
     meta_property("og:url", canonical_url(view_model)),
     canonical_link(canonical_url(view_model)),
-    ..article_meta(view_model),
+    ..article_meta(view_model)
   ]
 }
 
@@ -174,7 +174,8 @@ fn content(view_model: ViewModel) -> lustre_element.Element(Nil) {
           ]),
         ]),
       ])
-    NewSnippet(model) | ExistingSnippet(model) -> content_for_model(model, view_model)
+    NewSnippet(model) | ExistingSnippet(model) ->
+      content_for_model(model, view_model)
   }
 }
 
@@ -211,26 +212,28 @@ fn content_for_model(
 
 fn title_info_button(view_model: ViewModel) -> lustre_element.Element(Nil) {
   case view_model {
-    ExistingSnippet(_) -> editor_layout.title_hint_button(
-      class_name: "editor-page__title-edit-button editor-page__title-info-button",
-      aria_label: "Snippet info",
-      hint_class: "editor-page__title-hint editor-page__title-hint--info",
-      hint_label: "Info",
-      attributes: [attribute.disabled(True)],
-    )
+    ExistingSnippet(_) ->
+      editor_layout.title_hint_button(
+        class_name: "editor-page__title-edit-button editor-page__title-info-button",
+        aria_label: "Snippet info",
+        hint_class: "editor-page__title-hint editor-page__title-hint--info",
+        hint_label: "Info",
+        attributes: [attribute.disabled(True)],
+      )
     _ -> html.div([], [])
   }
 }
 
 fn title_edit_button(view_model: ViewModel) -> lustre_element.Element(Nil) {
   case view_model {
-    NewSnippet(_) -> editor_layout.title_hint_button(
-      class_name: "editor-page__title-edit-button",
-      aria_label: "Edit title",
-      hint_class: "editor-page__title-hint",
-      hint_label: "Edit",
-      attributes: [attribute.disabled(True)],
-    )
+    NewSnippet(_) ->
+      editor_layout.title_hint_button(
+        class_name: "editor-page__title-edit-button",
+        aria_label: "Edit title",
+        hint_class: "editor-page__title-hint",
+        hint_label: "Edit",
+        attributes: [attribute.disabled(True)],
+      )
     _ -> html.div([], [])
   }
 }
@@ -335,8 +338,7 @@ fn metadata_item(
 ) -> option.Option(lustre_element.Element(Nil)) {
   case string.trim(value) == "" {
     True -> option.None
-    False ->
-      option.Some(editor_layout.dialog_info_row(label, value))
+    False -> option.Some(editor_layout.dialog_info_row(label, value))
   }
 }
 
@@ -351,15 +353,10 @@ fn tab_views(model: EditorModel) -> List(lustre_element.Element(Nil)) {
   }
 }
 
-fn tab_button(
-  label: String,
-  is_selected: Bool,
-) -> lustre_element.Element(Nil) {
-  editor_layout.tab_button(
-    label: label,
-    is_selected: is_selected,
-    attributes: [attribute.disabled(True)],
-  )
+fn tab_button(label: String, is_selected: Bool) -> lustre_element.Element(Nil) {
+  editor_layout.tab_button(label: label, is_selected: is_selected, attributes: [
+    attribute.disabled(True),
+  ])
 }
 
 fn collect_metadata_items(
@@ -384,18 +381,14 @@ fn description(view_model: ViewModel) -> String {
     LoadError(message) -> message
     NewSnippet(model) ->
       "Create a new " <> language.name(model.language) <> " snippet on glot.io."
-    ExistingSnippet(model) ->
-      snippet_summary(model)
+    ExistingSnippet(model) -> snippet_summary(model)
   }
 }
 
 fn snippet_summary(model: EditorModel) -> String {
   let file_count = list.length(model.files)
   let base =
-    model.title
-    <> " is a "
-    <> language.name(model.language)
-    <> " snippet"
+    model.title <> " is a " <> language.name(model.language) <> " snippet"
   let with_author = case model.owner_username {
     option.Some(owner) -> base <> " by @" <> owner
     option.None -> base
@@ -423,9 +416,11 @@ fn og_type(view_model: ViewModel) -> String {
 fn canonical_url(view_model: ViewModel) -> String {
   "https://glot.io"
   <> case view_model {
-    UnsupportedLanguage(language_slug) -> route.to_string(route.NewSnippet(language_slug))
+    UnsupportedLanguage(language_slug) ->
+      route.to_string(route.NewSnippet(language_slug))
     LoadError(_) -> "/snippets"
-    NewSnippet(model) -> route.to_string(route.NewSnippet(language.to_string(model.language)))
+    NewSnippet(model) ->
+      route.to_string(route.NewSnippet(language.to_string(model.language)))
     ExistingSnippet(EditorModel(slug: option.Some(slug), ..)) ->
       route.to_string(route.Snippet(slug))
     ExistingSnippet(_) -> "/snippets"
@@ -448,13 +443,17 @@ fn collect_article_meta(
     option.None -> acc
   }
   let acc = case model.created_at {
-    option.Some(created_at) ->
-      [meta_property("article:published_time", timestamp_label(created_at)), ..acc]
+    option.Some(created_at) -> [
+      meta_property("article:published_time", timestamp_label(created_at)),
+      ..acc
+    ]
     option.None -> acc
   }
   let acc = case model.updated_at {
-    option.Some(updated_at) ->
-      [meta_property("article:modified_time", timestamp_label(updated_at)), ..acc]
+    option.Some(updated_at) -> [
+      meta_property("article:modified_time", timestamp_label(updated_at)),
+      ..acc
+    ]
     option.None -> acc
   }
 
@@ -483,9 +482,12 @@ fn timestamp_label(value: timestamp.Timestamp) -> String {
 fn encode_editor_model(model: EditorModel) -> json.Json {
   json.object([
     #("slug", json.nullable(model.slug, json.string)),
-    #("ownerUserId", json.nullable(model.owner_user_id, fn(id) {
-      json.string(uuid.to_string(id))
-    })),
+    #(
+      "ownerUserId",
+      json.nullable(model.owner_user_id, fn(id) {
+        json.string(uuid.to_string(id))
+      }),
+    ),
     #("ownerUsername", json.nullable(model.owner_username, json.string)),
     #("title", json.string(model.title)),
     #("language", language.encode(model.language)),
@@ -493,14 +495,8 @@ fn encode_editor_model(model: EditorModel) -> json.Json {
       "visibility",
       json.nullable(model.visibility, snippet_model.encode_visibility),
     ),
-    #(
-      "createdAt",
-      json.nullable(model.created_at, timestamp_helpers.encode),
-    ),
-    #(
-      "updatedAt",
-      json.nullable(model.updated_at, timestamp_helpers.encode),
-    ),
+    #("createdAt", json.nullable(model.created_at, timestamp_helpers.encode)),
+    #("updatedAt", json.nullable(model.updated_at, timestamp_helpers.encode)),
     #(
       "runInstructionsOverride",
       json.nullable(

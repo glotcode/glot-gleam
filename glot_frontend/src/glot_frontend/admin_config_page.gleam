@@ -206,7 +206,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     DebugResetClicked -> #(
       Model(
         ..model,
-        debug: DebugSection(..model.debug, draft: model.debug.saved, state: Idle),
+        debug: DebugSection(
+          ..model.debug,
+          draft: model.debug.saved,
+          state: Idle,
+        ),
       ),
       effect.none(),
     )
@@ -536,7 +540,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         Ok(request) -> #(
-          Model(..model, cleanup: CleanupSection(..model.cleanup, state: Saving)),
+          Model(
+            ..model,
+            cleanup: CleanupSection(..model.cleanup, state: Saving),
+          ),
           api.upsert_admin_cleanup_config(request, CleanupSaveFinished),
         )
       }
@@ -548,7 +555,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(
               ..model,
-              cleanup: CleanupSection(saved: fields, draft: fields, state: Saved),
+              cleanup: CleanupSection(
+                saved: fields,
+                draft: fields,
+                state: Saved,
+              ),
             ),
             effect.none(),
           )
@@ -605,7 +616,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                   docker_run_loaded: True,
                 )
 
-              #(Model(..next_model, status: loaded_status(next_model)), effect.none())
+              #(
+                Model(..next_model, status: loaded_status(next_model)),
+                effect.none(),
+              )
             }
             _ -> #(
               Model(..model, status: LoadError(error.message)),

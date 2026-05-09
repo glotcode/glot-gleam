@@ -112,7 +112,10 @@ pub fn list_response_decoder() -> decode.Decoder(ListJobLogsResponse) {
 
 pub fn encode_list_response(response: ListJobLogsResponse) -> json.Json {
   json.object([
-    #("page", pagination_model.encode_page(response.page, "jobLogs", encode_job_log)),
+    #(
+      "page",
+      pagination_model.encode_page(response.page, "jobLogs", encode_job_log),
+    ),
   ])
 }
 
@@ -201,7 +204,10 @@ fn job_log_detail_decoder() -> decode.Decoder(JobLogDetailResponse) {
   use warnings <- decode.field("warnings", decode.optional(decode.string))
   use debug <- decode.field("debug", decode.optional(decode.string))
   use error <- decode.field("error", decode.optional(decode.string))
-  use effects <- decode.field("effects", decode.optional(effect_trace_dto.decoder()))
+  use effects <- decode.field(
+    "effects",
+    decode.optional(effect_trace_dto.decoder()),
+  )
 
   decode.success(JobLogDetailResponse(
     id: id,

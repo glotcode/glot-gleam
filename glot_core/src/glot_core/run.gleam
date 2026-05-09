@@ -70,8 +70,9 @@ pub fn encode_get_language_version_request(
   ])
 }
 
-pub fn get_language_version_request_decoder(
-) -> decode.Decoder(GetLanguageVersionRequest) {
+pub fn get_language_version_request_decoder() -> decode.Decoder(
+  GetLanguageVersionRequest,
+) {
   use language <- decode.field("language", language.decoder())
   decode.success(GetLanguageVersionRequest(language:))
 }

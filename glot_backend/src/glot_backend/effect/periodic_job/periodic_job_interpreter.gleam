@@ -13,6 +13,35 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
+    periodic_job_algebra.ListPeriodicJobs(next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.periodic_job.list_periodic_jobs()
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.PeriodicJobEffectName(
+                periodic_job_algebra.ListPeriodicJobsEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.PeriodicJobEffectName(
+              periodic_job_algebra.ListPeriodicJobsEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     periodic_job_algebra.GetNextPeriodicJob(now:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.periodic_job.get_next_periodic_job(now)
@@ -35,6 +64,35 @@ pub fn run(
             state,
             effect_trace.PeriodicJobEffectName(
               periodic_job_algebra.GetNextPeriodicJobEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    periodic_job_algebra.GetPeriodicJobById(id:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.periodic_job.get_periodic_job_by_id(id)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.PeriodicJobEffectName(
+                periodic_job_algebra.GetPeriodicJobByIdEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.PeriodicJobEffectName(
+              periodic_job_algebra.GetPeriodicJobByIdEffectName,
             ),
             effect_trace.DbReadEffectCategory,
             started_at,

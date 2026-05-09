@@ -51,7 +51,8 @@ pub type FetchHandlers {
     fetch_language_version: fn(
       process.Subject(app_config_cache_worker.Message),
       language_module.Language,
-    ) -> Result(run.RunResult, error.RunRequestError),
+    ) ->
+      Result(run.RunResult, error.RunRequestError),
     now_ns: fn() -> Int,
     supported_languages: fn() -> List(language_module.Language),
   )
@@ -235,13 +236,16 @@ fn enqueue_due_refreshes(state: State) -> State {
   })
 }
 
-fn enqueue_refresh(
-  state: State,
-  language: language_module.Language,
-) -> State {
-  case is_refresh_pending(state, language) || is_refresh_in_flight(state, language) {
+fn enqueue_refresh(state: State, language: language_module.Language) -> State {
+  case
+    is_refresh_pending(state, language) || is_refresh_in_flight(state, language)
+  {
     True -> state
-    False -> State(..state, refresh_queue: list.append(state.refresh_queue, [language]))
+    False ->
+      State(
+        ..state,
+        refresh_queue: list.append(state.refresh_queue, [language]),
+      )
   }
 }
 
@@ -251,7 +255,11 @@ fn enqueue_waiter(
   reply: process.Subject(Result(run.RunResult, error.RunRequestError)),
 ) -> State {
   let in_flight = case dict.get(state.in_flight, language) {
-    Ok(in_flight) -> InFlight(waiters: [reply, ..in_flight.waiters], refresh: in_flight.refresh)
+    Ok(in_flight) ->
+      InFlight(
+        waiters: [reply, ..in_flight.waiters],
+        refresh: in_flight.refresh,
+      )
     Error(_) -> InFlight(waiters: [reply], refresh: False)
   }
 
@@ -273,7 +281,10 @@ fn ensure_fetch_started(
       let _ =
         process.spawn_unlinked(fn() {
           let result =
-            fetch_handlers.fetch_language_version(app_config_cache_subject, language)
+            fetch_handlers.fetch_language_version(
+              app_config_cache_subject,
+              language,
+            )
           let fetched_at_ns = fetch_handlers.now_ns()
           process.send(
             subject,
@@ -346,7 +357,11 @@ fn start_next_refresh(state: State) -> State {
     option.Some(_), _ -> state
     option.None, [] -> state
     option.None, [language, ..rest] ->
-      State(..state, refresh_queue: rest, refresh_language: option.Some(language))
+      State(
+        ..state,
+        refresh_queue: rest,
+        refresh_language: option.Some(language),
+      )
       |> ensure_fetch_started(language, True)
   }
 }
@@ -404,11 +419,10 @@ fn complete_fetch(
   }
 }
 
-fn is_refresh_pending(
-  state: State,
-  language: language_module.Language,
-) -> Bool {
-  list.any(state.refresh_queue, fn(queued_language) { queued_language == language })
+fn is_refresh_pending(state: State, language: language_module.Language) -> Bool {
+  list.any(state.refresh_queue, fn(queued_language) {
+    queued_language == language
+  })
 }
 
 fn is_refresh_in_flight(

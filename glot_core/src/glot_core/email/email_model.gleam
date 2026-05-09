@@ -26,13 +26,10 @@ pub fn encode(message: Email) -> json.Json {
         #("to", email_address_model.encode(to)),
         #("subject", json.string(subject)),
         #("text_body", json.string(text_body)),
-        #(
-          "html_body",
-          case html_body {
-            option.Some(value) -> json.string(value)
-            option.None -> json.null()
-          },
-        ),
+        #("html_body", case html_body {
+          option.Some(value) -> json.string(value)
+          option.None -> json.null()
+        }),
       ])
   }
 }

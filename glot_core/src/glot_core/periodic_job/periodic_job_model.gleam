@@ -21,7 +21,10 @@ pub type PeriodicJob {
 pub fn enqueued(periodic_job: PeriodicJob, now: Timestamp) -> PeriodicJob {
   PeriodicJob(
     ..periodic_job,
-    next_run_at: add_seconds(periodic_job.next_run_at, periodic_job.interval_seconds),
+    next_run_at: add_seconds(
+      periodic_job.next_run_at,
+      periodic_job.interval_seconds,
+    ),
     last_enqueued_at: option.Some(now),
     last_enqueue_error: option.None,
     updated_at: now,

@@ -16,21 +16,21 @@ pub fn run(
   effect: app_config_algebra.AppConfigEffect(program_types.Program(a)),
   runtime: runtime.Runtime,
   state: program_state.State,
-  continue: fn(program_types.Program(a), program_state.State) -> #(b, program_state.State),
+  continue: fn(program_types.Program(a), program_state.State) ->
+    #(b, program_state.State),
 ) -> #(b, program_state.State) {
   case effect {
     app_config_algebra.GetDynamicConfig(next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result =
-        case runtime.app_config_cache_subject {
-          option.Some(subject) -> app_config_cache_worker.get_config(subject)
-          option.None ->
-            runtime.handlers.app_config.list_entries()
-            |> result.try(fn(entries) {
-              dynamic_config.from_entries(entries)
-              |> result.map_error(error.DbQueryError)
-            })
-        }
+      let result = case runtime.app_config_cache_subject {
+        option.Some(subject) -> app_config_cache_worker.get_config(subject)
+        option.None ->
+          runtime.handlers.app_config.list_entries()
+          |> result.try(fn(entries) {
+            dynamic_config.from_entries(entries)
+            |> result.map_error(error.DbQueryError)
+          })
+      }
 
       continue(
         next(result),
@@ -197,7 +197,12 @@ pub fn run(
         ),
       )
     }
-    app_config_algebra.UpsertRateLimitPolicy(action:, policy:, updated_at:, next:) -> {
+    app_config_algebra.UpsertRateLimitPolicy(
+      action:,
+      policy:,
+      updated_at:,
+      next:,
+    ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
         runtime.handlers.app_config.upsert_entry(

@@ -270,18 +270,23 @@ fn decode_docker_run_entry(
 ) -> Result(DynamicConfig, String) {
   use value <- result.try(decode_string_entry("docker_run", entry))
 
-  let docker_run =
-    case entry.key, config.docker_run {
-      "base_url", option.Some(docker_run) ->
-        option.Some(DockerRunConfig(base_url: value, access_token: docker_run.access_token))
-      "base_url", option.None ->
-        option.Some(DockerRunConfig(base_url: value, access_token: ""))
-      "access_token", option.Some(docker_run) ->
-        option.Some(DockerRunConfig(base_url: docker_run.base_url, access_token: value))
-      "access_token", option.None ->
-        option.Some(DockerRunConfig(base_url: "", access_token: value))
-      _, _ -> config.docker_run
-    }
+  let docker_run = case entry.key, config.docker_run {
+    "base_url", option.Some(docker_run) ->
+      option.Some(DockerRunConfig(
+        base_url: value,
+        access_token: docker_run.access_token,
+      ))
+    "base_url", option.None ->
+      option.Some(DockerRunConfig(base_url: value, access_token: ""))
+    "access_token", option.Some(docker_run) ->
+      option.Some(DockerRunConfig(
+        base_url: docker_run.base_url,
+        access_token: value,
+      ))
+    "access_token", option.None ->
+      option.Some(DockerRunConfig(base_url: "", access_token: value))
+    _, _ -> config.docker_run
+  }
 
   Ok(DynamicConfig(..config, docker_run: docker_run))
 }
@@ -292,17 +297,24 @@ fn decode_rate_limit_policy_entry(
 ) -> Result(DynamicConfig, String) {
   use action <- result.try(case api_action.from_string(entry.key) {
     option.Some(action) -> Ok(action)
-    option.None -> Error("Invalid rate limit action in app_config key: " <> entry.key)
+    option.None ->
+      Error("Invalid rate limit action in app_config key: " <> entry.key)
   })
   use policy <- result.try(decode_json_entry(
     "rate_limit",
     entry,
     rate_limit_policy_decoder(),
   ))
-  Ok(DynamicConfig(
-    ..config,
-    rate_limit_policies: dict.insert(config.rate_limit_policies, action, policy),
-  ))
+  Ok(
+    DynamicConfig(
+      ..config,
+      rate_limit_policies: dict.insert(
+        config.rate_limit_policies,
+        action,
+        policy,
+      ),
+    ),
+  )
 }
 
 fn decode_string_entry(
@@ -349,8 +361,7 @@ fn encode_rate_limit_rule(rule: RateLimitRule) -> json.Json {
 
 fn encode_rate_limit_match(rule_match: RateLimitMatch) -> json.Json {
   case rule_match {
-    AnonymousMatch ->
-      json.object([#("actor", json.string("anonymous"))])
+    AnonymousMatch -> json.object([#("actor", json.string("anonymous"))])
     AuthenticatedMatch(account_tiers: account_tiers) ->
       json.object([
         #("actor", json.string("authenticated")),
@@ -424,9 +435,9 @@ fn rule_match_priority(
     AnonymousMatch, AnonymousActor -> option.Some(1)
     AuthenticatedMatch(account_tiers: option.None), AuthenticatedActor(_) ->
       option.Some(2)
-    AuthenticatedMatch(account_tiers: option.Some(account_tiers)), AuthenticatedActor(
-      actor_tier,
-    ) ->
+    AuthenticatedMatch(account_tiers: option.Some(account_tiers)),
+      AuthenticatedActor(actor_tier)
+    ->
       case list.contains(account_tiers, actor_tier) {
         True -> option.Some(3)
         False -> option.None

@@ -10,9 +10,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/transaction/transaction_program
 
-pub fn aggregate_metrics(
-  ctx: context.Context,
-) -> program_types.Program(Nil) {
+pub fn aggregate_metrics(ctx: context.Context) -> program_types.Program(Nil) {
   let #(today, _) = calendar_date(ctx.timestamp)
 
   use maybe_next_day <- program.and_then(next_metrics_day(today))
@@ -39,9 +37,7 @@ fn next_metrics_day(
   }
 }
 
-fn aggregate_day_tx(
-  day: calendar.Date,
-) -> program_types.TransactionProgram(Nil) {
+fn aggregate_day_tx(day: calendar.Date) -> program_types.TransactionProgram(Nil) {
   transaction_program.sequence([
     analytics_effect.insert_metrics_pageview_day_tx(day),
     analytics_effect.insert_metrics_product_event_day_tx(day),
@@ -58,10 +54,7 @@ fn calendar_date(
   timestamp.to_calendar(ts, calendar.utc_offset)
 }
 
-fn add_days(
-  day: calendar.Date,
-  days: Int,
-) -> calendar.Date {
+fn add_days(day: calendar.Date, days: Int) -> calendar.Date {
   let midnight =
     calendar.TimeOfDay(hours: 0, minutes: 0, seconds: 0, nanoseconds: 0)
   let #(next_day, _) =

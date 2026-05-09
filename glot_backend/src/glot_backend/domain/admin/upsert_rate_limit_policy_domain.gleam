@@ -50,9 +50,7 @@ fn validate_request(
 ) -> program_types.Program(Nil) {
   case list.is_empty(request.rules) {
     True ->
-      program.fail(error.ValidationError(
-        "rules must contain at least one rule",
-      ))
+      program.fail(error.ValidationError("rules must contain at least one rule"))
     False -> program.succeed(Nil)
   }
 }
@@ -60,9 +58,10 @@ fn validate_request(
 fn policy_from_request(
   request: rate_limit_config_dto.UpsertRateLimitPolicyRequest,
 ) -> dynamic_config.RateLimitPolicy {
-  dynamic_config.RateLimitPolicy(
-    rules: list.map(request.rules, policy_rule_from_dto_rule),
-  )
+  dynamic_config.RateLimitPolicy(rules: list.map(
+    request.rules,
+    policy_rule_from_dto_rule,
+  ))
 }
 
 fn policy_rule_from_dto_rule(
@@ -83,9 +82,9 @@ fn policy_match_from_dto_match(
       case list.is_empty(account_tiers) {
         True -> dynamic_config.AuthenticatedMatch(account_tiers: option.None)
         False ->
-          dynamic_config.AuthenticatedMatch(
-            account_tiers: option.Some(account_tiers),
-          )
+          dynamic_config.AuthenticatedMatch(account_tiers: option.Some(
+            account_tiers,
+          ))
       }
   }
 }

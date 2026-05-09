@@ -20,9 +20,7 @@ pub fn run(
         next(result),
         program_state.add_effect_measurement(
           state,
-          effect_trace.RunLogEffectName(
-            run_log_algebra.CreateRunLogEffectName,
-          ),
+          effect_trace.RunLogEffectName(run_log_algebra.CreateRunLogEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

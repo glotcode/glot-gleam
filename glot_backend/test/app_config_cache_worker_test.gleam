@@ -16,12 +16,16 @@ pub fn main() -> Nil {
 
 type ControlMessage {
   RegisterFetch(
-    reply: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+    reply: process.Subject(
+      Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    ),
   )
   TakeFetch(
     reply: process.Subject(
       option.Option(
-        process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+        process.Subject(
+          Result(dynamic_config.DynamicConfig, error.DbQueryError),
+        ),
       ),
     ),
   )
@@ -127,11 +131,12 @@ fn start_worker(
       now_ns: fn() { process.call(control_subject, 100, GetNow) },
     )
 
-  let assert Ok(_) = app_config_cache_worker.start_with_handlers(
-    worker_name,
-    server_mode_subject,
-    handlers,
-  )
+  let assert Ok(_) =
+    app_config_cache_worker.start_with_handlers(
+      worker_name,
+      server_mode_subject,
+      handlers,
+    )
   process.named_subject(worker_name)
 }
 
@@ -165,13 +170,15 @@ fn control_loop(
         ),
       )
     TakeFetch(reply) -> {
-      let #(maybe_fetch, pending_fetches) =
-        case state.pending_fetches {
-          [first, ..rest] -> #(option.Some(first), rest)
-          [] -> #(option.None, [])
-        }
+      let #(maybe_fetch, pending_fetches) = case state.pending_fetches {
+        [first, ..rest] -> #(option.Some(first), rest)
+        [] -> #(option.None, [])
+      }
       process.send(reply, maybe_fetch)
-      control_loop(subject, ControlState(..state, pending_fetches: pending_fetches))
+      control_loop(
+        subject,
+        ControlState(..state, pending_fetches: pending_fetches),
+      )
     }
     GetFetchCount(reply) -> {
       process.send(reply, state.fetch_count)
@@ -188,7 +195,9 @@ fn control_loop(
 
 fn request_config(
   worker_subject: process.Subject(app_config_cache_worker.Message),
-  result_subject: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+  result_subject: process.Subject(
+    Result(dynamic_config.DynamicConfig, error.DbQueryError),
+  ),
 ) -> Nil {
   let _ =
     process.spawn_unlinked(fn() {
@@ -251,7 +260,9 @@ fn wait_for_config(
 }
 
 fn expect_result(
-  result_subject: process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+  result_subject: process.Subject(
+    Result(dynamic_config.DynamicConfig, error.DbQueryError),
+  ),
 ) -> Result(dynamic_config.DynamicConfig, error.DbQueryError) {
   process.receive_forever(result_subject)
 }
@@ -284,13 +295,19 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
         dynamic_config.RateLimitPolicy(rules: [
           dynamic_config.RateLimitRule(
             match: dynamic_config.AnonymousMatch,
-            limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 2)],
+            limits: [
+              rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 2),
+            ],
           ),
           dynamic_config.RateLimitRule(
-            match: dynamic_config.AuthenticatedMatch(account_tiers: option.Some([
-              account_model.FreeTier,
-            ])),
-            limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 5)],
+            match: dynamic_config.AuthenticatedMatch(
+              account_tiers: option.Some([
+                account_model.FreeTier,
+              ]),
+            ),
+            limits: [
+              rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 5),
+            ],
           ),
         ]),
       ),
@@ -326,7 +343,9 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
         dynamic_config.RateLimitPolicy(rules: [
           dynamic_config.RateLimitRule(
             match: dynamic_config.AuthenticatedMatch(account_tiers: option.None),
-            limits: [rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9)],
+            limits: [
+              rate_limit.RateLimit(unit: rate_limit.Minute, max_requests: 9),
+            ],
           ),
         ]),
       ),

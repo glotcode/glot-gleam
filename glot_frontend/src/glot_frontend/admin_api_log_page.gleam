@@ -42,14 +42,13 @@ pub fn init(request_id: uuid.Uuid) -> #(Model, Effect(Msg)) {
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
   case model.status {
-    NotLoaded ->
-      #(
-        Model(..model, status: Loading),
-        api.get_admin_api_log(
-          api_log_dto.GetApiLogRequest(request_id: model.request_id),
-          LogLoaded,
-        ),
-      )
+    NotLoaded -> #(
+      Model(..model, status: Loading),
+      api.get_admin_api_log(
+        api_log_dto.GetApiLogRequest(request_id: model.request_id),
+        LogLoaded,
+      ),
+    )
     Loading | Ready | LoadError(_) -> #(model, effect.none())
   }
 }
@@ -87,15 +86,15 @@ pub fn view(model: Model) -> Element(Msg) {
                 html.text("API log detail"),
               ]),
               html.p([attribute.class("admin-page__status")], [
-                html.text(
-                  "Inspect the API log captured for one request.",
-                ),
+                html.text("Inspect the API log captured for one request."),
               ]),
             ]),
             html.div([attribute.class("admin-page__policy-actions")], [
               html.a(
                 [
-                  attribute.class("admin-page__button admin-page__button--secondary"),
+                  attribute.class(
+                    "admin-page__button admin-page__button--secondary",
+                  ),
                   route.href(route.AdminApiLogs),
                 ],
                 [html.text("Back to API logs")],
@@ -137,11 +136,22 @@ fn detail_view(model: Model) -> Element(Msg) {
       ])
     option.Some(log), _ ->
       html.div([attribute.class("admin-job-page__content")], [
-        html.div([attribute.class("admin-job-page__summary-grid admin-request-log-page__summary-grid")], [
-          summary_card("Request ID", uuid.to_string(log.request_id), "Primary identifier"),
-          summary_card("Created at", format_timestamp(log.created_at), "UTC"),
-          summary_card("Action", log.log.action, "Captured API request"),
-        ]),
+        html.div(
+          [
+            attribute.class(
+              "admin-job-page__summary-grid admin-request-log-page__summary-grid",
+            ),
+          ],
+          [
+            summary_card(
+              "Request ID",
+              uuid.to_string(log.request_id),
+              "Primary identifier",
+            ),
+            summary_card("Created at", format_timestamp(log.created_at), "UTC"),
+            summary_card("Action", log.log.action, "Captured API request"),
+          ],
+        ),
         section_view(
           "API log",
           "Request-handling metadata and raw API log payloads.",
@@ -166,7 +176,9 @@ fn section_view(
     case content {
       option.Some(content) -> content
       option.None ->
-        html.div([attribute.class("admin-page__empty")], [html.text(empty_message)])
+        html.div([attribute.class("admin-page__empty")], [
+          html.text(empty_message),
+        ])
     },
   ])
 }
@@ -190,7 +202,9 @@ fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
     [attribute.class("admin-page__policy admin-job-page__summary-card")],
     [
       html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.strong([attribute.class("admin-job-page__summary-value")], [html.text(value)]),
+      html.strong([attribute.class("admin-job-page__summary-value")], [
+        html.text(value),
+      ]),
       html.span([attribute.class("admin-job-page__meta")], [html.text(meta)]),
     ],
   )
@@ -199,7 +213,9 @@ fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
 fn detail_item(label: String, value: String) -> Element(Msg) {
   html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
     html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.span([attribute.class("admin-job-page__detail-value")], [html.text(value)]),
+    html.span([attribute.class("admin-job-page__detail-value")], [
+      html.text(value),
+    ]),
   ])
 }
 

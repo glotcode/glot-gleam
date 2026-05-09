@@ -120,9 +120,10 @@ pub fn failed_refresh_keeps_stale_value_test() {
   )
 
   assert language_version_cache_worker.get_language_version(
-    worker_subject,
-    language.Python,
-  ) == Ok(successful_run("Python 3.13"))
+      worker_subject,
+      language.Python,
+    )
+    == Ok(successful_run("Python 3.13"))
 }
 
 fn start_worker(
@@ -148,13 +149,14 @@ fn start_worker(
       supported_languages: fn() { supported_languages },
     )
 
-  let assert Ok(_) = language_version_cache_worker.start_with_handlers(
-    worker_name,
-    test_context().config,
-    process.new_subject(),
-    server_mode_subject,
-    handlers,
-  )
+  let assert Ok(_) =
+    language_version_cache_worker.start_with_handlers(
+      worker_name,
+      test_context().config,
+      process.new_subject(),
+      server_mode_subject,
+      handlers,
+    )
   process.named_subject(worker_name)
 }
 
@@ -188,13 +190,15 @@ fn control_loop(
         ),
       )
     TakeFetch(reply) -> {
-      let #(maybe_fetch, pending_fetches) =
-        case state.pending_fetches {
-          [first, ..rest] -> #(option.Some(first), rest)
-          [] -> #(option.None, [])
-        }
+      let #(maybe_fetch, pending_fetches) = case state.pending_fetches {
+        [first, ..rest] -> #(option.Some(first), rest)
+        [] -> #(option.None, [])
+      }
       process.send(reply, maybe_fetch)
-      control_loop(subject, ControlState(..state, pending_fetches: pending_fetches))
+      control_loop(
+        subject,
+        ControlState(..state, pending_fetches: pending_fetches),
+      )
     }
     GetFetchCount(reply) -> {
       process.send(reply, state.fetch_count)
@@ -229,8 +233,7 @@ fn expect_fetch(
   control_subject: process.Subject(ControlMessage),
   attempts_remaining: Int,
 ) -> process.Subject(Result(run.RunResult, error.RunRequestError)) {
-  let maybe_fetch =
-    process.call(control_subject, 100, TakeFetch)
+  let maybe_fetch = process.call(control_subject, 100, TakeFetch)
 
   case maybe_fetch {
     option.Some(fetch_reply) -> fetch_reply

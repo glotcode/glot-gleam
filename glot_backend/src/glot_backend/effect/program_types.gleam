@@ -1,7 +1,7 @@
-import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/admin_log/admin_log_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
+import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra

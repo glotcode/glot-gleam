@@ -47,9 +47,7 @@ pub fn run(
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 
-  use run_result <- program.and_then(docker_run_effect.run_code(
-    request,
-  ))
+  use run_result <- program.and_then(docker_run_effect.run_code(request))
 
   use _ <- program.and_then(
     basic_effect.info(

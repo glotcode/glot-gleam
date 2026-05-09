@@ -25,9 +25,10 @@ pub fn get_job_log(
   ))
   use log <- program.and_then(
     admin_log_effect.get_job_log(request.id)
-    |> program.require(
-      error.NotFoundError("job_log_not_found", "Job log not found"),
-    ),
+    |> program.require(error.NotFoundError(
+      "job_log_not_found",
+      "Job log not found",
+    )),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

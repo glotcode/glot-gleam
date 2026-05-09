@@ -1,12 +1,12 @@
-import glot_backend/effect/app_config/app_config_algebra
-import glot_backend/effect/analytics/analytics_algebra
-import glot_backend/effect/admin_log/admin_log_algebra
-import glot_backend/effect/api_log/api_log_algebra
 import gleam/dynamic
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option
 import gleam/result
+import glot_backend/effect/admin_log/admin_log_algebra
+import glot_backend/effect/analytics/analytics_algebra
+import glot_backend/effect/api_log/api_log_algebra
+import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
@@ -18,8 +18,8 @@ import glot_backend/effect/job_log/job_log_algebra
 import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
-import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/program_types
+import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/user_action/user_action_algebra
@@ -42,10 +42,9 @@ pub fn and_then(
     program_types.Impure(effect) ->
       program_types.Impure(map_effect(effect, fn(value) { and_then(value, f) }))
     program_types.Attempt(program:, on_error:) ->
-      program_types.Attempt(
-        program: and_then(program, f),
-        on_error: fn(err) { and_then(on_error(err), f) },
-      )
+      program_types.Attempt(program: and_then(program, f), on_error: fn(err) {
+        and_then(on_error(err), f)
+      })
   }
 }
 
@@ -131,9 +130,10 @@ fn map_effect(
     program_types.DockerRunEffect(effect) ->
       program_types.DockerRunEffect(docker_run_algebra.map(effect, f))
     program_types.GetLanguageVersionEffect(effect) ->
-      program_types.GetLanguageVersionEffect(
-        get_language_version_algebra.map(effect, f),
-      )
+      program_types.GetLanguageVersionEffect(get_language_version_algebra.map(
+        effect,
+        f,
+      ))
     program_types.DbEffect(effect) ->
       program_types.DbEffect(map_db_effect(effect, f))
     program_types.TransactionEffect(effect) ->

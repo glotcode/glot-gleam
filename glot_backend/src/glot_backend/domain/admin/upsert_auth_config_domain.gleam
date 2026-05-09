@@ -52,11 +52,16 @@ pub fn request_from_dynamic(
 fn validate_request(
   request: auth_config_dto.UpsertAuthConfigRequest,
 ) -> program_types.Program(Nil) {
-  case list.any([
-    request.login_token_max_age,
-    request.session_token_max_age,
-    request.session_cookie_max_age,
-  ], fn(value) { value <= 0 }) {
+  case
+    list.any(
+      [
+        request.login_token_max_age,
+        request.session_token_max_age,
+        request.session_cookie_max_age,
+      ],
+      fn(value) { value <= 0 },
+    )
+  {
     True ->
       program.fail(error.ValidationError(
         "auth config values must be greater than 0",

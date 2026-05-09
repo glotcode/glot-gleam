@@ -1,5 +1,5 @@
-import glot_core/helpers/timestamp_helpers
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/helpers/timestamp_helpers
 import lustre/effect.{type Effect}
 
 pub fn now() -> Timestamp {

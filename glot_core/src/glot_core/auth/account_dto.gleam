@@ -24,9 +24,7 @@ pub type UpdateAccountRequest {
   UpdateAccountRequest(username: String)
 }
 
-pub fn from_hydrated_user(
-  user: user_model.HydratedUser,
-) -> AccountResponse {
+pub fn from_hydrated_user(user: user_model.HydratedUser) -> AccountResponse {
   AccountResponse(
     id: user.identity.id,
     email: user.identity.email,
@@ -62,16 +60,14 @@ pub fn decoder(is_email: regexp.Regexp) -> decode.Decoder(AccountResponse) {
   )
   use joined_at <- decode.field("joinedAt", timestamp_helpers.decoder())
 
-  decode.success(
-    AccountResponse(
-      id:,
-      email:,
-      username:,
-      delete_scheduled:,
-      delete_scheduled_at:,
-      joined_at:,
-    ),
-  )
+  decode.success(AccountResponse(
+    id:,
+    email:,
+    username:,
+    delete_scheduled:,
+    delete_scheduled_at:,
+    joined_at:,
+  ))
 }
 
 pub fn update_decoder() -> decode.Decoder(UpdateAccountRequest) {

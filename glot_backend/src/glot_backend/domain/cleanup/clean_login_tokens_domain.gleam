@@ -1,7 +1,7 @@
 import glot_backend/context
 import glot_backend/dynamic_config
-import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/app_config/app_config_effect
+import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_core/helpers/timestamp_helpers

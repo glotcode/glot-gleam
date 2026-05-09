@@ -17,11 +17,7 @@ pub type ApiLogSummary {
 }
 
 pub type ApiLogDetail {
-  ApiLogDetail(
-    request_id: uuid.Uuid,
-    created_at: Timestamp,
-    log: ApiLogEntry,
-  )
+  ApiLogDetail(request_id: uuid.Uuid, created_at: Timestamp, log: ApiLogEntry)
 }
 
 pub type ApiLogEntry {

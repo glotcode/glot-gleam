@@ -236,7 +236,10 @@ fn snippets_table(
   ])
 }
 
-fn snippet_row(snippet: snippet_dto.SnippetResponse, now: Timestamp) -> Element(msg) {
+fn snippet_row(
+  snippet: snippet_dto.SnippetResponse,
+  now: Timestamp,
+) -> Element(msg) {
   html.div([attribute.class("snippets-table__row")], [
     snippet_cell_link(
       "snippets-table__cell snippets-table__cell--language",

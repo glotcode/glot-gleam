@@ -21,14 +21,22 @@ pub fn response_decoder() -> decode.Decoder(AuthConfigResponse) {
   use login_token_max_age <- decode.field("loginTokenMaxAge", decode.int)
   use session_token_max_age <- decode.field("sessionTokenMaxAge", decode.int)
   use session_cookie_max_age <- decode.field("sessionCookieMaxAge", decode.int)
-  decode.success(AuthConfigResponse(login_token_max_age:, session_token_max_age:, session_cookie_max_age:))
+  decode.success(AuthConfigResponse(
+    login_token_max_age:,
+    session_token_max_age:,
+    session_cookie_max_age:,
+  ))
 }
 
 pub fn decoder() -> decode.Decoder(UpsertAuthConfigRequest) {
   use login_token_max_age <- decode.field("loginTokenMaxAge", decode.int)
   use session_token_max_age <- decode.field("sessionTokenMaxAge", decode.int)
   use session_cookie_max_age <- decode.field("sessionCookieMaxAge", decode.int)
-  decode.success(UpsertAuthConfigRequest(login_token_max_age:, session_token_max_age:, session_cookie_max_age:))
+  decode.success(UpsertAuthConfigRequest(
+    login_token_max_age:,
+    session_token_max_age:,
+    session_cookie_max_age:,
+  ))
 }
 
 pub fn encode_response(response: AuthConfigResponse) -> json.Json {

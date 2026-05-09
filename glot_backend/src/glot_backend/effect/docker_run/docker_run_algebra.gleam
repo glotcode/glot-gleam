@@ -10,8 +10,7 @@ pub type DockerRunEffect(next) {
 
 pub fn map(effect: DockerRunEffect(a), f: fn(a) -> b) -> DockerRunEffect(b) {
   case effect {
-    RunCode(request, next) ->
-      RunCode(request, fn(value) { f(next(value)) })
+    RunCode(request, next) -> RunCode(request, fn(value) { f(next(value)) })
   }
 }
 

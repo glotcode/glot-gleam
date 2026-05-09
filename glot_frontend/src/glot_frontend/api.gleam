@@ -5,13 +5,14 @@ import gleam/list
 import gleam/option
 import gleam/regexp
 import gleam/result
+import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
-import glot_core/admin/api_log_dto
-import glot_core/admin/job_log_dto
 import glot_core/admin/job_dto
+import glot_core/admin/job_log_dto
+import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/account_dto
@@ -361,6 +362,47 @@ pub fn get_admin_cleanup_config(
     req,
     fn(_) { json.null() },
     cleanup_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_periodic_jobs(
+  to_msg: fn(ApiResponse(periodic_job_dto.ListPeriodicJobsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminPeriodicJobsAction, Nil)
+
+  send_api_request(
+    req,
+    fn(_) { json.null() },
+    periodic_job_dto.list_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_periodic_job(
+  request: periodic_job_dto.GetPeriodicJobRequest,
+  to_msg: fn(ApiResponse(periodic_job_dto.GetPeriodicJobResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminPeriodicJobAction, request)
+
+  send_api_request(
+    req,
+    periodic_job_dto.encode_get_request,
+    periodic_job_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn update_admin_periodic_job(
+  request: periodic_job_dto.UpdatePeriodicJobRequest,
+  to_msg: fn(ApiResponse(periodic_job_dto.UpdatePeriodicJobResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.UpdateAdminPeriodicJobAction, request)
+
+  send_api_request(
+    req,
+    periodic_job_dto.encode_update_request,
+    periodic_job_dto.update_response_decoder(),
     to_msg,
   )
 }

@@ -182,10 +182,10 @@ fn handle_message(state: State, message: Message) -> actor.Next(State, Message) 
 fn enqueue_entry(state: State, entry: PendingEntry) -> State {
   case state.pending_count >= max_buffer_size {
     True ->
-      State(
-        ..state,
-        pending_entries: [entry, ..drop_oldest_entry(state.pending_entries)],
-      )
+      State(..state, pending_entries: [
+        entry,
+        ..drop_oldest_entry(state.pending_entries)
+      ])
     False ->
       State(
         ..state,
@@ -247,7 +247,9 @@ fn flush_entries_for_shutdown(state: State) -> State {
           )
         }
         Error(err) -> {
-          wisp.log_error("Failed to insert log entry batch during shutdown: " <> err)
+          wisp.log_error(
+            "Failed to insert log entry batch during shutdown: " <> err,
+          )
           State(
             ..state,
             pending_entries: [],
@@ -279,18 +281,13 @@ fn split_entries(
   api_entries: List(ApiLogEntry),
   page_entries: List(PageLogEntry),
   pageview_entries: List(PageviewLogEntry),
-) -> #(
-  List(ApiLogEntry),
-  List(PageLogEntry),
-  List(PageviewLogEntry),
-) {
+) -> #(List(ApiLogEntry), List(PageLogEntry), List(PageviewLogEntry)) {
   case entries {
-    [] ->
-      #(
-        list.reverse(api_entries),
-        list.reverse(page_entries),
-        list.reverse(pageview_entries),
-      )
+    [] -> #(
+      list.reverse(api_entries),
+      list.reverse(page_entries),
+      list.reverse(pageview_entries),
+    )
     [PendingApiLogEntry(entry), ..rest] ->
       split_entries(
         rest,
@@ -306,12 +303,7 @@ fn split_entries(
         pageview_entries,
       )
     [PendingPageviewLogEntry(entry), ..rest] ->
-      split_entries(
-        rest,
-        api_entries,
-        page_entries,
-        [entry, ..pageview_entries],
-      )
+      split_entries(rest, api_entries, page_entries, [entry, ..pageview_entries])
   }
 }
 
@@ -324,7 +316,8 @@ fn insert_api_logs(
     _ -> {
       let query =
         sql.insert_api_log(
-          entries: json.array(entries, of: encode_api_log_entry) |> json.to_string,
+          entries: json.array(entries, of: encode_api_log_entry)
+          |> json.to_string,
         )
 
       let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
@@ -346,7 +339,8 @@ fn insert_page_logs(
     _ -> {
       let query =
         sql.insert_page_log(
-          entries: json.array(entries, of: encode_page_log_entry) |> json.to_string,
+          entries: json.array(entries, of: encode_page_log_entry)
+          |> json.to_string,
         )
 
       let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
@@ -369,7 +363,7 @@ fn insert_pageview_logs(
       let query =
         sql.insert_pageview_log(
           entries: json.array(entries, of: encode_pageview_log_entry)
-            |> json.to_string,
+          |> json.to_string,
         )
 
       let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
@@ -489,9 +483,7 @@ fn encode_page_log_entry(entry: PageLogEntry) -> json.Json {
   ])
 }
 
-fn encode_pageview_log_entry(
-  entry: PageviewLogEntry,
-) -> json.Json {
+fn encode_pageview_log_entry(entry: PageviewLogEntry) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(entry.id))),
     #(

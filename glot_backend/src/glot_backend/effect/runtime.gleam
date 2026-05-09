@@ -19,9 +19,7 @@ pub type Runtime {
 
 pub fn new(
   connection: pog.Connection,
-  app_config_cache_subject: process.Subject(
-    app_config_cache_worker.Message,
-  ),
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   language_version_cache_subject: process.Subject(
     language_version_cache_worker.Message,
   ),

@@ -82,6 +82,11 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminRateLimits,
             ),
             link_card(
+              title: "Periodic jobs",
+              description: "Edit scheduler definitions that drive recurring cleanup and infrastructure jobs.",
+              target: route.AdminPeriodicJobs,
+            ),
+            link_card(
               title: "Jobs",
               description: "Inspect the execution queue and iterate on the admin jobs workflow.",
               target: route.AdminJobs,

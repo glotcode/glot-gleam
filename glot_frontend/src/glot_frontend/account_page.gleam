@@ -116,9 +116,10 @@ pub fn update(
           Model(
             ..model,
             username: username,
-            status: UsernameError(
-              result.unwrap_error(validation, "Invalid username."),
-            ),
+            status: UsernameError(result.unwrap_error(
+              validation,
+              "Invalid username.",
+            )),
           ),
           effect.none(),
           app_event.NoAppEvent,
@@ -414,8 +415,12 @@ fn status_view(status: Status) -> Element(Msg) {
           html.text(message),
         ],
       )
-    LoggingOut | SchedulingDelete | CancelingDelete | LoadError(_)
-    | DeleteError(_) | LogoutError(_) -> html.text("")
+    LoggingOut
+    | SchedulingDelete
+    | CancelingDelete
+    | LoadError(_)
+    | DeleteError(_)
+    | LogoutError(_) -> html.text("")
   }
 }
 
@@ -476,8 +481,14 @@ fn delete_status_view(status: Status) -> Element(Msg) {
           html.text(message),
         ],
       )
-    Loading | Idle | Saving | LoggingOut | Saved | LoadError(_)
-    | UsernameError(_) | LogoutError(_) -> html.text("")
+    Loading
+    | Idle
+    | Saving
+    | LoggingOut
+    | Saved
+    | LoadError(_)
+    | UsernameError(_)
+    | LogoutError(_) -> html.text("")
   }
 }
 
@@ -526,8 +537,15 @@ fn logout_status_view(status: Status) -> Element(Msg) {
           html.text(message),
         ],
       )
-    Loading | Idle | Saving | SchedulingDelete | CancelingDelete | Saved
-    | LoadError(_) | UsernameError(_) | DeleteError(_) -> html.text("")
+    Loading
+    | Idle
+    | Saving
+    | SchedulingDelete
+    | CancelingDelete
+    | Saved
+    | LoadError(_)
+    | UsernameError(_)
+    | DeleteError(_) -> html.text("")
   }
 }
 
@@ -560,7 +578,12 @@ fn delete_button_text(status: Status, delete_scheduled: Bool) -> String {
 fn is_busy(status: Status) -> Bool {
   case status {
     Saving | LoggingOut | SchedulingDelete | CancelingDelete -> True
-    Loading | Idle | Saved | LoadError(_) | UsernameError(_) | DeleteError(_)
+    Loading
+    | Idle
+    | Saved
+    | LoadError(_)
+    | UsernameError(_)
+    | DeleteError(_)
     | LogoutError(_) -> False
   }
 }

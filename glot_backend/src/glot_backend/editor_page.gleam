@@ -11,7 +11,9 @@ pub fn head_children(view_model: editor.ViewModel) -> List(Element(Nil)) {
   editor.head_children(view_model)
 }
 
-pub fn app_attributes(view_model: editor.ViewModel) -> List(attribute.Attribute(Nil)) {
+pub fn app_attributes(
+  view_model: editor.ViewModel,
+) -> List(attribute.Attribute(Nil)) {
   [
     attribute.attribute("data-ssr", editor.encode(view_model) |> json.to_string),
   ]

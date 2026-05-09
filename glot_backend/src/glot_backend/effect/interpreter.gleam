@@ -1,6 +1,6 @@
-import glot_backend/effect/app_config/app_config_interpreter
 import gleam/list
 import glot_backend/context
+import glot_backend/effect/app_config/app_config_interpreter
 import glot_backend/effect/basic/basic_interpreter
 import glot_backend/effect/db_interpreter
 import glot_backend/effect/docker_run/docker_run_interpreter
@@ -41,11 +41,13 @@ pub fn run_with_state(
   case effect {
     program_types.Pure(value) -> #(Ok(value), state)
     program_types.Fail(error) -> #(Error(error), state)
-    program_types.Impure(effect) -> run_effect(effect, runtime, ctx, state, continue)
+    program_types.Impure(effect) ->
+      run_effect(effect, runtime, ctx, state, continue)
     program_types.Attempt(program:, on_error:) ->
       case run_with_state(program, runtime, ctx, state) {
         #(Ok(value), next_state) -> #(Ok(value), next_state)
-        #(Error(err), next_state) -> run_with_state(on_error(err), runtime, ctx, next_state)
+        #(Error(err), next_state) ->
+          run_with_state(on_error(err), runtime, ctx, next_state)
       }
   }
 }

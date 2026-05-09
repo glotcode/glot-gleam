@@ -1,6 +1,6 @@
 import gleam/dynamic
-import gleam/string
 import gleam/option
+import gleam/string
 import glot_backend/context
 import glot_backend/domain/shared/admin_authorization_domain
 import glot_backend/domain/shared/api_action_policy_domain
@@ -51,8 +51,7 @@ fn validate_request(
   request: docker_run_config_dto.UpsertDockerRunConfigRequest,
 ) -> program_types.Program(Nil) {
   case string.trim(request.base_url), string.trim(request.access_token) {
-    "", _ ->
-      program.fail(error.ValidationError("baseUrl must not be empty"))
+    "", _ -> program.fail(error.ValidationError("baseUrl must not be empty"))
     _, "" ->
       program.fail(error.ValidationError("accessToken must not be empty"))
     _, _ -> program.succeed(Nil)

@@ -92,11 +92,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case filter == model.error_filter {
         True -> #(model, effect.none())
         False ->
-          load_initial(Model(
-            ..model,
-            error_filter: filter,
-            request_id_error: option.None,
-          ))
+          load_initial(
+            Model(..model, error_filter: filter, request_id_error: option.None),
+          )
       }
 
     RequestIdFilterChanged(value) -> #(
@@ -107,11 +105,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     ApplyFilters ->
       case parse_uuid_filter(model.request_id_filter, "Request ID") {
         Ok(request_id) ->
-          load_initial(Model(
-            ..model,
-            applied_request_id_filter: request_id,
-            request_id_error: option.None,
-          ))
+          load_initial(
+            Model(
+              ..model,
+              applied_request_id_filter: request_id,
+              request_id_error: option.None,
+            ),
+          )
         Error(message) -> #(
           Model(
             ..model,
@@ -179,7 +179,11 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               ]),
             ]),
             html.div(
-              [attribute.class("admin-page__policy admin-request-logs-page__filters")],
+              [
+                attribute.class(
+                  "admin-page__policy admin-request-logs-page__filters",
+                ),
+              ],
               [
                 html.div([attribute.class("admin-page__field-grid")], [
                   text_input(
@@ -189,33 +193,36 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
                     on_input: RequestIdFilterChanged,
                   ),
                 ]),
-                html.div([attribute.class("admin-request-logs-page__filter-row")], [
-                  filter_group(title: "Error", chips: [
-                    filter_chip(
-                      "All",
-                      model.error_filter == api_log_dto.AllApiLogs,
-                      ErrorFilterSelected(api_log_dto.AllApiLogs),
-                    ),
-                    filter_chip(
-                      "Errors only",
-                      model.error_filter
-                      == api_log_dto.OnlyApiLogsWithErrors,
-                      ErrorFilterSelected(
-                        api_log_dto.OnlyApiLogsWithErrors,
+                html.div(
+                  [attribute.class("admin-request-logs-page__filter-row")],
+                  [
+                    filter_group(title: "Error", chips: [
+                      filter_chip(
+                        "All",
+                        model.error_filter == api_log_dto.AllApiLogs,
+                        ErrorFilterSelected(api_log_dto.AllApiLogs),
                       ),
-                    ),
-                  ]),
-                  html.div([attribute.class("admin-request-logs-page__apply")], [
-                    html.button(
+                      filter_chip(
+                        "Errors only",
+                        model.error_filter == api_log_dto.OnlyApiLogsWithErrors,
+                        ErrorFilterSelected(api_log_dto.OnlyApiLogsWithErrors),
+                      ),
+                    ]),
+                    html.div(
+                      [attribute.class("admin-request-logs-page__apply")],
                       [
-                        attribute.class("admin-page__button"),
-                        attribute.attribute("type", "button"),
-                        event.on_click(ApplyFilters),
+                        html.button(
+                          [
+                            attribute.class("admin-page__button"),
+                            attribute.attribute("type", "button"),
+                            event.on_click(ApplyFilters),
+                          ],
+                          [html.text("Apply")],
+                        ),
                       ],
-                      [html.text("Apply")],
                     ),
-                  ]),
-                ]),
+                  ],
+                ),
               ],
             ),
           ]),
@@ -288,22 +295,22 @@ fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
       ])
 
     _, _ ->
-      html.div(
-        [attribute.class("jobs-table admin-request-logs-page__table")],
-        [
-          html.div([attribute.class("jobs-table__head admin-request-logs-page__head")], [
+      html.div([attribute.class("jobs-table admin-request-logs-page__table")], [
+        html.div(
+          [attribute.class("jobs-table__head admin-request-logs-page__head")],
+          [
             table_heading("Request ID"),
             table_heading("When"),
             table_heading("Action"),
             table_heading("Duration"),
             table_heading("Error"),
             table_heading("Open"),
-          ]),
-          html.div([attribute.class("jobs-table__body")], {
-            rows |> list.map(fn(log) { log_row(log, now) })
-          }),
-        ],
-      )
+          ],
+        ),
+        html.div([attribute.class("jobs-table__body")], {
+          rows |> list.map(fn(log) { log_row(log, now) })
+        }),
+      ])
   }
 }
 
@@ -385,12 +392,10 @@ fn log_row(
             route.href(route.AdminApiLog(log.request_id)),
           ],
           [
-            html.text(
-              string_helpers.truncate_stem_middle(
-                uuid.to_string(log.request_id),
-                18,
-              ),
-            ),
+            html.text(string_helpers.truncate_stem_middle(
+              uuid.to_string(log.request_id),
+              18,
+            )),
           ],
         ),
       ]),
@@ -472,8 +477,7 @@ fn request_id_help(model: Model) -> String {
     option.Some(message) -> message
     option.None ->
       case model.applied_request_id_filter {
-        option.Some(request_id) ->
-          "Filtering by " <> uuid.to_string(request_id)
+        option.Some(request_id) -> "Filtering by " <> uuid.to_string(request_id)
         option.None -> "Leave blank to include all API request IDs."
       }
   }
@@ -495,7 +499,9 @@ fn parse_uuid_filter(
   }
 }
 
-fn empty_page() -> pagination_model.CursorPage(api_log_dto.ApiLogSummaryResponse) {
+fn empty_page() -> pagination_model.CursorPage(
+  api_log_dto.ApiLogSummaryResponse,
+) {
   pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
 }
 

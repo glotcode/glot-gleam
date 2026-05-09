@@ -36,37 +36,28 @@ pub type AnalyticsEffect(next) {
   )
 }
 
-pub fn map(
-  effect: AnalyticsEffect(a),
-  f: fn(a) -> b,
-) -> AnalyticsEffect(b) {
+pub fn map(effect: AnalyticsEffect(a), f: fn(a) -> b) -> AnalyticsEffect(b) {
   case effect {
     GetMaxCompletedMetricsDay(next:) ->
       GetMaxCompletedMetricsDay(next: fn(value) { f(next(value)) })
     GetFirstMetricsSourceDay(before:, next:) ->
-      GetFirstMetricsSourceDay(
-        before: before,
-        next: fn(value) { f(next(value)) },
-      )
+      GetFirstMetricsSourceDay(before: before, next: fn(value) {
+        f(next(value))
+      })
     InsertMetricsPageviewDay(day:, next:) ->
       InsertMetricsPageviewDay(day: day, next: fn(value) { f(next(value)) })
     InsertMetricsProductEventDay(day:, next:) ->
-      InsertMetricsProductEventDay(
-        day: day,
-        next: fn(value) { f(next(value)) },
-      )
+      InsertMetricsProductEventDay(day: day, next: fn(value) { f(next(value)) })
     InsertMetricsRunDay(day:, next:) ->
       InsertMetricsRunDay(day: day, next: fn(value) { f(next(value)) })
     InsertMetricsReliabilityPageDay(day:, next:) ->
-      InsertMetricsReliabilityPageDay(
-        day: day,
-        next: fn(value) { f(next(value)) },
-      )
+      InsertMetricsReliabilityPageDay(day: day, next: fn(value) {
+        f(next(value))
+      })
     InsertMetricsReliabilityApiDay(day:, next:) ->
-      InsertMetricsReliabilityApiDay(
-        day: day,
-        next: fn(value) { f(next(value)) },
-      )
+      InsertMetricsReliabilityApiDay(day: day, next: fn(value) {
+        f(next(value))
+      })
     InsertMetricsCompletedDay(day:, next:) ->
       InsertMetricsCompletedDay(day: day, next: fn(value) { f(next(value)) })
   }
