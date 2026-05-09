@@ -1,10 +1,13 @@
 import gleam/int
+import gleam/list
 import gleam/option
 import gleam/result
 import gleam/time/calendar
 import gleam/time/timestamp
+import glot_core/admin/job_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/helpers/timestamp_helpers
+import glot_core/pagination_model
 import glot_core/route
 import glot_frontend/api
 import glot_frontend/local_datetime
@@ -20,6 +23,8 @@ pub type Model {
     id: uuid.Uuid,
     periodic_job: option.Option(PeriodicJobEditor),
     status: Status,
+    recent_jobs: List(job_dto.JobResponse),
+    jobs_status: Status,
   )
 }
 
@@ -78,22 +83,55 @@ pub type Msg {
   ResetClicked
   SaveClicked
   SaveFinished(api.ApiResponse(periodic_job_dto.UpdatePeriodicJobResponse))
+  RecentJobsLoaded(api.ApiResponse(job_dto.ListJobsResponse))
 }
 
 pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
-  #(Model(id: id, periodic_job: option.None, status: NotLoaded), effect.none())
+  #(
+    Model(
+      id: id,
+      periodic_job: option.None,
+      status: NotLoaded,
+      recent_jobs: [],
+      jobs_status: NotLoaded,
+    ),
+    effect.none(),
+  )
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> #(
-      Model(..model, status: Loading),
-      api.get_admin_periodic_job(
-        periodic_job_dto.GetPeriodicJobRequest(id: model.id),
-        PeriodicJobLoaded,
+  let should_load_job = model.status == NotLoaded
+  let should_load_recent_jobs = model.jobs_status == NotLoaded
+
+  case should_load_job || should_load_recent_jobs {
+    True -> #(
+      Model(
+        ..model,
+        status: case should_load_job {
+          True -> Loading
+          False -> model.status
+        },
+        jobs_status: case should_load_recent_jobs {
+          True -> Loading
+          False -> model.jobs_status
+        },
       ),
+      effect.batch([
+        case should_load_job {
+          True ->
+            api.get_admin_periodic_job(
+              periodic_job_dto.GetPeriodicJobRequest(id: model.id),
+              PeriodicJobLoaded,
+            )
+          False -> effect.none()
+        },
+        case should_load_recent_jobs {
+          True -> load_recent_jobs(model.id)
+          False -> effect.none()
+        },
+      ]),
     )
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
+    False -> #(model, effect.none())
   }
 }
 
@@ -234,6 +272,29 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
       }
+
+    RecentJobsLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> #(
+          Model(
+            ..model,
+            recent_jobs: pagination_model.items(response.page),
+            jobs_status: Ready,
+          ),
+          effect.none(),
+        )
+        api.ApiFailure(error) -> #(
+          Model(..model, jobs_status: LoadError(error.message)),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            jobs_status: LoadError("Could not load recent jobs."),
+          ),
+          effect.none(),
+        )
+      }
   }
 }
 
@@ -282,11 +343,12 @@ fn detail_view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
       html.div([attribute.class("admin-page__empty")], [
         html.text("This periodic job could not be loaded."),
       ])
-    option.Some(editor), _ -> periodic_job_view(editor, now)
+    option.Some(editor), _ -> periodic_job_view(model, editor, now)
   }
 }
 
 fn periodic_job_view(
+  model: Model,
   editor: PeriodicJobEditor,
   now: timestamp.Timestamp,
 ) -> Element(Msg) {
@@ -343,6 +405,7 @@ fn periodic_job_view(
         ),
       ]),
     ]),
+    recent_jobs_group(model, now),
     html.div([attribute.class("admin-page__group")], [
       html.div([attribute.class("admin-page__group-header")], [
         html.h3([attribute.class("admin-page__group-title")], [
@@ -432,6 +495,155 @@ fn periodic_job_view(
       ]),
     ]),
   ])
+}
+
+fn load_recent_jobs(id: uuid.Uuid) -> Effect(Msg) {
+  api.get_admin_jobs(
+    job_dto.ListJobsRequest(
+      pagination: pagination_model.InitialPage(limit: 10),
+      status_filter: job_dto.AllStatuses,
+      job_type_filter: job_dto.AllJobTypes,
+      periodic_job_id: option.Some(id),
+    ),
+    RecentJobsLoaded,
+  )
+}
+
+fn recent_jobs_group(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
+  let count_text =
+    int.to_string(list.length(model.recent_jobs))
+    <> " recent jobs shown for this periodic definition."
+
+  html.div([attribute.class("admin-page__group")], [
+    html.div([attribute.class("admin-page__group-header")], [
+      html.h3([attribute.class("admin-page__group-title")], [
+        html.text("Recent jobs"),
+      ]),
+      html.p([attribute.class("admin-page__group-copy")], [
+        html.text(count_text),
+      ]),
+    ]),
+    recent_jobs_status_view(model.jobs_status),
+    recent_jobs_table(model.recent_jobs, model.jobs_status, now),
+  ])
+}
+
+fn recent_jobs_status_view(status: Status) -> Element(Msg) {
+  case status {
+    NotLoaded | Ready -> html.div([], [])
+    Loading ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Loading recent jobs..."),
+      ])
+    LoadError(message) ->
+      html.p([attribute.class("admin-page__status admin-page__status--error")], [
+        html.text(message),
+      ])
+  }
+}
+
+fn recent_jobs_table(
+  recent_jobs: List(job_dto.JobResponse),
+  status: Status,
+  now: timestamp.Timestamp,
+) -> Element(Msg) {
+  case recent_jobs, status {
+    [], Loading ->
+      html.div([attribute.class("admin-page__empty")], [
+        html.text("Loading recent jobs..."),
+      ])
+    [], _ ->
+      html.div([attribute.class("admin-page__empty")], [
+        html.text("No jobs were found for this periodic definition."),
+      ])
+    _, _ ->
+      html.div([attribute.class("jobs-table admin-job-logs-page__table")], [
+        html.div([attribute.class("jobs-table__head admin-job-logs-page__head")], [
+          table_heading("Job"),
+          table_heading("Status"),
+          table_heading("Schedule"),
+          table_heading("Attempts"),
+          table_heading("Open"),
+        ]),
+        html.div([attribute.class("jobs-table__body")], {
+          recent_jobs |> list.map(fn(job) { recent_job_row(job, now) })
+        }),
+      ])
+  }
+}
+
+fn recent_job_row(
+  job: job_dto.JobResponse,
+  now: timestamp.Timestamp,
+) -> Element(Msg) {
+  html.div([attribute.class("jobs-table__row")], [
+    html.div([attribute.class("jobs-table__cell jobs-table__cell--job")], [
+      cell_label("Job"),
+      html.span([attribute.class("jobs-table__primary")], [
+        html.text(job.job_type),
+      ]),
+    ]),
+    html.div([attribute.class("jobs-table__cell")], [
+      cell_label("Status"),
+      html.span([attribute.class(recent_job_status_badge_class(job))], [
+        html.text(recent_job_status_text(job)),
+      ]),
+    ]),
+    html.div([attribute.class("jobs-table__cell")], [
+      cell_label("Schedule"),
+      html.span([attribute.class("jobs-table__primary")], [
+        html.text(timestamp_helpers.relative_label(job.run_at, now)),
+      ]),
+    ]),
+    html.div([attribute.class("jobs-table__cell")], [
+      cell_label("Attempts"),
+      html.span([attribute.class("jobs-table__primary")], [
+        html.text(
+          int.to_string(job.attempts) <> " / " <> int.to_string(job.max_attempts),
+        ),
+      ]),
+    ]),
+    html.div([attribute.class("jobs-table__cell jobs-table__cell--actions")], [
+      cell_label("Open"),
+      html.a(
+        [
+          attribute.class("admin-page__button admin-page__button--secondary"),
+          route.href(route.AdminJob(job.id)),
+        ],
+        [html.text("Open")],
+      ),
+    ]),
+  ])
+}
+
+fn table_heading(text: String) -> Element(Msg) {
+  html.span([attribute.class("jobs-table__heading")], [html.text(text)])
+}
+
+fn cell_label(text: String) -> Element(Msg) {
+  html.span([attribute.class("jobs-table__cell-label")], [html.text(text)])
+}
+
+fn recent_job_status_badge_class(job: job_dto.JobResponse) -> String {
+  case job.status, job.overdue {
+    "failed", _ -> "jobs-table__badge jobs-table__badge--failed"
+    "running", _ -> "jobs-table__badge jobs-table__badge--running"
+    "pending", True -> "jobs-table__badge jobs-table__badge--overdue"
+    "pending", False -> "jobs-table__badge jobs-table__badge--pending"
+    "done", _ -> "jobs-table__badge jobs-table__badge--done"
+    _, _ -> "jobs-table__badge"
+  }
+}
+
+fn recent_job_status_text(job: job_dto.JobResponse) -> String {
+  case job.status, job.overdue {
+    "pending", True -> "Pending • overdue"
+    "pending", False -> "Pending"
+    "running", _ -> "Running"
+    "failed", _ -> "Failed"
+    "done", _ -> "Done"
+    value, _ -> value
+  }
 }
 
 fn update_editor_model(

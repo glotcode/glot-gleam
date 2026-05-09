@@ -256,6 +256,7 @@ fn load_page(
         pagination: pagination,
         status_filter: model.status_filter,
         job_type_filter: model.job_type_filter,
+        periodic_job_id: option.None,
       ),
       JobsLoaded,
     ),

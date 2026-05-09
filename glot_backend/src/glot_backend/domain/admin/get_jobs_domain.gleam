@@ -71,6 +71,7 @@ fn request_to_filter(
   job_model.new_list_filter()
   |> job_model.with_statuses(statuses_for_filter(request.status_filter))
   |> job_model.with_job_types(job_types_for_filter(request.job_type_filter))
+  |> job_model.with_periodic_job_id(request.periodic_job_id)
 }
 
 fn statuses_for_filter(filter: job_dto.StatusFilter) -> List(job_model.Status) {

@@ -29,6 +29,7 @@ pub type ListJobsRequest {
     pagination: pagination_model.CursorPagination,
     status_filter: StatusFilter,
     job_type_filter: JobTypeFilter,
+    periodic_job_id: option.Option(uuid.Uuid),
   )
 }
 
@@ -52,10 +53,15 @@ pub fn list_request_decoder() -> decode.Decoder(ListJobsRequest) {
       "jobTypeFilter",
       job_type_filter_decoder(),
     )
+    use periodic_job_id <- decode.field(
+      "periodicJobId",
+      decode.optional(uuid_helpers.decoder()),
+    )
     decode.success(ListJobsRequest(
       pagination:,
       status_filter:,
       job_type_filter:,
+      periodic_job_id:,
     ))
   })
 }
@@ -65,6 +71,7 @@ pub fn encode_list_request(request: ListJobsRequest) -> json.Json {
     list.append(pagination_model.encode_request_fields(request.pagination), [
       #("statusFilter", encode_status_filter(request.status_filter)),
       #("jobTypeFilter", encode_job_type_filter(request.job_type_filter)),
+      #("periodicJobId", json.nullable(request.periodic_job_id, encode_uuid)),
     ]),
   )
 }

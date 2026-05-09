@@ -70,6 +70,10 @@ WHERE (
     OR job_type = ANY(sqlc.arg(job_types)::text[])
   )
   AND (
+    sqlc.narg(periodic_job_id)::uuid IS NULL
+    OR periodic_job_id = sqlc.narg(periodic_job_id)::uuid
+  )
+  AND (
     sqlc.narg(after_id)::uuid IS NULL
     OR id < sqlc.narg(after_id)::uuid
   )
@@ -103,6 +107,10 @@ WHERE (
     OR job_type = ANY(sqlc.arg(job_types)::text[])
   )
   AND (
+    sqlc.narg(periodic_job_id)::uuid IS NULL
+    OR periodic_job_id = sqlc.narg(periodic_job_id)::uuid
+  )
+  AND (
     sqlc.narg(before_id)::uuid IS NULL
     OR id > sqlc.narg(before_id)::uuid
   )
@@ -128,6 +136,10 @@ WHERE (
   AND (
     cardinality(sqlc.arg(job_types)::text[]) = 0
     OR job_type = ANY(sqlc.arg(job_types)::text[])
+  )
+  AND (
+    sqlc.narg(periodic_job_id)::uuid IS NULL
+    OR periodic_job_id = sqlc.narg(periodic_job_id)::uuid
   );
 
 -- name: GetNextPeriodicJob :one

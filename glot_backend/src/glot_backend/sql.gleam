@@ -311,6 +311,7 @@ pub type ListJobsAfter {
 pub fn list_jobs_after(
   statuses statuses: List(String),
   job_types job_types: List(String),
+  periodic_job_id periodic_job_id: Option(BitArray),
   after_id after_id: Option(BitArray),
   page_limit page_limit: Int,
 ) {
@@ -342,15 +343,22 @@ WHERE (
   )
   AND (
     $3::uuid IS NULL
-    OR id < $3::uuid
+    OR periodic_job_id = $3::uuid
+  )
+  AND (
+    $4::uuid IS NULL
+    OR id < $4::uuid
   )
 ORDER BY id DESC
-LIMIT $4"
+LIMIT $5"
   #(
     sql,
     [
       dev.ParamList(list.map(statuses, dev.ParamString)),
       dev.ParamList(list.map(job_types, dev.ParamString)),
+      dev.ParamNullable(
+        option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
+      ),
       dev.ParamNullable(option.map(after_id, fn(v) { dev.ParamBitArray(v) })),
       dev.ParamInt(page_limit),
     ],
@@ -416,6 +424,7 @@ pub type ListJobsBefore {
 pub fn list_jobs_before(
   statuses statuses: List(String),
   job_types job_types: List(String),
+  periodic_job_id periodic_job_id: Option(BitArray),
   before_id before_id: Option(BitArray),
   page_limit page_limit: Int,
 ) {
@@ -447,15 +456,22 @@ WHERE (
   )
   AND (
     $3::uuid IS NULL
-    OR id > $3::uuid
+    OR periodic_job_id = $3::uuid
+  )
+  AND (
+    $4::uuid IS NULL
+    OR id > $4::uuid
   )
 ORDER BY id ASC
-LIMIT $4"
+LIMIT $5"
   #(
     sql,
     [
       dev.ParamList(list.map(statuses, dev.ParamString)),
       dev.ParamList(list.map(job_types, dev.ParamString)),
+      dev.ParamNullable(
+        option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
+      ),
       dev.ParamNullable(option.map(before_id, fn(v) { dev.ParamBitArray(v) })),
       dev.ParamInt(page_limit),
     ],
@@ -513,6 +529,7 @@ pub fn summarize_jobs(
   now now: Timestamp,
   statuses statuses: List(String),
   job_types job_types: List(String),
+  periodic_job_id periodic_job_id: Option(BitArray),
 ) {
   let sql =
     "SELECT
@@ -533,6 +550,10 @@ WHERE (
   AND (
     cardinality($3::text[]) = 0
     OR job_type = ANY($3::text[])
+  )
+  AND (
+    $4::uuid IS NULL
+    OR periodic_job_id = $4::uuid
   )"
   #(
     sql,
@@ -540,6 +561,9 @@ WHERE (
       dev.ParamTimestamp(now),
       dev.ParamList(list.map(statuses, dev.ParamString)),
       dev.ParamList(list.map(job_types, dev.ParamString)),
+      dev.ParamNullable(
+        option.map(periodic_job_id, fn(v) { dev.ParamBitArray(v) }),
+      ),
     ],
     summarize_jobs_decoder(),
   )

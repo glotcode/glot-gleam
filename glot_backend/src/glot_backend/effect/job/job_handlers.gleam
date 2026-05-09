@@ -50,7 +50,7 @@ pub fn list_jobs(
   filter: job_model.ListJobsFilter,
   pagination: pagination_model.CursorPagination,
 ) -> Result(List(job_model.Job), error.DbQueryError) {
-  let #(statuses, job_types) = filter_params(filter)
+  let #(statuses, job_types, periodic_job_id) = filter_params(filter)
 
   case pagination {
     pagination_model.BeforePage(before_id, limit) ->
@@ -61,6 +61,7 @@ pub fn list_jobs(
           sql.list_jobs_before(
             statuses: statuses,
             job_types: job_types,
+            periodic_job_id: periodic_job_id,
             before_id: option.Some(uuid.to_bit_array(before_uuid)),
             page_limit: limit,
           ),
@@ -88,6 +89,7 @@ pub fn list_jobs(
           sql.list_jobs_after(
             statuses: statuses,
             job_types: job_types,
+            periodic_job_id: periodic_job_id,
             after_id: after_uuid |> option.map(uuid.to_bit_array),
             page_limit: limit,
           ),
@@ -108,12 +110,17 @@ pub fn summarize_jobs(
   filter: job_model.ListJobsFilter,
   now: Timestamp,
 ) -> Result(job_model.Summary, error.DbQueryError) {
-  let #(statuses, job_types) = filter_params(filter)
+  let #(statuses, job_types, periodic_job_id) = filter_params(filter)
 
   use returned <- result.try(
     db_helpers.query(
       db,
-      sql.summarize_jobs(statuses: statuses, job_types: job_types, now: now),
+      sql.summarize_jobs(
+        statuses: statuses,
+        job_types: job_types,
+        periodic_job_id: periodic_job_id,
+        now: now,
+      ),
       fn(err) { error.DbQueryError(string.inspect(err)) },
     ),
   )
@@ -326,10 +333,11 @@ fn get_job_from_list_before_row(
 
 fn filter_params(
   filter: job_model.ListJobsFilter,
-) -> #(List(String), List(String)) {
+) -> #(List(String), List(String), option.Option(BitArray)) {
   #(
     list.map(filter.statuses, job_model.status_to_string),
     list.map(filter.job_types, job_model.job_type_to_string),
+    filter.periodic_job_id |> option.map(uuid.to_bit_array),
   )
 }
 
