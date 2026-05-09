@@ -183,11 +183,6 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               html.h2([attribute.class("admin-page__title")], [
                 html.text("Job logs"),
               ]),
-              html.p([attribute.class("admin-page__status")], [
-                html.text(
-                  "Scan retained job log executions separately from queue state so retry-focused debugging stays operationally fast.",
-                ),
-              ]),
             ]),
             html.div([attribute.class("admin-page__policy-actions")], [
               pagination_button(
@@ -255,11 +250,6 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
             html.div([attribute.class("admin-page__group-header")], [
               html.h3([attribute.class("admin-page__group-title")], [
                 html.text("Results"),
-              ]),
-              html.p([attribute.class("admin-page__group-copy")], [
-                html.text(
-                  "This view favors scanability so operators can find retries, long runs, and failures without entering the queue page first.",
-                ),
               ]),
             ]),
             status_view(model),
@@ -425,9 +415,6 @@ fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
             ),
           ],
         ),
-        html.span([attribute.class("jobs-table__meta")], [
-          html.text(uuid.to_string(log.id)),
-        ]),
       ]),
     ]),
     html.div([attribute.class("jobs-table__cell")], [
@@ -438,8 +425,18 @@ fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
     ]),
     html.div([attribute.class("jobs-table__cell")], [
       cell_label("Job ID"),
-      html.span([attribute.class("jobs-table__cell-value")], [
-        html.text(uuid.to_string(log.job_id)),
+      html.div([attribute.class("jobs-table__stack")], [
+        html.a(
+          [
+            attribute.class("jobs-table__primary admin-job-logs-page__link"),
+            route.href(route.AdminJob(log.job_id)),
+          ],
+          [
+            html.text(
+              string_helpers.truncate_stem_middle(uuid.to_string(log.job_id), 18),
+            ),
+          ],
+        ),
       ]),
     ]),
     html.div([attribute.class("jobs-table__cell")], [

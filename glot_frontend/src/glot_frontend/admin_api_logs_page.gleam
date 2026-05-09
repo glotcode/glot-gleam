@@ -159,11 +159,6 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               html.h2([attribute.class("admin-page__title")], [
                 html.text("API logs"),
               ]),
-              html.p([attribute.class("admin-page__status")], [
-                html.text(
-                  "Inspect retained API request logs with explicit filters and server-driven pagination.",
-                ),
-              ]),
             ]),
             html.div([attribute.class("admin-page__policy-actions")], [
               pagination_button(
@@ -228,11 +223,6 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
             html.div([attribute.class("admin-page__group-header")], [
               html.h3([attribute.class("admin-page__group-title")], [
                 html.text("Results"),
-              ]),
-              html.p([attribute.class("admin-page__group-copy")], [
-                html.text(
-                  "Each row keeps API request metadata compact so operators can scan for failures first.",
-                ),
               ]),
             ]),
             status_view(model),
@@ -403,9 +393,6 @@ fn log_row(
             ),
           ],
         ),
-        html.span([attribute.class("jobs-table__meta")], [
-          html.text(uuid.to_string(log.request_id)),
-        ]),
       ]),
     ]),
     html.div([attribute.class("jobs-table__cell")], [
