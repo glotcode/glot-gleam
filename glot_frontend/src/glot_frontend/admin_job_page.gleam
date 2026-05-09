@@ -1,6 +1,8 @@
+import gleam/dynamic/decode
 import gleam/int
 import gleam/list
 import gleam/option
+import gleam/result
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/admin/job_dto
@@ -8,17 +10,22 @@ import glot_core/admin/job_log_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/app_dialog
 import glot_frontend/api
+import glot_frontend/clock
 import glot_frontend/duration_label
+import glot_frontend/local_datetime
 import glot_frontend/string_helpers
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
+import modem
 import youid/uuid
 
 const job_logs_page_limit = 25
+const create_job_dialog_id = "admin-job-page-create-job-dialog"
 
 pub type Model {
   Model(
@@ -27,6 +34,7 @@ pub type Model {
     job_status: Status,
     logs_page: pagination_model.CursorPage(job_log_dto.JobLogResponse),
     logs_status: Status,
+    create_job_editor: option.Option(CreateJobEditor),
   )
 }
 
@@ -37,11 +45,48 @@ pub type Status {
   LoadError(String)
 }
 
+pub type CreateJobEditor {
+  CreateJobEditor(
+    source_job_id: uuid.Uuid,
+    draft: CreateJobDraft,
+    state: CreateJobState,
+  )
+}
+
+pub type CreateJobDraft {
+  CreateJobDraft(
+    periodic_job_id: option.Option(uuid.Uuid),
+    job_type: String,
+    payload: String,
+    max_attempts: String,
+    timeout_seconds: String,
+    run_date: String,
+    run_time: String,
+  )
+}
+
+pub type CreateJobState {
+  CreateJobIdle
+  CreateJobSaving
+  CreateJobError(String)
+  CreateJobSaved(job_dto.JobDetailResponse)
+}
+
 pub type Msg {
   JobLoaded(api.ApiResponse(job_dto.GetJobResponse))
   JobLogsLoaded(api.ApiResponse(job_log_dto.ListJobLogsResponse))
   NextLogsPageClicked
   PreviousLogsPageClicked
+  OpenCreateJobClicked
+  CreateJobDialogClosed
+  CreateJobCancelled
+  CreateJobSubmitted
+  CreateJobFinished(api.ApiResponse(job_dto.GetJobResponse))
+  CreateJobPayloadChanged(String)
+  CreateJobMaxAttemptsChanged(String)
+  CreateJobTimeoutSecondsChanged(String)
+  CreateJobRunDateChanged(String)
+  CreateJobRunTimeChanged(String)
 }
 
 pub fn init(job_id: uuid.Uuid) -> #(Model, Effect(Msg)) {
@@ -52,6 +97,7 @@ pub fn init(job_id: uuid.Uuid) -> #(Model, Effect(Msg)) {
       job_status: NotLoaded,
       logs_page: empty_logs_page(),
       logs_status: NotLoaded,
+      create_job_editor: option.None,
     ),
     effect.none(),
   )
@@ -150,6 +196,137 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         option.None -> #(model, effect.none())
       }
+
+    OpenCreateJobClicked ->
+      case model.job {
+        option.Some(job) -> #(
+          Model(
+            ..model,
+            create_job_editor: option.Some(editor_from_job(job, clock.now())),
+          ),
+          app_dialog.open(create_job_dialog_id),
+        )
+        option.None -> #(model, effect.none())
+      }
+
+    CreateJobDialogClosed ->
+      #(Model(..model, create_job_editor: option.None), effect.none())
+
+    CreateJobCancelled ->
+      #(
+        Model(..model, create_job_editor: option.None),
+        app_dialog.close(create_job_dialog_id),
+      )
+
+    CreateJobSubmitted ->
+      case model.create_job_editor {
+        option.Some(editor) ->
+          case editor_to_request(editor) {
+            Ok(request) -> #(
+              Model(
+                ..model,
+                create_job_editor: option.Some(
+                  CreateJobEditor(..editor, state: CreateJobSaving),
+                ),
+              ),
+              api.create_admin_job(request, CreateJobFinished),
+            )
+            Error(message) -> #(
+              Model(
+                ..model,
+                create_job_editor: option.Some(
+                  CreateJobEditor(..editor, state: CreateJobError(message)),
+                ),
+              ),
+              effect.none(),
+            )
+          }
+        option.None -> #(model, effect.none())
+      }
+
+    CreateJobFinished(result) ->
+      case model.create_job_editor {
+        option.Some(editor) ->
+          case result {
+            api.ApiSuccess(response) -> #(
+              Model(..model, create_job_editor: option.None),
+              effect.batch([
+                app_dialog.close(create_job_dialog_id),
+                navigate_to_job(response.job.id),
+              ]),
+            )
+            api.ApiFailure(error) -> #(
+              Model(
+                ..model,
+                create_job_editor: option.Some(
+                  CreateJobEditor(
+                    ..editor,
+                    state: CreateJobError(error.message),
+                  ),
+                ),
+              ),
+              effect.none(),
+            )
+            api.HttpFailure(_) -> #(
+              Model(
+                ..model,
+                create_job_editor: option.Some(
+                  CreateJobEditor(
+                    ..editor,
+                    state: CreateJobError("Could not create job."),
+                  ),
+                ),
+              ),
+              effect.none(),
+            )
+          }
+        option.None -> #(model, effect.none())
+      }
+
+    CreateJobPayloadChanged(value) ->
+      #(update_create_job_editor(model, fn(editor) {
+          CreateJobEditor(
+            ..editor,
+            draft: CreateJobDraft(..editor.draft, payload: value),
+            state: reset_create_job_state(editor.state),
+          )
+        }), effect.none())
+
+    CreateJobMaxAttemptsChanged(value) ->
+      #(update_create_job_editor(model, fn(editor) {
+          CreateJobEditor(
+            ..editor,
+            draft: CreateJobDraft(..editor.draft, max_attempts: value),
+            state: reset_create_job_state(editor.state),
+          )
+        }), effect.none())
+
+    CreateJobTimeoutSecondsChanged(value) ->
+      #(update_create_job_editor(model, fn(editor) {
+          CreateJobEditor(
+            ..editor,
+            draft: CreateJobDraft(..editor.draft, timeout_seconds: value),
+            state: reset_create_job_state(editor.state),
+          )
+        }), effect.none())
+
+    CreateJobRunDateChanged(value) ->
+      #(update_create_job_editor(model, fn(editor) {
+          CreateJobEditor(
+            ..editor,
+            draft: CreateJobDraft(..editor.draft, run_date: value),
+            state: reset_create_job_state(editor.state),
+          )
+        }), effect.none())
+
+    CreateJobRunTimeChanged(value) ->
+      #(update_create_job_editor(model, fn(editor) {
+          CreateJobEditor(
+            ..editor,
+            draft: CreateJobDraft(..editor.draft, run_time: value),
+            state: reset_create_job_state(editor.state),
+          )
+        }), effect.none())
   }
 }
 
@@ -170,6 +347,15 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
             ]),
           ]),
           html.div([attribute.class("admin-page__policy-actions")], [
+            html.button(
+              [
+                attribute.class("admin-page__button"),
+                attribute.type_("button"),
+                attribute.disabled(option.is_none(model.job)),
+                event.on_click(OpenCreateJobClicked),
+              ],
+              [html.text("Start new job")],
+            ),
             html.a(
               [
                 attribute.class(
@@ -184,6 +370,7 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
         job_status_view(model),
         detail_view(model, now),
       ]),
+      create_job_dialog(model),
     ]),
   ])
 }
@@ -518,6 +705,150 @@ fn code_block(value: String) -> Element(Msg) {
   ])
 }
 
+fn create_job_dialog(model: Model) -> Element(Msg) {
+  html.dialog(
+    [
+      attribute.id(create_job_dialog_id),
+      attribute.class("app-dialog admin-page__dialog"),
+      event.on("close", decode.success(CreateJobDialogClosed)),
+    ],
+    [
+      case model.create_job_editor {
+        option.Some(editor) -> create_job_dialog_form(editor)
+        option.None -> html.div([], [])
+      },
+    ],
+  )
+}
+
+fn create_job_dialog_form(editor: CreateJobEditor) -> Element(Msg) {
+  html.form(
+    [
+      attribute.class("app-dialog__form"),
+      event.on_submit(fn(_) { CreateJobSubmitted }),
+    ],
+    [
+      html.div([attribute.class("app-dialog__section")], [
+        html.div([attribute.class("admin-page__dialog-header")], [
+          html.div([], [
+            html.p([attribute.class("app-dialog__label")], [
+              html.text("Start new job"),
+            ]),
+            html.p([attribute.class("app-dialog__copy")], [
+              html.text(
+                "Seeded from the selected job, but this creates a fresh queued job with the values below.",
+              ),
+            ]),
+          ]),
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class("admin-page__dialog-close"),
+              event.on_click(CreateJobCancelled),
+            ],
+            [html.text("Close")],
+          ),
+        ]),
+        html.div([attribute.class("admin-page__modal-grid")], [
+          detail_item("Source job ID", uuid.to_string(editor.source_job_id)),
+          detail_item("Job type", editor.draft.job_type),
+          detail_item(
+            "Periodic job ID",
+            optional_uuid(editor.draft.periodic_job_id),
+          ),
+        ]),
+        html.div([attribute.class("admin-page__modal-grid")], [
+          text_input(
+            label: "Max attempts",
+            help: "Whole number greater than zero.",
+            input_type: "text",
+            value: editor.draft.max_attempts,
+            on_input: CreateJobMaxAttemptsChanged,
+          ),
+          text_input(
+            label: "Timeout seconds",
+            help: "Whole number greater than zero.",
+            input_type: "text",
+            value: editor.draft.timeout_seconds,
+            on_input: CreateJobTimeoutSecondsChanged,
+          ),
+          text_input(
+            label: "Run date",
+            help: "Local calendar date for when the job should be eligible.",
+            input_type: "date",
+            value: editor.draft.run_date,
+            on_input: CreateJobRunDateChanged,
+          ),
+          text_input(
+            label: "Run time",
+            help: "Local clock time for when the job should be eligible.",
+            input_type: "time",
+            value: editor.draft.run_time,
+            on_input: CreateJobRunTimeChanged,
+          ),
+        ]),
+        textarea_input(
+          label: "Payload",
+          help: "Raw payload string. Leave empty to create the job without a payload.",
+          value: editor.draft.payload,
+          on_input: CreateJobPayloadChanged,
+        ),
+        create_job_status(editor.state),
+      ]),
+      html.div([attribute.class("app-dialog__actions")], [
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class("app-dialog__button app-dialog__button--secondary"),
+            event.on_click(CreateJobCancelled),
+          ],
+          [html.text("Cancel")],
+        ),
+        html.button(
+          [
+            attribute.type_("submit"),
+            attribute.class("app-dialog__button"),
+            attribute.disabled(editor.state == CreateJobSaving),
+          ],
+          [html.text(create_job_submit_text(editor.state))],
+        ),
+      ]),
+    ],
+  )
+}
+
+fn create_job_status(state: CreateJobState) -> Element(Msg) {
+  case state {
+    CreateJobIdle ->
+      html.p([attribute.class("admin-page__status")], [html.text("")])
+    CreateJobSaving ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Creating job..."),
+      ])
+    CreateJobError(message) ->
+      html.p([attribute.class("admin-page__status admin-page__status--error")], [
+        html.text(message),
+      ])
+    CreateJobSaved(job) ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Created new job successfully. "),
+        html.a([route.href(route.AdminJob(job.id))], [html.text("Open new job")]),
+        html.text("."),
+      ])
+  }
+}
+
+fn create_job_submit_text(state: CreateJobState) -> String {
+  case state {
+    CreateJobSaving -> "Starting..."
+    CreateJobIdle | CreateJobError(_) | CreateJobSaved(_) -> "Start job"
+  }
+}
+
+fn navigate_to_job(job_id: uuid.Uuid) -> Effect(Msg) {
+  modem.push(route.to_string(route.AdminJob(job_id)), option.None, option.None)
+}
+
 fn empty_logs_page() -> pagination_model.CursorPage(job_log_dto.JobLogResponse) {
   pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
 }
@@ -527,6 +858,157 @@ fn loading_status(status: Status) -> Status {
     NotLoaded -> Loading
     Loading | Ready | LoadError(_) -> status
   }
+}
+
+fn reset_create_job_state(state: CreateJobState) -> CreateJobState {
+  case state {
+    CreateJobSaving | CreateJobIdle -> CreateJobIdle
+    CreateJobError(_) | CreateJobSaved(_) -> CreateJobIdle
+  }
+}
+
+fn update_create_job_editor(
+  model: Model,
+  update: fn(CreateJobEditor) -> CreateJobEditor,
+) -> Model {
+  case model.create_job_editor {
+    option.Some(editor) ->
+      Model(..model, create_job_editor: option.Some(update(editor)))
+    option.None -> model
+  }
+}
+
+fn editor_from_job(
+  job: job_dto.JobDetailResponse,
+  initial_run_at: Timestamp,
+) -> CreateJobEditor {
+  CreateJobEditor(
+    source_job_id: job.id,
+    draft: CreateJobDraft(
+      periodic_job_id: job.periodic_job_id,
+      job_type: job.job_type,
+      payload: option.unwrap(job.payload, ""),
+      max_attempts: int.to_string(job.max_attempts),
+      timeout_seconds: int.to_string(job.timeout_seconds),
+      run_date: local_datetime.timestamp_to_local_date_input(initial_run_at),
+      run_time: local_datetime.timestamp_to_local_time_input(initial_run_at),
+    ),
+    state: CreateJobIdle,
+  )
+}
+
+
+fn editor_to_request(editor: CreateJobEditor) -> Result(job_dto.CreateJobRequest, String) {
+  use max_attempts <- result.try(parse_positive_int(
+    editor.draft.max_attempts,
+    "Max attempts",
+  ))
+  use timeout_seconds <- result.try(parse_positive_int(
+    editor.draft.timeout_seconds,
+    "Timeout seconds",
+  ))
+  use run_at <- result.try(parse_local_run_at(
+    editor.draft.run_date,
+    editor.draft.run_time,
+  ))
+
+  Ok(job_dto.CreateJobRequest(
+    periodic_job_id: editor.draft.periodic_job_id,
+    job_type: editor.draft.job_type,
+    payload: optional_payload(editor.draft.payload),
+    max_attempts: max_attempts,
+    timeout_seconds: timeout_seconds,
+    run_at: run_at,
+  ))
+}
+
+fn parse_positive_int(value: String, label: String) -> Result(Int, String) {
+  use parsed <- result.try(
+    int.parse(value)
+    |> result.map_error(fn(_) { label <> " must be a whole number." }),
+  )
+
+  case parsed > 0 {
+    True -> Ok(parsed)
+    False -> Error(label <> " must be greater than zero.")
+  }
+}
+
+fn parse_local_run_at(
+  date: String,
+  time: String,
+) -> Result(Timestamp, String) {
+  case date == "" || time == "" {
+    True -> Error("Run date and time are required.")
+    False -> {
+      let milliseconds =
+        local_datetime.local_date_time_to_unix_milliseconds(date, time)
+
+      case milliseconds < 0 {
+        True -> Error("Run date or time is invalid.")
+        False -> Ok(timestamp_helpers.from_unix_milliseconds(milliseconds))
+      }
+    }
+  }
+}
+
+fn optional_payload(value: String) -> option.Option(String) {
+  case value == "" {
+    True -> option.None
+    False -> option.Some(value)
+  }
+}
+
+fn text_input(
+  label label: String,
+  help help: String,
+  input_type input_type: String,
+  value value: String,
+  on_input on_input: fn(String) -> Msg,
+) -> Element(Msg) {
+  html.label([attribute.class("admin-page__field")], [
+    html.span([attribute.class("admin-page__field-label")], [
+      html.text(label),
+    ]),
+    html.input([
+      attribute.type_(input_type),
+      attribute.class("admin-page__input"),
+      attribute.value(value),
+      event.on_input(on_input),
+    ]),
+    html.span([attribute.class("admin-page__field-help")], [
+      html.text(help),
+    ]),
+  ])
+}
+
+fn textarea_input(
+  label label: String,
+  help help: String,
+  value value: String,
+  on_input on_input: fn(String) -> Msg,
+) -> Element(Msg) {
+  html.label(
+    [attribute.class("admin-page__field admin-periodic-jobs-page__payload-field")],
+    [
+      html.span([attribute.class("admin-page__field-label")], [
+        html.text(label),
+      ]),
+      html.textarea(
+        [
+          attribute.class(
+            "admin-page__input admin-periodic-jobs-page__payload-input",
+          ),
+          attribute.rows(6),
+          event.on_input(on_input),
+        ],
+        value,
+      ),
+      html.span([attribute.class("admin-page__field-help")], [
+        html.text(help),
+      ]),
+    ],
+  )
 }
 
 fn can_go_previous_logs(model: Model) -> Bool {
@@ -636,7 +1118,7 @@ fn note_text(job: job_dto.JobDetailResponse) -> String {
         "pending" ->
           case job.overdue {
             True -> "Queued past its scheduled run time."
-            False -> "Queued and waiting for the worker."
+            False -> "Queued"
           }
         "running" -> "Currently being processed."
         "failed" -> "Failed without a stored error message."

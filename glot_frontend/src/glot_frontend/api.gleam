@@ -435,6 +435,20 @@ pub fn get_admin_job(
   )
 }
 
+pub fn create_admin_job(
+  request: job_dto.CreateJobRequest,
+  to_msg: fn(ApiResponse(job_dto.GetJobResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.CreateAdminJobAction, request)
+
+  send_api_request(
+    req,
+    job_dto.encode_create_request,
+    job_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn get_admin_api_logs(
   request: api_log_dto.ListApiLogsRequest,
   to_msg: fn(ApiResponse(api_log_dto.ListApiLogsResponse)) -> msg,

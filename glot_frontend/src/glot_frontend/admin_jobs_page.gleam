@@ -481,7 +481,7 @@ fn note_text(job: job_dto.JobResponse) -> String {
         "pending" ->
           case job.overdue {
             True -> "Queued past its scheduled run time."
-            False -> "Queued and waiting for the worker."
+            False -> "Queued"
           }
         "running" -> "Currently being processed."
         "failed" -> "Failed without a stored error message."

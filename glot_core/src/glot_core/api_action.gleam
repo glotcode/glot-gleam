@@ -31,6 +31,7 @@ pub type ApiAction {
   UpdateAdminPeriodicJobAction
   GetAdminJobsAction
   GetAdminJobAction
+  CreateAdminJobAction
   GetAdminApiLogsAction
   GetAdminApiLogAction
   GetAdminJobLogsAction
@@ -71,6 +72,7 @@ pub fn list() -> List(ApiAction) {
     UpdateAdminPeriodicJobAction,
     GetAdminJobsAction,
     GetAdminJobAction,
+    CreateAdminJobAction,
     GetAdminApiLogsAction,
     GetAdminApiLogAction,
     GetAdminJobLogsAction,
@@ -124,6 +126,7 @@ pub fn to_string(action: ApiAction) -> String {
     UpdateAdminPeriodicJobAction -> "update_admin_periodic_job"
     GetAdminJobsAction -> "get_admin_jobs"
     GetAdminJobAction -> "get_admin_job"
+    CreateAdminJobAction -> "create_admin_job"
     GetAdminApiLogsAction -> "get_admin_api_logs"
     GetAdminApiLogAction -> "get_admin_api_log"
     GetAdminJobLogsAction -> "get_admin_job_logs"
@@ -165,6 +168,7 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "update_admin_periodic_job" -> option.Some(UpdateAdminPeriodicJobAction)
     "get_admin_jobs" -> option.Some(GetAdminJobsAction)
     "get_admin_job" -> option.Some(GetAdminJobAction)
+    "create_admin_job" -> option.Some(CreateAdminJobAction)
     "get_admin_api_logs" -> option.Some(GetAdminApiLogsAction)
     "get_admin_api_log" -> option.Some(GetAdminApiLogAction)
     "get_admin_job_logs" -> option.Some(GetAdminJobLogsAction)

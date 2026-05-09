@@ -897,6 +897,7 @@ fn action_label(action: api_action.ApiAction) -> String {
     api_action.UpdateAdminPeriodicJobAction -> "Save periodic job"
     api_action.GetAdminJobsAction -> "Get admin jobs"
     api_action.GetAdminJobAction -> "Get admin job"
+    api_action.CreateAdminJobAction -> "Create admin job"
     api_action.GetAdminApiLogsAction -> "Get API logs"
     api_action.GetAdminApiLogAction -> "Get API log"
     api_action.GetAdminJobLogsAction -> "Get job logs"

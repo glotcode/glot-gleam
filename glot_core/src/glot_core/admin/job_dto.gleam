@@ -30,6 +30,17 @@ pub type GetJobRequest {
   GetJobRequest(id: uuid.Uuid)
 }
 
+pub type CreateJobRequest {
+  CreateJobRequest(
+    periodic_job_id: option.Option(uuid.Uuid),
+    job_type: String,
+    payload: option.Option(String),
+    max_attempts: Int,
+    timeout_seconds: Int,
+    run_at: timestamp.Timestamp,
+  )
+}
+
 pub fn get_request_decoder() -> decode.Decoder(GetJobRequest) {
   use id <- decode.field("id", uuid_helpers.decoder())
   decode.success(GetJobRequest(id: id))
@@ -37,6 +48,37 @@ pub fn get_request_decoder() -> decode.Decoder(GetJobRequest) {
 
 pub fn encode_get_request(request: GetJobRequest) -> json.Json {
   json.object([#("id", encode_uuid(request.id))])
+}
+
+pub fn create_request_decoder() -> decode.Decoder(CreateJobRequest) {
+  use periodic_job_id <- decode.field(
+    "periodicJobId",
+    decode.optional(uuid_helpers.decoder()),
+  )
+  use job_type <- decode.field("jobType", decode.string)
+  use payload <- decode.field("payload", decode.optional(decode.string))
+  use max_attempts <- decode.field("maxAttempts", decode.int)
+  use timeout_seconds <- decode.field("timeoutSeconds", decode.int)
+  use run_at <- decode.field("runAt", timestamp_helpers.decoder())
+  decode.success(CreateJobRequest(
+    periodic_job_id: periodic_job_id,
+    job_type: job_type,
+    payload: payload,
+    max_attempts: max_attempts,
+    timeout_seconds: timeout_seconds,
+    run_at: run_at,
+  ))
+}
+
+pub fn encode_create_request(request: CreateJobRequest) -> json.Json {
+  json.object([
+    #("periodicJobId", json.nullable(request.periodic_job_id, encode_uuid)),
+    #("jobType", json.string(request.job_type)),
+    #("payload", json.nullable(request.payload, json.string)),
+    #("maxAttempts", json.int(request.max_attempts)),
+    #("timeoutSeconds", json.int(request.timeout_seconds)),
+    #("runAt", timestamp_helpers.encode(request.run_at)),
+  ])
 }
 
 pub fn list_request_decoder() -> decode.Decoder(ListJobsRequest) {

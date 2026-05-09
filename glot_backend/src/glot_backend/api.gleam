@@ -18,6 +18,7 @@ import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/create_job_domain
 import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_job_log_domain
 import glot_backend/domain/admin/get_job_logs_domain
@@ -277,6 +278,13 @@ fn handle_api_request(
         api_request.data,
       ))
       get_job_domain.get_job(ctx, request)
+      |> program.map(AdminJobResponse)
+    }
+    api_action.CreateAdminJobAction -> {
+      use request <- program.and_then(create_job_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      create_job_domain.create_job(ctx, request)
       |> program.map(AdminJobResponse)
     }
     api_action.GetAdminApiLogsAction -> {
