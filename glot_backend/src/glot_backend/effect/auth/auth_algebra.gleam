@@ -1,6 +1,7 @@
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
+import glot_core/pagination_model.{type CursorPagination}
 import glot_core/auth/account_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
@@ -12,6 +13,14 @@ pub type AuthEffect(next) {
   GetUserByEmail(
     email: email_address_model.EmailAddress,
     next: fn(option.Option(user_model.HydratedUser)) -> next,
+  )
+  GetUserById(
+    id: Uuid,
+    next: fn(option.Option(user_model.HydratedUser)) -> next,
+  )
+  ListUsers(
+    pagination: CursorPagination,
+    next: fn(List(user_model.HydratedUser)) -> next,
   )
   ListLoginTokensByEmail(
     email: email_address_model.EmailAddress,
@@ -73,6 +82,10 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
   case effect {
     GetUserByEmail(email:, next:) ->
       GetUserByEmail(email: email, next: fn(value) { f(next(value)) })
+    GetUserById(id:, next:) ->
+      GetUserById(id: id, next: fn(value) { f(next(value)) })
+    ListUsers(pagination:, next:) ->
+      ListUsers(pagination: pagination, next: fn(value) { f(next(value)) })
     ListLoginTokensByEmail(email:, limit:, next:) ->
       ListLoginTokensByEmail(email: email, limit: limit, next: fn(value) {
         f(next(value))
@@ -116,6 +129,8 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
 
 pub type EffectName {
   GetUserByEmailEffectName
+  GetUserByIdEffectName
+  ListUsersEffectName
   ListLoginTokensByEmailEffectName
   GetSessionByTokenEffectName
   CreateUserEffectName
@@ -135,6 +150,8 @@ pub type EffectName {
 pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetUserByEmailEffectName -> "get_user_by_email"
+    GetUserByIdEffectName -> "get_user_by_id"
+    ListUsersEffectName -> "list_users"
     ListLoginTokensByEmailEffectName -> "list_login_tokens_by_email"
     GetSessionByTokenEffectName -> "get_session_by_token"
     CreateUserEffectName -> "create_user"

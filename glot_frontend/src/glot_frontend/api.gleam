@@ -14,6 +14,7 @@ import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
+import glot_core/admin/user_dto
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/account_dto
 import glot_core/auth/login_dto
@@ -445,6 +446,48 @@ pub fn create_admin_job(
     req,
     job_dto.encode_create_request,
     job_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_users(
+  request: user_dto.ListUsersRequest,
+  to_msg: fn(ApiResponse(user_dto.ListUsersResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminUsersAction, request)
+
+  send_api_request(
+    req,
+    user_dto.encode_list_request,
+    user_dto.list_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_user(
+  request: user_dto.GetUserRequest,
+  to_msg: fn(ApiResponse(user_dto.GetUserResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminUserAction, request)
+
+  send_api_request(
+    req,
+    user_dto.encode_get_request,
+    user_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn update_admin_user(
+  request: user_dto.UpdateUserRequest,
+  to_msg: fn(ApiResponse(user_dto.UpdateUserResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.UpdateAdminUserAction, request)
+
+  send_api_request(
+    req,
+    user_dto.encode_update_request,
+    user_dto.update_response_decoder(),
     to_msg,
   )
 }

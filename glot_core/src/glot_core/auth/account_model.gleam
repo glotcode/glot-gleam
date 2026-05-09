@@ -40,6 +40,28 @@ pub fn set_delete_job_id(
   Account(..account, delete_job_id: delete_job_id, updated_at: updated_at)
 }
 
+pub fn change_state(
+  account: Account,
+  account_state: AccountState,
+  account_state_reason: option.Option(String),
+  updated_at: Timestamp,
+) -> Account {
+  Account(
+    ..account,
+    account_state: account_state,
+    account_state_reason: account_state_reason,
+    updated_at: updated_at,
+  )
+}
+
+pub fn change_tier(
+  account: Account,
+  account_tier: AccountTier,
+  updated_at: Timestamp,
+) -> Account {
+  Account(..account, account_tier: account_tier, updated_at: updated_at)
+}
+
 pub fn account_state_to_string(account_state: AccountState) -> String {
   case account_state {
     Active -> "active"

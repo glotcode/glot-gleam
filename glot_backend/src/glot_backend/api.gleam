@@ -26,6 +26,9 @@ import glot_backend/domain/admin/get_jobs_domain
 import glot_backend/domain/admin/get_periodic_job_domain
 import glot_backend/domain/admin/get_periodic_jobs_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
+import glot_backend/domain/admin/get_user_domain
+import glot_backend/domain/admin/get_users_domain
+import glot_backend/domain/admin/update_user_domain
 import glot_backend/domain/admin/update_periodic_job_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_cleanup_config_domain
@@ -67,6 +70,7 @@ import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
+import glot_core/admin/user_dto
 import glot_core/api_action
 import glot_core/auth/account_dto
 import glot_core/auth/account_model
@@ -287,6 +291,27 @@ fn handle_api_request(
       create_job_domain.create_job(ctx, request)
       |> program.map(AdminJobResponse)
     }
+    api_action.GetAdminUsersAction -> {
+      use request <- program.and_then(get_users_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      get_users_domain.get_users(ctx, request)
+      |> program.map(AdminUsersResponse)
+    }
+    api_action.GetAdminUserAction -> {
+      use request <- program.and_then(get_user_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      get_user_domain.get_user(ctx, request)
+      |> program.map(AdminUserDetailResponse)
+    }
+    api_action.UpdateAdminUserAction -> {
+      use request <- program.and_then(update_user_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      update_user_domain.update_user(ctx, request)
+      |> program.map(AdminUserResponse)
+    }
     api_action.GetAdminApiLogsAction -> {
       use request <- program.and_then(get_api_logs_domain.request_from_dynamic(
         api_request.data,
@@ -391,6 +416,9 @@ type ApiResult {
   AdminPeriodicJobResponse(periodic_job_dto.UpdatePeriodicJobResponse)
   AdminJobsResponse(job_dto.ListJobsResponse)
   AdminJobResponse(job_dto.GetJobResponse)
+  AdminUsersResponse(user_dto.ListUsersResponse)
+  AdminUserDetailResponse(user_dto.GetUserResponse)
+  AdminUserResponse(user_dto.UpdateUserResponse)
   AdminApiLogsResponse(api_log_dto.ListApiLogsResponse)
   AdminApiLogResponse(api_log_dto.GetApiLogResponse)
   AdminJobLogsResponse(job_log_dto.ListJobLogsResponse)
@@ -436,6 +464,12 @@ fn api_result_to_response(
       success_response(job_dto.encode_list_response(response))
     AdminJobResponse(response) ->
       success_response(job_dto.encode_get_response(response))
+    AdminUsersResponse(response) ->
+      success_response(user_dto.encode_list_response(response))
+    AdminUserDetailResponse(response) ->
+      success_response(user_dto.encode_get_response(response))
+    AdminUserResponse(response) ->
+      success_response(user_dto.encode_update_response(response))
     AdminApiLogsResponse(response) ->
       success_response(api_log_dto.encode_list_response(response))
     AdminApiLogResponse(response) ->

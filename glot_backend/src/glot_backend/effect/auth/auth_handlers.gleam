@@ -12,6 +12,7 @@ import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
+import glot_core/pagination_model
 import pog
 import youid/uuid
 
@@ -19,6 +20,10 @@ pub type AuthHandlers {
   AuthHandlers(
     get_user_by_email: fn(regexp.Regexp, email_address_model.EmailAddress) ->
       Result(option.Option(user_model.HydratedUser), error.DbQueryError),
+    get_user_by_id: fn(regexp.Regexp, uuid.Uuid) ->
+      Result(option.Option(user_model.HydratedUser), error.DbQueryError),
+    list_users: fn(regexp.Regexp, pagination_model.CursorPagination) ->
+      Result(List(user_model.HydratedUser), error.DbQueryError),
     list_login_tokens_by_email: fn(email_address_model.EmailAddress, Int) ->
       Result(List(login_token_model.LoginToken), error.DbQueryError),
     get_session_by_token: fn(regexp.Regexp, String) ->
@@ -51,6 +56,8 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
     get_user_by_email: fn(is_email, email) {
       get_user_by_email(db, is_email, email)
     },
+    get_user_by_id: fn(is_email, id) { get_user_by_id(db, is_email, id) },
+    list_users: fn(is_email, pagination) { list_users(db, is_email, pagination) },
     list_login_tokens_by_email: fn(email, limit) {
       list_login_tokens_by_email(db, email, limit)
     },
@@ -89,6 +96,61 @@ pub fn get_user_by_email(
     fn(err) { error.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { user_from_rows(is_email, returned.rows) })
+}
+
+pub fn get_user_by_id(
+  db: pog.Connection,
+  is_email: regexp.Regexp,
+  id: uuid.Uuid,
+) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
+  db_helpers.query(db, sql.get_user_by_id(uuid.to_bit_array(id)), fn(err) {
+    error.DbQueryError(string.inspect(err))
+  })
+  |> result.try(fn(returned) { user_by_id_from_rows(is_email, returned.rows) })
+}
+
+pub fn list_users(
+  db: pog.Connection,
+  is_email: regexp.Regexp,
+  pagination: pagination_model.CursorPagination,
+) -> Result(List(user_model.HydratedUser), error.DbQueryError) {
+  let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
+
+  case pagination {
+    pagination_model.InitialPage(limit) ->
+      db_helpers.query(
+        db,
+        sql.list_users_after(after_id: option.None, page_limit: limit),
+        to_error,
+      )
+      |> result.try(fn(returned) {
+        list_users_after_rows(is_email, returned.rows)
+      })
+
+    pagination_model.AfterPage(cursor, limit) -> {
+      use id <- result.try(cursor_to_uuid(cursor))
+      db_helpers.query(
+        db,
+        sql.list_users_after(after_id: option.Some(uuid.to_bit_array(id)), page_limit: limit),
+        to_error,
+      )
+      |> result.try(fn(returned) {
+        list_users_after_rows(is_email, returned.rows)
+      })
+    }
+
+    pagination_model.BeforePage(cursor, limit) -> {
+      use id <- result.try(cursor_to_uuid(cursor))
+      db_helpers.query(
+        db,
+        sql.list_users_before(before_id: option.Some(uuid.to_bit_array(id)), page_limit: limit),
+        to_error,
+      )
+      |> result.try(fn(returned) {
+        list_users_before_rows(is_email, returned.rows)
+      })
+    }
+  }
 }
 
 pub fn list_login_tokens_by_email(
@@ -343,58 +405,206 @@ fn user_from_rows(
   }
 }
 
+fn user_by_id_from_rows(
+  is_email: regexp.Regexp,
+  rows: List(sql.GetUserById),
+) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
+  case rows {
+    [] -> Ok(option.None)
+    [first] -> user_from_get_user_by_id_row(is_email, first) |> result.map(option.Some)
+    _ -> Error(error.DbQueryError("Expected at most one user row"))
+  }
+}
+
 fn user_from_row(
   is_email: regexp.Regexp,
   row: sql.GetUserByEmail,
 ) -> Result(user_model.HydratedUser, error.DbQueryError) {
+  hydrated_user(
+    is_email: is_email,
+    id: row.id,
+    account_id: row.account_id,
+    email: row.email,
+    username: row.username,
+    role: row.role,
+    account_state: row.account_state,
+    account_state_reason: row.account_state_reason,
+    account_tier: row.account_tier,
+    delete_job_id: row.delete_job_id,
+    delete_scheduled_at: row.delete_scheduled_at,
+    last_login_at: row.last_login_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  )
+}
+
+fn user_from_get_user_by_id_row(
+  is_email: regexp.Regexp,
+  row: sql.GetUserById,
+) -> Result(user_model.HydratedUser, error.DbQueryError) {
+  hydrated_user(
+    is_email: is_email,
+    id: row.id,
+    account_id: row.account_id,
+    email: row.email,
+    username: row.username,
+    role: row.role,
+    account_state: row.account_state,
+    account_state_reason: row.account_state_reason,
+    account_tier: row.account_tier,
+    delete_job_id: row.delete_job_id,
+    delete_scheduled_at: row.delete_scheduled_at,
+    last_login_at: row.last_login_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  )
+}
+
+fn user_from_list_users_after_row(
+  is_email: regexp.Regexp,
+  row: sql.ListUsersAfter,
+) -> Result(user_model.HydratedUser, error.DbQueryError) {
+  hydrated_user(
+    is_email: is_email,
+    id: row.id,
+    account_id: row.account_id,
+    email: row.email,
+    username: row.username,
+    role: row.role,
+    account_state: row.account_state,
+    account_state_reason: row.account_state_reason,
+    account_tier: row.account_tier,
+    delete_job_id: row.delete_job_id,
+    delete_scheduled_at: row.delete_scheduled_at,
+    last_login_at: row.last_login_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  )
+}
+
+fn user_from_list_users_before_row(
+  is_email: regexp.Regexp,
+  row: sql.ListUsersBefore,
+) -> Result(user_model.HydratedUser, error.DbQueryError) {
+  hydrated_user(
+    is_email: is_email,
+    id: row.id,
+    account_id: row.account_id,
+    email: row.email,
+    username: row.username,
+    role: row.role,
+    account_state: row.account_state,
+    account_state_reason: row.account_state_reason,
+    account_tier: row.account_tier,
+    delete_job_id: row.delete_job_id,
+    delete_scheduled_at: row.delete_scheduled_at,
+    last_login_at: row.last_login_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  )
+}
+
+fn hydrated_user(
+  is_email is_email: regexp.Regexp,
+  id id: BitArray,
+  account_id account_id: BitArray,
+  email email: String,
+  username username: String,
+  role role: String,
+  account_state account_state: String,
+  account_state_reason account_state_reason: option.Option(String),
+  account_tier account_tier: String,
+  delete_job_id delete_job_id: option.Option(BitArray),
+  delete_scheduled_at delete_scheduled_at: option.Option(Timestamp),
+  last_login_at last_login_at: Timestamp,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+) -> Result(user_model.HydratedUser, error.DbQueryError) {
   use valid_email <- result.try(
-    email_address_model.from_string(is_email, row.email)
+    email_address_model.from_string(is_email, email)
     |> option.to_result(error.DbQueryError(
-      "Invalid email format in user row: " <> row.email,
+      "Invalid email format in user row: " <> email,
     )),
   )
   use role <- result.try(
-    user_model.role_from_string(row.role)
-    |> option.to_result(error.DbQueryError("Invalid user role: " <> row.role)),
+    user_model.role_from_string(role)
+    |> option.to_result(error.DbQueryError("Invalid user role: " <> role)),
   )
   use account_state <- result.try(
-    account_model.account_state_from_string(row.account_state)
+    account_model.account_state_from_string(account_state)
     |> option.to_result(error.DbQueryError(
-      "Invalid account state: " <> row.account_state,
+      "Invalid account state: " <> account_state,
     )),
   )
   use account_tier <- result.try(
-    account_model.account_tier_from_string(row.account_tier)
+    account_model.account_tier_from_string(account_tier)
     |> option.to_result(error.DbQueryError(
-      "Invalid account tier: " <> row.account_tier,
+      "Invalid account tier: " <> account_tier,
     )),
   )
 
   Ok(user_model.HydratedUser(
     identity: user_model.User(
-      id: uuid_helpers.from_bit_array(row.id),
-      account_id: uuid_helpers.from_bit_array(row.account_id),
+      id: uuid_helpers.from_bit_array(id),
+      account_id: uuid_helpers.from_bit_array(account_id),
       email: valid_email,
-      username: row.username,
+      username: username,
       role: role,
-      last_login_at: row.last_login_at,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
+      last_login_at: last_login_at,
+      created_at: created_at,
+      updated_at: updated_at,
     ),
     account: account_model.HydratedAccount(
       identity: account_model.Account(
-        id: uuid_helpers.from_bit_array(row.account_id),
+        id: uuid_helpers.from_bit_array(account_id),
         account_state: account_state,
-        account_state_reason: row.account_state_reason,
+        account_state_reason: account_state_reason,
         account_tier: account_tier,
-        delete_job_id: row.delete_job_id
+        delete_job_id: delete_job_id
           |> option.map(uuid_helpers.from_bit_array),
-        created_at: row.created_at,
-        updated_at: row.updated_at,
+        created_at: created_at,
+        updated_at: updated_at,
       ),
-      delete_scheduled_at: row.delete_scheduled_at,
+      delete_scheduled_at: delete_scheduled_at,
     ),
   ))
+}
+
+fn list_users_after_rows(
+  is_email: regexp.Regexp,
+  rows: List(sql.ListUsersAfter),
+) -> Result(List(user_model.HydratedUser), error.DbQueryError) {
+  case rows {
+    [] -> Ok([])
+    [first, ..rest] -> {
+      use user <- result.try(user_from_list_users_after_row(is_email, first))
+      use users <- result.try(list_users_after_rows(is_email, rest))
+      Ok([user, ..users])
+    }
+  }
+}
+
+fn list_users_before_rows(
+  is_email: regexp.Regexp,
+  rows: List(sql.ListUsersBefore),
+) -> Result(List(user_model.HydratedUser), error.DbQueryError) {
+  case rows {
+    [] -> Ok([])
+    [first, ..rest] -> {
+      use user <- result.try(user_from_list_users_before_row(is_email, first))
+      use users <- result.try(list_users_before_rows(is_email, rest))
+      Ok([user, ..users])
+    }
+  }
+}
+
+fn cursor_to_uuid(
+  cursor: pagination_model.Cursor,
+) -> Result(uuid.Uuid, error.DbQueryError) {
+  cursor
+  |> pagination_model.to_string
+  |> uuid.from_string
+  |> result.map_error(fn(_) { error.DbQueryError("Invalid user cursor") })
 }
 
 fn login_tokens_from_rows(

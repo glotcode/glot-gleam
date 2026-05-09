@@ -309,6 +309,8 @@ fn test_handlers() -> handlers.Handlers {
     ),
     auth: auth_handlers.AuthHandlers(
       get_user_by_email: fn(_, _) { Ok(option.None) },
+      get_user_by_id: fn(_, _) { Ok(option.None) },
+      list_users: fn(_, _) { Ok([]) },
       list_login_tokens_by_email: fn(_, _) { Ok([]) },
       get_session_by_token: fn(_, _) { Ok(option.None) },
       create_user: fn(_) { Ok(Nil) },

@@ -77,6 +77,11 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminPeriodicJobs,
             ),
             link_card(
+              title: "Users",
+              description: "List accounts, inspect user state, and edit roles or account access.",
+              target: route.AdminUsers,
+            ),
+            link_card(
               title: "Jobs",
               description: "Inspect the execution queue and iterate on the admin jobs workflow.",
               target: route.AdminJobs,

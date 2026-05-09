@@ -1676,6 +1676,261 @@ pub fn get_user_by_email_decoder() -> decode.Decoder(GetUserByEmail) {
   ))
 }
 
+pub type GetUserById {
+  GetUserById(
+    id: BitArray,
+    account_id: BitArray,
+    email: String,
+    username: String,
+    role: String,
+    account_state: String,
+    account_state_reason: Option(String),
+    account_tier: String,
+    delete_job_id: Option(BitArray),
+    delete_scheduled_at: Option(Timestamp),
+    last_login_at: Timestamp,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn get_user_by_id(id id: BitArray) {
+  let sql =
+    "SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  accounts.delete_job_id,
+  jobs.run_at AS delete_scheduled_at,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
+WHERE users.id = $1"
+  #(sql, [dev.ParamBitArray(id)], get_user_by_id_decoder())
+}
+
+pub fn get_user_by_id_decoder() -> decode.Decoder(GetUserById) {
+  use id <- decode.field(0, decode.bit_array)
+  use account_id <- decode.field(1, decode.bit_array)
+  use email <- decode.field(2, decode.string)
+  use username <- decode.field(3, decode.string)
+  use role <- decode.field(4, decode.string)
+  use account_state <- decode.field(5, decode.string)
+  use account_state_reason <- decode.field(6, decode.optional(decode.string))
+  use account_tier <- decode.field(7, decode.string)
+  use delete_job_id <- decode.field(8, decode.optional(decode.bit_array))
+  use delete_scheduled_at <- decode.field(
+    9,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use last_login_at <- decode.field(10, dev.datetime_decoder())
+  use created_at <- decode.field(11, dev.datetime_decoder())
+  use updated_at <- decode.field(12, dev.datetime_decoder())
+  decode.success(GetUserById(
+    id:,
+    account_id:,
+    email:,
+    username:,
+    role:,
+    account_state:,
+    account_state_reason:,
+    account_tier:,
+    delete_job_id:,
+    delete_scheduled_at:,
+    last_login_at:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
+pub type ListUsersAfter {
+  ListUsersAfter(
+    id: BitArray,
+    account_id: BitArray,
+    email: String,
+    username: String,
+    role: String,
+    account_state: String,
+    account_state_reason: Option(String),
+    account_tier: String,
+    delete_job_id: Option(BitArray),
+    delete_scheduled_at: Option(Timestamp),
+    last_login_at: Timestamp,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn list_users_after(
+  after_id after_id: Option(BitArray),
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  accounts.delete_job_id,
+  jobs.run_at AS delete_scheduled_at,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
+WHERE (
+    $1::uuid IS NULL
+    OR users.id < $1::uuid
+  )
+ORDER BY users.id DESC
+LIMIT $2"
+  #(
+    sql,
+    [
+      dev.ParamNullable(option.map(after_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamInt(page_limit),
+    ],
+    list_users_after_decoder(),
+  )
+}
+
+pub fn list_users_after_decoder() -> decode.Decoder(ListUsersAfter) {
+  use id <- decode.field(0, decode.bit_array)
+  use account_id <- decode.field(1, decode.bit_array)
+  use email <- decode.field(2, decode.string)
+  use username <- decode.field(3, decode.string)
+  use role <- decode.field(4, decode.string)
+  use account_state <- decode.field(5, decode.string)
+  use account_state_reason <- decode.field(6, decode.optional(decode.string))
+  use account_tier <- decode.field(7, decode.string)
+  use delete_job_id <- decode.field(8, decode.optional(decode.bit_array))
+  use delete_scheduled_at <- decode.field(
+    9,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use last_login_at <- decode.field(10, dev.datetime_decoder())
+  use created_at <- decode.field(11, dev.datetime_decoder())
+  use updated_at <- decode.field(12, dev.datetime_decoder())
+  decode.success(ListUsersAfter(
+    id:,
+    account_id:,
+    email:,
+    username:,
+    role:,
+    account_state:,
+    account_state_reason:,
+    account_tier:,
+    delete_job_id:,
+    delete_scheduled_at:,
+    last_login_at:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
+pub type ListUsersBefore {
+  ListUsersBefore(
+    id: BitArray,
+    account_id: BitArray,
+    email: String,
+    username: String,
+    role: String,
+    account_state: String,
+    account_state_reason: Option(String),
+    account_tier: String,
+    delete_job_id: Option(BitArray),
+    delete_scheduled_at: Option(Timestamp),
+    last_login_at: Timestamp,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn list_users_before(
+  before_id before_id: Option(BitArray),
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  accounts.delete_job_id,
+  jobs.run_at AS delete_scheduled_at,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
+WHERE (
+    $1::uuid IS NULL
+    OR users.id > $1::uuid
+  )
+ORDER BY users.id ASC
+LIMIT $2"
+  #(
+    sql,
+    [
+      dev.ParamNullable(option.map(before_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamInt(page_limit),
+    ],
+    list_users_before_decoder(),
+  )
+}
+
+pub fn list_users_before_decoder() -> decode.Decoder(ListUsersBefore) {
+  use id <- decode.field(0, decode.bit_array)
+  use account_id <- decode.field(1, decode.bit_array)
+  use email <- decode.field(2, decode.string)
+  use username <- decode.field(3, decode.string)
+  use role <- decode.field(4, decode.string)
+  use account_state <- decode.field(5, decode.string)
+  use account_state_reason <- decode.field(6, decode.optional(decode.string))
+  use account_tier <- decode.field(7, decode.string)
+  use delete_job_id <- decode.field(8, decode.optional(decode.bit_array))
+  use delete_scheduled_at <- decode.field(
+    9,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use last_login_at <- decode.field(10, dev.datetime_decoder())
+  use created_at <- decode.field(11, dev.datetime_decoder())
+  use updated_at <- decode.field(12, dev.datetime_decoder())
+  decode.success(ListUsersBefore(
+    id:,
+    account_id:,
+    email:,
+    username:,
+    role:,
+    account_state:,
+    account_state_reason:,
+    account_tier:,
+    delete_job_id:,
+    delete_scheduled_at:,
+    last_login_at:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
 pub type ListLoginTokensByEmail {
   ListLoginTokensByEmail(
     id: BitArray,

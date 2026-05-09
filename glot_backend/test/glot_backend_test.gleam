@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option
 import gleam/order
 import gleam/regexp
+import gleam/string
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/app_config
@@ -64,6 +65,7 @@ import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/job/job_model
 import glot_core/language
+import glot_core/pagination_model
 import glot_core/periodic_job/periodic_job_model
 import glot_core/rate_limit
 import glot_core/run
@@ -1864,6 +1866,10 @@ fn run_test_auth_effect(
   case effect {
     auth_algebra.GetUserByEmail(email:, next:) ->
       run_test_program(next(find_user_by_email(db, email)), ctx, db)
+    auth_algebra.GetUserById(id:, next:) ->
+      run_test_program(next(find_user_by_id(db, id)), ctx, db)
+    auth_algebra.ListUsers(pagination:, next:) ->
+      run_test_program(next(find_users(db, pagination)), ctx, db)
     auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
       run_test_program(
         next(find_login_tokens_by_email(db, email, limit)),
@@ -1920,6 +1926,10 @@ fn run_test_auth_tx_effect(
   case effect {
     auth_algebra.GetUserByEmail(email:, next:) ->
       run_test_tx_program(next(find_user_by_email(db, email)), ctx, db)
+    auth_algebra.GetUserById(id:, next:) ->
+      run_test_tx_program(next(find_user_by_id(db, id)), ctx, db)
+    auth_algebra.ListUsers(pagination:, next:) ->
+      run_test_tx_program(next(find_users(db, pagination)), ctx, db)
     auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
       run_test_tx_program(
         next(find_login_tokens_by_email(db, email, limit)),
@@ -2320,6 +2330,95 @@ fn find_user_by_email(
       })
     }
     option.None -> option.None
+  }
+}
+
+fn find_user_by_id(
+  db: TestDb,
+  id: uuid.Uuid,
+) -> option.Option(user_model.HydratedUser) {
+  case dict.get(db.users, uuid_key(id)) {
+    Ok(user) ->
+      db.accounts
+      |> dict.get(uuid_key(user.account_id))
+      |> option.from_result()
+      |> option.map(fn(account) {
+        user_model.HydratedUser(
+          identity: user,
+          account: account_model.HydratedAccount(
+            identity: account,
+            delete_scheduled_at: option.None,
+          ),
+        )
+      })
+    Error(_) -> option.None
+  }
+}
+
+fn find_users(
+  db: TestDb,
+  pagination: pagination_model.CursorPagination,
+) -> List(user_model.HydratedUser) {
+  let users =
+    db.users
+    |> dict.to_list
+    |> list.sort(fn(a, b) {
+      case string.compare(a.0, b.0) {
+        order.Lt -> order.Gt
+        order.Eq -> order.Eq
+        order.Gt -> order.Lt
+      }
+    })
+    |> list.map(fn(entry) { entry.1 })
+    |> list.map(fn(user) {
+      let assert Ok(account) = dict.get(db.accounts, uuid_key(user.account_id))
+      user_model.HydratedUser(
+        identity: user,
+        account: account_model.HydratedAccount(
+          identity: account,
+          delete_scheduled_at: option.None,
+        ),
+      )
+    })
+
+  case pagination {
+    pagination_model.InitialPage(limit) -> take_users(users, limit)
+    pagination_model.AfterPage(cursor, limit) ->
+      users
+      |> list.filter(fn(user) {
+        string.compare(
+          uuid_key(user.identity.id),
+          pagination_model.to_string(cursor),
+        )
+        == order.Lt
+      })
+      |> take_users(limit)
+    pagination_model.BeforePage(cursor, limit) ->
+      users
+      |> list.filter(fn(user) {
+        string.compare(
+          uuid_key(user.identity.id),
+          pagination_model.to_string(cursor),
+        )
+        == order.Gt
+      })
+      |> list.reverse
+      |> take_users(limit)
+      |> list.reverse
+  }
+}
+
+fn take_users(
+  users: List(user_model.HydratedUser),
+  limit: Int,
+) -> List(user_model.HydratedUser) {
+  case limit <= 0 {
+    True -> []
+    False ->
+      case users {
+        [] -> []
+        [first, ..rest] -> [first, ..take_users(rest, limit - 1)]
+      }
   }
 }
 

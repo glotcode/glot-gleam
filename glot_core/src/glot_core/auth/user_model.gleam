@@ -40,6 +40,10 @@ pub fn change_username(
   User(..user, username: username, updated_at: timestamp)
 }
 
+pub fn change_role(user: User, role: UserRole, timestamp: Timestamp) -> User {
+  User(..user, role: role, updated_at: timestamp)
+}
+
 pub fn role_to_string(role: UserRole) -> String {
   case role {
     RegularUser -> "user"

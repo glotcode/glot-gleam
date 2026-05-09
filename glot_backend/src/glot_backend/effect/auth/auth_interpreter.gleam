@@ -40,6 +40,56 @@ pub fn run(
         )
       }
     }
+    auth_algebra.GetUserById(id:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.get_user_by_id(ctx.regexes.is_email, id)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(auth_algebra.GetUserByIdEffectName),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(auth_algebra.GetUserByIdEffectName),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    auth_algebra.ListUsers(pagination:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.list_users(ctx.regexes.is_email, pagination)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(auth_algebra.ListUsersEffectName),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(auth_algebra.ListUsersEffectName),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.auth.list_login_tokens_by_email(email, limit)

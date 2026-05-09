@@ -8,6 +8,7 @@ import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import glot_core/pagination_model.{type CursorPagination}
 import youid/uuid.{type Uuid}
 
 pub fn get_user_by_email(
@@ -15,6 +16,22 @@ pub fn get_user_by_email(
 ) -> program_types.Program(option.Option(user_model.HydratedUser)) {
   program_types.Impure(
     program_types.DbEffect(get_user_by_email_effect(email, program_types.Pure)),
+  )
+}
+
+pub fn get_user_by_id(
+  id id: Uuid,
+) -> program_types.Program(option.Option(user_model.HydratedUser)) {
+  program_types.Impure(
+    program_types.DbEffect(get_user_by_id_effect(id, program_types.Pure)),
+  )
+}
+
+pub fn list_users(
+  pagination pagination: CursorPagination,
+) -> program_types.Program(List(user_model.HydratedUser)) {
+  program_types.Impure(
+    program_types.DbEffect(list_users_effect(pagination, program_types.Pure)),
   )
 }
 
@@ -138,6 +155,18 @@ pub fn get_user_by_email_tx(
   program_types.TxImpure(get_user_by_email_effect(email, program_types.TxPure))
 }
 
+pub fn get_user_by_id_tx(
+  id id: Uuid,
+) -> program_types.TransactionProgram(option.Option(user_model.HydratedUser)) {
+  program_types.TxImpure(get_user_by_id_effect(id, program_types.TxPure))
+}
+
+pub fn list_users_tx(
+  pagination pagination: CursorPagination,
+) -> program_types.TransactionProgram(List(user_model.HydratedUser)) {
+  program_types.TxImpure(list_users_effect(pagination, program_types.TxPure))
+}
+
 pub fn list_login_tokens_by_email_tx(
   email email: email_address_model.EmailAddress,
   limit limit: Int,
@@ -257,6 +286,23 @@ fn get_user_by_email_effect(
   next: fn(option.Option(user_model.HydratedUser)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.GetUserByEmail(email:, next: next))
+}
+
+fn get_user_by_id_effect(
+  id: Uuid,
+  next: fn(option.Option(user_model.HydratedUser)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.GetUserById(id:, next: next))
+}
+
+fn list_users_effect(
+  pagination: CursorPagination,
+  next: fn(List(user_model.HydratedUser)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.ListUsers(
+    pagination: pagination,
+    next: next,
+  ))
 }
 
 fn list_login_tokens_by_email_effect(

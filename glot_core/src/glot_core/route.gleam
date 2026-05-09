@@ -13,6 +13,8 @@ pub type Route {
   AdminApiLog(id: uuid.Uuid)
   AdminPeriodicJobs
   AdminPeriodicJob(id: uuid.Uuid)
+  AdminUsers
+  AdminUser(id: uuid.Uuid)
   AdminJobs
   AdminJob(id: uuid.Uuid)
   AdminJobLogs
@@ -46,6 +48,12 @@ pub fn from_uri(uri: Uri) -> Route {
     ["admin", "periodic-jobs", job_id] ->
       case uuid.from_string(job_id) {
         Ok(id) -> AdminPeriodicJob(id)
+        Error(_) -> NotFound(uri:)
+      }
+    ["admin", "users"] -> AdminUsers
+    ["admin", "users", user_id] ->
+      case uuid.from_string(user_id) {
+        Ok(id) -> AdminUser(id)
         Error(_) -> NotFound(uri:)
       }
     ["admin", "jobs"] -> AdminJobs
@@ -86,6 +94,8 @@ pub fn to_string(route: Route) -> String {
     AdminApiLog(id) -> "/admin/logs/api/" <> uuid.to_string(id)
     AdminPeriodicJobs -> "/admin/periodic-jobs"
     AdminPeriodicJob(id) -> "/admin/periodic-jobs/" <> uuid.to_string(id)
+    AdminUsers -> "/admin/users"
+    AdminUser(id) -> "/admin/users/" <> uuid.to_string(id)
     AdminJobs -> "/admin/jobs"
     AdminJob(id) -> "/admin/jobs/" <> uuid.to_string(id)
     AdminJobLogs -> "/admin/logs/job-logs"
@@ -122,6 +132,8 @@ pub fn name(route: Route) -> String {
     AdminApiLog(_) -> "admin_api_log"
     AdminPeriodicJobs -> "admin_periodic_jobs"
     AdminPeriodicJob(_) -> "admin_periodic_job"
+    AdminUsers -> "admin_users"
+    AdminUser(_) -> "admin_user"
     AdminJobs -> "admin_jobs"
     AdminJob(_) -> "admin_job"
     AdminJobLogs -> "admin_job_logs"

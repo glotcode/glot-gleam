@@ -18,6 +18,76 @@ INNER JOIN accounts ON accounts.id = users.account_id
 LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
 WHERE users.email = $1;
 
+-- name: GetUserById :one
+SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  accounts.delete_job_id,
+  jobs.run_at AS delete_scheduled_at,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
+WHERE users.id = $1;
+
+-- name: ListUsersAfter :many
+SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  accounts.delete_job_id,
+  jobs.run_at AS delete_scheduled_at,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
+WHERE (
+    sqlc.narg(after_id)::uuid IS NULL
+    OR users.id < sqlc.narg(after_id)::uuid
+  )
+ORDER BY users.id DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListUsersBefore :many
+SELECT
+  users.id,
+  users.account_id,
+  users.email,
+  users.username,
+  users.role,
+  accounts.account_state,
+  accounts.account_state_reason,
+  accounts.account_tier,
+  accounts.delete_job_id,
+  jobs.run_at AS delete_scheduled_at,
+  users.last_login_at,
+  users.created_at,
+  users.updated_at
+FROM users
+INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
+WHERE (
+    sqlc.narg(before_id)::uuid IS NULL
+    OR users.id > sqlc.narg(before_id)::uuid
+  )
+ORDER BY users.id ASC
+LIMIT sqlc.arg(page_limit);
+
 -- name: ListLoginTokensByEmail :many
 SELECT id, email, token, created_at, used_at FROM login_tokens WHERE email = $1 ORDER BY created_at DESC LIMIT $2;
 
