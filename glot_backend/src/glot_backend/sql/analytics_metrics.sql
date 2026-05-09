@@ -84,14 +84,14 @@ INSERT INTO metrics_pageview_daily (
   unique_users
 )
 SELECT
-  @day AS day,
+  @day::date AS day,
   route,
   path,
   COUNT(*),
   COUNT(DISTINCT session_id),
   COUNT(DISTINCT user_id)
 FROM pageview_log
-WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day::date
 GROUP BY route, path
 ON CONFLICT (day, route, path) DO NOTHING;
 
@@ -111,25 +111,25 @@ SELECT
   unique_users
 FROM (
   SELECT
-    @day AS day,
+    @day::date AS day,
     'login_succeeded' AS event_name,
     COUNT(*) AS event_count,
     COUNT(DISTINCT id) AS unique_sessions,
     COUNT(DISTINCT user_id) AS unique_users
   FROM sessions
-  WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day
+  WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day::date
   GROUP BY 1
 
   UNION ALL
 
   SELECT
-    @day AS day,
+    @day::date AS day,
     'snippet_created' AS event_name,
     COUNT(*) AS event_count,
     0 AS unique_sessions,
     COUNT(DISTINCT user_id) AS unique_users
   FROM snippets
-  WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day
+  WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day::date
   GROUP BY 1
 ) AS derived_events
 ON CONFLICT (day, event_name) DO NOTHING;
@@ -144,14 +144,14 @@ INSERT INTO metrics_run_daily (
   unique_users
 )
 SELECT
-  @day AS day,
+  @day::date AS day,
   COALESCE(language, 'unknown'),
   COUNT(*) FILTER (WHERE outcome = 'succeeded'),
   COUNT(*) FILTER (WHERE outcome = 'failed'),
   COUNT(DISTINCT session_id),
   COUNT(DISTINCT user_id)
 FROM run_log
-WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day::date
 GROUP BY COALESCE(language, 'unknown')
 ON CONFLICT (day, language) DO NOTHING;
 
@@ -165,14 +165,14 @@ INSERT INTO metrics_reliability_daily (
   avg_duration_ns
 )
 SELECT
-  @day AS day,
+  @day::date AS day,
   'page',
   route,
   COUNT(*),
   COUNT(*) FILTER (WHERE status_code >= 400),
   COALESCE(AVG(duration_ns)::BIGINT, 0)
 FROM page_log
-WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day::date
 GROUP BY route
 ON CONFLICT (day, surface, name) DO NOTHING;
 
@@ -186,18 +186,18 @@ INSERT INTO metrics_reliability_daily (
   avg_duration_ns
 )
 SELECT
-  @day AS day,
+  @day::date AS day,
   'api',
   action,
   COUNT(*),
   COUNT(*) FILTER (WHERE error IS NOT NULL),
   COALESCE(AVG(duration_ns)::BIGINT, 0)
 FROM api_log
-WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day
+WHERE DATE_TRUNC('day', created_at AT TIME ZONE 'UTC')::date = @day::date
 GROUP BY action
 ON CONFLICT (day, surface, name) DO NOTHING;
 
 -- name: InsertMetricsCompletedDay :exec
 INSERT INTO metrics_completed_day (day)
-VALUES (@day)
+VALUES (@day::date)
 ON CONFLICT (day) DO NOTHING;
