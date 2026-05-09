@@ -13,7 +13,6 @@ import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
-import youid/uuid
 
 const page_limit = 25
 
@@ -417,9 +416,6 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
         html.span([attribute.class("jobs-table__primary")], [
           html.text(job.job_type),
         ]),
-        html.span([attribute.class("jobs-table__meta")], [
-          html.text(truncated_job_meta(job)),
-        ]),
       ]),
     ]),
     html.div([attribute.class("jobs-table__cell")], [
@@ -428,9 +424,6 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
         html.span([attribute.class(status_badge_class(job))], [
           html.text(status_text(job)),
         ]),
-        html.span([attribute.class("jobs-table__meta")], [
-          html.text(type_group_text(job.job_type)),
-        ]),
       ]),
     ]),
     html.div([attribute.class("jobs-table__cell")], [
@@ -438,11 +431,6 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
       html.div([attribute.class("jobs-table__stack")], [
         html.span([attribute.class("jobs-table__primary")], [
           html.text(timestamp_helpers.relative_label(job.run_at, now)),
-        ]),
-        html.span([attribute.class("jobs-table__meta")], [
-          html.text(
-            "Updated " <> timestamp_helpers.relative_label(job.updated_at, now),
-          ),
         ]),
       ]),
     ]),
@@ -455,9 +443,6 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
             <> " / "
             <> int.to_string(job.max_attempts),
           ),
-        ]),
-        html.span([attribute.class("jobs-table__meta")], [
-          html.text(attempt_status(job.status)),
         ]),
       ]),
     ]),
@@ -480,29 +465,9 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
   ])
 }
 
-fn truncated_job_meta(job: job_dto.JobResponse) -> String {
-  let job_id = string_helpers.truncate_stem_middle(uuid.to_string(job.id), 18)
-  let secondary = case job.request_id {
-    option.Some(request_id) ->
-      string_helpers.truncate_stem_middle(uuid.to_string(request_id), 16)
-    option.None ->
-      case job.periodic_job_id {
-        option.Some(periodic_job_id) ->
-          "periodic "
-          <> string_helpers.truncate_stem_middle(
-            uuid.to_string(periodic_job_id),
-            12,
-          )
-        option.None -> "no linked request"
-      }
-  }
-
-  job_id <> " • " <> secondary
-}
-
 fn note_text(job: job_dto.JobResponse) -> String {
   case job.last_error {
-    option.Some(last_error) -> last_error
+    option.Some(last_error) -> string_helpers.truncate_end(last_error, 50)
     option.None ->
       case job.status {
         "pending" ->
@@ -562,24 +527,6 @@ fn status_text(job: job_dto.JobResponse) -> String {
     "failed", _ -> "Failed"
     "done", _ -> "Done"
     value, _ -> value
-  }
-}
-
-fn attempt_status(status: String) -> String {
-  case status {
-    "pending" -> "Waiting for worker"
-    "running" -> "Currently processing"
-    "failed" -> "Backoff applied"
-    "done" -> "Finished successfully"
-    _ -> ""
-  }
-}
-
-fn type_group_text(job_type: String) -> String {
-  case job_type {
-    "send_email" | "delete_account" -> "User lifecycle"
-    "aggregate_metrics" -> "Infrastructure"
-    _ -> "Cleanup"
   }
 }
 

@@ -19,3 +19,10 @@ pub fn truncate_stem_middle(stem: String, max_length: Int) -> String {
       }
   }
 }
+
+pub fn truncate_end(text: String, max_length: Int) -> String {
+  case string.length(text) > max_length {
+    False -> text
+    True -> string.slice(text, 0, max_length) <> "..."
+  }
+}

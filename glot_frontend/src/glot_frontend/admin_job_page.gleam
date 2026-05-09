@@ -248,7 +248,7 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
           html.div([attribute.class("admin-job-page__detail-grid")], [
             detail_item("Job ID", uuid.to_string(job.id)),
             detail_item("Request ID", optional_uuid(job.request_id)),
-            detail_item("Periodic job ID", optional_uuid(job.periodic_job_id)),
+            periodic_job_detail_item(job.periodic_job_id),
             detail_item("Type", job.job_type),
             detail_item("Status", status_text(job)),
             detail_item("Overdue", bool_text(job.overdue)),
@@ -481,6 +481,35 @@ fn detail_item(label: String, value: String) -> Element(Msg) {
       html.text(value),
     ]),
   ])
+}
+
+fn linked_detail_item(
+  label: String,
+  value: String,
+  destination: route.Route,
+) -> Element(Msg) {
+  html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
+    html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
+    html.a(
+      [
+        attribute.class("admin-job-page__detail-value"),
+        route.href(destination),
+      ],
+      [html.text(value)],
+    ),
+  ])
+}
+
+fn periodic_job_detail_item(value: option.Option(uuid.Uuid)) -> Element(Msg) {
+  case value {
+    option.Some(id) ->
+      linked_detail_item(
+        "Periodic job ID",
+        uuid.to_string(id),
+        route.AdminPeriodicJob(id),
+      )
+    option.None -> detail_item("Periodic job ID", "None")
+  }
 }
 
 fn code_block(value: String) -> Element(Msg) {
