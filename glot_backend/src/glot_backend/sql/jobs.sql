@@ -66,8 +66,8 @@ WHERE (
     OR status = ANY(sqlc.arg(statuses)::text[])
   )
   AND (
-    cardinality(sqlc.arg(job_types)::text[]) = 0
-    OR job_type = ANY(sqlc.arg(job_types)::text[])
+    sqlc.narg(job_type)::text IS NULL
+    OR job_type = sqlc.narg(job_type)::text
   )
   AND (
     sqlc.narg(periodic_job_id)::uuid IS NULL
@@ -103,8 +103,8 @@ WHERE (
     OR status = ANY(sqlc.arg(statuses)::text[])
   )
   AND (
-    cardinality(sqlc.arg(job_types)::text[]) = 0
-    OR job_type = ANY(sqlc.arg(job_types)::text[])
+    sqlc.narg(job_type)::text IS NULL
+    OR job_type = sqlc.narg(job_type)::text
   )
   AND (
     sqlc.narg(periodic_job_id)::uuid IS NULL
@@ -134,8 +134,8 @@ WHERE (
     OR status = ANY(sqlc.arg(statuses)::text[])
   )
   AND (
-    cardinality(sqlc.arg(job_types)::text[]) = 0
-    OR job_type = ANY(sqlc.arg(job_types)::text[])
+    sqlc.narg(job_type)::text IS NULL
+    OR job_type = sqlc.narg(job_type)::text
   )
   AND (
     sqlc.narg(periodic_job_id)::uuid IS NULL

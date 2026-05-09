@@ -70,7 +70,7 @@ fn request_to_filter(
 ) -> job_model.ListJobsFilter {
   job_model.new_list_filter()
   |> job_model.with_statuses(statuses_for_filter(request.status_filter))
-  |> job_model.with_job_types(job_types_for_filter(request.job_type_filter))
+  |> job_model.with_job_type(request.job_type_filter)
   |> job_model.with_periodic_job_id(request.periodic_job_id)
 }
 
@@ -81,28 +81,5 @@ fn statuses_for_filter(filter: job_dto.StatusFilter) -> List(job_model.Status) {
     job_dto.RunningStatus -> [job_model.Running]
     job_dto.FailedStatus -> [job_model.Failed]
     job_dto.DoneStatus -> [job_model.Done]
-  }
-}
-
-fn job_types_for_filter(
-  filter: job_dto.JobTypeFilter,
-) -> List(job_model.JobType) {
-  case filter {
-    job_dto.AllJobTypes -> []
-    job_dto.CleanupJobs -> [
-      job_model.CleanApiLogJob,
-      job_model.CleanPageLogJob,
-      job_model.CleanPageviewLogJob,
-      job_model.CleanRunLogJob,
-      job_model.CleanJobLogJob,
-      job_model.CleanJobsJob,
-      job_model.CleanLoginTokensJob,
-      job_model.CleanUserActionsJob,
-    ]
-    job_dto.UserLifecycleJobs -> [
-      job_model.SendEmailJob,
-      job_model.DeleteAccountJob,
-    ]
-    job_dto.InfrastructureJobs -> [job_model.AggregateMetricsJob]
   }
 }

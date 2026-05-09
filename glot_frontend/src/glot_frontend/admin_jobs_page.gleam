@@ -4,6 +4,7 @@ import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/admin/job_dto
 import glot_core/helpers/timestamp_helpers
+import glot_core/job/job_model
 import glot_core/pagination_model
 import glot_core/route
 import glot_frontend/api
@@ -22,7 +23,7 @@ pub type Model {
     summary: job_dto.JobsSummary,
     status: Status,
     status_filter: job_dto.StatusFilter,
-    job_type_filter: job_dto.JobTypeFilter,
+    job_type_filter: option.Option(String),
   )
 }
 
@@ -36,7 +37,7 @@ pub type Status {
 pub type Msg {
   JobsLoaded(api.ApiResponse(job_dto.ListJobsResponse))
   StatusFilterSelected(job_dto.StatusFilter)
-  JobTypeFilterSelected(job_dto.JobTypeFilter)
+  JobTypeFilterSelected(String)
   NextPageClicked
   PreviousPageClicked
 }
@@ -51,7 +52,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       summary: job_dto.empty_summary(),
       status: NotLoaded,
       status_filter: job_dto.AllStatuses,
-      job_type_filter: job_dto.AllJobTypes,
+      job_type_filter: option.None,
     ),
     effect.none(),
   )
@@ -93,11 +94,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         False -> load_initial(Model(..model, status_filter: filter))
       }
 
-    JobTypeFilterSelected(filter) ->
-      case filter == model.job_type_filter {
+    JobTypeFilterSelected(filter) -> {
+      let next_filter = job_type_filter_value(filter)
+
+      case next_filter == model.job_type_filter {
         True -> #(model, effect.none())
-        False -> load_initial(Model(..model, job_type_filter: filter))
+        False -> load_initial(Model(..model, job_type_filter: next_filter))
       }
+    }
 
     NextPageClicked ->
       case pagination_model.next_cursor(model.page) {
@@ -191,28 +195,11 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
                   StatusFilterSelected(job_dto.DoneStatus),
                 ),
               ]),
-              filter_group(title: "Type", chips: [
-                filter_chip(
-                  "All jobs",
-                  model.job_type_filter == job_dto.AllJobTypes,
-                  JobTypeFilterSelected(job_dto.AllJobTypes),
-                ),
-                filter_chip(
-                  "Cleanup",
-                  model.job_type_filter == job_dto.CleanupJobs,
-                  JobTypeFilterSelected(job_dto.CleanupJobs),
-                ),
-                filter_chip(
-                  "User lifecycle",
-                  model.job_type_filter == job_dto.UserLifecycleJobs,
-                  JobTypeFilterSelected(job_dto.UserLifecycleJobs),
-                ),
-                filter_chip(
-                  "Infrastructure",
-                  model.job_type_filter == job_dto.InfrastructureJobs,
-                  JobTypeFilterSelected(job_dto.InfrastructureJobs),
-                ),
-              ]),
+              select_filter_group(
+                title: "Job type",
+                selected_value: selected_job_type_value(model.job_type_filter),
+                on_input: JobTypeFilterSelected,
+              ),
             ],
           ),
         ]),
@@ -342,7 +329,7 @@ fn filtered_status_text(
   <> " jobs shown. "
   <> status_filter_copy(model.status_filter)
   <> " "
-  <> type_filter_copy(model.job_type_filter)
+  <> job_type_filter_copy(model.job_type_filter)
 }
 
 fn summary_card(stat: SummaryStat) -> Element(Msg) {
@@ -373,6 +360,26 @@ fn filter_group(
       html.text(title),
     ]),
     html.div([attribute.class("admin-page__policy-actions")], chips),
+  ])
+}
+
+fn select_filter_group(
+  title title: String,
+  selected_value selected_value: String,
+  on_input on_input: fn(String) -> Msg,
+) -> Element(Msg) {
+  html.label([attribute.class("admin-jobs-page__filter-group")], [
+    html.span([attribute.class("admin-jobs-page__filter-title")], [
+      html.text(title),
+    ]),
+    html.select(
+      [
+        attribute.class("admin-page__input"),
+        attribute.value(selected_value),
+        event.on_input(on_input),
+      ],
+      job_type_options(selected_value),
+    ),
   ])
 }
 
@@ -541,13 +548,10 @@ fn status_filter_copy(filter: job_dto.StatusFilter) -> String {
   }
 }
 
-fn type_filter_copy(filter: job_dto.JobTypeFilter) -> String {
+fn job_type_filter_copy(filter: option.Option(String)) -> String {
   case filter {
-    job_dto.AllJobTypes -> "All job families are included."
-    job_dto.CleanupJobs -> "Only cleanup and retention work is included."
-    job_dto.UserLifecycleJobs -> "Only user-facing lifecycle jobs are included."
-    job_dto.InfrastructureJobs ->
-      "Only infrastructure and analytics jobs are included."
+    option.None -> "All job types are included."
+    option.Some(job_type) -> "Focused on " <> job_type <> "."
   }
 }
 
@@ -570,4 +574,58 @@ fn bool_attribute(value: Bool) -> String {
     True -> "true"
     False -> "false"
   }
+}
+
+fn selected_job_type_value(filter: option.Option(String)) -> String {
+  case filter {
+    option.Some(job_type) -> job_type
+    option.None -> "all"
+  }
+}
+
+fn job_type_filter_value(value: String) -> option.Option(String) {
+  case value {
+    "all" -> option.None
+    job_type -> option.Some(job_type)
+  }
+}
+
+fn job_type_options(selected_value: String) -> List(Element(Msg)) {
+  [job_type_option("all", "All jobs", selected_value)]
+  |> list.append(
+    list.map(job_type_values(), fn(job_type) {
+      job_type_option(job_type, job_type, selected_value)
+    }),
+  )
+}
+
+fn job_type_option(
+  value: String,
+  label: String,
+  selected_value: String,
+) -> Element(Msg) {
+  html.option(
+    [
+      attribute.value(value),
+      attribute.selected(value == selected_value),
+    ],
+    label,
+  )
+}
+
+fn job_type_values() -> List(String) {
+  [
+    job_model.SendEmailJob,
+    job_model.DeleteAccountJob,
+    job_model.CleanApiLogJob,
+    job_model.CleanPageLogJob,
+    job_model.CleanPageviewLogJob,
+    job_model.CleanRunLogJob,
+    job_model.CleanJobLogJob,
+    job_model.CleanJobsJob,
+    job_model.CleanLoginTokensJob,
+    job_model.CleanUserActionsJob,
+    job_model.AggregateMetricsJob,
+  ]
+  |> list.map(job_model.job_type_to_string)
 }

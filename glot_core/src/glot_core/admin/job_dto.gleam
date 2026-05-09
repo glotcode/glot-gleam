@@ -17,18 +17,11 @@ pub type StatusFilter {
   DoneStatus
 }
 
-pub type JobTypeFilter {
-  AllJobTypes
-  CleanupJobs
-  UserLifecycleJobs
-  InfrastructureJobs
-}
-
 pub type ListJobsRequest {
   ListJobsRequest(
     pagination: pagination_model.CursorPagination,
     status_filter: StatusFilter,
-    job_type_filter: JobTypeFilter,
+    job_type_filter: option.Option(String),
     periodic_job_id: option.Option(uuid.Uuid),
   )
 }
@@ -51,7 +44,7 @@ pub fn list_request_decoder() -> decode.Decoder(ListJobsRequest) {
     use status_filter <- decode.field("statusFilter", status_filter_decoder())
     use job_type_filter <- decode.field(
       "jobTypeFilter",
-      job_type_filter_decoder(),
+      decode.optional(decode.string),
     )
     use periodic_job_id <- decode.field(
       "periodicJobId",
@@ -70,7 +63,7 @@ pub fn encode_list_request(request: ListJobsRequest) -> json.Json {
   json.object(
     list.append(pagination_model.encode_request_fields(request.pagination), [
       #("statusFilter", encode_status_filter(request.status_filter)),
-      #("jobTypeFilter", encode_job_type_filter(request.job_type_filter)),
+      #("jobTypeFilter", json.nullable(request.job_type_filter, json.string)),
       #("periodicJobId", json.nullable(request.periodic_job_id, encode_uuid)),
     ]),
   )
@@ -439,18 +432,6 @@ fn status_filter_decoder() -> decode.Decoder(StatusFilter) {
   })
 }
 
-fn job_type_filter_decoder() -> decode.Decoder(JobTypeFilter) {
-  decode.then(decode.string, fn(value) {
-    case value {
-      "all" -> decode.success(AllJobTypes)
-      "cleanup" -> decode.success(CleanupJobs)
-      "user_lifecycle" -> decode.success(UserLifecycleJobs)
-      "infrastructure" -> decode.success(InfrastructureJobs)
-      _ -> decode.failure(AllJobTypes, "JobTypeFilter")
-    }
-  })
-}
-
 fn encode_status_filter(filter: StatusFilter) -> json.Json {
   case filter {
     AllStatuses -> json.string("all")
@@ -458,15 +439,6 @@ fn encode_status_filter(filter: StatusFilter) -> json.Json {
     RunningStatus -> json.string("running")
     FailedStatus -> json.string("failed")
     DoneStatus -> json.string("done")
-  }
-}
-
-fn encode_job_type_filter(filter: JobTypeFilter) -> json.Json {
-  case filter {
-    AllJobTypes -> json.string("all")
-    CleanupJobs -> json.string("cleanup")
-    UserLifecycleJobs -> json.string("user_lifecycle")
-    InfrastructureJobs -> json.string("infrastructure")
   }
 }
 

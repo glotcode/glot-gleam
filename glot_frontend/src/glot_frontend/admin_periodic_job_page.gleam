@@ -502,7 +502,7 @@ fn load_recent_jobs(id: uuid.Uuid) -> Effect(Msg) {
     job_dto.ListJobsRequest(
       pagination: pagination_model.InitialPage(limit: 10),
       status_filter: job_dto.AllStatuses,
-      job_type_filter: job_dto.AllJobTypes,
+      job_type_filter: option.None,
       periodic_job_id: option.Some(id),
     ),
     RecentJobsLoaded,

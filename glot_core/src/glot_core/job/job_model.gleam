@@ -65,13 +65,17 @@ pub type Status {
 pub type ListJobsFilter {
   ListJobsFilter(
     statuses: List(Status),
-    job_types: List(JobType),
+    job_type: Option(String),
     periodic_job_id: Option(Uuid),
   )
 }
 
 pub fn new_list_filter() -> ListJobsFilter {
-  ListJobsFilter(statuses: [], job_types: [], periodic_job_id: option.None)
+  ListJobsFilter(
+    statuses: [],
+    job_type: option.None,
+    periodic_job_id: option.None,
+  )
 }
 
 pub fn with_statuses(
@@ -81,11 +85,11 @@ pub fn with_statuses(
   ListJobsFilter(..filter, statuses: statuses)
 }
 
-pub fn with_job_types(
+pub fn with_job_type(
   filter: ListJobsFilter,
-  job_types: List(JobType),
+  job_type: Option(String),
 ) -> ListJobsFilter {
-  ListJobsFilter(..filter, job_types: job_types)
+  ListJobsFilter(..filter, job_type: job_type)
 }
 
 pub fn with_periodic_job_id(
