@@ -31,7 +31,7 @@ pub fn view(_model: Model) -> Element(Msg) {
               html.text("Admin"),
             ]),
             html.p([attribute.class("admin-page__status")], [
-              html.text("Administrative tools and configuration."),
+              html.text("Administrative configuration, jobs, and logs."),
             ]),
           ]),
         ]),
@@ -52,16 +52,45 @@ pub fn view(_model: Model) -> Element(Msg) {
               description: "Manage docker run settings and future runtime configuration sections.",
               target: route.AdminConfig,
             ),
+            link_card(
+              title: "Rate limits",
+              description: "Review and update API rate limit policies.",
+              target: route.AdminRateLimits,
+            ),
           ]),
         ]),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Tools"),
+              html.text("Jobs"),
             ]),
             html.p([attribute.class("admin-page__group-copy")], [
               html.text(
-                "Dedicated admin workflows that do not fit the shared config page.",
+                "Dedicated admin workflows for scheduling and queue execution.",
+              ),
+            ]),
+          ]),
+          html.div([attribute.class("admin-page__section-grid")], [
+            link_card(
+              title: "Periodic jobs",
+              description: "Edit scheduler definitions that drive recurring cleanup and infrastructure jobs.",
+              target: route.AdminPeriodicJobs,
+            ),
+            link_card(
+              title: "Jobs",
+              description: "Inspect the execution queue and iterate on the admin jobs workflow.",
+              target: route.AdminJobs,
+            ),
+          ]),
+        ]),
+        html.div([attribute.class("admin-page__group")], [
+          html.div([attribute.class("admin-page__group-header")], [
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Logs"),
+            ]),
+            html.p([attribute.class("admin-page__group-copy")], [
+              html.text(
+                "Review retained API and job logging separately from queue management.",
               ),
             ]),
           ]),
@@ -75,21 +104,6 @@ pub fn view(_model: Model) -> Element(Msg) {
               title: "Job logs",
               description: "Scan operational job log output separately from the primary jobs queue view.",
               target: route.AdminJobLogs,
-            ),
-            link_card(
-              title: "Rate limits",
-              description: "Review and update API rate limit policies.",
-              target: route.AdminRateLimits,
-            ),
-            link_card(
-              title: "Periodic jobs",
-              description: "Edit scheduler definitions that drive recurring cleanup and infrastructure jobs.",
-              target: route.AdminPeriodicJobs,
-            ),
-            link_card(
-              title: "Jobs",
-              description: "Inspect the execution queue and iterate on the admin jobs workflow.",
-              target: route.AdminJobs,
             ),
           ]),
         ]),
