@@ -32,7 +32,12 @@ pub fn get_api_logs(
     action: api_action.GetAdminApiLogsAction,
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
-  use logs <- program.and_then(admin_log_effect.list_api_logs(request))
+  use logs <- program.and_then(admin_log_effect.list_api_logs(
+    api_log_dto.ListApiLogsRequest(
+      ..request,
+      pagination: pagination_model.increment_limit(pagination),
+    ),
+  ))
 
   let page = pagination_model.paginate(logs, pagination, api_log_model.cursor)
 
