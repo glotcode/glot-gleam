@@ -38,7 +38,7 @@ pub type ApiError {
 pub type ApiResponse(a) {
   ApiSuccess(data: a)
   ApiFailure(error: ApiError)
-  HttpFailure(rsvp.Error)
+  HttpFailure(rsvp.Error(String))
 }
 
 pub fn send_login_token(
@@ -594,7 +594,7 @@ fn api_error_decoder() -> decode.Decoder(ApiError) {
 fn decode_api_response(
   http_response: response.Response(String),
   data_decoder: decode.Decoder(a),
-) -> Result(ApiResponse(a), rsvp.Error) {
+) -> Result(ApiResponse(a), rsvp.Error(String)) {
   use _ <- result.try(ensure_json_response(http_response))
 
   case http_response.status {
@@ -610,7 +610,7 @@ fn decode_api_response(
 
 fn ensure_json_response(
   http_response: response.Response(String),
-) -> Result(Nil, rsvp.Error) {
+) -> Result(Nil, rsvp.Error(String)) {
   case response.get_header(http_response, "content-type") {
     Ok("application/json") -> Ok(Nil)
     Ok("application/json;" <> _) -> Ok(Nil)
