@@ -7,6 +7,7 @@ import glot_core/effect_trace_dto
 import glot_core/route
 import glot_frontend/admin_effects_table
 import glot_frontend/api
+import glot_frontend/duration_label
 import glot_frontend/json_helpers
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -189,7 +190,7 @@ fn api_log_content(log: api_log_dto.ApiLogEntryResponse) -> Element(Msg) {
       detail_item("Created at", format_timestamp(log.created_at)),
       detail_item("Action", log.action),
       detail_item("Body bytes", int.to_string(log.body_bytes)),
-      detail_item("Duration ns", int.to_string(log.duration_ns)),
+      detail_item("Duration", duration_label.duration_in_ms_label(log.duration_ns)),
       detail_item("IP", optional_text(log.ip)),
       detail_item("User agent", optional_text(log.user_agent)),
     ]),
