@@ -593,6 +593,74 @@ a {
   gap: 1rem;
 }
 
+.admin-effects-table {
+  overflow-x: auto;
+}
+
+.admin-effects-table__element {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.admin-effects-table__heading,
+.admin-effects-table__cell {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #eef4ff;
+  color: #172033;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-effects-table__heading {
+  border-bottom-color: #d9e5f6;
+  background: #f8fbff;
+  color: #66789f;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-effects-table__row:last-child .admin-effects-table__cell {
+  border-bottom: 0;
+}
+
+.admin-effects-table__heading--duration,
+.admin-effects-table__cell--duration {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.admin-effects-table__heading:first-child,
+.admin-effects-table__cell:first-child {
+  width: 52%;
+}
+
+.admin-effects-table__heading:nth-child(2),
+.admin-effects-table__cell:nth-child(2) {
+  width: 28%;
+}
+
+.admin-effects-table__row:hover {
+  background: #f8fbff;
+}
+
+.admin-effects-table__row--rollback {
+  background: #fff7f6;
+}
+
+.admin-effects-table__row--rollback:hover {
+  background: #ffefed;
+}
+
+.admin-effects-table__row--rollback .jobs-table__primary,
+.admin-effects-table__row--rollback .admin-effects-table__cell {
+  color: #8a3127;
+}
+
 .admin-job-page__summary-grid,
 .admin-job-page__detail-grid {
   display: grid;

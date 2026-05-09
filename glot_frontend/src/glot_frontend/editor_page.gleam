@@ -1,6 +1,4 @@
 import gleam/dynamic/decode
-import gleam/float
-import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
@@ -21,6 +19,7 @@ import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/app_dialog
 import glot_frontend/api
+import glot_frontend/duration_label
 import glot_frontend/editor_draft
 import glot_frontend/editor_settings
 import glot_frontend/ssr_data
@@ -2360,7 +2359,7 @@ fn result_duration_view(duration: option.Option(Int)) -> Element(Msg) {
   case duration {
     option.Some(value) ->
       html.span([attribute.class("editor-shell__result-duration")], [
-        html.text(duration_in_ms_label(value)),
+        html.text(duration_label.duration_in_ms_label(value)),
       ])
 
     option.None -> html.span([], [])
@@ -2714,20 +2713,6 @@ fn remove_file_at(
     [first, ..rest], _ -> [first, ..remove_file_at(rest, index - 1)]
     [], _ -> []
   }
-}
-
-fn duration_in_ms_label(duration_ns: Int) -> String {
-  let hundredths_of_ms =
-    int.to_float(duration_ns) /. 10_000.0
-    |> float.round
-
-  let whole_ms = hundredths_of_ms / 100
-  let fractional_ms =
-    hundredths_of_ms % 100
-    |> int.to_string
-    |> string.pad_start(to: 2, with: "0")
-
-  int.to_string(whole_ms) <> "." <> fractional_ms <> "ms"
 }
 
 fn bool_attribute(value: Bool) -> String {

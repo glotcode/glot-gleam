@@ -1,12 +1,12 @@
-import gleam/float
 import gleam/int
 import gleam/option
-import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/job_log_dto
 import glot_core/route
+import glot_frontend/admin_effects_table
 import glot_frontend/api
+import glot_frontend/duration_label
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -126,7 +126,11 @@ fn detail_view(model: Model) -> Element(Msg) {
           summary_card("Job type", log.job_type, "Execution kind"),
           summary_card("Attempt", int.to_string(log.attempt), "Attempt number"),
           summary_card("Created at", format_timestamp(log.created_at), "UTC"),
-          summary_card("Duration", duration_in_ms_label(log.duration_ns), "Persisted runtime"),
+          summary_card(
+            "Duration",
+            duration_label.duration_in_ms_label(log.duration_ns),
+            "Persisted runtime",
+          ),
         ]),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
@@ -140,7 +144,7 @@ fn detail_view(model: Model) -> Element(Msg) {
             raw_block("Warnings", log.warnings),
             raw_block("Debug", log.debug),
             raw_block("Error", log.error),
-            raw_block("Effects", log.effects),
+            admin_effects_table.effects_block(log.effects),
           ]),
         ]),
       ])
@@ -171,20 +175,6 @@ fn raw_block(title: String, value: option.Option(String)) -> Element(Msg) {
 
 fn format_timestamp(value) -> String {
   timestamp.to_rfc3339(value, calendar.utc_offset)
-}
-
-fn duration_in_ms_label(duration_ns: Int) -> String {
-  let hundredths_of_ms =
-    int.to_float(duration_ns) /. 10_000.0
-    |> float.round
-
-  let whole_ms = hundredths_of_ms / 100
-  let fractional_ms =
-    hundredths_of_ms % 100
-    |> int.to_string
-    |> string.pad_start(to: 2, with: "0")
-
-  int.to_string(whole_ms) <> "." <> fractional_ms <> "ms"
 }
 
 fn optional_uuid(value: option.Option(uuid.Uuid)) -> String {

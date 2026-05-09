@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/api_log_model
+import glot_core/effect_trace_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/helpers/uuid_helpers
 import glot_core/pagination_model
@@ -48,7 +49,7 @@ pub type ApiLogEntryResponse {
     warnings: option.Option(String),
     debug: option.Option(String),
     error: option.Option(String),
-    effects: option.Option(String),
+    effects: option.Option(effect_trace_dto.EffectTraceResponse),
   )
 }
 
@@ -167,7 +168,7 @@ fn from_api_log_entry(log: api_log_model.ApiLogEntry) -> ApiLogEntryResponse {
     warnings: log.warnings,
     debug: log.debug,
     error: log.error,
-    effects: log.effects,
+    effects: effect_trace_dto.from_json_string(log.effects),
   )
 }
 
@@ -210,7 +211,7 @@ fn api_log_entry_decoder() -> decode.Decoder(ApiLogEntryResponse) {
   use warnings <- decode.field("warnings", decode.optional(decode.string))
   use debug <- decode.field("debug", decode.optional(decode.string))
   use error <- decode.field("error", decode.optional(decode.string))
-  use effects <- decode.field("effects", decode.optional(decode.string))
+  use effects <- decode.field("effects", decode.optional(effect_trace_dto.decoder()))
 
   decode.success(ApiLogEntryResponse(
     created_at: created_at,
@@ -257,7 +258,7 @@ fn encode_api_log_entry(log: ApiLogEntryResponse) -> json.Json {
     #("warnings", json.nullable(log.warnings, json.string)),
     #("debug", json.nullable(log.debug, json.string)),
     #("error", json.nullable(log.error, json.string)),
-    #("effects", json.nullable(log.effects, json.string)),
+    #("effects", json.nullable(log.effects, effect_trace_dto.encode)),
   ])
 }
 

@@ -3,7 +3,9 @@ import gleam/option
 import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/api_log_dto
+import glot_core/effect_trace_dto
 import glot_core/route
+import glot_frontend/admin_effects_table
 import glot_frontend/api
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -205,14 +207,14 @@ fn raw_blocks(
   warnings: option.Option(String),
   debug: option.Option(String),
   error: option.Option(String),
-  effects: option.Option(String),
+  effects: option.Option(effect_trace_dto.EffectTraceResponse),
 ) -> Element(Msg) {
   html.div([attribute.class("admin-request-log-page__raw-grid")], [
     raw_block("Info", info),
     raw_block("Warnings", warnings),
     raw_block("Debug", debug),
     raw_block("Error", error),
-    raw_block("Effects", effects),
+    admin_effects_table.effects_block(effects),
   ])
 }
 

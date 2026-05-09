@@ -1,4 +1,3 @@
-import gleam/float
 import gleam/int
 import gleam/list
 import gleam/option
@@ -9,6 +8,7 @@ import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
 import glot_frontend/api
+import glot_frontend/duration_label
 import glot_frontend/string_helpers
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -425,7 +425,7 @@ fn log_row(
     html.div([attribute.class("jobs-table__cell")], [
       cell_label("Duration"),
       html.span([attribute.class("jobs-table__cell-value")], [
-        html.text(duration_in_ms_label(log.duration_ns)),
+        html.text(duration_label.duration_in_ms_label(log.duration_ns)),
       ]),
     ]),
     html.div([attribute.class("jobs-table__cell")], [
@@ -524,20 +524,6 @@ fn can_go_next(model: Model) -> Bool {
     option.Some(_) -> True
     option.None -> False
   }
-}
-
-fn duration_in_ms_label(duration_ns: Int) -> String {
-  let hundredths_of_ms =
-    int.to_float(duration_ns) /. 10_000.0
-    |> float.round
-
-  let whole_ms = hundredths_of_ms / 100
-  let fractional_ms =
-    hundredths_of_ms % 100
-    |> int.to_string
-    |> string.pad_start(to: 2, with: "0")
-
-  int.to_string(whole_ms) <> "." <> fractional_ms <> "ms"
 }
 
 fn cell_label(text: String) -> Element(Msg) {

@@ -3,6 +3,7 @@ import gleam/json
 import gleam/list
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/effect_trace_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/helpers/uuid_helpers
 import glot_core/job_log_model
@@ -53,7 +54,7 @@ pub type JobLogDetailResponse {
     warnings: option.Option(String),
     debug: option.Option(String),
     error: option.Option(String),
-    effects: option.Option(String),
+    effects: option.Option(effect_trace_dto.EffectTraceResponse),
   )
 }
 
@@ -143,7 +144,7 @@ pub fn from_job_log_detail(log: job_log_model.JobLog) -> GetJobLogResponse {
     warnings: log.warnings,
     debug: log.debug,
     error: log.error,
-    effects: log.effects,
+    effects: effect_trace_dto.from_json_string(log.effects),
   ))
 }
 
@@ -200,7 +201,7 @@ fn job_log_detail_decoder() -> decode.Decoder(JobLogDetailResponse) {
   use warnings <- decode.field("warnings", decode.optional(decode.string))
   use debug <- decode.field("debug", decode.optional(decode.string))
   use error <- decode.field("error", decode.optional(decode.string))
-  use effects <- decode.field("effects", decode.optional(decode.string))
+  use effects <- decode.field("effects", decode.optional(effect_trace_dto.decoder()))
 
   decode.success(JobLogDetailResponse(
     id: id,
@@ -244,7 +245,7 @@ fn encode_job_log_detail(log: JobLogDetailResponse) -> json.Json {
     #("warnings", json.nullable(log.warnings, json.string)),
     #("debug", json.nullable(log.debug, json.string)),
     #("error", json.nullable(log.error, json.string)),
-    #("effects", json.nullable(log.effects, json.string)),
+    #("effects", json.nullable(log.effects, effect_trace_dto.encode)),
   ])
 }
 
