@@ -295,21 +295,20 @@ fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
       ])
 
     _, _ ->
-      html.div([attribute.class("jobs-table admin-request-logs-page__table")], [
-        html.div(
-          [attribute.class("jobs-table__head admin-request-logs-page__head")],
-          [
-            table_heading("Log ID"),
-            table_heading("When"),
-            table_heading("Action"),
-            table_heading("Duration"),
-            table_heading("Error"),
-            table_heading("Open"),
-          ],
-        ),
-        html.div([attribute.class("jobs-table__body")], {
-          rows |> list.map(fn(log) { log_row(log, now) })
-        }),
+      html.div([attribute.class("admin-request-logs-table")], [
+        html.table([attribute.class("admin-request-logs-table__element")], [
+          html.thead([], [
+            html.tr([], [
+              table_heading("Log ID"),
+              table_heading("When"),
+              table_heading("Action"),
+              table_heading("Duration"),
+              table_heading("Error"),
+              table_heading("Open"),
+            ]),
+          ]),
+          html.tbody([], { rows |> list.map(fn(log) { log_row(log, now) }) }),
+        ]),
       ])
   }
 }
@@ -375,16 +374,15 @@ fn text_input(
 }
 
 fn table_heading(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__heading")], [html.text(text)])
+  html.th([attribute.class("admin-request-logs-table__heading")], [html.text(text)])
 }
 
 fn log_row(
   log: api_log_dto.ApiLogSummaryResponse,
   now: Timestamp,
 ) -> Element(Msg) {
-  html.div([attribute.class("jobs-table__row admin-request-logs-page__row")], [
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Log ID"),
+  html.tr([attribute.class("admin-request-logs-table__row")], [
+    html.td([attribute.class("admin-request-logs-table__cell")], [
       html.div([attribute.class("jobs-table__stack")], [
         html.a(
           [
@@ -400,34 +398,38 @@ fn log_row(
         ),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("When"),
+    html.td([attribute.class("admin-request-logs-table__cell")], [
       html.div([attribute.class("jobs-table__stack")], [
         html.span([attribute.class("jobs-table__primary")], [
           html.text(timestamp_helpers.relative_label(log.created_at, now)),
         ]),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Action"),
-      html.span([attribute.class("jobs-table__cell-value")], [
-        html.text(log.action),
-      ]),
+    html.td([attribute.class("admin-request-logs-table__cell")], [
+      html.span([attribute.class("jobs-table__cell-value")], [html.text(log.action)]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Duration"),
-      html.span([attribute.class("jobs-table__cell-value")], [
-        html.text(duration_label.duration_in_ms_label(log.duration_ns)),
-      ]),
-    ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Error"),
+    html.td(
+      [
+        attribute.class(
+          "admin-request-logs-table__cell admin-request-logs-table__cell--duration",
+        ),
+      ],
+      [html.text(duration_label.duration_in_ms_label(log.duration_ns))],
+    ),
+    html.td(
+      [attribute.class("admin-request-logs-table__cell admin-request-logs-table__cell--error")],
+      [
       html.span([attribute.class(error_badge_class(log))], [
         html.text(error_text(log)),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell jobs-table__cell--actions")], [
-      cell_label("Open"),
+    html.td(
+      [
+        attribute.class(
+          "admin-request-logs-table__cell admin-request-logs-table__cell--actions",
+        ),
+      ],
+      [
       html.a(
         [
           attribute.class("admin-page__button admin-page__button--secondary"),
@@ -517,10 +519,6 @@ fn can_go_next(model: Model) -> Bool {
     option.Some(_) -> True
     option.None -> False
   }
-}
-
-fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__cell-label")], [html.text(text)])
 }
 
 fn bool_attribute(value: Bool) -> String {
