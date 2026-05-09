@@ -7,6 +7,7 @@ import glot_core/effect_trace_dto
 import glot_core/route
 import glot_frontend/admin_effects_table
 import glot_frontend/api
+import glot_frontend/json_helpers
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -223,7 +224,7 @@ fn raw_block(title: String, value: option.Option(String)) -> Element(Msg) {
     html.h4([attribute.class("admin-page__group-title")], [html.text(title)]),
     html.div([attribute.class("admin-page__policy")], [
       html.pre([attribute.class("admin-job-page__code-block")], [
-        html.text(optional_text(value)),
+        html.text(json_helpers.optional_pretty_print_json_or_none(value)),
       ]),
     ]),
   ])

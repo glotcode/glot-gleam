@@ -7,6 +7,7 @@ import glot_core/route
 import glot_frontend/admin_effects_table
 import glot_frontend/api
 import glot_frontend/duration_label
+import glot_frontend/json_helpers
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -167,7 +168,7 @@ fn raw_block(title: String, value: option.Option(String)) -> Element(Msg) {
     html.h4([attribute.class("admin-page__group-title")], [html.text(title)]),
     html.div([attribute.class("admin-page__policy")], [
       html.pre([attribute.class("admin-job-page__code-block")], [
-        html.text(optional_text(value)),
+        html.text(json_helpers.optional_pretty_print_json_or_none(value)),
       ]),
     ]),
   ])
@@ -180,13 +181,6 @@ fn format_timestamp(value) -> String {
 fn optional_uuid(value: option.Option(uuid.Uuid)) -> String {
   case value {
     option.Some(id) -> uuid.to_string(id)
-    option.None -> "None"
-  }
-}
-
-fn optional_text(value: option.Option(String)) -> String {
-  case value {
-    option.Some(text) -> text
     option.None -> "None"
   }
 }
