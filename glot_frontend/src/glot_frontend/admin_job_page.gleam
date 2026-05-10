@@ -356,15 +356,6 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               ],
               [html.text("Start new job")],
             ),
-            html.a(
-              [
-                attribute.class(
-                  "admin-page__button admin-page__button--secondary",
-                ),
-                route.href(route.AdminJobs),
-              ],
-              [html.text("Back to jobs")],
-            ),
           ]),
         ]),
         job_status_view(model),

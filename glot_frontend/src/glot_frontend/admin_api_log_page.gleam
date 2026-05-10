@@ -4,7 +4,6 @@ import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/api_log_dto
 import glot_core/effect_trace_dto
-import glot_core/route
 import glot_frontend/admin_effects_table
 import glot_frontend/api
 import glot_frontend/duration_label
@@ -86,17 +85,6 @@ pub fn view(model: Model) -> Element(Msg) {
               html.p([attribute.class("admin-page__status")], [
                 html.text("Inspect the API log captured for one request."),
               ]),
-            ]),
-            html.div([attribute.class("admin-page__policy-actions")], [
-              html.a(
-                [
-                  attribute.class(
-                    "admin-page__button admin-page__button--secondary",
-                  ),
-                  route.href(route.AdminApiLogs),
-                ],
-                [html.text("Back to API logs")],
-              ),
             ]),
           ]),
           status_view(model),

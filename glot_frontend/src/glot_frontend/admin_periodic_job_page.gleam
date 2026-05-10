@@ -314,17 +314,6 @@ pub fn view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
               ),
             ]),
           ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            html.a(
-              [
-                attribute.class(
-                  "admin-page__button admin-page__button--secondary",
-                ),
-                route.href(route.AdminPeriodicJobs),
-              ],
-              [html.text("Back to periodic jobs")],
-            ),
-          ]),
         ]),
         status_banner(model.status),
         detail_view(model, now),

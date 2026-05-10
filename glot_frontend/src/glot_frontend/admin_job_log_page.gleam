@@ -3,7 +3,6 @@ import gleam/option
 import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/job_log_dto
-import glot_core/route
 import glot_frontend/admin_effects_table
 import glot_frontend/api
 import glot_frontend/duration_label
@@ -87,17 +86,6 @@ pub fn view(model: Model) -> Element(Msg) {
                   "Inspect one retained job log execution and its raw operator-facing payloads.",
                 ),
               ]),
-            ]),
-            html.div([attribute.class("admin-page__policy-actions")], [
-              html.a(
-                [
-                  attribute.class(
-                    "admin-page__button admin-page__button--secondary",
-                  ),
-                  route.href(route.AdminJobLogs),
-                ],
-                [html.text("Back to job logs")],
-              ),
             ]),
           ]),
           status_view(model),

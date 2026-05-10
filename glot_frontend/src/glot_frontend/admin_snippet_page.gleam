@@ -193,15 +193,6 @@ pub fn view(model: Model) -> Element(Msg) {
                 }),
               ],
             ),
-            html.a(
-              [
-                attribute.class(
-                  "admin-page__button admin-page__button--secondary",
-                ),
-                route.href(route.AdminSnippets),
-              ],
-              [html.text("Back to snippets")],
-            ),
           ]),
         ]),
         status_view(model),

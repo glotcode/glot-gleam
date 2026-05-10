@@ -3,7 +3,6 @@ import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/run_log_dto
 import glot_core/language
-import glot_core/route
 import glot_core/run_log_model
 import glot_frontend/api
 import glot_frontend/duration_label
@@ -86,17 +85,6 @@ pub fn view(model: Model) -> Element(Msg) {
                   "Inspect one retained code execution outcome and its request correlation fields.",
                 ),
               ]),
-            ]),
-            html.div([attribute.class("admin-page__policy-actions")], [
-              html.a(
-                [
-                  attribute.class(
-                    "admin-page__button admin-page__button--secondary",
-                  ),
-                  route.href(route.AdminRunLogs),
-                ],
-                [html.text("Back to run logs")],
-              ),
             ]),
           ]),
           status_view(model),

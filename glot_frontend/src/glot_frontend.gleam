@@ -9,6 +9,7 @@ import glot_core/page/top_bar
 import glot_core/pageview_dto
 import glot_core/route
 import glot_frontend/account_page
+import glot_frontend/admin_breadcrumbs
 import glot_frontend/admin_api_log_page
 import glot_frontend/admin_api_logs_page
 import glot_frontend/admin_config_page
@@ -1117,10 +1118,18 @@ fn view(model: Model) -> Element(Msg) {
     }
   }
 
+  let content =
+    case session_is_admin(model.session) && admin_breadcrumbs.is_admin_route(
+      model.route,
+    ) {
+      True -> admin_breadcrumbs.wrap(model.route, page_content)
+      False -> page_content
+    }
+
   site_chrome.view(
     top_bar_model: top_bar_model(model),
     footer_account_route: current_user_route(model.session),
-    content: page_content,
+    content: content,
   )
 }
 

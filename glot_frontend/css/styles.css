@@ -46,6 +46,54 @@ a {
   width: min(32rem, calc(100vw - 2rem));
 }
 
+.admin-breadcrumbs-shell {
+  width: min(72rem, calc(100vw - 2rem));
+  margin: 0 auto;
+  padding-top: 0.9rem;
+  box-sizing: border-box;
+}
+
+.admin-breadcrumbs {
+  position: relative;
+  z-index: 1;
+  padding: 0.8rem 1rem;
+  border: 1px solid #d6e0f1;
+  background: rgba(248, 251, 255, 0.88);
+  box-shadow: 0 0.8rem 2rem rgba(26, 50, 92, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.admin-breadcrumbs__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-breadcrumbs__item,
+.admin-breadcrumbs__separator {
+  color: #58667f;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-breadcrumbs__link {
+  text-decoration: none;
+}
+
+.admin-breadcrumbs__link:hover {
+  color: #2853a6;
+}
+
+.admin-breadcrumbs__link--current {
+  color: #172033;
+  font-weight: 700;
+}
+
 .app-panel {
   display: grid;
   gap: 1rem;

@@ -9,7 +9,6 @@ import glot_core/auth/account_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
-import glot_core/route
 import glot_frontend/api
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -261,17 +260,6 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
                 "Review account access and edit persisted user and account settings.",
               ),
             ]),
-          ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            html.a(
-              [
-                attribute.class(
-                  "admin-page__button admin-page__button--secondary",
-                ),
-                route.href(route.AdminUsers),
-              ],
-              [html.text("Back to users")],
-            ),
           ]),
         ]),
         status_view(model),
