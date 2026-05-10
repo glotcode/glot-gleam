@@ -22,12 +22,29 @@ pub fn get_by_slug(
   )
 }
 
+pub fn get_admin_by_slug(
+  slug: String,
+) -> program_types.Program(option.Option(HydratedSnippet)) {
+  program_types.Impure(
+    program_types.DbEffect(get_admin_by_slug_effect(slug, query_next)),
+  )
+}
+
 pub fn list(
   filter filter: ListSnippetsFilter,
   pagination pagination: CursorPagination,
 ) -> program_types.Program(List(HydratedSnippet)) {
   program_types.Impure(
     program_types.DbEffect(list_effect(filter, pagination, list_next)),
+  )
+}
+
+pub fn list_admin(
+  username username: option.Option(String),
+  pagination pagination: CursorPagination,
+) -> program_types.Program(List(HydratedSnippet)) {
+  program_types.Impure(
+    program_types.DbEffect(list_admin_effect(username, pagination, list_next)),
   )
 }
 
@@ -152,6 +169,16 @@ fn get_by_slug_effect(
   ))
 }
 
+fn get_admin_by_slug_effect(
+  slug: String,
+  next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.SnippetEffect(snippet_algebra.GetAdminSnippetBySlug(
+    slug:,
+    next: next,
+  ))
+}
+
 fn list_effect(
   filter: ListSnippetsFilter,
   pagination: CursorPagination,
@@ -159,6 +186,18 @@ fn list_effect(
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.ListSnippets(
     filter: filter,
+    pagination: pagination,
+    next: next,
+  ))
+}
+
+fn list_admin_effect(
+  username: option.Option(String),
+  pagination: CursorPagination,
+  next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.SnippetEffect(snippet_algebra.ListAdminSnippets(
+    username: username,
     pagination: pagination,
     next: next,
   ))

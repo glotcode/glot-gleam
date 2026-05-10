@@ -82,6 +82,11 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminUsers,
             ),
             link_card(
+              title: "Snippets",
+              description: "Review saved user snippets and inspect their stored files in a read-only admin view.",
+              target: route.AdminSnippets,
+            ),
+            link_card(
               title: "Jobs",
               description: "Inspect the execution queue and iterate on the admin jobs workflow.",
               target: route.AdminJobs,

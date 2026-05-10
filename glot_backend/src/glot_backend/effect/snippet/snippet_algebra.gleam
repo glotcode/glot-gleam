@@ -15,8 +15,17 @@ pub type SnippetEffect(next) {
     slug: String,
     next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
   )
+  GetAdminSnippetBySlug(
+    slug: String,
+    next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+  )
   ListSnippets(
     filter: ListSnippetsFilter,
+    pagination: CursorPagination,
+    next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
+  )
+  ListAdminSnippets(
+    username: option.Option(String),
     pagination: CursorPagination,
     next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
   )
@@ -44,8 +53,14 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
       GetSnippetById(id, next: fn(value) { f(next(value)) })
     GetSnippetBySlug(slug, next) ->
       GetSnippetBySlug(slug, next: fn(value) { f(next(value)) })
+    GetAdminSnippetBySlug(slug, next) ->
+      GetAdminSnippetBySlug(slug, next: fn(value) { f(next(value)) })
     ListSnippets(filter:, pagination:, next:) ->
       ListSnippets(filter: filter, pagination: pagination, next: fn(value) {
+        f(next(value))
+      })
+    ListAdminSnippets(username:, pagination:, next:) ->
+      ListAdminSnippets(username: username, pagination: pagination, next: fn(value) {
         f(next(value))
       })
     DeleteSnippet(id, next) ->
@@ -64,7 +79,9 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
 pub type EffectName {
   GetSnippetByIdEffectName
   GetSnippetBySlugEffectName
+  GetAdminSnippetBySlugEffectName
   ListSnippetsEffectName
+  ListAdminSnippetsEffectName
   DeleteSnippetEffectName
   DeleteSnippetsByAccountIdEffectName
   CreateSnippetEffectName
@@ -75,7 +92,9 @@ pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetSnippetByIdEffectName -> "get_snippet_by_id"
     GetSnippetBySlugEffectName -> "get_snippet_by_slug"
+    GetAdminSnippetBySlugEffectName -> "get_admin_snippet_by_slug"
     ListSnippetsEffectName -> "list_snippets"
+    ListAdminSnippetsEffectName -> "list_admin_snippets"
     DeleteSnippetEffectName -> "delete_snippet"
     DeleteSnippetsByAccountIdEffectName -> "delete_snippets_by_account_id"
     CreateSnippetEffectName -> "create_snippet"

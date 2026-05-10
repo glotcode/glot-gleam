@@ -19,6 +19,8 @@ pub type Route {
   AdminUser(id: uuid.Uuid)
   AdminJobs
   AdminJob(id: uuid.Uuid)
+  AdminSnippets
+  AdminSnippet(slug: String)
   AdminJobLogs
   AdminJobLog(id: uuid.Uuid)
   AdminConfig
@@ -70,6 +72,8 @@ pub fn from_uri(uri: Uri) -> Route {
         Ok(id) -> AdminJob(id)
         Error(_) -> NotFound(uri:)
       }
+    ["admin", "snippets"] -> AdminSnippets
+    ["admin", "snippets", slug] -> AdminSnippet(slug: slug)
     ["admin", "logs", "job-logs"] -> AdminJobLogs
     ["admin", "logs", "job-logs", id] ->
       case uuid.from_string(id) {
@@ -108,6 +112,8 @@ pub fn to_string(route: Route) -> String {
     AdminUser(id) -> "/admin/users/" <> uuid.to_string(id)
     AdminJobs -> "/admin/jobs"
     AdminJob(id) -> "/admin/jobs/" <> uuid.to_string(id)
+    AdminSnippets -> "/admin/snippets"
+    AdminSnippet(slug) -> "/admin/snippets/" <> slug
     AdminJobLogs -> "/admin/logs/job-logs"
     AdminJobLog(id) -> "/admin/logs/job-logs/" <> uuid.to_string(id)
     AdminConfig -> "/admin/config"
@@ -148,6 +154,8 @@ pub fn name(route: Route) -> String {
     AdminUser(_) -> "admin_user"
     AdminJobs -> "admin_jobs"
     AdminJob(_) -> "admin_job"
+    AdminSnippets -> "admin_snippets"
+    AdminSnippet(_) -> "admin_snippet"
     AdminJobLogs -> "admin_job_logs"
     AdminJobLog(_) -> "admin_job_log"
     AdminConfig -> "admin_config"

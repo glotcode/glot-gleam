@@ -46,6 +46,30 @@ FROM snippets
 INNER JOIN users ON users.id = snippets.user_id
 WHERE snippets.slug = $1;
 
+-- name: GetAdminSnippetBySlug :one
+SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE snippets.slug = $1;
+
 -- name: ListSnippetsAfter :many
 SELECT
   snippets.id,
@@ -126,6 +150,76 @@ WHERE
   )
   AND NOT users.id = ANY(sqlc.arg(skip_user_ids)::uuid[])
   AND (
+    sqlc.narg(before_slug)::text IS NULL
+    OR snippets.slug > sqlc.narg(before_slug)::text
+  )
+ORDER BY snippets.slug ASC
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListAdminSnippetsAfter :many
+SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE
+  (
+    sqlc.narg(username)::text IS NULL
+    OR users.username = sqlc.narg(username)::text
+  )
+  AND
+  (
+    sqlc.narg(after_slug)::text IS NULL
+    OR snippets.slug < sqlc.narg(after_slug)::text
+  )
+ORDER BY snippets.slug DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListAdminSnippetsBefore :many
+SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE
+  (
+    sqlc.narg(username)::text IS NULL
+    OR users.username = sqlc.narg(username)::text
+  )
+  AND
+  (
     sqlc.narg(before_slug)::text IS NULL
     OR snippets.slug > sqlc.narg(before_slug)::text
   )

@@ -15,6 +15,7 @@ import glot_core/admin/job_log_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/admin/run_log_dto
+import glot_core/admin/snippet_dto as admin_snippet_dto
 import glot_core/admin/user_dto
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/account_dto
@@ -447,6 +448,52 @@ pub fn create_admin_job(
     req,
     job_dto.encode_create_request,
     job_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_snippets(
+  request: admin_snippet_dto.ListSnippetsRequest,
+  to_msg: fn(ApiResponse(admin_snippet_dto.ListSnippetsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminSnippetsAction, request)
+
+  send_api_request(
+    req,
+    admin_snippet_dto.encode_list_request,
+    admin_snippet_dto.list_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_snippet(
+  request: admin_snippet_dto.GetSnippetRequest,
+  to_msg: fn(ApiResponse(admin_snippet_dto.GetSnippetResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminSnippetAction, request)
+
+  send_api_request(
+    req,
+    admin_snippet_dto.encode_get_request,
+    admin_snippet_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn delete_admin_snippet(
+  request: snippet_dto.DeleteSnippetRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.DeleteAdminSnippetAction, request)
+
+  send_api_request(
+    req,
+    fn(delete_request) {
+      json.object([
+        #("slug", json.string(delete_request.slug)),
+      ])
+    },
+    nil_decoder(),
     to_msg,
   )
 }

@@ -1265,6 +1265,99 @@ pub fn get_snippet_by_slug_decoder() -> decode.Decoder(GetSnippetBySlug) {
   ))
 }
 
+pub type GetAdminSnippetBySlug {
+  GetAdminSnippetBySlug(
+    id: BitArray,
+    slug: String,
+    language: String,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_instructions: Option(String),
+    files: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    user_id: BitArray,
+    user_account_id: BitArray,
+    user_email: String,
+    user_username: String,
+    user_role: String,
+    user_last_login_at: Timestamp,
+    user_created_at: Timestamp,
+    user_updated_at: Timestamp,
+  )
+}
+
+pub fn get_admin_snippet_by_slug(slug slug: String) {
+  let sql =
+    "SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE snippets.slug = $1"
+  #(sql, [dev.ParamString(slug)], get_admin_snippet_by_slug_decoder())
+}
+
+pub fn get_admin_snippet_by_slug_decoder() -> decode.Decoder(
+  GetAdminSnippetBySlug,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
+  decode.success(GetAdminSnippetBySlug(
+    id:,
+    slug:,
+    language:,
+    title:,
+    visibility:,
+    stdin:,
+    run_instructions:,
+    files:,
+    created_at:,
+    updated_at:,
+    user_id:,
+    user_account_id:,
+    user_email:,
+    user_username:,
+    user_role:,
+    user_last_login_at:,
+    user_created_at:,
+    user_updated_at:,
+  ))
+}
+
 pub type ListSnippetsAfter {
   ListSnippetsAfter(
     id: BitArray,
@@ -1500,6 +1593,238 @@ pub fn list_snippets_before_decoder() -> decode.Decoder(ListSnippetsBefore) {
   use user_created_at <- decode.field(16, dev.datetime_decoder())
   use user_updated_at <- decode.field(17, dev.datetime_decoder())
   decode.success(ListSnippetsBefore(
+    id:,
+    slug:,
+    language:,
+    title:,
+    visibility:,
+    stdin:,
+    run_instructions:,
+    files:,
+    created_at:,
+    updated_at:,
+    user_id:,
+    user_account_id:,
+    user_email:,
+    user_username:,
+    user_role:,
+    user_last_login_at:,
+    user_created_at:,
+    user_updated_at:,
+  ))
+}
+
+pub type ListAdminSnippetsAfter {
+  ListAdminSnippetsAfter(
+    id: BitArray,
+    slug: String,
+    language: String,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_instructions: Option(String),
+    files: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    user_id: BitArray,
+    user_account_id: BitArray,
+    user_email: String,
+    user_username: String,
+    user_role: String,
+    user_last_login_at: Timestamp,
+    user_created_at: Timestamp,
+    user_updated_at: Timestamp,
+  )
+}
+
+pub fn list_admin_snippets_after(
+  username username: Option(String),
+  after_slug after_slug: Option(String),
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE
+  (
+    $1::text IS NULL
+    OR users.username = $1::text
+  )
+  AND
+  (
+    $2::text IS NULL
+    OR snippets.slug < $2::text
+  )
+ORDER BY snippets.slug DESC
+LIMIT $3"
+  #(
+    sql,
+    [
+      dev.ParamNullable(option.map(username, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(after_slug, fn(v) { dev.ParamString(v) })),
+      dev.ParamInt(page_limit),
+    ],
+    list_admin_snippets_after_decoder(),
+  )
+}
+
+pub fn list_admin_snippets_after_decoder() -> decode.Decoder(
+  ListAdminSnippetsAfter,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
+  decode.success(ListAdminSnippetsAfter(
+    id:,
+    slug:,
+    language:,
+    title:,
+    visibility:,
+    stdin:,
+    run_instructions:,
+    files:,
+    created_at:,
+    updated_at:,
+    user_id:,
+    user_account_id:,
+    user_email:,
+    user_username:,
+    user_role:,
+    user_last_login_at:,
+    user_created_at:,
+    user_updated_at:,
+  ))
+}
+
+pub type ListAdminSnippetsBefore {
+  ListAdminSnippetsBefore(
+    id: BitArray,
+    slug: String,
+    language: String,
+    title: String,
+    visibility: String,
+    stdin: String,
+    run_instructions: Option(String),
+    files: String,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    user_id: BitArray,
+    user_account_id: BitArray,
+    user_email: String,
+    user_username: String,
+    user_role: String,
+    user_last_login_at: Timestamp,
+    user_created_at: Timestamp,
+    user_updated_at: Timestamp,
+  )
+}
+
+pub fn list_admin_snippets_before(
+  username username: Option(String),
+  before_slug before_slug: Option(String),
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  snippets.id,
+  snippets.slug,
+  snippets.language,
+  snippets.title,
+  snippets.visibility,
+  snippets.stdin,
+  snippets.run_instructions,
+  snippets.files,
+  snippets.created_at,
+  snippets.updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM snippets
+INNER JOIN users ON users.id = snippets.user_id
+WHERE
+  (
+    $1::text IS NULL
+    OR users.username = $1::text
+  )
+  AND
+  (
+    $2::text IS NULL
+    OR snippets.slug > $2::text
+  )
+ORDER BY snippets.slug ASC
+LIMIT $3"
+  #(
+    sql,
+    [
+      dev.ParamNullable(option.map(username, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(before_slug, fn(v) { dev.ParamString(v) })),
+      dev.ParamInt(page_limit),
+    ],
+    list_admin_snippets_before_decoder(),
+  )
+}
+
+pub fn list_admin_snippets_before_decoder() -> decode.Decoder(
+  ListAdminSnippetsBefore,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use slug <- decode.field(1, decode.string)
+  use language <- decode.field(2, decode.string)
+  use title <- decode.field(3, decode.string)
+  use visibility <- decode.field(4, decode.string)
+  use stdin <- decode.field(5, decode.string)
+  use run_instructions <- decode.field(6, decode.optional(decode.string))
+  use files <- decode.field(7, decode.string)
+  use created_at <- decode.field(8, dev.datetime_decoder())
+  use updated_at <- decode.field(9, dev.datetime_decoder())
+  use user_id <- decode.field(10, decode.bit_array)
+  use user_account_id <- decode.field(11, decode.bit_array)
+  use user_email <- decode.field(12, decode.string)
+  use user_username <- decode.field(13, decode.string)
+  use user_role <- decode.field(14, decode.string)
+  use user_last_login_at <- decode.field(15, dev.datetime_decoder())
+  use user_created_at <- decode.field(16, dev.datetime_decoder())
+  use user_updated_at <- decode.field(17, dev.datetime_decoder())
+  decode.success(ListAdminSnippetsBefore(
     id:,
     slug:,
     language:,

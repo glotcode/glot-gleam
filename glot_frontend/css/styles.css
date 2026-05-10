@@ -856,6 +856,102 @@ a {
   line-height: 1.6;
 }
 
+.admin-snippets-table__wrap {
+  overflow-x: auto;
+}
+
+.admin-snippets-table {
+  width: 100%;
+  border: 1px solid #d9e5f6;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.admin-snippets-table th,
+.admin-snippets-table td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-snippets-table thead {
+  background: #f8fbff;
+}
+
+.admin-snippets-table thead th {
+  border-bottom: 1px solid #d9e5f6;
+}
+
+.admin-snippets-table tbody td {
+  border-bottom: 1px solid #eef4ff;
+}
+
+.admin-snippets-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-snippets-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+.admin-snippets-table__heading {
+  color: #66789f;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-snippets-table__cell {
+  min-width: 0;
+  color: #172033;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.admin-snippets-table__value {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-snippets-table__cell--language .admin-snippets-table__value {
+  color: #2853a6;
+  font-weight: 700;
+}
+
+.admin-snippets-table__cell--title .admin-snippets-table__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-snippets-table__label {
+  display: none;
+}
+
+.admin-snippet-page__files {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-snippet-page__file {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.admin-snippet-page__file-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-snippet-page__file-name {
+  color: #172033;
+  font-size: 0.98rem;
+}
+
 .jobs-table {
   border: 1px solid #d9e5f6;
   background: #ffffff;
@@ -1009,6 +1105,10 @@ a {
     gap: 0.65rem;
   }
 
+  .admin-snippets-table {
+    min-width: 52rem;
+  }
+
   .jobs-table__cell-label {
     display: block;
     margin-bottom: 0.2rem;
@@ -1017,6 +1117,17 @@ a {
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+  }
+
+  .admin-snippets-table__cell--title .admin-snippets-table__value {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .admin-snippet-page__file-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

@@ -19,6 +19,7 @@ import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
 import glot_backend/domain/admin/create_job_domain
+import glot_backend/domain/admin/delete_snippet_domain as admin_delete_snippet_domain
 import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_job_log_domain
 import glot_backend/domain/admin/get_job_logs_domain
@@ -28,6 +29,8 @@ import glot_backend/domain/admin/get_periodic_jobs_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
 import glot_backend/domain/admin/get_run_log_domain
 import glot_backend/domain/admin/get_run_logs_domain
+import glot_backend/domain/admin/get_snippet_domain as admin_get_snippet_domain
+import glot_backend/domain/admin/get_snippets_domain
 import glot_backend/domain/admin/get_user_domain
 import glot_backend/domain/admin/get_users_domain
 import glot_backend/domain/admin/update_user_domain
@@ -73,6 +76,7 @@ import glot_core/admin/job_log_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/admin/run_log_dto
+import glot_core/admin/snippet_dto as admin_snippet_dto
 import glot_core/admin/user_dto
 import glot_core/api_action
 import glot_core/auth/account_dto
@@ -294,6 +298,27 @@ fn handle_api_request(
       create_job_domain.create_job(ctx, request)
       |> program.map(AdminJobResponse)
     }
+    api_action.GetAdminSnippetsAction -> {
+      use request <- program.and_then(get_snippets_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      get_snippets_domain.get_snippets(ctx, request)
+      |> program.map(AdminSnippetsResponse)
+    }
+    api_action.GetAdminSnippetAction -> {
+      use request <- program.and_then(admin_get_snippet_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      admin_get_snippet_domain.get_snippet(ctx, request)
+      |> program.map(AdminSnippetResponse)
+    }
+    api_action.DeleteAdminSnippetAction -> {
+      use request <- program.and_then(admin_delete_snippet_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      admin_delete_snippet_domain.delete_snippet(ctx, request)
+      |> program.map(fn(_) { NoContentResponse })
+    }
     api_action.GetAdminUsersAction -> {
       use request <- program.and_then(get_users_domain.request_from_dynamic(
         api_request.data,
@@ -433,6 +458,8 @@ type ApiResult {
   AdminPeriodicJobResponse(periodic_job_dto.UpdatePeriodicJobResponse)
   AdminJobsResponse(job_dto.ListJobsResponse)
   AdminJobResponse(job_dto.GetJobResponse)
+  AdminSnippetsResponse(admin_snippet_dto.ListSnippetsResponse)
+  AdminSnippetResponse(admin_snippet_dto.GetSnippetResponse)
   AdminUsersResponse(user_dto.ListUsersResponse)
   AdminUserDetailResponse(user_dto.GetUserResponse)
   AdminUserResponse(user_dto.UpdateUserResponse)
@@ -483,6 +510,10 @@ fn api_result_to_response(
       success_response(job_dto.encode_list_response(response))
     AdminJobResponse(response) ->
       success_response(job_dto.encode_get_response(response))
+    AdminSnippetsResponse(response) ->
+      success_response(admin_snippet_dto.encode_list_response(response))
+    AdminSnippetResponse(response) ->
+      success_response(admin_snippet_dto.encode_get_response(response))
     AdminUsersResponse(response) ->
       success_response(user_dto.encode_list_response(response))
     AdminUserDetailResponse(response) ->

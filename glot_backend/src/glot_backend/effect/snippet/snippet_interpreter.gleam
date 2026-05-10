@@ -43,6 +43,21 @@ pub fn run(
         ),
       )
     }
+    snippet_algebra.GetAdminSnippetBySlug(slug, next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.snippet.get_admin_snippet_by_slug(slug)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.SnippetEffectName(
+            snippet_algebra.GetAdminSnippetBySlugEffectName,
+          ),
+          effect_trace.DbReadEffectCategory,
+          started_at,
+        ),
+      )
+    }
     snippet_algebra.ListSnippets(filter:, pagination:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.snippet.list_snippets(filter, pagination)
@@ -51,6 +66,21 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.SnippetEffectName(snippet_algebra.ListSnippetsEffectName),
+          effect_trace.DbReadEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    snippet_algebra.ListAdminSnippets(username:, pagination:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.snippet.list_admin_snippets(username, pagination)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.SnippetEffectName(
+            snippet_algebra.ListAdminSnippetsEffectName,
+          ),
           effect_trace.DbReadEffectCategory,
           started_at,
         ),
