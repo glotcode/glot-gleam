@@ -37,6 +37,8 @@ pub type ApiAction {
   UpdateAdminUserAction
   GetAdminApiLogsAction
   GetAdminApiLogAction
+  GetAdminRunLogsAction
+  GetAdminRunLogAction
   GetAdminJobLogsAction
   GetAdminJobLogAction
   GetAdminRateLimitPoliciesAction
@@ -81,6 +83,8 @@ pub fn list() -> List(ApiAction) {
     UpdateAdminUserAction,
     GetAdminApiLogsAction,
     GetAdminApiLogAction,
+    GetAdminRunLogsAction,
+    GetAdminRunLogAction,
     GetAdminJobLogsAction,
     GetAdminJobLogAction,
     GetAdminRateLimitPoliciesAction,
@@ -138,6 +142,8 @@ pub fn to_string(action: ApiAction) -> String {
     UpdateAdminUserAction -> "update_admin_user"
     GetAdminApiLogsAction -> "get_admin_api_logs"
     GetAdminApiLogAction -> "get_admin_api_log"
+    GetAdminRunLogsAction -> "get_admin_run_logs"
+    GetAdminRunLogAction -> "get_admin_run_log"
     GetAdminJobLogsAction -> "get_admin_job_logs"
     GetAdminJobLogAction -> "get_admin_job_log"
     GetAdminRateLimitPoliciesAction -> "get_admin_rate_limit_policies"
@@ -183,6 +189,8 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "update_admin_user" -> option.Some(UpdateAdminUserAction)
     "get_admin_api_logs" -> option.Some(GetAdminApiLogsAction)
     "get_admin_api_log" -> option.Some(GetAdminApiLogAction)
+    "get_admin_run_logs" -> option.Some(GetAdminRunLogsAction)
+    "get_admin_run_log" -> option.Some(GetAdminRunLogAction)
     "get_admin_job_logs" -> option.Some(GetAdminJobLogsAction)
     "get_admin_job_log" -> option.Some(GetAdminJobLogAction)
     "get_admin_rate_limit_policies" ->

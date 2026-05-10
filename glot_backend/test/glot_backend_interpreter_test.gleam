@@ -243,6 +243,8 @@ fn test_handlers() -> handlers.Handlers {
     admin_log: admin_log_handlers.AdminLogHandlers(
       list_api_logs: fn(_) { Ok([]) },
       get_api_log: fn(_) { Ok(option.None) },
+      list_run_logs: fn(_) { Ok([]) },
+      get_run_log: fn(_) { Ok(option.None) },
       list_job_logs: fn(_) { Ok([]) },
       get_job_log: fn(_) { Ok(option.None) },
     ),

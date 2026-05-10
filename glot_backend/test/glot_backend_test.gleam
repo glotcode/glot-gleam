@@ -1649,6 +1649,10 @@ fn run_test_admin_log_effect(
       panic as "Admin log list API effects are not used in backend tests"
     admin_log_algebra.GetApiLog(_, _) ->
       panic as "Admin log API detail effects are not used in backend tests"
+    admin_log_algebra.ListRunLogs(_, _) ->
+      panic as "Admin log list run effects are not used in backend tests"
+    admin_log_algebra.GetRunLog(_, _) ->
+      panic as "Admin log run detail effects are not used in backend tests"
     admin_log_algebra.ListJobLogs(_, _) ->
       panic as "Admin log list job effects are not used in backend tests"
     admin_log_algebra.GetJobLog(_, _) ->
@@ -1666,6 +1670,10 @@ fn run_test_admin_log_tx_effect(
       panic as "Admin log list API tx effects are not used in backend tests"
     admin_log_algebra.GetApiLog(_, _) ->
       panic as "Admin log API detail tx effects are not used in backend tests"
+    admin_log_algebra.ListRunLogs(_, _) ->
+      panic as "Admin log list run tx effects are not used in backend tests"
+    admin_log_algebra.GetRunLog(_, _) ->
+      panic as "Admin log run detail tx effects are not used in backend tests"
     admin_log_algebra.ListJobLogs(_, _) ->
       panic as "Admin log list job tx effects are not used in backend tests"
     admin_log_algebra.GetJobLog(_, _) ->

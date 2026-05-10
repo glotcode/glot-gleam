@@ -903,6 +903,8 @@ fn action_label(action: api_action.ApiAction) -> String {
     api_action.UpdateAdminUserAction -> "Update admin user"
     api_action.GetAdminApiLogsAction -> "Get API logs"
     api_action.GetAdminApiLogAction -> "Get API log"
+    api_action.GetAdminRunLogsAction -> "Get run logs"
+    api_action.GetAdminRunLogAction -> "Get run log"
     api_action.GetAdminJobLogsAction -> "Get job logs"
     api_action.GetAdminJobLogAction -> "Get job log"
     api_action.GetAdminRateLimitPoliciesAction -> "Get admin rate limits"

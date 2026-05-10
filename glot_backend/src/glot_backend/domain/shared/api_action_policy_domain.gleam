@@ -262,6 +262,16 @@ fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
         account_model.Active,
         account_model.ReadOnly,
       ])
+    api_action.GetAdminRunLogsAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.GetAdminRunLogAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
     api_action.GetAdminJobLogsAction ->
       AllowedAccountStates([
         account_model.Active,

@@ -64,6 +64,98 @@ SELECT
 FROM api_log a
 WHERE a.id = @id::uuid;
 
+-- name: ListAdminRunLogsAfter :many
+SELECT
+  id,
+  request_id,
+  created_at,
+  session_id,
+  user_id,
+  language,
+  outcome,
+  duration_ns,
+  failure_message
+FROM run_log
+WHERE (
+    NOT @filter_by_request_id::boolean
+    OR request_id = @request_id::uuid
+  )
+  AND (
+    NOT @filter_by_session_id::boolean
+    OR session_id = @session_id::uuid
+  )
+  AND (
+    NOT @filter_by_user_id::boolean
+    OR user_id = @user_id::uuid
+  )
+  AND (
+    NOT @filter_by_language::boolean
+    OR language = @language::text
+  )
+  AND (
+    NOT @filter_by_outcome::boolean
+    OR outcome = @outcome::text
+  )
+  AND (
+    NOT @has_after_cursor::boolean
+    OR (created_at, id) < (@after_created_at::timestamptz, @after_id::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT @page_limit;
+
+-- name: ListAdminRunLogsBefore :many
+SELECT
+  id,
+  request_id,
+  created_at,
+  session_id,
+  user_id,
+  language,
+  outcome,
+  duration_ns,
+  failure_message
+FROM run_log
+WHERE (
+    NOT @filter_by_request_id::boolean
+    OR request_id = @request_id::uuid
+  )
+  AND (
+    NOT @filter_by_session_id::boolean
+    OR session_id = @session_id::uuid
+  )
+  AND (
+    NOT @filter_by_user_id::boolean
+    OR user_id = @user_id::uuid
+  )
+  AND (
+    NOT @filter_by_language::boolean
+    OR language = @language::text
+  )
+  AND (
+    NOT @filter_by_outcome::boolean
+    OR outcome = @outcome::text
+  )
+  AND (
+    NOT @has_before_cursor::boolean
+    OR (created_at, id) > (@before_created_at::timestamptz, @before_id::uuid)
+  )
+ORDER BY created_at ASC, id ASC
+LIMIT @page_limit;
+
+-- name: GetAdminRunLog :one
+SELECT
+  id,
+  request_id,
+  created_at,
+  session_id,
+  user_id,
+  language,
+  outcome,
+  duration_ns,
+  failure_message
+FROM run_log
+WHERE id = @id::uuid;
+
 -- name: ListAdminJobLogsAfter :many
 SELECT
   id,

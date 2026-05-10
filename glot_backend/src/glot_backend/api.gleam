@@ -26,6 +26,8 @@ import glot_backend/domain/admin/get_jobs_domain
 import glot_backend/domain/admin/get_periodic_job_domain
 import glot_backend/domain/admin/get_periodic_jobs_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
+import glot_backend/domain/admin/get_run_log_domain
+import glot_backend/domain/admin/get_run_logs_domain
 import glot_backend/domain/admin/get_user_domain
 import glot_backend/domain/admin/get_users_domain
 import glot_backend/domain/admin/update_user_domain
@@ -70,6 +72,7 @@ import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
+import glot_core/admin/run_log_dto
 import glot_core/admin/user_dto
 import glot_core/api_action
 import glot_core/auth/account_dto
@@ -326,6 +329,20 @@ fn handle_api_request(
       get_api_log_domain.get_api_log(ctx, request)
       |> program.map(AdminApiLogResponse)
     }
+    api_action.GetAdminRunLogsAction -> {
+      use request <- program.and_then(get_run_logs_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      get_run_logs_domain.get_run_logs(ctx, request)
+      |> program.map(AdminRunLogsResponse)
+    }
+    api_action.GetAdminRunLogAction -> {
+      use request <- program.and_then(get_run_log_domain.request_from_dynamic(
+        api_request.data,
+      ))
+      get_run_log_domain.get_run_log(ctx, request)
+      |> program.map(AdminRunLogResponse)
+    }
     api_action.GetAdminJobLogsAction -> {
       use request <- program.and_then(get_job_logs_domain.request_from_dynamic(
         api_request.data,
@@ -421,6 +438,8 @@ type ApiResult {
   AdminUserResponse(user_dto.UpdateUserResponse)
   AdminApiLogsResponse(api_log_dto.ListApiLogsResponse)
   AdminApiLogResponse(api_log_dto.GetApiLogResponse)
+  AdminRunLogsResponse(run_log_dto.ListRunLogsResponse)
+  AdminRunLogResponse(run_log_dto.GetRunLogResponse)
   AdminJobLogsResponse(job_log_dto.ListJobLogsResponse)
   AdminJobLogResponse(job_log_dto.GetJobLogResponse)
   RateLimitPoliciesResponse(rate_limit_config_dto.RateLimitPoliciesResponse)
@@ -474,6 +493,10 @@ fn api_result_to_response(
       success_response(api_log_dto.encode_list_response(response))
     AdminApiLogResponse(response) ->
       success_response(api_log_dto.encode_get_response(response))
+    AdminRunLogsResponse(response) ->
+      success_response(run_log_dto.encode_list_response(response))
+    AdminRunLogResponse(response) ->
+      success_response(run_log_dto.encode_get_response(response))
     AdminJobLogsResponse(response) ->
       success_response(job_log_dto.encode_list_response(response))
     AdminJobLogResponse(response) ->

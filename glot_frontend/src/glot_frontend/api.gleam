@@ -14,6 +14,7 @@ import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
+import glot_core/admin/run_log_dto
 import glot_core/admin/user_dto
 import glot_core/api_action.{type ApiAction}
 import glot_core/auth/account_dto
@@ -516,6 +517,34 @@ pub fn get_admin_api_log(
     req,
     api_log_dto.encode_get_request,
     api_log_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_run_logs(
+  request: run_log_dto.ListRunLogsRequest,
+  to_msg: fn(ApiResponse(run_log_dto.ListRunLogsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminRunLogsAction, request)
+
+  send_api_request(
+    req,
+    run_log_dto.encode_list_request,
+    run_log_dto.list_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_run_log(
+  request: run_log_dto.GetRunLogRequest,
+  to_msg: fn(ApiResponse(run_log_dto.GetRunLogResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminRunLogAction, request)
+
+  send_api_request(
+    req,
+    run_log_dto.encode_get_request,
+    run_log_dto.get_response_decoder(),
     to_msg,
   )
 }

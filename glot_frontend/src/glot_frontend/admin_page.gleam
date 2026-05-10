@@ -106,6 +106,11 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminApiLogs,
             ),
             link_card(
+              title: "Run logs",
+              description: "Inspect retained execution outcomes with request, session, user, and language filters.",
+              target: route.AdminRunLogs,
+            ),
+            link_card(
               title: "Job logs",
               description: "Scan operational job log output separately from the primary jobs queue view.",
               target: route.AdminJobLogs,

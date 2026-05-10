@@ -231,6 +231,14 @@ CREATE TABLE IF NOT EXISTS run_log (
 
 CREATE INDEX idx_run_log_created_at ON run_log(created_at);
 CREATE INDEX idx_run_log_language_created_at ON run_log(language, created_at);
+CREATE INDEX idx_run_log_request_id_created_at
+  ON run_log(request_id, created_at);
+CREATE INDEX idx_run_log_session_id_created_at
+  ON run_log(session_id, created_at);
+CREATE INDEX idx_run_log_user_id_created_at
+  ON run_log(user_id, created_at);
+CREATE INDEX idx_run_log_outcome_created_at
+  ON run_log(outcome, created_at);
 
 -- ANALYTICS ROLLUPS
 

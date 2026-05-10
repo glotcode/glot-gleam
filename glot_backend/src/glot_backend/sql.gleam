@@ -2499,6 +2499,290 @@ pub fn get_admin_api_log_decoder() -> decode.Decoder(GetAdminApiLog) {
   ))
 }
 
+pub type ListAdminRunLogsAfter {
+  ListAdminRunLogsAfter(
+    id: BitArray,
+    request_id: BitArray,
+    created_at: Timestamp,
+    session_id: Option(BitArray),
+    user_id: Option(BitArray),
+    language: String,
+    outcome: String,
+    duration_ns: Option(Int),
+    failure_message: Option(String),
+  )
+}
+
+pub fn list_admin_run_logs_after(
+  filter_by_request_id filter_by_request_id: Bool,
+  request_id request_id: BitArray,
+  filter_by_session_id filter_by_session_id: Bool,
+  session_id session_id: BitArray,
+  filter_by_user_id filter_by_user_id: Bool,
+  user_id user_id: BitArray,
+  filter_by_language filter_by_language: Bool,
+  language language: String,
+  filter_by_outcome filter_by_outcome: Bool,
+  outcome outcome: String,
+  has_after_cursor has_after_cursor: Bool,
+  after_created_at after_created_at: Timestamp,
+  after_id after_id: BitArray,
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  created_at,
+  session_id,
+  user_id,
+  language,
+  outcome,
+  duration_ns,
+  failure_message
+FROM run_log
+WHERE (
+    NOT $1::boolean
+    OR request_id = $2::uuid
+  )
+  AND (
+    NOT $3::boolean
+    OR session_id = $4::uuid
+  )
+  AND (
+    NOT $5::boolean
+    OR user_id = $6::uuid
+  )
+  AND (
+    NOT $7::boolean
+    OR language = $8::text
+  )
+  AND (
+    NOT $9::boolean
+    OR outcome = $10::text
+  )
+  AND (
+    NOT $11::boolean
+    OR (created_at, id) < ($12::timestamptz, $13::uuid)
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $14"
+  #(
+    sql,
+    [
+      dev.ParamBool(filter_by_request_id),
+      dev.ParamBitArray(request_id),
+      dev.ParamBool(filter_by_session_id),
+      dev.ParamBitArray(session_id),
+      dev.ParamBool(filter_by_user_id),
+      dev.ParamBitArray(user_id),
+      dev.ParamBool(filter_by_language),
+      dev.ParamString(language),
+      dev.ParamBool(filter_by_outcome),
+      dev.ParamString(outcome),
+      dev.ParamBool(has_after_cursor),
+      dev.ParamTimestamp(after_created_at),
+      dev.ParamBitArray(after_id),
+      dev.ParamInt(page_limit),
+    ],
+    list_admin_run_logs_after_decoder(),
+  )
+}
+
+pub fn list_admin_run_logs_after_decoder() -> decode.Decoder(
+  ListAdminRunLogsAfter,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.bit_array)
+  use created_at <- decode.field(2, dev.datetime_decoder())
+  use session_id <- decode.field(3, decode.optional(decode.bit_array))
+  use user_id <- decode.field(4, decode.optional(decode.bit_array))
+  use language <- decode.field(5, decode.string)
+  use outcome <- decode.field(6, decode.string)
+  use duration_ns <- decode.field(7, decode.optional(decode.int))
+  use failure_message <- decode.field(8, decode.optional(decode.string))
+  decode.success(ListAdminRunLogsAfter(
+    id:,
+    request_id:,
+    created_at:,
+    session_id:,
+    user_id:,
+    language:,
+    outcome:,
+    duration_ns:,
+    failure_message:,
+  ))
+}
+
+pub type ListAdminRunLogsBefore {
+  ListAdminRunLogsBefore(
+    id: BitArray,
+    request_id: BitArray,
+    created_at: Timestamp,
+    session_id: Option(BitArray),
+    user_id: Option(BitArray),
+    language: String,
+    outcome: String,
+    duration_ns: Option(Int),
+    failure_message: Option(String),
+  )
+}
+
+pub fn list_admin_run_logs_before(
+  filter_by_request_id filter_by_request_id: Bool,
+  request_id request_id: BitArray,
+  filter_by_session_id filter_by_session_id: Bool,
+  session_id session_id: BitArray,
+  filter_by_user_id filter_by_user_id: Bool,
+  user_id user_id: BitArray,
+  filter_by_language filter_by_language: Bool,
+  language language: String,
+  filter_by_outcome filter_by_outcome: Bool,
+  outcome outcome: String,
+  has_before_cursor has_before_cursor: Bool,
+  before_created_at before_created_at: Timestamp,
+  before_id before_id: BitArray,
+  page_limit page_limit: Int,
+) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  created_at,
+  session_id,
+  user_id,
+  language,
+  outcome,
+  duration_ns,
+  failure_message
+FROM run_log
+WHERE (
+    NOT $1::boolean
+    OR request_id = $2::uuid
+  )
+  AND (
+    NOT $3::boolean
+    OR session_id = $4::uuid
+  )
+  AND (
+    NOT $5::boolean
+    OR user_id = $6::uuid
+  )
+  AND (
+    NOT $7::boolean
+    OR language = $8::text
+  )
+  AND (
+    NOT $9::boolean
+    OR outcome = $10::text
+  )
+  AND (
+    NOT $11::boolean
+    OR (created_at, id) > ($12::timestamptz, $13::uuid)
+  )
+ORDER BY created_at ASC, id ASC
+LIMIT $14"
+  #(
+    sql,
+    [
+      dev.ParamBool(filter_by_request_id),
+      dev.ParamBitArray(request_id),
+      dev.ParamBool(filter_by_session_id),
+      dev.ParamBitArray(session_id),
+      dev.ParamBool(filter_by_user_id),
+      dev.ParamBitArray(user_id),
+      dev.ParamBool(filter_by_language),
+      dev.ParamString(language),
+      dev.ParamBool(filter_by_outcome),
+      dev.ParamString(outcome),
+      dev.ParamBool(has_before_cursor),
+      dev.ParamTimestamp(before_created_at),
+      dev.ParamBitArray(before_id),
+      dev.ParamInt(page_limit),
+    ],
+    list_admin_run_logs_before_decoder(),
+  )
+}
+
+pub fn list_admin_run_logs_before_decoder() -> decode.Decoder(
+  ListAdminRunLogsBefore,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.bit_array)
+  use created_at <- decode.field(2, dev.datetime_decoder())
+  use session_id <- decode.field(3, decode.optional(decode.bit_array))
+  use user_id <- decode.field(4, decode.optional(decode.bit_array))
+  use language <- decode.field(5, decode.string)
+  use outcome <- decode.field(6, decode.string)
+  use duration_ns <- decode.field(7, decode.optional(decode.int))
+  use failure_message <- decode.field(8, decode.optional(decode.string))
+  decode.success(ListAdminRunLogsBefore(
+    id:,
+    request_id:,
+    created_at:,
+    session_id:,
+    user_id:,
+    language:,
+    outcome:,
+    duration_ns:,
+    failure_message:,
+  ))
+}
+
+pub type GetAdminRunLog {
+  GetAdminRunLog(
+    id: BitArray,
+    request_id: BitArray,
+    created_at: Timestamp,
+    session_id: Option(BitArray),
+    user_id: Option(BitArray),
+    language: String,
+    outcome: String,
+    duration_ns: Option(Int),
+    failure_message: Option(String),
+  )
+}
+
+pub fn get_admin_run_log(id id: BitArray) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  created_at,
+  session_id,
+  user_id,
+  language,
+  outcome,
+  duration_ns,
+  failure_message
+FROM run_log
+WHERE id = $1::uuid"
+  #(sql, [dev.ParamBitArray(id)], get_admin_run_log_decoder())
+}
+
+pub fn get_admin_run_log_decoder() -> decode.Decoder(GetAdminRunLog) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.bit_array)
+  use created_at <- decode.field(2, dev.datetime_decoder())
+  use session_id <- decode.field(3, decode.optional(decode.bit_array))
+  use user_id <- decode.field(4, decode.optional(decode.bit_array))
+  use language <- decode.field(5, decode.string)
+  use outcome <- decode.field(6, decode.string)
+  use duration_ns <- decode.field(7, decode.optional(decode.int))
+  use failure_message <- decode.field(8, decode.optional(decode.string))
+  decode.success(GetAdminRunLog(
+    id:,
+    request_id:,
+    created_at:,
+    session_id:,
+    user_id:,
+    language:,
+    outcome:,
+    duration_ns:,
+    failure_message:,
+  ))
+}
+
 pub type ListAdminJobLogsAfter {
   ListAdminJobLogsAfter(
     id: BitArray,

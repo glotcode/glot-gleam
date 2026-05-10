@@ -115,6 +115,8 @@ fn handle_page_request(
     route.Admin -> spa_page("glot.io - admin")
     route.AdminApiLogs -> spa_page("glot.io - api logs")
     route.AdminApiLog(_) -> spa_page("glot.io - api log")
+    route.AdminRunLogs -> spa_page("glot.io - run logs")
+    route.AdminRunLog(_) -> spa_page("glot.io - run log")
     route.AdminPeriodicJobs -> spa_page("glot.io - periodic jobs")
     route.AdminPeriodicJob(_) -> spa_page("glot.io - periodic job")
     route.AdminUsers -> spa_page("glot.io - admin users")

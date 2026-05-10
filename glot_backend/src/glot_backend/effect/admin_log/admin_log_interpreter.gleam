@@ -71,6 +71,64 @@ pub fn run(
         )
       }
     }
+    admin_log_algebra.ListRunLogs(request:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.admin_log.list_run_logs(request)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AdminLogEffectName(
+                admin_log_algebra.ListRunLogsEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(query_error) -> #(
+          Error(error.QueryError(query_error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AdminLogEffectName(
+              admin_log_algebra.ListRunLogsEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    admin_log_algebra.GetRunLog(id:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.admin_log.get_run_log(id)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AdminLogEffectName(
+                admin_log_algebra.GetRunLogEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(query_error) -> #(
+          Error(error.QueryError(query_error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AdminLogEffectName(
+              admin_log_algebra.GetRunLogEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     admin_log_algebra.ListJobLogs(request:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.admin_log.list_job_logs(request)
