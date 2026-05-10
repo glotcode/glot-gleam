@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option
 import gleam/regexp
 import gleam/result
+import glot_core/admin/account_dto as admin_account_dto
 import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
@@ -536,6 +537,20 @@ pub fn update_admin_user(
     req,
     user_dto.encode_update_request,
     user_dto.update_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn delete_admin_account(
+  request: admin_account_dto.DeleteAccountRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.DeleteAdminAccountAction, request)
+
+  send_api_request(
+    req,
+    admin_account_dto.encode_delete_request,
+    nil_decoder(),
     to_msg,
   )
 }

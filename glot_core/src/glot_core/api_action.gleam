@@ -38,6 +38,7 @@ pub type ApiAction {
   GetAdminUsersAction
   GetAdminUserAction
   UpdateAdminUserAction
+  DeleteAdminAccountAction
   GetAdminApiLogsAction
   GetAdminApiLogAction
   GetAdminRunLogsAction
@@ -87,6 +88,7 @@ pub fn list() -> List(ApiAction) {
     GetAdminUsersAction,
     GetAdminUserAction,
     UpdateAdminUserAction,
+    DeleteAdminAccountAction,
     GetAdminApiLogsAction,
     GetAdminApiLogAction,
     GetAdminRunLogsAction,
@@ -149,6 +151,7 @@ pub fn to_string(action: ApiAction) -> String {
     GetAdminUsersAction -> "get_admin_users"
     GetAdminUserAction -> "get_admin_user"
     UpdateAdminUserAction -> "update_admin_user"
+    DeleteAdminAccountAction -> "delete_admin_account"
     GetAdminApiLogsAction -> "get_admin_api_logs"
     GetAdminApiLogAction -> "get_admin_api_log"
     GetAdminRunLogsAction -> "get_admin_run_logs"
@@ -199,6 +202,7 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "get_admin_users" -> option.Some(GetAdminUsersAction)
     "get_admin_user" -> option.Some(GetAdminUserAction)
     "update_admin_user" -> option.Some(UpdateAdminUserAction)
+    "delete_admin_account" -> option.Some(DeleteAdminAccountAction)
     "get_admin_api_logs" -> option.Some(GetAdminApiLogsAction)
     "get_admin_api_log" -> option.Some(GetAdminApiLogAction)
     "get_admin_run_logs" -> option.Some(GetAdminRunLogsAction)

@@ -12,14 +12,15 @@ import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/get_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/account/update_account_domain
+import glot_backend/domain/admin/create_job_domain
+import glot_backend/domain/admin/delete_account_domain as admin_delete_account_domain
+import glot_backend/domain/admin/delete_snippet_domain as admin_delete_snippet_domain
 import glot_backend/domain/admin/get_api_log_domain
 import glot_backend/domain/admin/get_api_logs_domain
 import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
-import glot_backend/domain/admin/create_job_domain
-import glot_backend/domain/admin/delete_snippet_domain as admin_delete_snippet_domain
 import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_job_log_domain
 import glot_backend/domain/admin/get_job_logs_domain
@@ -33,8 +34,8 @@ import glot_backend/domain/admin/get_snippet_domain as admin_get_snippet_domain
 import glot_backend/domain/admin/get_snippets_domain
 import glot_backend/domain/admin/get_user_domain
 import glot_backend/domain/admin/get_users_domain
-import glot_backend/domain/admin/update_user_domain
 import glot_backend/domain/admin/update_periodic_job_domain
+import glot_backend/domain/admin/update_user_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_cleanup_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
@@ -306,16 +307,16 @@ fn handle_api_request(
       |> program.map(AdminSnippetsResponse)
     }
     api_action.GetAdminSnippetAction -> {
-      use request <- program.and_then(admin_get_snippet_domain.request_from_dynamic(
-        api_request.data,
-      ))
+      use request <- program.and_then(
+        admin_get_snippet_domain.request_from_dynamic(api_request.data),
+      )
       admin_get_snippet_domain.get_snippet(ctx, request)
       |> program.map(AdminSnippetResponse)
     }
     api_action.DeleteAdminSnippetAction -> {
-      use request <- program.and_then(admin_delete_snippet_domain.request_from_dynamic(
-        api_request.data,
-      ))
+      use request <- program.and_then(
+        admin_delete_snippet_domain.request_from_dynamic(api_request.data),
+      )
       admin_delete_snippet_domain.delete_snippet(ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
@@ -339,6 +340,13 @@ fn handle_api_request(
       ))
       update_user_domain.update_user(ctx, request)
       |> program.map(AdminUserResponse)
+    }
+    api_action.DeleteAdminAccountAction -> {
+      use request <- program.and_then(
+        admin_delete_account_domain.request_from_dynamic(api_request.data),
+      )
+      admin_delete_account_domain.delete_account(ctx, request)
+      |> program.map(fn(_) { NoContentResponse })
     }
     api_action.GetAdminApiLogsAction -> {
       use request <- program.and_then(get_api_logs_domain.request_from_dynamic(

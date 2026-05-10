@@ -1,26 +1,34 @@
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/admin/account_dto
 import glot_core/admin/user_dto
 import glot_core/auth/account_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
+import glot_core/route
 import glot_frontend/api
+import glot_frontend/app_dialog
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
+import modem
 import youid/uuid
+
+const delete_dialog_id = "admin-user-page-delete-dialog"
 
 pub type Model {
   Model(
     id: uuid.Uuid,
     user: option.Option(UserEditor),
+    pending_delete: option.Option(UserEditor),
     status: Status,
   )
 }
@@ -29,6 +37,7 @@ pub type Status {
   NotLoaded
   Loading
   Ready
+  Deleting
   LoadError(String)
 }
 
@@ -80,11 +89,24 @@ pub type Msg {
   AccountTierChanged(String)
   ResetClicked
   SaveClicked
+  DeleteClicked
+  DeleteCancelled
+  DeleteDialogClosed
+  DeleteConfirmed
   SaveFinished(api.ApiResponse(user_dto.UpdateUserResponse))
+  DeleteFinished(api.ApiResponse(Nil))
 }
 
 pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
-  #(Model(id: id, user: option.None, status: NotLoaded), effect.none())
+  #(
+    Model(
+      id: id,
+      user: option.None,
+      pending_delete: option.None,
+      status: NotLoaded,
+    ),
+    effect.none(),
+  )
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
@@ -93,7 +115,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
       Model(..model, status: Loading),
       api.get_admin_user(user_dto.GetUserRequest(id: model.id), UserLoaded),
     )
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
+    Loading | Ready | Deleting | LoadError(_) -> #(model, effect.none())
   }
 }
 
@@ -105,14 +127,27 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             ..model,
             user: option.Some(editor_from_response(response.user)),
+            pending_delete: option.None,
             status: Ready,
           ),
           effect.none(),
         )
-        api.ApiFailure(error) ->
-          #(Model(..model, status: LoadError(error.message)), effect.none())
-        api.HttpFailure(_) ->
-          #(Model(..model, status: LoadError("Could not load user.")), effect.none())
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            pending_delete: option.None,
+            status: LoadError(error.message),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            pending_delete: option.None,
+            status: LoadError("Could not load user."),
+          ),
+          effect.none(),
+        )
       }
 
     UsernameChanged(value) -> #(
@@ -219,12 +254,44 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           }
       }
 
+    DeleteClicked ->
+      case model.user {
+        option.Some(editor) -> #(
+          Model(..model, pending_delete: option.Some(editor)),
+          app_dialog.open(delete_dialog_id),
+        )
+        option.None -> #(model, effect.none())
+      }
+
+    DeleteCancelled -> #(model, app_dialog.close(delete_dialog_id))
+
+    DeleteDialogClosed -> #(
+      Model(..model, pending_delete: option.None),
+      effect.none(),
+    )
+
+    DeleteConfirmed ->
+      case model.pending_delete {
+        option.Some(editor) -> #(
+          Model(..model, status: Deleting),
+          effect.batch([
+            app_dialog.close(delete_dialog_id),
+            api.delete_admin_account(
+              account_dto.DeleteAccountRequest(user_id: editor.id),
+              DeleteFinished,
+            ),
+          ]),
+        )
+        option.None -> #(model, effect.none())
+      }
+
     SaveFinished(result) ->
       case result {
         api.ApiSuccess(response) -> #(
           Model(
             ..model,
             user: option.Some(editor_from_response(response.user)),
+            pending_delete: option.None,
             status: Ready,
           ),
           effect.none(),
@@ -239,6 +306,30 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           update_editor(model, fn(editor) {
             UserEditor(..editor, state: SaveError("Could not update user."))
           }),
+          effect.none(),
+        )
+      }
+
+    DeleteFinished(result) ->
+      case result {
+        api.ApiSuccess(_) -> #(
+          Model(..model, pending_delete: option.None, status: Ready),
+          navigate_to_users(),
+        )
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            pending_delete: option.None,
+            status: LoadError(error.message),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            pending_delete: option.None,
+            status: LoadError("Could not delete account."),
+          ),
           effect.none(),
         )
       }
@@ -261,22 +352,45 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               ),
             ]),
           ]),
+          html.div([attribute.class("admin-page__policy-actions")], [
+            html.button(
+              [
+                attribute.type_("button"),
+                attribute.class("admin-page__button admin-page__button--danger"),
+                attribute.disabled(model.status == Deleting),
+                event.on_click(DeleteClicked),
+              ],
+              [
+                html.text(case model.status {
+                  Deleting -> "Deleting..."
+                  NotLoaded | Loading | Ready | LoadError(_) -> "Delete account"
+                }),
+              ],
+            ),
+          ]),
         ]),
         status_view(model),
         detail_view(model, now),
       ]),
     ]),
+    delete_confirmation_dialog(model),
   ])
 }
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.status {
-    NotLoaded | Ready -> html.p([attribute.class("admin-page__status")], [
-      html.text(""),
-    ])
-    Loading -> html.p([attribute.class("admin-page__status")], [
-      html.text("Loading user..."),
-    ])
+    NotLoaded | Ready ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text(""),
+      ])
+    Loading ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Loading user..."),
+      ])
+    Deleting ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Deleting account..."),
+      ])
     LoadError(message) ->
       html.p([attribute.class("admin-page__status admin-page__status--error")], [
         html.text(message),
@@ -294,11 +408,15 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
       html.div([attribute.class("admin-page__empty")], [
         html.text("This user could not be loaded."),
       ])
-    option.Some(editor), _ -> user_view(editor, now)
+    option.Some(editor), _ -> user_view(editor, now, model.status)
   }
 }
 
-fn user_view(editor: UserEditor, now: Timestamp) -> Element(Msg) {
+fn user_view(
+  editor: UserEditor,
+  now: Timestamp,
+  status: Status,
+) -> Element(Msg) {
   html.div([attribute.class("admin-job-page__content")], [
     html.div([attribute.class("admin-job-page__summary-grid")], [
       summary_card("Role", role_text(editor.draft.role)),
@@ -321,7 +439,10 @@ fn user_view(editor: UserEditor, now: Timestamp) -> Element(Msg) {
         detail_item("User ID", uuid.to_string(editor.id)),
         detail_item("Account ID", uuid.to_string(editor.account_id)),
         detail_item("Email", email_address_model.to_string(editor.email)),
-        detail_item("Delete job ID", optional_uuid(editor.metadata.delete_job_id)),
+        detail_item(
+          "Delete job ID",
+          optional_uuid(editor.metadata.delete_job_id),
+        ),
         detail_item(
           "Delete scheduled at",
           optional_timestamp(editor.metadata.delete_scheduled_at),
@@ -341,12 +462,12 @@ fn user_view(editor: UserEditor, now: Timestamp) -> Element(Msg) {
           ),
         ]),
       ]),
-      edit_form(editor),
+      edit_form(editor, status == Deleting),
     ]),
   ])
 }
 
-fn edit_form(editor: UserEditor) -> Element(Msg) {
+fn edit_form(editor: UserEditor, is_deleting: Bool) -> Element(Msg) {
   html.form(
     [
       attribute.class("admin-page__policy"),
@@ -370,7 +491,9 @@ fn edit_form(editor: UserEditor) -> Element(Msg) {
         select_input(
           id: "admin-user-account-state",
           label: "Account state",
-          value: account_model.account_state_to_string(editor.draft.account_state),
+          value: account_model.account_state_to_string(
+            editor.draft.account_state,
+          ),
           on_input: AccountStateChanged,
           options: account_state_options(),
         ),
@@ -394,7 +517,9 @@ fn edit_form(editor: UserEditor) -> Element(Msg) {
           [
             attribute.type_("button"),
             attribute.class("admin-page__button admin-page__button--secondary"),
-            attribute.disabled(editor.state == Saving || !is_dirty(editor)),
+            attribute.disabled(
+              editor.state == Saving || is_deleting || !is_dirty(editor),
+            ),
             event.on_click(ResetClicked),
           ],
           [html.text("Reset")],
@@ -403,7 +528,7 @@ fn edit_form(editor: UserEditor) -> Element(Msg) {
           [
             attribute.type_("submit"),
             attribute.class("admin-page__button"),
-            attribute.disabled(editor.state == Saving),
+            attribute.disabled(editor.state == Saving || is_deleting),
           ],
           [html.text(save_button_text(editor.state))],
         ),
@@ -412,15 +537,77 @@ fn edit_form(editor: UserEditor) -> Element(Msg) {
   )
 }
 
+fn delete_confirmation_dialog(model: Model) -> Element(Msg) {
+  html.dialog(
+    [
+      attribute.id(delete_dialog_id),
+      attribute.class("app-dialog"),
+      event.on("close", decode.success(DeleteDialogClosed)),
+    ],
+    delete_confirmation_dialog_children(model.pending_delete),
+  )
+}
+
+fn delete_confirmation_dialog_children(
+  pending_delete: option.Option(UserEditor),
+) -> List(Element(Msg)) {
+  case pending_delete {
+    option.Some(editor) -> [
+      html.form([attribute.class("app-dialog__form")], [
+        html.div([attribute.class("app-dialog__section")], [
+          html.p([attribute.class("app-dialog__label")], [
+            html.text("Delete account"),
+          ]),
+          html.p([attribute.class("app-dialog__copy")], [
+            html.text("Delete "),
+            html.code([], [html.text(editor.draft.username)]),
+            html.text(" and immediately delete the account at "),
+            html.code([], [
+              html.text(email_address_model.to_string(editor.email)),
+            ]),
+            html.text(
+              "? This also deletes snippets, sessions, and any scheduled account deletion job. This action cannot be undone.",
+            ),
+          ]),
+        ]),
+        html.div([attribute.class("app-dialog__actions")], [
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.autofocus(True),
+              attribute.class(
+                "app-dialog__button app-dialog__button--secondary",
+              ),
+              event.on_click(DeleteCancelled),
+            ],
+            [html.text("Cancel")],
+          ),
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class("app-dialog__button app-dialog__button--danger"),
+              event.on_click(DeleteConfirmed),
+            ],
+            [html.text("Delete account")],
+          ),
+        ]),
+      ]),
+    ]
+    option.None -> []
+  }
+}
+
 fn save_status(state: EditorState) -> Element(Msg) {
   case state {
     Idle -> html.p([attribute.class("admin-page__status")], [html.text("")])
-    Saving -> html.p([attribute.class("admin-page__status")], [
-      html.text("Saving user..."),
-    ])
-    Saved -> html.p([attribute.class("admin-page__status")], [
-      html.text("User updated."),
-    ])
+    Saving ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Saving user..."),
+      ])
+    Saved ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("User updated."),
+      ])
     SaveError(message) ->
       html.p([attribute.class("admin-page__status admin-page__status--error")], [
         html.text(message),
@@ -469,7 +656,9 @@ fn editor_from_response(user: user_dto.UserDetailResponse) -> UserEditor {
   )
 }
 
-fn editor_to_request(editor: UserEditor) -> Result(user_dto.UpdateUserRequest, String) {
+fn editor_to_request(
+  editor: UserEditor,
+) -> Result(user_dto.UpdateUserRequest, String) {
   let username = string.trim(editor.draft.username)
 
   use _ <- result.try(user_model.validate_username(username))
@@ -636,4 +825,9 @@ fn optional_timestamp(value: option.Option(Timestamp)) -> String {
 
 fn format_timestamp(value: Timestamp) -> String {
   timestamp.to_rfc3339(value, calendar.utc_offset)
+}
+
+fn navigate_to_users() -> Effect(Msg) {
+  let #(path, query) = route.path_and_query(route.AdminUsers)
+  modem.push(path, query, option.None)
 }

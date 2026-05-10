@@ -110,20 +110,19 @@ pub fn list_request_decoder() -> decode.Decoder(ListUsersRequest) {
 }
 
 pub fn encode_list_request(request: ListUsersRequest) -> json.Json {
-  json.object(list.append(
-    pagination_model.encode_request_fields(request.pagination),
-    [
-    #("email", json.nullable(request.email, json.string)),
-    #("username", json.nullable(request.username, json.string)),
-    #("id", json.nullable(request.id, encode_uuid)),
-    #("role", json.nullable(request.role, encode_user_role)),
-    #(
-      "accountState",
-      json.nullable(request.account_state, encode_account_state),
-    ),
-    #("accountTier", json.nullable(request.account_tier, encode_account_tier)),
-  ],
-  ))
+  json.object(
+    list.append(pagination_model.encode_request_fields(request.pagination), [
+      #("email", json.nullable(request.email, json.string)),
+      #("username", json.nullable(request.username, json.string)),
+      #("id", json.nullable(request.id, encode_uuid)),
+      #("role", json.nullable(request.role, encode_user_role)),
+      #(
+        "accountState",
+        json.nullable(request.account_state, encode_account_state),
+      ),
+      #("accountTier", json.nullable(request.account_tier, encode_account_tier)),
+    ]),
+  )
 }
 
 pub fn get_request_decoder() -> decode.Decoder(GetUserRequest) {
@@ -179,7 +178,10 @@ pub fn list_response_decoder() -> decode.Decoder(ListUsersResponse) {
 
 pub fn encode_list_response(response: ListUsersResponse) -> json.Json {
   json.object([
-    #("page", pagination_model.encode_page(response.page, "users", encode_user_summary)),
+    #(
+      "page",
+      pagination_model.encode_page(response.page, "users", encode_user_summary),
+    ),
   ])
 }
 
@@ -373,7 +375,9 @@ fn account_state_decoder() -> decode.Decoder(account_model.AccountState) {
   }
 }
 
-fn encode_account_state(account_state: account_model.AccountState) -> json.Json {
+fn encode_account_state(
+  account_state: account_model.AccountState,
+) -> json.Json {
   json.string(account_model.account_state_to_string(account_state))
 }
 
