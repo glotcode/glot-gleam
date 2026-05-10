@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import gleam/option
 import gleam/regexp
 import gleam/time/timestamp.{type Timestamp}
@@ -12,7 +13,15 @@ import glot_core/pagination_model
 import youid/uuid
 
 pub type ListUsersRequest {
-  ListUsersRequest(pagination: pagination_model.CursorPagination)
+  ListUsersRequest(
+    pagination: pagination_model.CursorPagination,
+    email: option.Option(String),
+    username: option.Option(String),
+    id: option.Option(uuid.Uuid),
+    role: option.Option(user_model.UserRole),
+    account_state: option.Option(account_model.AccountState),
+    account_tier: option.Option(account_model.AccountTier),
+  )
 }
 
 pub type GetUserRequest {
@@ -76,12 +85,45 @@ pub type UpdateUserResponse {
 
 pub fn list_request_decoder() -> decode.Decoder(ListUsersRequest) {
   decode.then(pagination_model.request_decoder(), fn(pagination) {
-    decode.success(ListUsersRequest(pagination: pagination))
+    use email <- decode.field("email", decode.optional(decode.string))
+    use username <- decode.field("username", decode.optional(decode.string))
+    use id <- decode.field("id", decode.optional(uuid_helpers.decoder()))
+    use role <- decode.field("role", decode.optional(user_role_decoder()))
+    use account_state <- decode.field(
+      "accountState",
+      decode.optional(account_state_decoder()),
+    )
+    use account_tier <- decode.field(
+      "accountTier",
+      decode.optional(account_tier_decoder()),
+    )
+    decode.success(ListUsersRequest(
+      pagination: pagination,
+      email: email,
+      username: username,
+      id: id,
+      role: role,
+      account_state: account_state,
+      account_tier: account_tier,
+    ))
   })
 }
 
 pub fn encode_list_request(request: ListUsersRequest) -> json.Json {
-  json.object(pagination_model.encode_request_fields(request.pagination))
+  json.object(list.append(
+    pagination_model.encode_request_fields(request.pagination),
+    [
+    #("email", json.nullable(request.email, json.string)),
+    #("username", json.nullable(request.username, json.string)),
+    #("id", json.nullable(request.id, encode_uuid)),
+    #("role", json.nullable(request.role, encode_user_role)),
+    #(
+      "accountState",
+      json.nullable(request.account_state, encode_account_state),
+    ),
+    #("accountTier", json.nullable(request.account_tier, encode_account_tier)),
+  ],
+  ))
 }
 
 pub fn get_request_decoder() -> decode.Decoder(GetUserRequest) {

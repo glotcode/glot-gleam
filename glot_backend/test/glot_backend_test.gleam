@@ -1876,8 +1876,8 @@ fn run_test_auth_effect(
       run_test_program(next(find_user_by_email(db, email)), ctx, db)
     auth_algebra.GetUserById(id:, next:) ->
       run_test_program(next(find_user_by_id(db, id)), ctx, db)
-    auth_algebra.ListUsers(pagination:, next:) ->
-      run_test_program(next(find_users(db, pagination)), ctx, db)
+    auth_algebra.ListUsers(pagination:, filters:, next:) ->
+      run_test_program(next(find_users(db, pagination, filters)), ctx, db)
     auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
       run_test_program(
         next(find_login_tokens_by_email(db, email, limit)),
@@ -1936,8 +1936,8 @@ fn run_test_auth_tx_effect(
       run_test_tx_program(next(find_user_by_email(db, email)), ctx, db)
     auth_algebra.GetUserById(id:, next:) ->
       run_test_tx_program(next(find_user_by_id(db, id)), ctx, db)
-    auth_algebra.ListUsers(pagination:, next:) ->
-      run_test_tx_program(next(find_users(db, pagination)), ctx, db)
+    auth_algebra.ListUsers(pagination:, filters:, next:) ->
+      run_test_tx_program(next(find_users(db, pagination, filters)), ctx, db)
     auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
       run_test_tx_program(
         next(find_login_tokens_by_email(db, email, limit)),
@@ -2376,6 +2376,7 @@ fn find_user_by_id(
 fn find_users(
   db: TestDb,
   pagination: pagination_model.CursorPagination,
+  _filters: auth_algebra.UserListFilters,
 ) -> List(user_model.HydratedUser) {
   let users =
     db.users

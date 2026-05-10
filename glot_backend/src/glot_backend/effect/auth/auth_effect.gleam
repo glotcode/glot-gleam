@@ -29,9 +29,10 @@ pub fn get_user_by_id(
 
 pub fn list_users(
   pagination pagination: CursorPagination,
+  filters filters: auth_algebra.UserListFilters,
 ) -> program_types.Program(List(user_model.HydratedUser)) {
   program_types.Impure(
-    program_types.DbEffect(list_users_effect(pagination, program_types.Pure)),
+    program_types.DbEffect(list_users_effect(pagination, filters, program_types.Pure)),
   )
 }
 
@@ -163,8 +164,9 @@ pub fn get_user_by_id_tx(
 
 pub fn list_users_tx(
   pagination pagination: CursorPagination,
+  filters filters: auth_algebra.UserListFilters,
 ) -> program_types.TransactionProgram(List(user_model.HydratedUser)) {
-  program_types.TxImpure(list_users_effect(pagination, program_types.TxPure))
+  program_types.TxImpure(list_users_effect(pagination, filters, program_types.TxPure))
 }
 
 pub fn list_login_tokens_by_email_tx(
@@ -297,10 +299,12 @@ fn get_user_by_id_effect(
 
 fn list_users_effect(
   pagination: CursorPagination,
+  filters: auth_algebra.UserListFilters,
   next: fn(List(user_model.HydratedUser)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.ListUsers(
     pagination: pagination,
+    filters: filters,
     next: next,
   ))
 }

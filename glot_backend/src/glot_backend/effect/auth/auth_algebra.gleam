@@ -1,13 +1,24 @@
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
-import glot_core/pagination_model.{type CursorPagination}
 import glot_core/auth/account_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
+import glot_core/pagination_model.{type CursorPagination}
 import youid/uuid.{type Uuid}
+
+pub type UserListFilters {
+  UserListFilters(
+    email: option.Option(String),
+    username: option.Option(String),
+    id: option.Option(Uuid),
+    role: option.Option(user_model.UserRole),
+    account_state: option.Option(account_model.AccountState),
+    account_tier: option.Option(account_model.AccountTier),
+  )
+}
 
 pub type AuthEffect(next) {
   GetUserByEmail(
@@ -20,6 +31,7 @@ pub type AuthEffect(next) {
   )
   ListUsers(
     pagination: CursorPagination,
+    filters: UserListFilters,
     next: fn(List(user_model.HydratedUser)) -> next,
   )
   ListLoginTokensByEmail(
@@ -84,8 +96,12 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       GetUserByEmail(email: email, next: fn(value) { f(next(value)) })
     GetUserById(id:, next:) ->
       GetUserById(id: id, next: fn(value) { f(next(value)) })
-    ListUsers(pagination:, next:) ->
-      ListUsers(pagination: pagination, next: fn(value) { f(next(value)) })
+    ListUsers(pagination:, filters:, next:) ->
+      ListUsers(
+        pagination: pagination,
+        filters: filters,
+        next: fn(value) { f(next(value)) },
+      )
     ListLoginTokensByEmail(email:, limit:, next:) ->
       ListLoginTokensByEmail(email: email, limit: limit, next: fn(value) {
         f(next(value))

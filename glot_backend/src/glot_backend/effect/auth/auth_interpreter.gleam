@@ -65,9 +65,13 @@ pub fn run(
         )
       }
     }
-    auth_algebra.ListUsers(pagination:, next:) -> {
+    auth_algebra.ListUsers(pagination:, filters:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.list_users(ctx.regexes.is_email, pagination)
+      let result = handlers.auth.list_users(
+        ctx.regexes.is_email,
+        pagination,
+        filters,
+      )
       case result {
         Ok(value) ->
           continue(

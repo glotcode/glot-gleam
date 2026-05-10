@@ -60,6 +60,30 @@ WHERE (
     sqlc.narg(after_id)::uuid IS NULL
     OR users.id < sqlc.narg(after_id)::uuid
   )
+  AND (
+    sqlc.narg(email)::text IS NULL
+    OR users.email = sqlc.narg(email)::text
+  )
+  AND (
+    sqlc.narg(username)::text IS NULL
+    OR users.username = sqlc.narg(username)::text
+  )
+  AND (
+    sqlc.narg(id)::uuid IS NULL
+    OR users.id = sqlc.narg(id)::uuid
+  )
+  AND (
+    sqlc.narg(role)::text IS NULL
+    OR users.role = sqlc.narg(role)::text
+  )
+  AND (
+    sqlc.narg(account_state)::text IS NULL
+    OR accounts.account_state = sqlc.narg(account_state)::text
+  )
+  AND (
+    sqlc.narg(account_tier)::text IS NULL
+    OR accounts.account_tier = sqlc.narg(account_tier)::text
+  )
 ORDER BY users.id DESC
 LIMIT sqlc.arg(page_limit);
 
@@ -84,6 +108,30 @@ LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
 WHERE (
     sqlc.narg(before_id)::uuid IS NULL
     OR users.id > sqlc.narg(before_id)::uuid
+  )
+  AND (
+    sqlc.narg(email)::text IS NULL
+    OR users.email = sqlc.narg(email)::text
+  )
+  AND (
+    sqlc.narg(username)::text IS NULL
+    OR users.username = sqlc.narg(username)::text
+  )
+  AND (
+    sqlc.narg(id)::uuid IS NULL
+    OR users.id = sqlc.narg(id)::uuid
+  )
+  AND (
+    sqlc.narg(role)::text IS NULL
+    OR users.role = sqlc.narg(role)::text
+  )
+  AND (
+    sqlc.narg(account_state)::text IS NULL
+    OR accounts.account_state = sqlc.narg(account_state)::text
+  )
+  AND (
+    sqlc.narg(account_tier)::text IS NULL
+    OR accounts.account_tier = sqlc.narg(account_tier)::text
   )
 ORDER BY users.id ASC
 LIMIT sqlc.arg(page_limit);

@@ -2096,6 +2096,12 @@ pub type ListUsersAfter {
 
 pub fn list_users_after(
   after_id after_id: Option(BitArray),
+  email email: Option(String),
+  username username: Option(String),
+  id id: Option(BitArray),
+  role role: Option(String),
+  account_state account_state: Option(String),
+  account_tier account_tier: Option(String),
   page_limit page_limit: Int,
 ) {
   let sql =
@@ -2120,12 +2126,42 @@ WHERE (
     $1::uuid IS NULL
     OR users.id < $1::uuid
   )
+  AND (
+    $2::text IS NULL
+    OR users.email = $2::text
+  )
+  AND (
+    $3::text IS NULL
+    OR users.username = $3::text
+  )
+  AND (
+    $4::uuid IS NULL
+    OR users.id = $4::uuid
+  )
+  AND (
+    $5::text IS NULL
+    OR users.role = $5::text
+  )
+  AND (
+    $6::text IS NULL
+    OR accounts.account_state = $6::text
+  )
+  AND (
+    $7::text IS NULL
+    OR accounts.account_tier = $7::text
+  )
 ORDER BY users.id DESC
-LIMIT $2"
+LIMIT $8"
   #(
     sql,
     [
       dev.ParamNullable(option.map(after_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamNullable(option.map(email, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(username, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamNullable(option.map(role, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(account_state, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(account_tier, fn(v) { dev.ParamString(v) })),
       dev.ParamInt(page_limit),
     ],
     list_users_after_decoder(),
@@ -2186,6 +2222,12 @@ pub type ListUsersBefore {
 
 pub fn list_users_before(
   before_id before_id: Option(BitArray),
+  email email: Option(String),
+  username username: Option(String),
+  id id: Option(BitArray),
+  role role: Option(String),
+  account_state account_state: Option(String),
+  account_tier account_tier: Option(String),
   page_limit page_limit: Int,
 ) {
   let sql =
@@ -2210,12 +2252,42 @@ WHERE (
     $1::uuid IS NULL
     OR users.id > $1::uuid
   )
+  AND (
+    $2::text IS NULL
+    OR users.email = $2::text
+  )
+  AND (
+    $3::text IS NULL
+    OR users.username = $3::text
+  )
+  AND (
+    $4::uuid IS NULL
+    OR users.id = $4::uuid
+  )
+  AND (
+    $5::text IS NULL
+    OR users.role = $5::text
+  )
+  AND (
+    $6::text IS NULL
+    OR accounts.account_state = $6::text
+  )
+  AND (
+    $7::text IS NULL
+    OR accounts.account_tier = $7::text
+  )
 ORDER BY users.id ASC
-LIMIT $2"
+LIMIT $8"
   #(
     sql,
     [
       dev.ParamNullable(option.map(before_id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamNullable(option.map(email, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(username, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(id, fn(v) { dev.ParamBitArray(v) })),
+      dev.ParamNullable(option.map(role, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(account_state, fn(v) { dev.ParamString(v) })),
+      dev.ParamNullable(option.map(account_tier, fn(v) { dev.ParamString(v) })),
       dev.ParamInt(page_limit),
     ],
     list_users_before_decoder(),

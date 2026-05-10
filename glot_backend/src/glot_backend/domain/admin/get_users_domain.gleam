@@ -5,6 +5,7 @@ import glot_backend/context
 import glot_backend/domain/shared/admin_authorization_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
+import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
@@ -34,6 +35,14 @@ pub fn get_users(
   ))
   use users <- program.and_then(auth_effect.list_users(
     pagination_model.increment_limit(pagination),
+    auth_algebra.UserListFilters(
+      email: request.email,
+      username: request.username,
+      id: request.id,
+      role: request.role,
+      account_state: request.account_state,
+      account_tier: request.account_tier,
+    ),
   ))
 
   let page =

@@ -3,6 +3,7 @@ import gleam/regexp
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
+import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
@@ -22,7 +23,11 @@ pub type AuthHandlers {
       Result(option.Option(user_model.HydratedUser), error.DbQueryError),
     get_user_by_id: fn(regexp.Regexp, uuid.Uuid) ->
       Result(option.Option(user_model.HydratedUser), error.DbQueryError),
-    list_users: fn(regexp.Regexp, pagination_model.CursorPagination) ->
+    list_users: fn(
+      regexp.Regexp,
+      pagination_model.CursorPagination,
+      auth_algebra.UserListFilters,
+    ) ->
       Result(List(user_model.HydratedUser), error.DbQueryError),
     list_login_tokens_by_email: fn(email_address_model.EmailAddress, Int) ->
       Result(List(login_token_model.LoginToken), error.DbQueryError),
@@ -57,7 +62,9 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
       get_user_by_email(db, is_email, email)
     },
     get_user_by_id: fn(is_email, id) { get_user_by_id(db, is_email, id) },
-    list_users: fn(is_email, pagination) { list_users(db, is_email, pagination) },
+    list_users: fn(is_email, pagination, filters) {
+      list_users(db, is_email, pagination, filters)
+    },
     list_login_tokens_by_email: fn(email, limit) {
       list_login_tokens_by_email(db, email, limit)
     },
@@ -113,14 +120,33 @@ pub fn list_users(
   db: pog.Connection,
   is_email: regexp.Regexp,
   pagination: pagination_model.CursorPagination,
+  filters: auth_algebra.UserListFilters,
 ) -> Result(List(user_model.HydratedUser), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
+  let role = option.map(filters.role, user_model.role_to_string)
+  let account_state = option.map(
+    filters.account_state,
+    account_model.account_state_to_string,
+  )
+  let account_tier = option.map(
+    filters.account_tier,
+    account_model.account_tier_to_string,
+  )
 
   case pagination {
     pagination_model.InitialPage(limit) ->
       db_helpers.query(
         db,
-        sql.list_users_after(after_id: option.None, page_limit: limit),
+        sql.list_users_after(
+          after_id: option.None,
+          email: filters.email,
+          username: filters.username,
+          id: option.map(filters.id, uuid.to_bit_array),
+          role: role,
+          account_state: account_state,
+          account_tier: account_tier,
+          page_limit: limit,
+        ),
         to_error,
       )
       |> result.try(fn(returned) {
@@ -131,7 +157,16 @@ pub fn list_users(
       use id <- result.try(cursor_to_uuid(cursor))
       db_helpers.query(
         db,
-        sql.list_users_after(after_id: option.Some(uuid.to_bit_array(id)), page_limit: limit),
+        sql.list_users_after(
+          after_id: option.Some(uuid.to_bit_array(id)),
+          email: filters.email,
+          username: filters.username,
+          id: option.map(filters.id, uuid.to_bit_array),
+          role: role,
+          account_state: account_state,
+          account_tier: account_tier,
+          page_limit: limit,
+        ),
         to_error,
       )
       |> result.try(fn(returned) {
@@ -143,7 +178,16 @@ pub fn list_users(
       use id <- result.try(cursor_to_uuid(cursor))
       db_helpers.query(
         db,
-        sql.list_users_before(before_id: option.Some(uuid.to_bit_array(id)), page_limit: limit),
+        sql.list_users_before(
+          before_id: option.Some(uuid.to_bit_array(id)),
+          email: filters.email,
+          username: filters.username,
+          id: option.map(filters.id, uuid.to_bit_array),
+          role: role,
+          account_state: account_state,
+          account_tier: account_tier,
+          page_limit: limit,
+        ),
         to_error,
       )
       |> result.try(fn(returned) {
