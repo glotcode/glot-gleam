@@ -856,10 +856,12 @@ a {
   line-height: 1.6;
 }
 
+.admin-data-table__wrap,
 .admin-snippets-table__wrap {
   overflow-x: auto;
 }
 
+.admin-data-table,
 .admin-snippets-table {
   width: 100%;
   border: 1px solid #d9e5f6;
@@ -867,6 +869,8 @@ a {
   background: #ffffff;
 }
 
+.admin-data-table th,
+.admin-data-table td,
 .admin-snippets-table th,
 .admin-snippets-table td {
   padding: 0.85rem 1rem;
@@ -874,26 +878,32 @@ a {
   vertical-align: top;
 }
 
+.admin-data-table thead,
 .admin-snippets-table thead {
   background: #f8fbff;
 }
 
+.admin-data-table thead th,
 .admin-snippets-table thead th {
   border-bottom: 1px solid #d9e5f6;
 }
 
+.admin-data-table tbody td,
 .admin-snippets-table tbody td {
   border-bottom: 1px solid #eef4ff;
 }
 
+.admin-data-table tbody tr:last-child td,
 .admin-snippets-table tbody tr:last-child td {
   border-bottom: 0;
 }
 
+.admin-data-table tbody tr:hover,
 .admin-snippets-table tbody tr:hover {
   background: #f8fbff;
 }
 
+.admin-data-table__heading,
 .admin-snippets-table__heading {
   color: #66789f;
   font-size: 0.8rem;
@@ -902,6 +912,7 @@ a {
   text-transform: uppercase;
 }
 
+.admin-data-table__cell,
 .admin-snippets-table__cell {
   min-width: 0;
   color: #172033;
@@ -909,23 +920,27 @@ a {
   line-height: 1.45;
 }
 
+.admin-data-table__value,
 .admin-snippets-table__value {
   display: block;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
+.admin-data-table__cell--language .admin-data-table__value,
 .admin-snippets-table__cell--language .admin-snippets-table__value {
   color: #2853a6;
   font-weight: 700;
 }
 
+.admin-data-table__cell--title .admin-data-table__value,
 .admin-snippets-table__cell--title .admin-snippets-table__value {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.admin-data-table__label,
 .admin-snippets-table__label {
   display: none;
 }
@@ -1105,6 +1120,7 @@ a {
     gap: 0.65rem;
   }
 
+  .admin-data-table,
   .admin-snippets-table {
     min-width: 52rem;
   }
@@ -1119,6 +1135,7 @@ a {
     text-transform: uppercase;
   }
 
+  .admin-data-table__cell--title .admin-data-table__value,
   .admin-snippets-table__cell--title .admin-snippets-table__value {
     overflow: visible;
     text-overflow: clip;

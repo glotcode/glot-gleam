@@ -5,7 +5,6 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_core/admin/user_dto
 import glot_core/auth/account_model
 import glot_core/auth/user_model
-import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
@@ -130,17 +129,6 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
                 html.text(count_text),
               ]),
             ]),
-            html.div([attribute.class("admin-page__policy-actions")], [
-              html.a(
-                [
-                  attribute.class(
-                    "admin-page__button admin-page__button--secondary",
-                  ),
-                  route.href(route.Admin),
-                ],
-                [html.text("Back to admin")],
-              ),
-            ]),
           ]),
           status_view(model),
           users_table(model, now),
@@ -201,65 +189,63 @@ fn users_table(model: Model, now: Timestamp) -> Element(Msg) {
         html.text("No users were returned."),
       ])
     _, _ ->
-      html.div([attribute.class("jobs-table")], [
-        html.div([attribute.class("jobs-table__head")], [
-          table_heading("User"),
-          table_heading("Email"),
-          table_heading("Role"),
-          table_heading("Account"),
-          table_heading("Joined"),
-          table_heading("Open"),
+      html.div([attribute.class("admin-data-table__wrap")], [
+        html.table([attribute.class("admin-data-table")], [
+          html.thead([], [
+            html.tr([], [
+              table_heading("User"),
+              table_heading("Role"),
+              table_heading("Account"),
+              table_heading("Tier"),
+              table_heading("Joined"),
+              table_heading("Open"),
+            ]),
+          ]),
+          html.tbody([], {
+            rows |> list.map(fn(user) { user_row(user, now) })
+          }),
         ]),
-        html.div([attribute.class("jobs-table__body")], {
-          rows |> list.map(fn(user) { user_row(user, now) })
-        }),
       ])
   }
 }
 
 fn user_row(user: user_dto.UserSummaryResponse, now: Timestamp) -> Element(Msg) {
-  html.div([attribute.class("jobs-table__row")], [
-    html.div([attribute.class("jobs-table__cell")], [
+  html.tr([], [
+    html.td([attribute.class("admin-data-table__cell")], [
       cell_label("User"),
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("jobs-table__primary")], [
-          html.text(user.username),
-        ]),
-        html.span([attribute.class("jobs-table__secondary")], [
-          html.text(timestamp_helpers.relative_label(user.last_login_at, now)),
-        ]),
+      html.span([attribute.class("admin-data-table__value jobs-table__primary")], [
+        html.text(user.username),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Email"),
-      html.span([attribute.class("jobs-table__primary")], [
-        html.text(email_address_model.to_string(user.email)),
-      ]),
-    ]),
-    html.div([attribute.class("jobs-table__cell")], [
+    html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Role"),
       html.span([attribute.class(role_badge_class(user))], [
         html.text(role_text(user)),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
+    html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Account"),
       html.div([attribute.class("jobs-table__stack")], [
         html.span([attribute.class(account_state_badge_class(user))], [
           html.text(account_state_text(user)),
         ]),
-        html.span([attribute.class("jobs-table__secondary")], [
+      ]),
+    ]),
+    html.td([attribute.class("admin-data-table__cell")], [
+      cell_label("Tier"),
+      html.div([attribute.class("jobs-table__stack")], [
+        html.span([attribute.class("admin-data-table__value jobs-table__secondary")], [
           html.text(account_tier_text(user)),
         ]),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
+    html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Joined"),
-      html.span([attribute.class("jobs-table__primary")], [
+      html.span([attribute.class("admin-data-table__value jobs-table__primary")], [
         html.text(timestamp_helpers.relative_label(user.created_at, now)),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell jobs-table__cell--actions")], [
+    html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Open"),
       html.a(
         [
@@ -299,11 +285,11 @@ fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
 }
 
 fn table_heading(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__heading")], [html.text(text)])
+  html.th([attribute.class("admin-data-table__heading")], [html.text(text)])
 }
 
 fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__cell-label")], [html.text(text)])
+  html.span([attribute.class("admin-data-table__label")], [html.text(text)])
 }
 
 fn role_text(user: user_dto.UserSummaryResponse) -> String {
@@ -338,7 +324,7 @@ fn account_state_badge_class(user: user_dto.UserSummaryResponse) -> String {
 
 fn account_tier_text(user: user_dto.UserSummaryResponse) -> String {
   case user.account_tier {
-    account_model.FreeTier -> "Free tier"
-    account_model.FreePlusTier -> "FreePlus tier"
+    account_model.FreeTier -> "Free"
+    account_model.FreePlusTier -> "FreePlus"
   }
 }

@@ -255,8 +255,8 @@ fn snippets_table(model: Model, now: Timestamp) -> Element(Msg) {
         html.text("No snippets were returned."),
       ])
     _, _ ->
-      html.div([attribute.class("admin-snippets-table__wrap")], [
-        html.table([attribute.class("admin-snippets-table")], [
+      html.div([attribute.class("admin-data-table__wrap")], [
+        html.table([attribute.class("admin-data-table")], [
           html.thead([], [
             html.tr([], [
               table_heading("Slug"),
@@ -280,26 +280,26 @@ fn snippet_row(
   now: Timestamp,
 ) -> Element(Msg) {
   html.tr([], [
-    cell("Slug", snippet.slug, [attribute.class("admin-snippets-table__cell")]),
+    cell("Slug", snippet.slug, [attribute.class("admin-data-table__cell")]),
     cell("Language", language.name(snippet.language), [
-      attribute.class("admin-snippets-table__cell admin-snippets-table__cell--language"),
+      attribute.class("admin-data-table__cell admin-data-table__cell--language"),
     ]),
     cell("Title", string_helpers.truncate_stem_middle(
       snippet.title,
       title_max_length,
     ), [
-      attribute.class("admin-snippets-table__cell admin-snippets-table__cell--title"),
+      attribute.class("admin-data-table__cell admin-data-table__cell--title"),
     ]),
     cell("Owner", string_helpers.truncate_stem_middle(
       snippet.user.username,
       owner_max_length,
     ), [
-      attribute.class("admin-snippets-table__cell"),
+      attribute.class("admin-data-table__cell"),
     ]),
-    html.td([attribute.class("admin-snippets-table__cell")], [
+    html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Updated"),
       html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("admin-snippets-table__value")], [
+        html.span([attribute.class("admin-data-table__value")], [
           html.text(timestamp_helpers.relative_label(snippet.updated_at, now)),
         ]),
         html.span([attribute.class("jobs-table__meta")], [
@@ -307,7 +307,7 @@ fn snippet_row(
         ]),
       ]),
     ]),
-    html.td([attribute.class("admin-snippets-table__cell")], [
+    html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Open"),
       html.a(
         [
@@ -327,18 +327,18 @@ fn cell(
 ) -> Element(Msg) {
   html.td(attrs, [
     cell_label(label_text),
-    html.span([attribute.class("admin-snippets-table__value")], [
+    html.span([attribute.class("admin-data-table__value")], [
       html.text(value),
     ]),
   ])
 }
 
 fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("admin-snippets-table__label")], [html.text(text)])
+  html.span([attribute.class("admin-data-table__label")], [html.text(text)])
 }
 
 fn table_heading(text: String) -> Element(Msg) {
-  html.th([attribute.class("admin-snippets-table__heading")], [html.text(text)])
+  html.th([attribute.class("admin-data-table__heading")], [html.text(text)])
 }
 
 fn filter_username(value: String) -> option.Option(String) {

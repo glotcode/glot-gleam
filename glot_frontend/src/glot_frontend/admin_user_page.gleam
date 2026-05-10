@@ -313,20 +313,11 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
 fn user_view(editor: UserEditor, now: Timestamp) -> Element(Msg) {
   html.div([attribute.class("admin-job-page__content")], [
     html.div([attribute.class("admin-job-page__summary-grid")], [
-      summary_card(
-        "Role",
-        role_text(editor.draft.role),
-        "Username " <> editor.draft.username,
-      ),
-      summary_card(
-        "Access",
-        account_state_text(editor.draft.account_state),
-        account_tier_text(editor.draft.account_tier),
-      ),
+      summary_card("Role", role_text(editor.draft.role)),
+      summary_card("Access", account_state_text(editor.draft.account_state)),
       summary_card(
         "Last login",
         timestamp_helpers.relative_label(editor.metadata.last_login_at, now),
-        "Joined " <> timestamp_helpers.relative_label(editor.metadata.created_at, now),
       ),
     ]),
     html.div([attribute.class("admin-page__group")], [
@@ -526,7 +517,7 @@ fn is_dirty(editor: UserEditor) -> Bool {
   editor.saved != editor.draft
 }
 
-fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
+fn summary_card(title: String, value: String) -> Element(Msg) {
   html.article(
     [attribute.class("admin-page__policy admin-job-page__summary-card")],
     [
@@ -534,7 +525,6 @@ fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
       html.strong([attribute.class("admin-job-page__summary-value")], [
         html.text(value),
       ]),
-      html.span([attribute.class("admin-job-page__meta")], [html.text(meta)]),
     ],
   )
 }
@@ -639,13 +629,6 @@ fn account_state_text(account_state: account_model.AccountState) -> String {
     account_model.Active -> "Active"
     account_model.ReadOnly -> "Read only"
     account_model.Suspended -> "Suspended"
-  }
-}
-
-fn account_tier_text(account_tier: account_model.AccountTier) -> String {
-  case account_tier {
-    account_model.FreeTier -> "Free tier"
-    account_model.FreePlusTier -> "FreePlus tier"
   }
 }
 
