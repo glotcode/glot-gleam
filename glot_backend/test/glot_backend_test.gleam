@@ -1329,6 +1329,7 @@ fn default_email_templates() -> Dict(String, email_template.EmailTemplate) {
         subject_template: "Your login token",
         text_body_template: "Your login token is: {{token}}",
         html_body_template: option.None,
+        updated_at: test_system_time(),
       ),
     ),
     #(
@@ -1338,6 +1339,7 @@ fn default_email_templates() -> Dict(String, email_template.EmailTemplate) {
         subject_template: "Your account has been deleted",
         text_body_template: "Your account has been deleted.",
         html_body_template: option.None,
+        updated_at: test_system_time(),
       ),
     ),
   ])
@@ -2036,8 +2038,12 @@ fn run_test_email_template_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    email_template_algebra.ListEmailTemplates(next:) ->
+      run_test_program(next(list_email_templates(db)), ctx, db)
     email_template_algebra.GetEmailTemplateByName(name:, next:) ->
       run_test_program(next(find_email_template_by_name(db, name)), ctx, db)
+    email_template_algebra.UpdateEmailTemplate(template:, next:) ->
+      run_test_program(next(Nil), ctx, update_email_template(db, template))
   }
 }
 
@@ -2049,7 +2055,9 @@ fn run_test_email_template_tx_effect(
   _db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
-    email_template_algebra.GetEmailTemplateByName(_, _) ->
+    email_template_algebra.ListEmailTemplates(_)
+    | email_template_algebra.GetEmailTemplateByName(_, _)
+    | email_template_algebra.UpdateEmailTemplate(_, _) ->
       panic as "Email template tx effects are not used in backend tests"
   }
 }
@@ -2415,6 +2423,20 @@ fn find_email_template_by_name(
     Ok(template) -> option.Some(template)
     Error(_) -> option.None
   }
+}
+
+fn list_email_templates(db: TestDb) -> List(email_template.EmailTemplate) {
+  db.email_templates
+  |> dict.to_list
+  |> list.map(fn(entry) { entry.1 })
+}
+
+fn update_email_template(
+  db: TestDb,
+  template: email_template.EmailTemplate,
+) -> TestDb {
+  let key = email_template.to_db_name(template.name)
+  TestDb(..db, email_templates: dict.insert(db.email_templates, key, template))
 }
 
 fn find_user_by_id(

@@ -13,6 +13,8 @@ import glot_frontend/admin_api_log_page
 import glot_frontend/admin_api_logs_page
 import glot_frontend/admin_breadcrumbs
 import glot_frontend/admin_config_page
+import glot_frontend/admin_email_template_page
+import glot_frontend/admin_email_templates_page
 import glot_frontend/admin_job_log_page
 import glot_frontend/admin_job_logs_page
 import glot_frontend/admin_job_page
@@ -79,6 +81,8 @@ type PageModel {
   AdminUserPage(admin_user_page.Model)
   AdminJobsPage(admin_jobs_page.Model)
   AdminJobPage(admin_job_page.Model)
+  AdminEmailTemplatesPage(admin_email_templates_page.Model)
+  AdminEmailTemplatePage(admin_email_template_page.Model)
   AdminSnippetsPage(admin_snippets_page.Model)
   AdminSnippetPage(admin_snippet_page.Model)
   AdminJobLogsPage(admin_job_logs_page.Model)
@@ -277,6 +281,46 @@ fn init_page(
       )
     }
 
+    route.AdminEmailTemplates -> {
+      let #(m, eff) = admin_email_templates_page.init()
+      let admin_effect = case session_is_admin(session) {
+        True ->
+          effect.map(
+            admin_email_templates_page.ensure_loaded(m).1,
+            AdminEmailTemplatesPageMsg,
+          )
+        False -> effect.none()
+      }
+
+      #(
+        AdminEmailTemplatesPage(m),
+        effect.batch([
+          effect.map(eff, AdminEmailTemplatesPageMsg),
+          admin_effect,
+        ]),
+      )
+    }
+
+    route.AdminEmailTemplate(name) -> {
+      let #(m, eff) = admin_email_template_page.init(name)
+      let admin_effect = case session_is_admin(session) {
+        True ->
+          effect.map(
+            admin_email_template_page.ensure_loaded(m).1,
+            AdminEmailTemplatePageMsg,
+          )
+        False -> effect.none()
+      }
+
+      #(
+        AdminEmailTemplatePage(m),
+        effect.batch([
+          effect.map(eff, AdminEmailTemplatePageMsg),
+          admin_effect,
+        ]),
+      )
+    }
+
     route.AdminSnippets -> {
       let #(m, eff) = admin_snippets_page.init()
       let admin_effect = case session_is_admin(session) {
@@ -466,6 +510,8 @@ type Msg {
   AdminUserPageMsg(admin_user_page.Msg)
   AdminJobsPageMsg(admin_jobs_page.Msg)
   AdminJobPageMsg(admin_job_page.Msg)
+  AdminEmailTemplatesPageMsg(admin_email_templates_page.Msg)
+  AdminEmailTemplatePageMsg(admin_email_template_page.Msg)
   AdminSnippetsPageMsg(admin_snippets_page.Msg)
   AdminSnippetPageMsg(admin_snippet_page.Msg)
   AdminJobLogsPageMsg(admin_job_logs_page.Msg)
@@ -505,6 +551,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         | route.AdminUser(_)
         | route.AdminJobs
         | route.AdminJob(_)
+        | route.AdminEmailTemplates
+        | route.AdminEmailTemplate(_)
         | route.AdminSnippets
         | route.AdminSnippet(_)
         | route.AdminJobLogs
@@ -602,6 +650,32 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               #(
                 Model(..next_model, page_model: AdminJobPage(new_page_model)),
                 effect.map(page_effect, AdminJobPageMsg),
+              )
+            }
+            True, route.AdminEmailTemplates, AdminEmailTemplatesPage(page_model)
+            -> {
+              let #(new_page_model, page_effect) =
+                admin_email_templates_page.ensure_loaded(page_model)
+              #(
+                Model(
+                  ..next_model,
+                  page_model: AdminEmailTemplatesPage(new_page_model),
+                ),
+                effect.map(page_effect, AdminEmailTemplatesPageMsg),
+              )
+            }
+            True,
+              route.AdminEmailTemplate(_),
+              AdminEmailTemplatePage(page_model)
+            -> {
+              let #(new_page_model, page_effect) =
+                admin_email_template_page.ensure_loaded(page_model)
+              #(
+                Model(
+                  ..next_model,
+                  page_model: AdminEmailTemplatePage(new_page_model),
+                ),
+                effect.map(page_effect, AdminEmailTemplatePageMsg),
               )
             }
             True, route.AdminSnippets, AdminSnippetsPage(page_model) -> {
@@ -844,6 +918,22 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       #(new_model, effect.map(page_effect, AdminJobPageMsg))
     }
 
+    AdminEmailTemplatesPageMsg(page_msg), AdminEmailTemplatesPage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_email_templates_page.update(page_model, page_msg)
+      let new_model =
+        Model(..model, page_model: AdminEmailTemplatesPage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminEmailTemplatesPageMsg))
+    }
+
+    AdminEmailTemplatePageMsg(page_msg), AdminEmailTemplatePage(page_model) -> {
+      let #(new_page_model, page_effect) =
+        admin_email_template_page.update(page_model, page_msg)
+      let new_model =
+        Model(..model, page_model: AdminEmailTemplatePage(new_page_model))
+      #(new_model, effect.map(page_effect, AdminEmailTemplatePageMsg))
+    }
+
     AdminSnippetsPageMsg(page_msg), AdminSnippetsPage(page_model) -> {
       let #(new_page_model, page_effect) =
         admin_snippets_page.update(page_model, page_msg)
@@ -1055,6 +1145,24 @@ fn view(model: Model) -> Element(Msg) {
       }
     }
 
+    AdminEmailTemplatesPage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_email_templates_page.view(page_model)
+          |> element.map(AdminEmailTemplatesPageMsg)
+        False -> not_found_view()
+      }
+    }
+
+    AdminEmailTemplatePage(page_model) -> {
+      case session_is_admin(model.session) {
+        True ->
+          admin_email_template_page.view(page_model)
+          |> element.map(AdminEmailTemplatePageMsg)
+        False -> not_found_view()
+      }
+    }
+
     AdminSnippetsPage(page_model) -> {
       case session_is_admin(model.session) {
         True ->
@@ -1235,6 +1343,8 @@ fn page_actions(
     | AdminUserPage(_)
     | AdminJobsPage(_)
     | AdminJobPage(_)
+    | AdminEmailTemplatesPage(_)
+    | AdminEmailTemplatePage(_)
     | AdminSnippetsPage(_)
     | AdminSnippetPage(_)
     | AdminJobLogsPage(_)
@@ -1420,6 +1530,8 @@ fn authorized_route(
     | route.AdminUser(_)
     | route.AdminJobs
     | route.AdminJob(_)
+    | route.AdminEmailTemplates
+    | route.AdminEmailTemplate(_)
     | route.AdminSnippets
     | route.AdminSnippet(_)
     | route.AdminJobLogs

@@ -237,6 +237,21 @@ fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
         account_model.Active,
         account_model.ReadOnly,
       ])
+    api_action.GetAdminEmailTemplatesAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.GetAdminEmailTemplateAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
+    api_action.UpdateAdminEmailTemplateAction ->
+      AllowedAccountStates([
+        account_model.Active,
+        account_model.ReadOnly,
+      ])
     api_action.GetAdminSnippetsAction ->
       AllowedAccountStates([
         account_model.Active,

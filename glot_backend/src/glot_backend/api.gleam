@@ -21,6 +21,8 @@ import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/get_email_template_domain
+import glot_backend/domain/admin/get_email_templates_domain
 import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_job_log_domain
 import glot_backend/domain/admin/get_job_logs_domain
@@ -34,6 +36,7 @@ import glot_backend/domain/admin/get_snippet_domain as admin_get_snippet_domain
 import glot_backend/domain/admin/get_snippets_domain
 import glot_backend/domain/admin/get_user_domain
 import glot_backend/domain/admin/get_users_domain
+import glot_backend/domain/admin/update_email_template_domain
 import glot_backend/domain/admin/update_periodic_job_domain
 import glot_backend/domain/admin/update_user_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
@@ -72,6 +75,7 @@ import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/periodic_job_dto
@@ -299,6 +303,23 @@ fn handle_api_request(
       create_job_domain.create_job(ctx, request)
       |> program.map(AdminJobResponse)
     }
+    api_action.GetAdminEmailTemplatesAction ->
+      get_email_templates_domain.get_email_templates(ctx)
+      |> program.map(AdminEmailTemplatesResponse)
+    api_action.GetAdminEmailTemplateAction -> {
+      use request <- program.and_then(
+        get_email_template_domain.request_from_dynamic(api_request.data),
+      )
+      get_email_template_domain.get_email_template(ctx, request)
+      |> program.map(AdminEmailTemplateResponse)
+    }
+    api_action.UpdateAdminEmailTemplateAction -> {
+      use request <- program.and_then(
+        update_email_template_domain.request_from_dynamic(api_request.data),
+      )
+      update_email_template_domain.update_email_template(ctx, request)
+      |> program.map(AdminUpdatedEmailTemplateResponse)
+    }
     api_action.GetAdminSnippetsAction -> {
       use request <- program.and_then(get_snippets_domain.request_from_dynamic(
         api_request.data,
@@ -466,6 +487,11 @@ type ApiResult {
   AdminPeriodicJobResponse(periodic_job_dto.UpdatePeriodicJobResponse)
   AdminJobsResponse(job_dto.ListJobsResponse)
   AdminJobResponse(job_dto.GetJobResponse)
+  AdminEmailTemplatesResponse(email_template_dto.ListEmailTemplatesResponse)
+  AdminEmailTemplateResponse(email_template_dto.GetEmailTemplateResponse)
+  AdminUpdatedEmailTemplateResponse(
+    email_template_dto.UpdateEmailTemplateResponse,
+  )
   AdminSnippetsResponse(admin_snippet_dto.ListSnippetsResponse)
   AdminSnippetResponse(admin_snippet_dto.GetSnippetResponse)
   AdminUsersResponse(user_dto.ListUsersResponse)
@@ -518,6 +544,12 @@ fn api_result_to_response(
       success_response(job_dto.encode_list_response(response))
     AdminJobResponse(response) ->
       success_response(job_dto.encode_get_response(response))
+    AdminEmailTemplatesResponse(response) ->
+      success_response(email_template_dto.encode_list_response(response))
+    AdminEmailTemplateResponse(response) ->
+      success_response(email_template_dto.encode_get_response(response))
+    AdminUpdatedEmailTemplateResponse(response) ->
+      success_response(email_template_dto.encode_update_response(response))
     AdminSnippetsResponse(response) ->
       success_response(admin_snippet_dto.encode_list_response(response))
     AdminSnippetResponse(response) ->

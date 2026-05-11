@@ -32,6 +32,9 @@ pub type ApiAction {
   GetAdminJobsAction
   GetAdminJobAction
   CreateAdminJobAction
+  GetAdminEmailTemplatesAction
+  GetAdminEmailTemplateAction
+  UpdateAdminEmailTemplateAction
   GetAdminSnippetsAction
   GetAdminSnippetAction
   DeleteAdminSnippetAction
@@ -82,6 +85,9 @@ pub fn list() -> List(ApiAction) {
     GetAdminJobsAction,
     GetAdminJobAction,
     CreateAdminJobAction,
+    GetAdminEmailTemplatesAction,
+    GetAdminEmailTemplateAction,
+    UpdateAdminEmailTemplateAction,
     GetAdminSnippetsAction,
     GetAdminSnippetAction,
     DeleteAdminSnippetAction,
@@ -145,6 +151,9 @@ pub fn to_string(action: ApiAction) -> String {
     GetAdminJobsAction -> "get_admin_jobs"
     GetAdminJobAction -> "get_admin_job"
     CreateAdminJobAction -> "create_admin_job"
+    GetAdminEmailTemplatesAction -> "get_admin_email_templates"
+    GetAdminEmailTemplateAction -> "get_admin_email_template"
+    UpdateAdminEmailTemplateAction -> "update_admin_email_template"
     GetAdminSnippetsAction -> "get_admin_snippets"
     GetAdminSnippetAction -> "get_admin_snippet"
     DeleteAdminSnippetAction -> "delete_admin_snippet"
@@ -196,6 +205,9 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "get_admin_jobs" -> option.Some(GetAdminJobsAction)
     "get_admin_job" -> option.Some(GetAdminJobAction)
     "create_admin_job" -> option.Some(CreateAdminJobAction)
+    "get_admin_email_templates" -> option.Some(GetAdminEmailTemplatesAction)
+    "get_admin_email_template" -> option.Some(GetAdminEmailTemplateAction)
+    "update_admin_email_template" -> option.Some(UpdateAdminEmailTemplateAction)
     "get_admin_snippets" -> option.Some(GetAdminSnippetsAction)
     "get_admin_snippet" -> option.Some(GetAdminSnippetAction)
     "delete_admin_snippet" -> option.Some(DeleteAdminSnippetAction)

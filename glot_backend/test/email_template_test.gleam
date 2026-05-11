@@ -1,5 +1,6 @@
 import gleam/dict
 import gleam/option
+import gleam/time/timestamp
 import gleeunit
 import glot_backend/email_template
 import glot_core/email/email_address_model
@@ -16,6 +17,7 @@ pub fn render_email_template_replaces_tokens_test() {
       subject_template: "Your login token",
       text_body_template: "Your login token is: {{ token }}",
       html_body_template: option.Some("<p>{{token}}</p>"),
+      updated_at: test_timestamp(),
     )
 
   let assert Ok(rendered) =
@@ -41,6 +43,7 @@ pub fn render_email_template_rejects_missing_tokens_test() {
       subject_template: "Subject",
       text_body_template: "Missing {{token}}",
       html_body_template: option.None,
+      updated_at: test_timestamp(),
     )
 
   let assert Error(message) =
@@ -60,6 +63,7 @@ pub fn render_email_template_rejects_unsupported_tokens_test() {
       subject_template: "Subject",
       text_body_template: "Hello {{token}}",
       html_body_template: option.None,
+      updated_at: test_timestamp(),
     )
 
   let assert Error(message) =
@@ -70,5 +74,9 @@ pub fn render_email_template_rejects_unsupported_tokens_test() {
     )
 
   assert message
-    == "Unexpected email template variables for account_deleted. Allowed tokens: "
+    == "Email template contains unsupported tokens for account_deleted. Supported tokens: "
+}
+
+fn test_timestamp() {
+  timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0)
 }

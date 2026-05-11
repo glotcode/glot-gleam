@@ -82,6 +82,11 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminUsers,
             ),
             link_card(
+              title: "Email templates",
+              description: "Review stored transactional email templates and edit their subject and body content.",
+              target: route.AdminEmailTemplates,
+            ),
+            link_card(
               title: "Snippets",
               description: "Review saved user snippets and inspect their stored files in a read-only admin view.",
               target: route.AdminSnippets,

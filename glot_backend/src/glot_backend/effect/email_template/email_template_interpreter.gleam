@@ -13,6 +13,36 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
+    email_template_algebra.ListEmailTemplates(next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.email_template.list_email_templates()
+
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.EmailTemplateEffectName(
+                email_template_algebra.ListEmailTemplatesEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(query_error) -> #(
+          Error(error.QueryError(query_error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.EmailTemplateEffectName(
+              email_template_algebra.ListEmailTemplatesEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     email_template_algebra.GetEmailTemplateByName(name:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.email_template.get_email_template_by_name(name)
@@ -38,6 +68,36 @@ pub fn run(
               email_template_algebra.GetEmailTemplateByNameEffectName,
             ),
             effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    email_template_algebra.UpdateEmailTemplate(template:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.email_template.update_email_template(template)
+
+      case result {
+        Ok(_) ->
+          continue(
+            next(Nil),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.EmailTemplateEffectName(
+                email_template_algebra.UpdateEmailTemplateEffectName,
+              ),
+              effect_trace.DbWriteEffectCategory,
+              started_at,
+            ),
+          )
+        Error(command_error) -> #(
+          Error(error.CommandError(command_error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.EmailTemplateEffectName(
+              email_template_algebra.UpdateEmailTemplateEffectName,
+            ),
+            effect_trace.DbWriteEffectCategory,
             started_at,
           ),
         )

@@ -11,6 +11,7 @@ import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/periodic_job_dto
@@ -449,6 +450,47 @@ pub fn create_admin_job(
     req,
     job_dto.encode_create_request,
     job_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_email_templates(
+  to_msg: fn(ApiResponse(email_template_dto.ListEmailTemplatesResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminEmailTemplatesAction, Nil)
+
+  send_api_request(
+    req,
+    fn(_) { json.null() },
+    email_template_dto.list_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_email_template(
+  request: email_template_dto.GetEmailTemplateRequest,
+  to_msg: fn(ApiResponse(email_template_dto.GetEmailTemplateResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminEmailTemplateAction, request)
+
+  send_api_request(
+    req,
+    email_template_dto.encode_get_request,
+    email_template_dto.get_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn update_admin_email_template(
+  request: email_template_dto.UpdateEmailTemplateRequest,
+  to_msg: fn(ApiResponse(email_template_dto.UpdateEmailTemplateResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.UpdateAdminEmailTemplateAction, request)
+
+  send_api_request(
+    req,
+    email_template_dto.encode_update_request,
+    email_template_dto.update_response_decoder(),
     to_msg,
   )
 }

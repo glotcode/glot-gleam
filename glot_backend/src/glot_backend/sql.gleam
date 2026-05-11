@@ -8,6 +8,44 @@ import gleam/time/calendar.{type Date}
 import gleam/time/timestamp.{type Timestamp}
 import parrot/dev
 
+pub type ListEmailTemplates {
+  ListEmailTemplates(
+    name: String,
+    subject_template: String,
+    text_body_template: String,
+    html_body_template: Option(String),
+    updated_at: Timestamp,
+  )
+}
+
+pub fn list_email_templates() {
+  let sql =
+    "SELECT
+  name,
+  subject_template,
+  text_body_template,
+  html_body_template,
+  updated_at
+FROM email_templates
+ORDER BY name ASC"
+  #(sql, [], list_email_templates_decoder())
+}
+
+pub fn list_email_templates_decoder() -> decode.Decoder(ListEmailTemplates) {
+  use name <- decode.field(0, decode.string)
+  use subject_template <- decode.field(1, decode.string)
+  use text_body_template <- decode.field(2, decode.string)
+  use html_body_template <- decode.field(3, decode.optional(decode.string))
+  use updated_at <- decode.field(4, dev.datetime_decoder())
+  decode.success(ListEmailTemplates(
+    name:,
+    subject_template:,
+    text_body_template:,
+    html_body_template:,
+    updated_at:,
+  ))
+}
+
 pub type GetEmailTemplateByName {
   GetEmailTemplateByName(
     name: String,
@@ -46,6 +84,32 @@ pub fn get_email_template_by_name_decoder() -> decode.Decoder(
     html_body_template:,
     updated_at:,
   ))
+}
+
+pub fn update_email_template(
+  name name: String,
+  subject_template subject_template: String,
+  text_body_template text_body_template: String,
+  html_body_template html_body_template: Option(String),
+  updated_at updated_at: Timestamp,
+) {
+  let sql =
+    "UPDATE email_templates
+SET
+  subject_template = $2,
+  text_body_template = $3,
+  html_body_template = $4,
+  updated_at = $5
+WHERE name = $1"
+  #(sql, [
+    dev.ParamString(name),
+    dev.ParamString(subject_template),
+    dev.ParamString(text_body_template),
+    dev.ParamNullable(
+      option.map(html_body_template, fn(v) { dev.ParamString(v) }),
+    ),
+    dev.ParamTimestamp(updated_at),
+  ])
 }
 
 pub type CountUserActionsByIp {

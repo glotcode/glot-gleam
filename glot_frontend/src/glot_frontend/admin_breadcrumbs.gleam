@@ -22,6 +22,8 @@ pub fn is_admin_route(current_route: route.Route) -> Bool {
     | route.AdminUser(_)
     | route.AdminJobs
     | route.AdminJob(_)
+    | route.AdminEmailTemplates
+    | route.AdminEmailTemplate(_)
     | route.AdminSnippets
     | route.AdminSnippet(_)
     | route.AdminJobLogs
@@ -85,6 +87,15 @@ fn breadcrumbs(current_route: route.Route) -> List(Crumb) {
       link("Admin", route.Admin),
       link("Jobs", route.AdminJobs),
       current("Job detail"),
+    ]
+    route.AdminEmailTemplates -> [
+      link("Admin", route.Admin),
+      current("Email templates"),
+    ]
+    route.AdminEmailTemplate(_) -> [
+      link("Admin", route.Admin),
+      link("Email templates", route.AdminEmailTemplates),
+      current("Email template detail"),
     ]
     route.AdminSnippets -> [
       link("Admin", route.Admin),

@@ -3,6 +3,7 @@ import gleam/list
 import gleam/option.{type Option}
 import gleam/result
 import gleam/string
+import gleam/time/timestamp.{type Timestamp}
 import glot_core/email/email_address_model
 import glot_core/email/email_model
 
@@ -17,6 +18,7 @@ pub type EmailTemplate {
     subject_template: String,
     text_body_template: String,
     html_body_template: Option(String),
+    updated_at: Timestamp,
   )
 }
 
@@ -35,19 +37,23 @@ pub fn from_db_name(name: String) -> Result(EmailTemplateName, String) {
   }
 }
 
-pub fn allowed_tokens(name: EmailTemplateName) -> List(String) {
+pub fn supported_tokens(name: EmailTemplateName) -> List(String) {
   case name {
     LoginTokenTemplate -> ["token"]
     AccountDeletedTemplate -> []
   }
 }
 
-pub fn are_allowed_tokens(
+pub fn list_names() -> List(EmailTemplateName) {
+  [LoginTokenTemplate, AccountDeletedTemplate]
+}
+
+pub fn are_supported_tokens(
   name: EmailTemplateName,
   tokens: List(String),
 ) -> Bool {
-  let allowed = allowed_tokens(name)
-  list.all(tokens, fn(token) { list.contains(allowed, token) })
+  let supported = supported_tokens(name)
+  list.all(tokens, fn(token) { list.contains(supported, token) })
 }
 
 pub fn render_email_template(
@@ -55,7 +61,7 @@ pub fn render_email_template(
   to: email_address_model.EmailAddress,
   variables: Dict(String, String),
 ) -> Result(email_model.Email, String) {
-  let allowed_tokens = allowed_tokens(template.name)
+  use _ <- result.try(validate_template(template))
   use _ <- result.try(validate_variables(template.name, variables))
   use subject <- result.try(render_template(
     template.subject_template,
@@ -72,28 +78,44 @@ pub fn render_email_template(
     option.None -> Ok(option.None)
   })
 
-  let template_tokens =
-    collect_tokens(template.subject_template)
-    |> list.append(collect_tokens(template.text_body_template))
-    |> list.append(case template.html_body_template {
-      option.Some(html) -> collect_tokens(html)
-      option.None -> []
-    })
+  Ok(email_model.Email(
+    to: to,
+    subject: subject,
+    text_body: text_body,
+    html_body: html_body,
+  ))
+}
 
-  case are_allowed_tokens(template.name, template_tokens) {
-    True ->
-      Ok(email_model.Email(
-        to: to,
-        subject: subject,
-        text_body: text_body,
-        html_body: html_body,
-      ))
+pub fn validate_template(template: EmailTemplate) -> Result(Nil, String) {
+  let supported_tokens = supported_tokens(template.name)
+  use _ <- result.try(require_non_empty(
+    template.subject_template,
+    "Email subject template cannot be empty",
+  ))
+  use _ <- result.try(require_non_empty(
+    template.text_body_template,
+    "Email text body template cannot be empty",
+  ))
+  use subject_tokens <- result.try(collect_tokens(template.subject_template))
+  use text_body_tokens <- result.try(collect_tokens(template.text_body_template))
+  use html_body_tokens <- result.try(case template.html_body_template {
+    option.Some(html) -> collect_tokens(html)
+    option.None -> Ok([])
+  })
+
+  let template_tokens =
+    subject_tokens
+    |> list.append(text_body_tokens)
+    |> list.append(html_body_tokens)
+
+  case are_supported_tokens(template.name, template_tokens) {
+    True -> Ok(Nil)
     False ->
       Error(
         "Email template contains unsupported tokens for "
         <> to_db_name(template.name)
-        <> ". Allowed tokens: "
-        <> string.join(allowed_tokens, with: ", "),
+        <> ". Supported tokens: "
+        <> string.join(supported_tokens, with: ", "),
       )
   }
 }
@@ -102,20 +124,20 @@ fn validate_variables(
   template_name: EmailTemplateName,
   variables: Dict(String, String),
 ) -> Result(Nil, String) {
-  let allowed = allowed_tokens(template_name)
+  let supported = supported_tokens(template_name)
   let variable_names =
     variables
     |> dict.to_list
     |> list.map(fn(entry) { entry.0 })
 
-  case are_allowed_tokens(template_name, variable_names) {
+  case are_supported_tokens(template_name, variable_names) {
     True -> Ok(Nil)
     False ->
       Error(
         "Unexpected email template variables for "
         <> to_db_name(template_name)
-        <> ". Allowed tokens: "
-        <> string.join(allowed, with: ", "),
+        <> ". Supported tokens: "
+        <> string.join(supported, with: ", "),
       )
   }
 }
@@ -144,16 +166,23 @@ fn render_template(
   }
 }
 
-fn collect_tokens(template: String) -> List(String) {
+fn collect_tokens(template: String) -> Result(List(String), String) {
   case string.split_once(template, "{{") {
-    Error(_) -> []
+    Error(_) -> Ok([])
     Ok(#(_, remainder)) ->
       case string.split_once(remainder, "}}") {
-        Error(_) -> []
-        Ok(#(raw_token, suffix)) -> [
-          string.trim(raw_token),
-          ..collect_tokens(suffix)
-        ]
+        Error(_) -> Error("Unclosed template token in email template")
+        Ok(#(raw_token, suffix)) -> {
+          use rest <- result.try(collect_tokens(suffix))
+          Ok([string.trim(raw_token), ..rest])
+        }
       }
+  }
+}
+
+fn require_non_empty(value: String, message: String) -> Result(Nil, String) {
+  case string.trim(value) == "" {
+    True -> Error(message)
+    False -> Ok(Nil)
   }
 }

@@ -269,7 +269,9 @@ fn test_handlers() -> handlers.Handlers {
       Error(error.InternalSendEmailError("unused in test"))
     }),
     email_template: email_template_handlers.EmailTemplateHandlers(
+      list_email_templates: fn() { Ok([]) },
       get_email_template_by_name: fn(_) { Ok(option.None) },
+      update_email_template: fn(_) { Ok(Nil) },
     ),
     get_language_version: get_language_version_handlers.GetLanguageVersionHandlers(
       get_language_version: fn(_, _) {
