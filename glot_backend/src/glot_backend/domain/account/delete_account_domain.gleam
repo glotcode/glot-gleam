@@ -1,13 +1,17 @@
+import gleam/dict
 import gleam/option
+import gleam/result
 import glot_backend/context
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
+import glot_backend/effect/email_template/email_template_effect
+import glot_backend/effect/error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction/transaction_effect
-import glot_core/email/email_model
+import glot_backend/email_template
 import glot_core/job/job_model
 
 pub fn delete_account(
@@ -15,13 +19,28 @@ pub fn delete_account(
   payload: job_model.DeleteAccountJobPayload,
 ) -> program_types.Program(Nil) {
   use email_job_id <- program.and_then(basic_effect.uuid_v7())
+  use template <- program.and_then(program.require(
+    email_template_effect.get_email_template_by_name(
+      email_template.AccountDeletedTemplate,
+    ),
+    error.SendEmailError(error.InternalSendEmailError(
+      "Missing email template: "
+      <> email_template.to_db_name(email_template.AccountDeletedTemplate),
+    )),
+  ))
+  use account_deleted_email <- program.and_then(program.from_result(
+    email_template.render_email_template(template, payload.email, dict.new())
+    |> result.map_error(fn(message) {
+      error.SendEmailError(error.InternalSendEmailError(message))
+    }),
+  ))
 
   let send_email_job =
     job_model.send_email_job(
       email_job_id,
       option.Some(ctx.request_id),
       ctx.timestamp,
-      email_model.account_deleted_email(payload.email),
+      account_deleted_email,
     )
 
   transaction_effect.run_all([

@@ -8,6 +8,7 @@ import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
+import glot_backend/effect/email_template/email_template_algebra
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
@@ -26,6 +27,7 @@ pub type EffectName {
   AnalyticsEffectName(analytics_algebra.EffectName)
   BasicEffectName(basic_algebra.EffectName)
   EmailEffectName(email_algebra.EffectName)
+  EmailTemplateEffectName(email_template_algebra.EffectName)
   JobEffectName(job_algebra.EffectName)
   JobLogEffectName(job_log_algebra.EffectName)
   PageLogEffectName(page_log_algebra.EffectName)
@@ -52,6 +54,8 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     AnalyticsEffectName(name) -> analytics_algebra.effect_name_to_string(name)
     BasicEffectName(name) -> basic_algebra.effect_name_to_string(name)
     EmailEffectName(name) -> email_algebra.effect_name_to_string(name)
+    EmailTemplateEffectName(name) ->
+      email_template_algebra.effect_name_to_string(name)
     JobEffectName(name) -> job_algebra.effect_name_to_string(name)
     JobLogEffectName(name) -> job_log_algebra.effect_name_to_string(name)
     PageLogEffectName(name) -> page_log_algebra.effect_name_to_string(name)
@@ -80,6 +84,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     AnalyticsEffectName(_) -> "analytics"
     BasicEffectName(_) -> "basic"
     EmailEffectName(_) -> "email"
+    EmailTemplateEffectName(_) -> "email_template"
     JobEffectName(_) -> "job"
     JobLogEffectName(_) -> "job_log"
     PageLogEffectName(_) -> "page_log"

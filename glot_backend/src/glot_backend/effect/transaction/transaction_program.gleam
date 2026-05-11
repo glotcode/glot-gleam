@@ -4,6 +4,7 @@ import glot_backend/effect/admin_log/admin_log_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
 import glot_backend/effect/auth/auth_algebra
+import glot_backend/effect/email_template/email_template_algebra
 import glot_backend/effect/error
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
@@ -89,6 +90,8 @@ fn map_db_effect(
       program_types.ApiLogEffect(api_log_algebra.map(effect, f))
     program_types.AuthEffect(effect) ->
       program_types.AuthEffect(auth_algebra.map(effect, f))
+    program_types.EmailTemplateEffect(effect) ->
+      program_types.EmailTemplateEffect(email_template_algebra.map(effect, f))
     program_types.JobEffect(effect) ->
       program_types.JobEffect(job_algebra.map(effect, f))
     program_types.JobLogEffect(effect) ->

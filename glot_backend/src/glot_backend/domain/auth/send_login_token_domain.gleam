@@ -1,20 +1,24 @@
 import gleam/dynamic
+import gleam/dict
 import gleam/option
+import gleam/result
 import glot_backend/context
 import glot_backend/crypto_token
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
+import glot_backend/effect/email_template/email_template_effect
+import glot_backend/effect/error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
+import glot_backend/email_template
 import glot_backend/log
 import glot_core/api_action
 import glot_core/auth/login_token_dto
 import glot_core/auth/login_token_model
-import glot_core/email/email_model
 import glot_core/job/job_model
 
 pub fn send_login_token(
@@ -47,12 +51,32 @@ pub fn send_login_token(
     ),
   )
 
+  use template <- program.and_then(program.require(
+    email_template_effect.get_email_template_by_name(
+      email_template.LoginTokenTemplate,
+    ),
+    error.SendEmailError(error.InternalSendEmailError(
+      "Missing email template: "
+      <> email_template.to_db_name(email_template.LoginTokenTemplate),
+    )),
+  ))
+  use login_email <- program.and_then(program.from_result(
+    email_template.render_email_template(
+      template,
+      request.email,
+      dict.from_list([#("token", token)]),
+    )
+    |> result.map_error(fn(message) {
+      error.SendEmailError(error.InternalSendEmailError(message))
+    }),
+  ))
+
   let send_email_job =
     job_model.send_email_job(
       job_id,
       option.Some(ctx.request_id),
       ctx.timestamp,
-      email_model.login_token_email(request.email, token),
+      login_email,
     )
 
   let login_token =

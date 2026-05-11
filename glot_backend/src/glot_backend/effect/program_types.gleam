@@ -6,6 +6,7 @@ import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
+import glot_backend/effect/email_template/email_template_algebra
 import glot_backend/effect/error
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
@@ -47,6 +48,7 @@ pub type DbEffect(next) {
   AdminLogEffect(admin_log_algebra.AdminLogEffect(next))
   AnalyticsEffect(analytics_algebra.AnalyticsEffect(next))
   AuthEffect(auth_algebra.AuthEffect(next))
+  EmailTemplateEffect(email_template_algebra.EmailTemplateEffect(next))
   JobEffect(job_algebra.JobEffect(next))
   JobLogEffect(job_log_algebra.JobLogEffect(next))
   PageLogEffect(page_log_algebra.PageLogEffect(next))

@@ -31,6 +31,7 @@ import glot_backend/domain/shared/session_domain
 import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/dynamic_config
+import glot_backend/email_template
 import glot_backend/effect/admin_log/admin_log_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
@@ -39,6 +40,7 @@ import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
+import glot_backend/effect/email_template/email_template_algebra
 import glot_backend/effect/error
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
@@ -1140,6 +1142,7 @@ type TestDb {
   TestDb(
     accounts: Dict(String, account_model.Account),
     users: Dict(String, user_model.User),
+    email_templates: Dict(String, email_template.EmailTemplate),
     login_tokens: Dict(String, login_token_model.LoginToken),
     sessions: Dict(String, session_model.Session),
     session_ids_by_token: Dict(String, String),
@@ -1209,6 +1212,7 @@ fn integration_fixture(
     TestDb(
       accounts: dict.from_list([#(uuid_key(account.id), account)]),
       users: dict.from_list([#(uuid_key(user.id), user)]),
+      email_templates: default_email_templates(),
       login_tokens: dict.new(),
       sessions: dict.from_list([#(uuid_key(session.id), session)]),
       session_ids_by_token: dict.from_list([
@@ -1299,6 +1303,7 @@ fn empty_test_db() -> TestDb {
   TestDb(
     accounts: dict.new(),
     users: dict.new(),
+    email_templates: default_email_templates(),
     login_tokens: dict.new(),
     sessions: dict.new(),
     session_ids_by_token: dict.new(),
@@ -1313,6 +1318,29 @@ fn empty_test_db() -> TestDb {
     next_uuids: [],
     system_time: test_system_time(),
   )
+}
+
+fn default_email_templates() -> Dict(String, email_template.EmailTemplate) {
+  dict.from_list([
+    #(
+      email_template.to_db_name(email_template.LoginTokenTemplate),
+      email_template.EmailTemplate(
+        name: email_template.LoginTokenTemplate,
+        subject_template: "Your login token",
+        text_body_template: "Your login token is: {{token}}",
+        html_body_template: option.None,
+      ),
+    ),
+    #(
+      email_template.to_db_name(email_template.AccountDeletedTemplate),
+      email_template.EmailTemplate(
+        name: email_template.AccountDeletedTemplate,
+        subject_template: "Your account has been deleted",
+        text_body_template: "Your account has been deleted.",
+        html_body_template: option.None,
+      ),
+    ),
+  ])
 }
 
 fn repeat_string(value: String, count: Int) -> String {
@@ -1576,6 +1604,8 @@ fn run_test_db_effect(
       run_test_api_log_effect(api_log_effect, ctx, db)
     program_types.AuthEffect(auth_effect) ->
       run_test_auth_effect(auth_effect, ctx, db)
+    program_types.EmailTemplateEffect(email_template_effect) ->
+      run_test_email_template_effect(email_template_effect, ctx, db)
     program_types.JobEffect(job_effect) ->
       run_test_job_effect(job_effect, ctx, db)
     program_types.JobLogEffect(job_log_effect) ->
@@ -1609,6 +1639,8 @@ fn run_test_tx_db_effect(
       run_test_api_log_tx_effect(api_log_effect, ctx, db)
     program_types.AuthEffect(auth_effect) ->
       run_test_auth_tx_effect(auth_effect, ctx, db)
+    program_types.EmailTemplateEffect(email_template_effect) ->
+      run_test_email_template_tx_effect(email_template_effect, ctx, db)
     program_types.JobEffect(job_effect) ->
       run_test_job_tx_effect(job_effect, ctx, db)
     program_types.JobLogEffect(job_log_effect) ->
@@ -1998,6 +2030,30 @@ fn run_test_auth_tx_effect(
   }
 }
 
+fn run_test_email_template_effect(
+  effect: email_template_algebra.EmailTemplateEffect(program_types.Program(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    email_template_algebra.GetEmailTemplateByName(name:, next:) ->
+      run_test_program(next(find_email_template_by_name(db, name)), ctx, db)
+  }
+}
+
+fn run_test_email_template_tx_effect(
+  effect: email_template_algebra.EmailTemplateEffect(
+    program_types.TransactionProgram(a),
+  ),
+  _ctx: context.Context,
+  _db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    email_template_algebra.GetEmailTemplateByName(_, _) ->
+      panic as "Email template tx effects are not used in backend tests"
+  }
+}
+
 fn run_test_job_effect(
   effect: job_algebra.JobEffect(program_types.Program(a)),
   ctx: context.Context,
@@ -2348,6 +2404,16 @@ fn find_user_by_email(
       })
     }
     option.None -> option.None
+  }
+}
+
+fn find_email_template_by_name(
+  db: TestDb,
+  name: email_template.EmailTemplateName,
+) -> option.Option(email_template.EmailTemplate) {
+  case dict.get(db.email_templates, email_template.to_db_name(name)) {
+    Ok(template) -> option.Some(template)
+    Error(_) -> option.None
   }
 }
 

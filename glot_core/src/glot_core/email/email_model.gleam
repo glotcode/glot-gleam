@@ -41,24 +41,3 @@ pub fn decoder(is_email: regexp.Regexp) -> decode.Decoder(Email) {
   use html_body <- decode.field("html_body", decode.optional(decode.string))
   decode.success(Email(to:, subject:, text_body:, html_body:))
 }
-
-pub fn login_token_email(
-  to: email_address_model.EmailAddress,
-  token: String,
-) -> Email {
-  Email(
-    to: to,
-    subject: "Your login token",
-    text_body: "Your login token is: " <> token,
-    html_body: option.None,
-  )
-}
-
-pub fn account_deleted_email(to: email_address_model.EmailAddress) -> Email {
-  Email(
-    to: to,
-    subject: "Your account has been deleted",
-    text_body: "Your account has been deleted.",
-    html_body: option.None,
-  )
-}

@@ -8,6 +8,46 @@ import gleam/time/calendar.{type Date}
 import gleam/time/timestamp.{type Timestamp}
 import parrot/dev
 
+pub type GetEmailTemplateByName {
+  GetEmailTemplateByName(
+    name: String,
+    subject_template: String,
+    text_body_template: String,
+    html_body_template: Option(String),
+    updated_at: Timestamp,
+  )
+}
+
+pub fn get_email_template_by_name(name name: String) {
+  let sql =
+    "SELECT
+  name,
+  subject_template,
+  text_body_template,
+  html_body_template,
+  updated_at
+FROM email_templates
+WHERE name = $1"
+  #(sql, [dev.ParamString(name)], get_email_template_by_name_decoder())
+}
+
+pub fn get_email_template_by_name_decoder() -> decode.Decoder(
+  GetEmailTemplateByName,
+) {
+  use name <- decode.field(0, decode.string)
+  use subject_template <- decode.field(1, decode.string)
+  use text_body_template <- decode.field(2, decode.string)
+  use html_body_template <- decode.field(3, decode.optional(decode.string))
+  use updated_at <- decode.field(4, dev.datetime_decoder())
+  decode.success(GetEmailTemplateByName(
+    name:,
+    subject_template:,
+    text_body_template:,
+    html_body_template:,
+    updated_at:,
+  ))
+}
+
 pub type CountUserActionsByIp {
   CountUserActionsByIp(unit: String, count: Int)
 }

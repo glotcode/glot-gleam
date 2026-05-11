@@ -11,6 +11,7 @@ import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
+import glot_backend/effect/email_template/email_template_algebra
 import glot_backend/effect/error
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
@@ -154,6 +155,8 @@ fn map_db_effect(
       program_types.ApiLogEffect(api_log_algebra.map(effect, f))
     program_types.AuthEffect(effect) ->
       program_types.AuthEffect(auth_algebra.map(effect, f))
+    program_types.EmailTemplateEffect(effect) ->
+      program_types.EmailTemplateEffect(email_template_algebra.map(effect, f))
     program_types.JobEffect(effect) ->
       program_types.JobEffect(job_algebra.map(effect, f))
     program_types.JobLogEffect(effect) ->

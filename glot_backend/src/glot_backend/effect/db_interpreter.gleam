@@ -3,6 +3,7 @@ import glot_backend/effect/admin_log/admin_log_interpreter
 import glot_backend/effect/analytics/analytics_interpreter
 import glot_backend/effect/api_log/api_log_interpreter
 import glot_backend/effect/auth/auth_interpreter
+import glot_backend/effect/email_template/email_template_interpreter
 import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/job/job_interpreter
@@ -33,6 +34,8 @@ pub fn run(
       api_log_interpreter.run(effect, handlers, state, continue)
     program_types.AuthEffect(effect) ->
       auth_interpreter.run(effect, ctx, handlers, state, continue)
+    program_types.EmailTemplateEffect(effect) ->
+      email_template_interpreter.run(effect, handlers, state, continue)
     program_types.JobEffect(effect) ->
       job_interpreter.run(effect, handlers, state, continue)
     program_types.JobLogEffect(effect) ->

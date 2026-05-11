@@ -19,6 +19,7 @@ import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/docker_run/docker_run_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/email/email_handlers
+import glot_backend/effect/email_template/email_template_handlers
 import glot_backend/effect/error
 import glot_backend/effect/get_language_version/get_language_version_handlers
 import glot_backend/effect/handlers
@@ -267,6 +268,9 @@ fn test_handlers() -> handlers.Handlers {
     email: email_handlers.EmailHandlers(send_email: fn(_) {
       Error(error.InternalSendEmailError("unused in test"))
     }),
+    email_template: email_template_handlers.EmailTemplateHandlers(
+      get_email_template_by_name: fn(_) { Ok(option.None) },
+    ),
     get_language_version: get_language_version_handlers.GetLanguageVersionHandlers(
       get_language_version: fn(_, _) {
         Error(error.InternalRunRequestError("unused in test"))
