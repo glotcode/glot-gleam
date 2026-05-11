@@ -9,9 +9,9 @@ import glot_core/page/top_bar
 import glot_core/pageview_dto
 import glot_core/route
 import glot_frontend/account_page
-import glot_frontend/admin_breadcrumbs
 import glot_frontend/admin_api_log_page
 import glot_frontend/admin_api_logs_page
+import glot_frontend/admin_breadcrumbs
 import glot_frontend/admin_config_page
 import glot_frontend/admin_job_log_page
 import glot_frontend/admin_job_logs_page
@@ -227,7 +227,8 @@ fn init_page(
     route.AdminUsers -> {
       let #(m, eff) = admin_users_page.init()
       let admin_effect = case session_is_admin(session) {
-        True -> effect.map(admin_users_page.ensure_loaded(m).1, AdminUsersPageMsg)
+        True ->
+          effect.map(admin_users_page.ensure_loaded(m).1, AdminUsersPageMsg)
         False -> effect.none()
       }
 
@@ -280,7 +281,10 @@ fn init_page(
       let #(m, eff) = admin_snippets_page.init()
       let admin_effect = case session_is_admin(session) {
         True ->
-          effect.map(admin_snippets_page.ensure_loaded(m).1, AdminSnippetsPageMsg)
+          effect.map(
+            admin_snippets_page.ensure_loaded(m).1,
+            AdminSnippetsPageMsg,
+          )
         False -> effect.none()
       }
 
@@ -531,7 +535,10 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               let #(new_page_model, page_effect) =
                 admin_run_logs_page.ensure_loaded(page_model)
               #(
-                Model(..next_model, page_model: AdminRunLogsPage(new_page_model)),
+                Model(
+                  ..next_model,
+                  page_model: AdminRunLogsPage(new_page_model),
+                ),
                 effect.map(page_effect, AdminRunLogsPageMsg),
               )
             }
@@ -1023,7 +1030,8 @@ fn view(model: Model) -> Element(Msg) {
 
     AdminUserPage(page_model) -> {
       case session_is_admin(model.session) {
-        True -> admin_user_page.view(page_model, model.now)
+        True ->
+          admin_user_page.view(page_model, model.now)
           |> element.map(AdminUserPageMsg)
         False -> not_found_view()
       }
@@ -1118,13 +1126,13 @@ fn view(model: Model) -> Element(Msg) {
     }
   }
 
-  let content =
-    case session_is_admin(model.session) && admin_breadcrumbs.is_admin_route(
-      model.route,
-    ) {
-      True -> admin_breadcrumbs.wrap(model.route, page_content)
-      False -> page_content
-    }
+  let content = case
+    session_is_admin(model.session)
+    && admin_breadcrumbs.is_admin_route(model.route)
+  {
+    True -> admin_breadcrumbs.wrap(model.route, page_content)
+    False -> page_content
+  }
 
   site_chrome.view(
     top_bar_model: top_bar_model(model),

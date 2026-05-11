@@ -140,9 +140,17 @@ fn detail_view(model: Model) -> Element(Msg) {
               language.name(log.language),
               "Runtime language",
             ),
-            summary_card("Outcome", outcome_text(log.outcome), "Execution state"),
+            summary_card(
+              "Outcome",
+              outcome_text(log.outcome),
+              "Execution state",
+            ),
             summary_card("Created at", format_timestamp(log.created_at), "UTC"),
-            summary_card("Duration", optional_duration(log.duration_ns), "Runtime"),
+            summary_card(
+              "Duration",
+              optional_duration(log.duration_ns),
+              "Runtime",
+            ),
           ],
         ),
         html.div([attribute.class("admin-page__group")], [

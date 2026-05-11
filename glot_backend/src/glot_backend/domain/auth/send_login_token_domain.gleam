@@ -1,5 +1,5 @@
-import gleam/dynamic
 import gleam/dict
+import gleam/dynamic
 import gleam/option
 import gleam/result
 import glot_backend/context

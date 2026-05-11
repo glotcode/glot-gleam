@@ -143,7 +143,9 @@ pub fn from_api_logs(
   ))
 }
 
-pub fn from_api_log_detail(log: api_log_model.ApiLogDetail) -> GetApiLogResponse {
+pub fn from_api_log_detail(
+  log: api_log_model.ApiLogDetail,
+) -> GetApiLogResponse {
   GetApiLogResponse(log: ApiLogDetailResponse(
     id: log.id,
     request_id: log.request_id,

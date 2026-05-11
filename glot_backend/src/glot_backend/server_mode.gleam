@@ -42,7 +42,10 @@ pub fn enter_shutting_down(subject: process.Subject(Message)) -> Nil {
   process.send(subject, SetMode(ShuttingDown))
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     SetMode(mode) -> actor.continue(State(mode: mode))
     GetMode(reply) -> {

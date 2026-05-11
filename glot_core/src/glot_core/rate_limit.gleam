@@ -78,7 +78,10 @@ fn to_window(rate_limit: RateLimit, now: Timestamp) -> Window {
   Window(unit: rate_limit.unit, cutoff: start_time(rate_limit, now))
 }
 
-pub fn to_windows(rate_limits: List(RateLimit), now: Timestamp) -> List(Window) {
+pub fn to_windows(
+  rate_limits: List(RateLimit),
+  now: Timestamp,
+) -> List(Window) {
   rate_limits
   |> list.map(fn(rate_limit) { to_window(rate_limit, now) })
 }

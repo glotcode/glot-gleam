@@ -71,10 +71,7 @@ fn get_api_log_effect(
   id: Uuid,
   next: fn(option.Option(api_log_model.ApiLogDetail)) -> next,
 ) -> program_types.DbEffect(next) {
-  program_types.AdminLogEffect(admin_log_algebra.GetApiLog(
-    id: id,
-    next: next,
-  ))
+  program_types.AdminLogEffect(admin_log_algebra.GetApiLog(id: id, next: next))
 }
 
 fn list_run_logs_effect(

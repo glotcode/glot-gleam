@@ -10,8 +10,8 @@ import glot_core/admin/job_log_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
-import glot_frontend/app_dialog
 import glot_frontend/api
+import glot_frontend/app_dialog
 import glot_frontend/clock
 import glot_frontend/duration_label
 import glot_frontend/local_datetime
@@ -25,6 +25,7 @@ import modem
 import youid/uuid
 
 const job_logs_page_limit = 25
+
 const create_job_dialog_id = "admin-job-page-create-job-dialog"
 
 pub type Model {
@@ -209,14 +210,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         option.None -> #(model, effect.none())
       }
 
-    CreateJobDialogClosed ->
-      #(Model(..model, create_job_editor: option.None), effect.none())
+    CreateJobDialogClosed -> #(
+      Model(..model, create_job_editor: option.None),
+      effect.none(),
+    )
 
-    CreateJobCancelled ->
-      #(
-        Model(..model, create_job_editor: option.None),
-        app_dialog.close(create_job_dialog_id),
-      )
+    CreateJobCancelled -> #(
+      Model(..model, create_job_editor: option.None),
+      app_dialog.close(create_job_dialog_id),
+    )
 
     CreateJobSubmitted ->
       case model.create_job_editor {
@@ -283,50 +285,60 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         option.None -> #(model, effect.none())
       }
 
-    CreateJobPayloadChanged(value) ->
-      #(update_create_job_editor(model, fn(editor) {
-          CreateJobEditor(
-            ..editor,
-            draft: CreateJobDraft(..editor.draft, payload: value),
-            state: reset_create_job_state(editor.state),
-          )
-        }), effect.none())
+    CreateJobPayloadChanged(value) -> #(
+      update_create_job_editor(model, fn(editor) {
+        CreateJobEditor(
+          ..editor,
+          draft: CreateJobDraft(..editor.draft, payload: value),
+          state: reset_create_job_state(editor.state),
+        )
+      }),
+      effect.none(),
+    )
 
-    CreateJobMaxAttemptsChanged(value) ->
-      #(update_create_job_editor(model, fn(editor) {
-          CreateJobEditor(
-            ..editor,
-            draft: CreateJobDraft(..editor.draft, max_attempts: value),
-            state: reset_create_job_state(editor.state),
-          )
-        }), effect.none())
+    CreateJobMaxAttemptsChanged(value) -> #(
+      update_create_job_editor(model, fn(editor) {
+        CreateJobEditor(
+          ..editor,
+          draft: CreateJobDraft(..editor.draft, max_attempts: value),
+          state: reset_create_job_state(editor.state),
+        )
+      }),
+      effect.none(),
+    )
 
-    CreateJobTimeoutSecondsChanged(value) ->
-      #(update_create_job_editor(model, fn(editor) {
-          CreateJobEditor(
-            ..editor,
-            draft: CreateJobDraft(..editor.draft, timeout_seconds: value),
-            state: reset_create_job_state(editor.state),
-          )
-        }), effect.none())
+    CreateJobTimeoutSecondsChanged(value) -> #(
+      update_create_job_editor(model, fn(editor) {
+        CreateJobEditor(
+          ..editor,
+          draft: CreateJobDraft(..editor.draft, timeout_seconds: value),
+          state: reset_create_job_state(editor.state),
+        )
+      }),
+      effect.none(),
+    )
 
-    CreateJobRunDateChanged(value) ->
-      #(update_create_job_editor(model, fn(editor) {
-          CreateJobEditor(
-            ..editor,
-            draft: CreateJobDraft(..editor.draft, run_date: value),
-            state: reset_create_job_state(editor.state),
-          )
-        }), effect.none())
+    CreateJobRunDateChanged(value) -> #(
+      update_create_job_editor(model, fn(editor) {
+        CreateJobEditor(
+          ..editor,
+          draft: CreateJobDraft(..editor.draft, run_date: value),
+          state: reset_create_job_state(editor.state),
+        )
+      }),
+      effect.none(),
+    )
 
-    CreateJobRunTimeChanged(value) ->
-      #(update_create_job_editor(model, fn(editor) {
-          CreateJobEditor(
-            ..editor,
-            draft: CreateJobDraft(..editor.draft, run_time: value),
-            state: reset_create_job_state(editor.state),
-          )
-        }), effect.none())
+    CreateJobRunTimeChanged(value) -> #(
+      update_create_job_editor(model, fn(editor) {
+        CreateJobEditor(
+          ..editor,
+          draft: CreateJobDraft(..editor.draft, run_time: value),
+          state: reset_create_job_state(editor.state),
+        )
+      }),
+      effect.none(),
+    )
   }
 }
 
@@ -561,7 +573,10 @@ fn job_logs_table(model: Model, now: Timestamp) -> Element(Msg) {
   }
 }
 
-fn job_log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
+fn job_log_row(
+  log: job_log_dto.JobLogResponse,
+  now: Timestamp,
+) -> Element(Msg) {
   html.div([attribute.class("jobs-table__row admin-job-logs-page__row")], [
     html.div([attribute.class("jobs-table__cell")], [
       cell_label("Log ID"),
@@ -888,8 +903,9 @@ fn editor_from_job(
   )
 }
 
-
-fn editor_to_request(editor: CreateJobEditor) -> Result(job_dto.CreateJobRequest, String) {
+fn editor_to_request(
+  editor: CreateJobEditor,
+) -> Result(job_dto.CreateJobRequest, String) {
   use max_attempts <- result.try(parse_positive_int(
     editor.draft.max_attempts,
     "Max attempts",
@@ -925,10 +941,7 @@ fn parse_positive_int(value: String, label: String) -> Result(Int, String) {
   }
 }
 
-fn parse_local_run_at(
-  date: String,
-  time: String,
-) -> Result(Timestamp, String) {
+fn parse_local_run_at(date: String, time: String) -> Result(Timestamp, String) {
   case date == "" || time == "" {
     True -> Error("Run date and time are required.")
     False -> {
@@ -980,7 +993,11 @@ fn textarea_input(
   on_input on_input: fn(String) -> Msg,
 ) -> Element(Msg) {
   html.label(
-    [attribute.class("admin-page__field admin-periodic-jobs-page__payload-field")],
+    [
+      attribute.class(
+        "admin-page__field admin-periodic-jobs-page__payload-field",
+      ),
+    ],
     [
       html.span([attribute.class("admin-page__field-label")], [
         html.text(label),

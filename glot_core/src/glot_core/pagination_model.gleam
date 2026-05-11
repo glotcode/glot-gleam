@@ -327,7 +327,11 @@ fn take_page_from_end(items: List(a), page_limit: Int) -> PageSlice(a) {
   |> reverse_page_slice
 }
 
-fn take_page_loop(items: List(a), remaining: Int, acc: List(a)) -> PageSlice(a) {
+fn take_page_loop(
+  items: List(a),
+  remaining: Int,
+  acc: List(a),
+) -> PageSlice(a) {
   case items {
     [] -> PageSlice(items: list.reverse(acc), has_more: False)
     [item, ..rest] ->

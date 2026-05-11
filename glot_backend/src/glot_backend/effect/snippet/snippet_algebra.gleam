@@ -60,9 +60,11 @@ pub fn map(effect: SnippetEffect(a), f: fn(a) -> b) -> SnippetEffect(b) {
         f(next(value))
       })
     ListAdminSnippets(username:, pagination:, next:) ->
-      ListAdminSnippets(username: username, pagination: pagination, next: fn(value) {
-        f(next(value))
-      })
+      ListAdminSnippets(
+        username: username,
+        pagination: pagination,
+        next: fn(value) { f(next(value)) },
+      )
     DeleteSnippet(id, next) ->
       DeleteSnippet(id, next: fn(value) { f(next(value)) })
     DeleteSnippetsByAccountId(account_id: account_id, next: next) ->

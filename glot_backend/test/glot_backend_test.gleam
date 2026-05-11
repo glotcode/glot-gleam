@@ -31,7 +31,6 @@ import glot_backend/domain/shared/session_domain
 import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/snippet/update_snippet_domain
 import glot_backend/dynamic_config
-import glot_backend/email_template
 import glot_backend/effect/admin_log/admin_log_algebra
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/api_log/api_log_algebra
@@ -52,6 +51,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
+import glot_backend/email_template
 import glot_core/admin/auth_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
@@ -2618,7 +2618,10 @@ fn upsert_login_token(
   )
 }
 
-fn delete_login_tokens_before(db: TestDb, before: timestamp.Timestamp) -> TestDb {
+fn delete_login_tokens_before(
+  db: TestDb,
+  before: timestamp.Timestamp,
+) -> TestDb {
   let before_microseconds = timestamp_helpers.to_microseconds(before)
   let kept_login_tokens =
     db.login_tokens
@@ -2784,7 +2787,10 @@ fn increment_user_action_count(db: TestDb) -> TestDb {
   ])
 }
 
-fn delete_user_actions_before(db: TestDb, before: timestamp.Timestamp) -> TestDb {
+fn delete_user_actions_before(
+  db: TestDb,
+  before: timestamp.Timestamp,
+) -> TestDb {
   let before_microseconds = timestamp_helpers.to_microseconds(before)
   let kept_user_actions =
     db.user_actions

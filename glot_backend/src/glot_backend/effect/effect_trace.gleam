@@ -128,7 +128,9 @@ pub type EffectMeasurement {
   )
 }
 
-pub fn encode_effect_measurements(effects: List(EffectMeasurement)) -> json.Json {
+pub fn encode_effect_measurements(
+  effects: List(EffectMeasurement),
+) -> json.Json {
   json.object([
     #("effects", json.array(effects, encode_effect_measurement)),
     #(

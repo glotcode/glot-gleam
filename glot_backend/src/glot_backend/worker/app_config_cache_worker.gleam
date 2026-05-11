@@ -129,7 +129,10 @@ pub fn refresh(
   process.call(subject, call_timeout_ms, Refresh)
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     GetConfig(reply) -> {
       let now_ns = state.fetch_handlers.now_ns()

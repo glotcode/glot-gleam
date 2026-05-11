@@ -26,7 +26,9 @@ pub type Config {
   )
 }
 
-pub fn config_from_dict(values: Dict(String, String)) -> Result(Config, String) {
+pub fn config_from_dict(
+  values: Dict(String, String),
+) -> Result(Config, String) {
   use encryption_key <- result.try(lookup(values, "ENCRYPTION_KEY"))
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))

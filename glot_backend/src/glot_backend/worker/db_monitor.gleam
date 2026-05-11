@@ -48,7 +48,10 @@ pub fn supervised(
   supervision.worker(fn() { start(db, server_mode_subject) })
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     Tick -> {
       case server_mode.get_mode(state.server_mode_subject) {

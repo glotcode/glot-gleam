@@ -68,7 +68,10 @@ pub fn uuid(key: String, value: uuid.Uuid) -> #(String, Value) {
   #(key, String(uuid.to_string(value)))
 }
 
-pub fn optional_uuid(key: String, value: Option(uuid.Uuid)) -> #(String, Value) {
+pub fn optional_uuid(
+  key: String,
+  value: Option(uuid.Uuid),
+) -> #(String, Value) {
   case value {
     option.Some(v) -> #(key, String(uuid.to_string(v)))
     option.None -> #(key, Null)

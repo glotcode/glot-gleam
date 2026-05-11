@@ -288,10 +288,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(
-            ..model,
-            jobs_status: LoadError("Could not load recent jobs."),
-          ),
+          Model(..model, jobs_status: LoadError("Could not load recent jobs.")),
           effect.none(),
         )
       }
@@ -547,13 +544,16 @@ fn recent_jobs_table(
       ])
     _, _ ->
       html.div([attribute.class("jobs-table admin-job-logs-page__table")], [
-        html.div([attribute.class("jobs-table__head admin-job-logs-page__head")], [
-          table_heading("Job"),
-          table_heading("Status"),
-          table_heading("Schedule"),
-          table_heading("Attempts"),
-          table_heading("Open"),
-        ]),
+        html.div(
+          [attribute.class("jobs-table__head admin-job-logs-page__head")],
+          [
+            table_heading("Job"),
+            table_heading("Status"),
+            table_heading("Schedule"),
+            table_heading("Attempts"),
+            table_heading("Open"),
+          ],
+        ),
         html.div([attribute.class("jobs-table__body")], {
           recent_jobs |> list.map(fn(job) { recent_job_row(job, now) })
         }),
@@ -588,7 +588,9 @@ fn recent_job_row(
       cell_label("Attempts"),
       html.span([attribute.class("jobs-table__primary")], [
         html.text(
-          int.to_string(job.attempts) <> " / " <> int.to_string(job.max_attempts),
+          int.to_string(job.attempts)
+          <> " / "
+          <> int.to_string(job.max_attempts),
         ),
       ]),
     ]),

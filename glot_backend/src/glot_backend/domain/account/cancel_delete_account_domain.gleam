@@ -15,7 +15,9 @@ import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/job/job_model
 
-pub fn cancel_delete_account(ctx: context.Context) -> program_types.Program(Nil) {
+pub fn cancel_delete_account(
+  ctx: context.Context,
+) -> program_types.Program(Nil) {
   use session <- program.and_then(session_domain.require_session(ctx))
 
   use _ <- program.and_then(

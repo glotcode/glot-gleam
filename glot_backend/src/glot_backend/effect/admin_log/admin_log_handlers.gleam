@@ -80,7 +80,8 @@ pub fn list_api_logs(
           |> list.reverse
         })
       })
-    pagination_model.InitialPage(limit) | pagination_model.AfterPage(_, limit) -> {
+    pagination_model.InitialPage(limit)
+    | pagination_model.AfterPage(_, limit) -> {
       let decoded_cursor = case request.pagination {
         pagination_model.AfterPage(cursor, _) ->
           api_log_model.decode_cursor(cursor)
@@ -178,7 +179,8 @@ pub fn list_run_logs(
           |> result.map(list.reverse)
         })
       })
-    pagination_model.InitialPage(limit) | pagination_model.AfterPage(_, limit) -> {
+    pagination_model.InitialPage(limit)
+    | pagination_model.AfterPage(_, limit) -> {
       let decoded_cursor = case request.pagination {
         pagination_model.AfterPage(cursor, _) ->
           run_log_model.decode_cursor(cursor)
@@ -274,7 +276,8 @@ pub fn list_job_logs(
           |> list.reverse
         })
       })
-    pagination_model.InitialPage(limit) | pagination_model.AfterPage(_, limit) -> {
+    pagination_model.InitialPage(limit)
+    | pagination_model.AfterPage(_, limit) -> {
       let decoded_cursor = case request.pagination {
         pagination_model.AfterPage(cursor, _) ->
           job_log_model.decode_cursor(cursor)
@@ -518,7 +521,9 @@ fn get_job_log_from_before_row(
   )
 }
 
-fn get_job_log_from_detail_row(row: sql.GetAdminJobLog) -> job_log_model.JobLog {
+fn get_job_log_from_detail_row(
+  row: sql.GetAdminJobLog,
+) -> job_log_model.JobLog {
   job_log_model.JobLog(
     id: uuid_helpers.from_bit_array(row.id),
     request_id: row.request_id |> option.map(uuid_helpers.from_bit_array),

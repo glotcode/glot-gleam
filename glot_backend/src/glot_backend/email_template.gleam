@@ -42,7 +42,10 @@ pub fn allowed_tokens(name: EmailTemplateName) -> List(String) {
   }
 }
 
-pub fn are_allowed_tokens(name: EmailTemplateName, tokens: List(String)) -> Bool {
+pub fn are_allowed_tokens(
+  name: EmailTemplateName,
+  tokens: List(String),
+) -> Bool {
   let allowed = allowed_tokens(name)
   list.all(tokens, fn(token) { list.contains(allowed, token) })
 }
@@ -54,18 +57,20 @@ pub fn render_email_template(
 ) -> Result(email_model.Email, String) {
   let allowed_tokens = allowed_tokens(template.name)
   use _ <- result.try(validate_variables(template.name, variables))
-  use subject <- result.try(render_template(template.subject_template, variables))
-  use text_body <- result.try(
-    render_template(template.text_body_template, variables),
-  )
-  use html_body <- result.try(
-    case template.html_body_template {
-      option.Some(html) ->
-        render_template(html, variables)
-        |> result.map(option.Some)
-      option.None -> Ok(option.None)
-    },
-  )
+  use subject <- result.try(render_template(
+    template.subject_template,
+    variables,
+  ))
+  use text_body <- result.try(render_template(
+    template.text_body_template,
+    variables,
+  ))
+  use html_body <- result.try(case template.html_body_template {
+    option.Some(html) ->
+      render_template(html, variables)
+      |> result.map(option.Some)
+    option.None -> Ok(option.None)
+  })
 
   let template_tokens =
     collect_tokens(template.subject_template)
@@ -145,8 +150,10 @@ fn collect_tokens(template: String) -> List(String) {
     Ok(#(_, remainder)) ->
       case string.split_once(remainder, "}}") {
         Error(_) -> []
-        Ok(#(raw_token, suffix)) ->
-          [string.trim(raw_token), ..collect_tokens(suffix)]
+        Ok(#(raw_token, suffix)) -> [
+          string.trim(raw_token),
+          ..collect_tokens(suffix)
+        ]
       }
   }
 }

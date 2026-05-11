@@ -129,11 +129,7 @@ fn detail_view(model: Model) -> Element(Msg) {
             ),
           ],
           [
-            summary_card(
-              "Log ID",
-              uuid.to_string(log.id),
-              "Primary identifier",
-            ),
+            summary_card("Log ID", uuid.to_string(log.id), "Primary identifier"),
             summary_card(
               "Request ID",
               uuid.to_string(log.request_id),

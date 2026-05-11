@@ -77,40 +77,55 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     UsersLoaded(result) ->
       case result {
-        api.ApiSuccess(response) ->
-          #(Model(..model, page: response.page, status: Ready), effect.none())
-        api.ApiFailure(error) ->
-          #(Model(..model, status: LoadError(error.message)), effect.none())
-        api.HttpFailure(_) ->
-          #(Model(..model, status: LoadError("Could not load users.")), effect.none())
+        api.ApiSuccess(response) -> #(
+          Model(..model, page: response.page, status: Ready),
+          effect.none(),
+        )
+        api.ApiFailure(error) -> #(
+          Model(..model, status: LoadError(error.message)),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(..model, status: LoadError("Could not load users.")),
+          effect.none(),
+        )
       }
 
-    SearchFilterChanged(value) ->
-      #(Model(..model, search_filter: value), effect.none())
+    SearchFilterChanged(value) -> #(
+      Model(..model, search_filter: value),
+      effect.none(),
+    )
 
-    RoleFilterChanged(value) ->
-      #(Model(..model, role_filter: value), effect.none())
+    RoleFilterChanged(value) -> #(
+      Model(..model, role_filter: value),
+      effect.none(),
+    )
 
-    AccountStateFilterChanged(value) ->
-      #(Model(..model, account_state_filter: value), effect.none())
+    AccountStateFilterChanged(value) -> #(
+      Model(..model, account_state_filter: value),
+      effect.none(),
+    )
 
-    AccountTierFilterChanged(value) ->
-      #(Model(..model, account_tier_filter: value), effect.none())
+    AccountTierFilterChanged(value) -> #(
+      Model(..model, account_tier_filter: value),
+      effect.none(),
+    )
 
-    ApplyFilterClicked ->
-      load_initial(Model(..model, status: Loading))
+    ApplyFilterClicked -> load_initial(Model(..model, status: Loading))
 
     ClearFilterClicked ->
       case has_filters(model) {
         True ->
-          load_initial(Model(
-            ..model,
-            search_filter: "",
-            role_filter: "",
-            account_state_filter: "",
-            account_tier_filter: "",
-            status: Loading,
-          ))
+          load_initial(
+            Model(
+              ..model,
+              search_filter: "",
+              role_filter: "",
+              account_state_filter: "",
+              account_tier_filter: "",
+              status: Loading,
+            ),
+          )
         False -> #(model, effect.none())
       }
 
@@ -280,12 +295,14 @@ fn filters_view(model: Model) -> Element(Msg) {
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.status {
-    NotLoaded | Ready -> html.p([attribute.class("admin-page__status")], [
-      html.text(""),
-    ])
-    Loading -> html.p([attribute.class("admin-page__status")], [
-      html.text("Loading users..."),
-    ])
+    NotLoaded | Ready ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text(""),
+      ])
+    Loading ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Loading users..."),
+      ])
     LoadError(message) ->
       html.p([attribute.class("admin-page__status admin-page__status--error")], [
         html.text(message),
@@ -318,21 +335,25 @@ fn users_table(model: Model, now: Timestamp) -> Element(Msg) {
               table_heading("Open"),
             ]),
           ]),
-          html.tbody([], {
-            rows |> list.map(fn(user) { user_row(user, now) })
-          }),
+          html.tbody([], { rows |> list.map(fn(user) { user_row(user, now) }) }),
         ]),
       ])
   }
 }
 
-fn user_row(user: user_dto.UserSummaryResponse, now: Timestamp) -> Element(Msg) {
+fn user_row(
+  user: user_dto.UserSummaryResponse,
+  now: Timestamp,
+) -> Element(Msg) {
   html.tr([], [
     html.td([attribute.class("admin-data-table__cell")], [
       cell_label("User"),
-      html.span([attribute.class("admin-data-table__value jobs-table__primary")], [
-        html.text(user.username),
-      ]),
+      html.span(
+        [attribute.class("admin-data-table__value jobs-table__primary")],
+        [
+          html.text(user.username),
+        ],
+      ),
     ]),
     html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Role"),
@@ -351,16 +372,22 @@ fn user_row(user: user_dto.UserSummaryResponse, now: Timestamp) -> Element(Msg) 
     html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Tier"),
       html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("admin-data-table__value jobs-table__secondary")], [
-          html.text(account_tier_text(user)),
-        ]),
+        html.span(
+          [attribute.class("admin-data-table__value jobs-table__secondary")],
+          [
+            html.text(account_tier_text(user)),
+          ],
+        ),
       ]),
     ]),
     html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Joined"),
-      html.span([attribute.class("admin-data-table__value jobs-table__primary")], [
-        html.text(timestamp_helpers.relative_label(user.created_at, now)),
-      ]),
+      html.span(
+        [attribute.class("admin-data-table__value jobs-table__primary")],
+        [
+          html.text(timestamp_helpers.relative_label(user.created_at, now)),
+        ],
+      ),
     ]),
     html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Open"),
@@ -446,17 +473,17 @@ fn select_input(
         event.on_input(on_input),
       ],
       options
-      |> list.map(fn(option_entry) {
-        let #(option_value, option_label) = option_entry
+        |> list.map(fn(option_entry) {
+          let #(option_value, option_label) = option_entry
 
-        html.option(
-          [
-            attribute.value(option_value),
-            attribute.selected(option_value == value),
-          ],
-          option_label,
-        )
-      }),
+          html.option(
+            [
+              attribute.value(option_value),
+              attribute.selected(option_value == value),
+            ],
+            option_label,
+          )
+        }),
     ),
   ])
 }
@@ -577,14 +604,18 @@ fn filter_role(value: String) -> option.Option(user_model.UserRole) {
   }
 }
 
-fn filter_account_state(value: String) -> option.Option(account_model.AccountState) {
+fn filter_account_state(
+  value: String,
+) -> option.Option(account_model.AccountState) {
   case string.trim(value) {
     "" -> option.None
     trimmed -> account_model.account_state_from_string(trimmed)
   }
 }
 
-fn filter_account_tier(value: String) -> option.Option(account_model.AccountTier) {
+fn filter_account_tier(
+  value: String,
+) -> option.Option(account_model.AccountTier) {
   case string.trim(value) {
     "" -> option.None
     trimmed -> account_model.account_tier_from_string(trimmed)

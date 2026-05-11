@@ -8,7 +8,10 @@ pub type PageviewLogEffect(next) {
   )
 }
 
-pub fn map(effect: PageviewLogEffect(a), f: fn(a) -> b) -> PageviewLogEffect(b) {
+pub fn map(
+  effect: PageviewLogEffect(a),
+  f: fn(a) -> b,
+) -> PageviewLogEffect(b) {
   case effect {
     DeletePageviewLogBefore(before:, next:) ->
       DeletePageviewLogBefore(before: before, next: fn(value) { f(next(value)) })

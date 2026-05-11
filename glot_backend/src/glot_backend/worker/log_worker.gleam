@@ -130,7 +130,10 @@ pub fn drain(subject: process.Subject(Message)) -> Nil {
   process.call(subject, call_timeout_ms, Drain)
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     Insert(log_entry) -> {
       let state =

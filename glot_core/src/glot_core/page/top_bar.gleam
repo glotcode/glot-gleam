@@ -528,7 +528,10 @@ fn has_any_actions(model: ViewModel(msg)) -> Bool {
   }
 }
 
-fn filter_section_actions(section: Section(msg), query: String) -> Section(msg) {
+fn filter_section_actions(
+  section: Section(msg),
+  query: String,
+) -> Section(msg) {
   case section {
     Section(title:, actions:) ->
       Section(
@@ -634,7 +637,10 @@ fn section_has_actions(section: Section(msg)) -> Bool {
   }
 }
 
-fn cap_section_actions(section: Section(msg), max_actions: Int) -> Section(msg) {
+fn cap_section_actions(
+  section: Section(msg),
+  max_actions: Int,
+) -> Section(msg) {
   case section {
     Section(title:, actions:) ->
       Section(title:, actions: list.take(actions, max_actions))
@@ -648,7 +654,9 @@ fn sort_section_actions(section: Section(msg), query: String) -> Section(msg) {
   }
 }
 
-fn compare_actions(query: String) -> fn(Action(msg), Action(msg)) -> order.Order {
+fn compare_actions(
+  query: String,
+) -> fn(Action(msg), Action(msg)) -> order.Order {
   fn(left: Action(msg), right: Action(msg)) {
     let left_score = action_score(left, query)
     let right_score = action_score(right, query)

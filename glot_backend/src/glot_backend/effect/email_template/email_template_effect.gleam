@@ -1,7 +1,7 @@
 import gleam/option
-import glot_backend/email_template
 import glot_backend/effect/email_template/email_template_algebra
 import glot_backend/effect/program_types
+import glot_backend/email_template
 
 pub fn get_email_template_by_name(
   name: email_template.EmailTemplateName,

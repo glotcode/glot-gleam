@@ -77,12 +77,18 @@ pub fn list_request_decoder() -> decode.Decoder(ListRunLogsRequest) {
       "sessionId",
       decode.optional(uuid_helpers.decoder()),
     )
-    use user_id <- decode.field("userId", decode.optional(uuid_helpers.decoder()))
+    use user_id <- decode.field(
+      "userId",
+      decode.optional(uuid_helpers.decoder()),
+    )
     use maybe_language <- decode.field(
       "language",
       decode.optional(language.decoder()),
     )
-    use outcome_filter <- decode.field("outcomeFilter", outcome_filter_decoder())
+    use outcome_filter <- decode.field(
+      "outcomeFilter",
+      outcome_filter_decoder(),
+    )
     decode.success(ListRunLogsRequest(
       pagination: pagination,
       request_id: request_id,
@@ -283,10 +289,8 @@ fn run_outcome_decoder() -> decode.Decoder(run_log_model.RunOutcome) {
   decode.then(decode.string, fn(value) {
     case run_log_model.run_outcome_from_string(value) {
       option.Some(outcome) -> decode.success(outcome)
-      option.None -> decode.failure(
-        run_log_model.RunSucceeded,
-        "Invalid run log outcome",
-      )
+      option.None ->
+        decode.failure(run_log_model.RunSucceeded, "Invalid run log outcome")
     }
   })
 }

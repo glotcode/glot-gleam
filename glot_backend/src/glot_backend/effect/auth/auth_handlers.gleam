@@ -27,8 +27,7 @@ pub type AuthHandlers {
       regexp.Regexp,
       pagination_model.CursorPagination,
       auth_algebra.UserListFilters,
-    ) ->
-      Result(List(user_model.HydratedUser), error.DbQueryError),
+    ) -> Result(List(user_model.HydratedUser), error.DbQueryError),
     list_login_tokens_by_email: fn(email_address_model.EmailAddress, Int) ->
       Result(List(login_token_model.LoginToken), error.DbQueryError),
     get_session_by_token: fn(regexp.Regexp, String) ->
@@ -124,14 +123,10 @@ pub fn list_users(
 ) -> Result(List(user_model.HydratedUser), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
   let role = option.map(filters.role, user_model.role_to_string)
-  let account_state = option.map(
-    filters.account_state,
-    account_model.account_state_to_string,
-  )
-  let account_tier = option.map(
-    filters.account_tier,
-    account_model.account_tier_to_string,
-  )
+  let account_state =
+    option.map(filters.account_state, account_model.account_state_to_string)
+  let account_tier =
+    option.map(filters.account_tier, account_model.account_tier_to_string)
 
   case pagination {
     pagination_model.InitialPage(limit) ->
@@ -455,7 +450,8 @@ fn user_by_id_from_rows(
 ) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
-    [first] -> user_from_get_user_by_id_row(is_email, first) |> result.map(option.Some)
+    [first] ->
+      user_from_get_user_by_id_row(is_email, first) |> result.map(option.Some)
     _ -> Error(error.DbQueryError("Expected at most one user row"))
   }
 }

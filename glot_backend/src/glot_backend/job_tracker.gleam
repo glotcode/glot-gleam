@@ -38,7 +38,10 @@ pub fn get_count(subject: process.Subject(Message)) -> Int {
   process.call(subject, call_timeout_ms, GetCount)
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     JobStarted ->
       actor.continue(State(in_flight_count: state.in_flight_count + 1))

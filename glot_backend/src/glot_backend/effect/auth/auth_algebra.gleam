@@ -97,11 +97,9 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
     GetUserById(id:, next:) ->
       GetUserById(id: id, next: fn(value) { f(next(value)) })
     ListUsers(pagination:, filters:, next:) ->
-      ListUsers(
-        pagination: pagination,
-        filters: filters,
-        next: fn(value) { f(next(value)) },
-      )
+      ListUsers(pagination: pagination, filters: filters, next: fn(value) {
+        f(next(value))
+      })
     ListLoginTokensByEmail(email:, limit:, next:) ->
       ListLoginTokensByEmail(email: email, limit: limit, next: fn(value) {
         f(next(value))

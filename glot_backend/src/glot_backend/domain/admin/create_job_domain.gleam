@@ -63,9 +63,9 @@ fn validate_request(
     True ->
       case request.timeout_seconds > 0 {
         False ->
-          Error(
-            error.ValidationError("Timeout seconds must be greater than zero."),
-          )
+          Error(error.ValidationError(
+            "Timeout seconds must be greater than zero.",
+          ))
         True ->
           case job_model.job_type_from_string(request.job_type) {
             Ok(job_type) -> Ok(job_type)

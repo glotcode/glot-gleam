@@ -1,8 +1,8 @@
 import gleam/option
 import gleam/result
 import gleam/string
-import glot_backend/email_template
 import glot_backend/effect/error
+import glot_backend/email_template
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import pog
@@ -15,9 +15,9 @@ pub type EmailTemplateHandlers {
 }
 
 pub fn new(db: pog.Connection) -> EmailTemplateHandlers {
-  EmailTemplateHandlers(
-    get_email_template_by_name: fn(name) { get_email_template_by_name(db, name) },
-  )
+  EmailTemplateHandlers(get_email_template_by_name: fn(name) {
+    get_email_template_by_name(db, name)
+  })
 }
 
 pub fn get_email_template_by_name(

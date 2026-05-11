@@ -12,10 +12,7 @@ pub type AdminLogEffect(next) {
     request: api_log_dto.ListApiLogsRequest,
     next: fn(List(api_log_model.ApiLogSummary)) -> next,
   )
-  GetApiLog(
-    id: Uuid,
-    next: fn(Option(api_log_model.ApiLogDetail)) -> next,
-  )
+  GetApiLog(id: Uuid, next: fn(Option(api_log_model.ApiLogDetail)) -> next)
   ListRunLogs(
     request: run_log_dto.ListRunLogsRequest,
     next: fn(List(run_log_model.RunLog)) -> next,

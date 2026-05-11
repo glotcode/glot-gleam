@@ -117,7 +117,9 @@ pub fn update_response_decoder() -> decode.Decoder(UpdatePeriodicJobResponse) {
   decode.success(UpdatePeriodicJobResponse(periodic_job: periodic_job))
 }
 
-pub fn encode_update_response(response: UpdatePeriodicJobResponse) -> json.Json {
+pub fn encode_update_response(
+  response: UpdatePeriodicJobResponse,
+) -> json.Json {
   json.object([
     #("periodicJob", encode_periodic_job_response(response.periodic_job)),
   ])
@@ -193,7 +195,9 @@ fn periodic_job_decoder() -> decode.Decoder(PeriodicJobResponse) {
   ))
 }
 
-fn encode_periodic_job_response(periodic_job: PeriodicJobResponse) -> json.Json {
+fn encode_periodic_job_response(
+  periodic_job: PeriodicJobResponse,
+) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(periodic_job.id))),
     #("jobType", json.string(periodic_job.job_type)),

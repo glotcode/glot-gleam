@@ -312,11 +312,8 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
                     ),
                     filter_chip(
                       "Succeeded",
-                      model.outcome_filter
-                      == run_log_dto.OnlySuccessfulRunLogs,
-                      OutcomeFilterSelected(
-                        run_log_dto.OnlySuccessfulRunLogs,
-                      ),
+                      model.outcome_filter == run_log_dto.OnlySuccessfulRunLogs,
+                      OutcomeFilterSelected(run_log_dto.OnlySuccessfulRunLogs),
                     ),
                     filter_chip(
                       "Failed",
@@ -553,7 +550,11 @@ fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
       ]),
     ]),
     html.td(
-      [attribute.class("admin-job-logs-table__cell admin-job-logs-table__cell--error")],
+      [
+        attribute.class(
+          "admin-job-logs-table__cell admin-job-logs-table__cell--error",
+        ),
+      ],
       [
         html.span([attribute.class(outcome_badge_class(log))], [
           html.text(outcome_text(log.outcome)),
@@ -597,24 +598,32 @@ fn filter_summary(
     run_log_dto.OnlySuccessfulRunLogs -> " Successful runs only."
     run_log_dto.OnlyFailedRunLogs -> " Failed runs only."
   }
-  let request_text = optional_filter_text(
-    "Request",
-    model.applied_request_id_filter |> option.map(uuid.to_string),
-  )
-  let session_text = optional_filter_text(
-    "Session",
-    model.applied_session_id_filter |> option.map(uuid.to_string),
-  )
-  let user_text = optional_filter_text(
-    "User",
-    model.applied_user_id_filter |> option.map(uuid.to_string),
-  )
-  let language_text = optional_filter_text(
-    "Language",
-    model.applied_language_filter |> option.map(language.name),
-  )
+  let request_text =
+    optional_filter_text(
+      "Request",
+      model.applied_request_id_filter |> option.map(uuid.to_string),
+    )
+  let session_text =
+    optional_filter_text(
+      "Session",
+      model.applied_session_id_filter |> option.map(uuid.to_string),
+    )
+  let user_text =
+    optional_filter_text(
+      "User",
+      model.applied_user_id_filter |> option.map(uuid.to_string),
+    )
+  let language_text =
+    optional_filter_text(
+      "Language",
+      model.applied_language_filter |> option.map(language.name),
+    )
 
-  count_text <> outcome_text <> request_text <> session_text <> user_text
+  count_text
+  <> outcome_text
+  <> request_text
+  <> session_text
+  <> user_text
   <> language_text
 }
 
@@ -739,10 +748,7 @@ fn optional_duration(duration_ns: option.Option(Int)) -> String {
   }
 }
 
-fn optional_filter_text(
-  label: String,
-  value: option.Option(String),
-) -> String {
+fn optional_filter_text(label: String, value: option.Option(String)) -> String {
   case value {
     option.Some(value) -> " " <> label <> ": " <> value <> "."
     option.None -> ""

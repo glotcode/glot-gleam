@@ -25,7 +25,9 @@ fn map_http_error(error: httpc.HttpError) -> HttpError {
   }
 }
 
-fn ensure_good_status(res: response.Response(String)) -> Result(Nil, HttpError) {
+fn ensure_good_status(
+  res: response.Response(String),
+) -> Result(Nil, HttpError) {
   case res.status >= 200 && res.status <= 299 {
     True -> Ok(Nil)
     False -> Error(BadStatus(status: res.status, body: res.body))

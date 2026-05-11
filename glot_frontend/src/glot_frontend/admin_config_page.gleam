@@ -833,7 +833,10 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
   )
 }
 
-fn cleanup_section_view(section: CleanupSection, status: Status) -> Element(Msg) {
+fn cleanup_section_view(
+  section: CleanupSection,
+  status: Status,
+) -> Element(Msg) {
   let save_disabled =
     status != Ready || section.state == Saving || !is_dirty_cleanup(section)
 

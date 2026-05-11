@@ -17,7 +17,9 @@ import lustre/element/html
 import lustre/event
 
 const page_limit = 25
+
 const title_max_length = 32
+
 const owner_max_length = 20
 
 pub type Model {
@@ -87,16 +89,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
       }
 
-    UsernameFilterChanged(value) ->
-      #(Model(..model, username_filter: value), effect.none())
+    UsernameFilterChanged(value) -> #(
+      Model(..model, username_filter: value),
+      effect.none(),
+    )
 
-    ApplyFilterClicked ->
-      load_initial(Model(..model, status: Loading))
+    ApplyFilterClicked -> load_initial(Model(..model, status: Loading))
 
     ClearFilterClicked ->
       case model.username_filter == "" {
         True -> #(model, effect.none())
-        False -> load_initial(Model(..model, username_filter: "", status: Loading))
+        False ->
+          load_initial(Model(..model, username_filter: "", status: Loading))
       }
 
     NextPageClicked ->
@@ -155,32 +159,37 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               ]),
             ]),
           ]),
-          html.div([attribute.class("admin-page__policy admin-snippets-page__filters")], [
-            html.input([
-              attribute.class("admin-page__input"),
-              attribute.type_("text"),
-              attribute.placeholder("username"),
-              attribute.value(model.username_filter),
-              event.on_input(UsernameFilterChanged),
-            ]),
-            html.button(
-              [
-                attribute.class("admin-page__button"),
-                attribute.type_("button"),
-                event.on_click(ApplyFilterClicked),
-              ],
-              [html.text("Apply")],
-            ),
-            html.button(
-              [
-                attribute.class("admin-page__button admin-page__button--secondary"),
-                attribute.type_("button"),
-                attribute.disabled(model.username_filter == ""),
-                event.on_click(ClearFilterClicked),
-              ],
-              [html.text("Clear")],
-            ),
-          ]),
+          html.div(
+            [attribute.class("admin-page__policy admin-snippets-page__filters")],
+            [
+              html.input([
+                attribute.class("admin-page__input"),
+                attribute.type_("text"),
+                attribute.placeholder("username"),
+                attribute.value(model.username_filter),
+                event.on_input(UsernameFilterChanged),
+              ]),
+              html.button(
+                [
+                  attribute.class("admin-page__button"),
+                  attribute.type_("button"),
+                  event.on_click(ApplyFilterClicked),
+                ],
+                [html.text("Apply")],
+              ),
+              html.button(
+                [
+                  attribute.class(
+                    "admin-page__button admin-page__button--secondary",
+                  ),
+                  attribute.type_("button"),
+                  attribute.disabled(model.username_filter == ""),
+                  event.on_click(ClearFilterClicked),
+                ],
+                [html.text("Clear")],
+              ),
+            ],
+          ),
         ]),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
@@ -229,12 +238,14 @@ fn load_page(
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.status {
-    NotLoaded | Ready -> html.p([attribute.class("admin-page__status")], [
-      html.text(""),
-    ])
-    Loading -> html.p([attribute.class("admin-page__status")], [
-      html.text("Loading snippets..."),
-    ])
+    NotLoaded | Ready ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text(""),
+      ])
+    Loading ->
+      html.p([attribute.class("admin-page__status")], [
+        html.text("Loading snippets..."),
+      ])
     LoadError(message) ->
       html.p([attribute.class("admin-page__status admin-page__status--error")], [
         html.text(message),
@@ -284,18 +295,23 @@ fn snippet_row(
     cell("Language", language.name(snippet.language), [
       attribute.class("admin-data-table__cell admin-data-table__cell--language"),
     ]),
-    cell("Title", string_helpers.truncate_stem_middle(
-      snippet.title,
-      title_max_length,
-    ), [
-      attribute.class("admin-data-table__cell admin-data-table__cell--title"),
-    ]),
-    cell("Owner", string_helpers.truncate_stem_middle(
-      snippet.user.username,
-      owner_max_length,
-    ), [
-      attribute.class("admin-data-table__cell"),
-    ]),
+    cell(
+      "Title",
+      string_helpers.truncate_stem_middle(snippet.title, title_max_length),
+      [
+        attribute.class("admin-data-table__cell admin-data-table__cell--title"),
+      ],
+    ),
+    cell(
+      "Owner",
+      string_helpers.truncate_stem_middle(
+        snippet.user.username,
+        owner_max_length,
+      ),
+      [
+        attribute.class("admin-data-table__cell"),
+      ],
+    ),
     html.td([attribute.class("admin-data-table__cell")], [
       cell_label("Updated"),
       html.div([attribute.class("jobs-table__stack")], [
@@ -362,11 +378,7 @@ fn can_go_previous(model: Model) -> Bool {
   }
 }
 
-fn pagination_button(
-  text: String,
-  msg: Msg,
-  enabled: Bool,
-) -> Element(Msg) {
+fn pagination_button(text: String, msg: Msg, enabled: Bool) -> Element(Msg) {
   html.button(
     [
       attribute.class("admin-page__button admin-page__button--secondary"),

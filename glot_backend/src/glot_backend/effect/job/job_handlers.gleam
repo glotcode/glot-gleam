@@ -74,7 +74,8 @@ pub fn list_jobs(
           |> result.map(list.reverse)
         })
       })
-    pagination_model.InitialPage(limit) | pagination_model.AfterPage(_, limit) -> {
+    pagination_model.InitialPage(limit)
+    | pagination_model.AfterPage(_, limit) -> {
       let after_id = case pagination {
         pagination_model.AfterPage(cursor, _) ->
           decode_cursor(cursor) |> result.map(option.Some)

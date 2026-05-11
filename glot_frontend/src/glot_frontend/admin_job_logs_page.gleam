@@ -461,7 +461,11 @@ fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
       [html.text(duration_label.duration_in_ms_label(log.duration_ns))],
     ),
     html.td(
-      [attribute.class("admin-job-logs-table__cell admin-job-logs-table__cell--error")],
+      [
+        attribute.class(
+          "admin-job-logs-table__cell admin-job-logs-table__cell--error",
+        ),
+      ],
       [
         html.span([attribute.class(error_badge_class(log))], [
           html.text(error_text(log)),

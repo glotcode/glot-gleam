@@ -150,7 +150,8 @@ pub fn list_snippets(
         |> result.all
         |> result.map(list.reverse)
       })
-    pagination_model.InitialPage(limit) | pagination_model.AfterPage(_, limit) -> {
+    pagination_model.InitialPage(limit)
+    | pagination_model.AfterPage(_, limit) -> {
       let after_slug = case pagination {
         pagination_model.AfterPage(cursor, _) ->
           option.Some(pagination_model.to_string(cursor))
@@ -200,7 +201,8 @@ pub fn list_admin_snippets(
         |> result.all
         |> result.map(list.reverse)
       })
-    pagination_model.InitialPage(limit) | pagination_model.AfterPage(_, limit) -> {
+    pagination_model.InitialPage(limit)
+    | pagination_model.AfterPage(_, limit) -> {
       let after_slug = case pagination {
         pagination_model.AfterPage(cursor, _) ->
           option.Some(pagination_model.to_string(cursor))
@@ -637,9 +639,7 @@ fn snippet_from_row(
   ))
   use role <- result.try(
     user_model.role_from_string(user_role)
-    |> option.to_result(error.DbQueryError(
-      "Invalid user role: " <> user_role,
-    )),
+    |> option.to_result(error.DbQueryError("Invalid user role: " <> user_role)),
   )
 
   Ok(snippet_model.HydratedSnippet(

@@ -32,7 +32,11 @@ pub fn list_users(
   filters filters: auth_algebra.UserListFilters,
 ) -> program_types.Program(List(user_model.HydratedUser)) {
   program_types.Impure(
-    program_types.DbEffect(list_users_effect(pagination, filters, program_types.Pure)),
+    program_types.DbEffect(list_users_effect(
+      pagination,
+      filters,
+      program_types.Pure,
+    )),
   )
 }
 
@@ -88,7 +92,9 @@ pub fn update_user(user user: user_model.User) -> program_types.Program(Nil) {
   )
 }
 
-pub fn delete_sessions_by_account_id(id id: Uuid) -> program_types.Program(Nil) {
+pub fn delete_sessions_by_account_id(
+  id id: Uuid,
+) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(delete_sessions_by_account_id_effect(
       id,
@@ -166,7 +172,11 @@ pub fn list_users_tx(
   pagination pagination: CursorPagination,
   filters filters: auth_algebra.UserListFilters,
 ) -> program_types.TransactionProgram(List(user_model.HydratedUser)) {
-  program_types.TxImpure(list_users_effect(pagination, filters, program_types.TxPure))
+  program_types.TxImpure(list_users_effect(
+    pagination,
+    filters,
+    program_types.TxPure,
+  ))
 }
 
 pub fn list_login_tokens_by_email_tx(

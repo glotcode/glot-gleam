@@ -1738,7 +1738,11 @@ fn file_tab_views(
   }
 }
 
-fn tab_button(label: String, tab: EditorTab, is_selected: Bool) -> Element(Msg) {
+fn tab_button(
+  label: String,
+  tab: EditorTab,
+  is_selected: Bool,
+) -> Element(Msg) {
   editor_layout.tab_button(label: label, is_selected: is_selected, attributes: [
     event.on_click(TabSelected(tab)),
   ])
@@ -2063,7 +2067,10 @@ fn load_existing_restore_draft(
   }
 }
 
-fn is_newer_than_saved_snippet(saved_at_ms: Int, updated_at: Timestamp) -> Bool {
+fn is_newer_than_saved_snippet(
+  saved_at_ms: Int,
+  updated_at: Timestamp,
+) -> Bool {
   saved_at_ms > timestamp_helpers.to_microseconds(updated_at) / 1000
 }
 
@@ -2586,7 +2593,10 @@ fn delete_selected_entry(model: RealModel) -> option.Option(RealModel) {
   }
 }
 
-fn default_file_name(files: List(snippet_model.File), tab: EditorTab) -> String {
+fn default_file_name(
+  files: List(snippet_model.File),
+  tab: EditorTab,
+) -> String {
   case tab {
     FileTab(index) -> file_name_at(files, index)
     StdinTab -> ""

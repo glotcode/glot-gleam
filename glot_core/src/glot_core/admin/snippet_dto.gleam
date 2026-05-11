@@ -53,7 +53,9 @@ pub type SnippetDetailResponse {
 }
 
 pub type ListSnippetsResponse {
-  ListSnippetsResponse(page: pagination_model.CursorPage(SnippetSummaryResponse))
+  ListSnippetsResponse(
+    page: pagination_model.CursorPage(SnippetSummaryResponse),
+  )
 }
 
 pub type GetSnippetResponse {
@@ -63,16 +65,18 @@ pub type GetSnippetResponse {
 pub fn list_request_decoder() -> decode.Decoder(ListSnippetsRequest) {
   decode.then(pagination_model.request_decoder(), fn(pagination) {
     use username <- decode.field("username", decode.optional(decode.string))
-    decode.success(ListSnippetsRequest(pagination: pagination, username: username))
+    decode.success(ListSnippetsRequest(
+      pagination: pagination,
+      username: username,
+    ))
   })
 }
 
 pub fn encode_list_request(request: ListSnippetsRequest) -> json.Json {
   json.object(
-    list.append(
-      pagination_model.encode_request_fields(request.pagination),
-      [#("username", json.nullable(request.username, json.string))],
-    ),
+    list.append(pagination_model.encode_request_fields(request.pagination), [
+      #("username", json.nullable(request.username, json.string)),
+    ]),
   )
 }
 
@@ -118,7 +122,10 @@ pub fn encode_get_response(response: GetSnippetResponse) -> json.Json {
 pub fn from_snippets(
   page: pagination_model.CursorPage(snippet_model.HydratedSnippet),
 ) -> ListSnippetsResponse {
-  ListSnippetsResponse(page: pagination_model.map_page(page, from_snippet_summary))
+  ListSnippetsResponse(page: pagination_model.map_page(
+    page,
+    from_snippet_summary,
+  ))
 }
 
 pub fn from_snippet(
@@ -245,10 +252,7 @@ fn encode_snippet_detail(response: SnippetDetailResponse) -> json.Json {
     #("stdin", json.string(response.stdin)),
     #(
       "runInstructions",
-      json.nullable(
-        response.run_instructions,
-        language.encode_run_instructions,
-      ),
+      json.nullable(response.run_instructions, language.encode_run_instructions),
     ),
     #("files", json.array(response.files, snippet_model.encode_file)),
     #("createdAt", timestamp_helpers.encode(response.created_at)),

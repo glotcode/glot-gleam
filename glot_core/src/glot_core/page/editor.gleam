@@ -136,7 +136,9 @@ pub fn render(view_model: ViewModel) -> lustre_element.Element(Nil) {
   )
 }
 
-pub fn head_children(view_model: ViewModel) -> List(lustre_element.Element(Nil)) {
+pub fn head_children(
+  view_model: ViewModel,
+) -> List(lustre_element.Element(Nil)) {
   [
     meta_name("description", description(view_model)),
     meta_property("og:title", title(view_model)),
@@ -603,7 +605,9 @@ fn optional_label(value: option.Option(String)) -> String {
   }
 }
 
-fn optional_timestamp_label(value: option.Option(timestamp.Timestamp)) -> String {
+fn optional_timestamp_label(
+  value: option.Option(timestamp.Timestamp),
+) -> String {
   case value {
     option.Some(value) -> timestamp.to_rfc3339(value, calendar.utc_offset)
     option.None -> ""

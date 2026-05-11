@@ -51,8 +51,7 @@ pub type FetchHandlers {
     fetch_language_version: fn(
       process.Subject(app_config_cache_worker.Message),
       language_module.Language,
-    ) ->
-      Result(run.RunResult, error.RunRequestError),
+    ) -> Result(run.RunResult, error.RunRequestError),
     now_ns: fn() -> Int,
     supported_languages: fn() -> List(language_module.Language),
   )
@@ -146,7 +145,10 @@ fn default_fetch_handlers() -> FetchHandlers {
   )
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     GetLanguageVersion(language, reply) -> {
       let now_ns = state.fetch_handlers.now_ns()
@@ -419,7 +421,10 @@ fn complete_fetch(
   }
 }
 
-fn is_refresh_pending(state: State, language: language_module.Language) -> Bool {
+fn is_refresh_pending(
+  state: State,
+  language: language_module.Language,
+) -> Bool {
   list.any(state.refresh_queue, fn(queued_language) {
     queued_language == language
   })

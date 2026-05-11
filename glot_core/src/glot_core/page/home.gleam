@@ -73,7 +73,11 @@ pub fn view() -> Element(msg) {
   ])
 }
 
-fn feature_card(icon: Element(msg), title: String, copy: String) -> Element(msg) {
+fn feature_card(
+  icon: Element(msg),
+  title: String,
+  copy: String,
+) -> Element(msg) {
   html.article([attribute.class("home-feature")], [
     html.div(
       [

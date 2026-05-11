@@ -87,7 +87,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, pending_delete: option.None, status: LoadError(error.message)),
+          Model(
+            ..model,
+            pending_delete: option.None,
+            status: LoadError(error.message),
+          ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -111,8 +115,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     DeleteCancelled -> #(model, app_dialog.close(delete_dialog_id))
 
-    DeleteDialogClosed ->
-      #(Model(..model, pending_delete: option.None), effect.none())
+    DeleteDialogClosed -> #(
+      Model(..model, pending_delete: option.None),
+      effect.none(),
+    )
 
     DeleteConfirmed ->
       case model.pending_delete {
@@ -131,29 +137,26 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     DeleteFinished(result) ->
       case result {
-        api.ApiSuccess(_) ->
-          #(
-            Model(..model, pending_delete: option.None, status: Ready),
-            navigate_to_snippets(),
-          )
-        api.ApiFailure(error) ->
-          #(
-            Model(
-              ..model,
-              pending_delete: option.None,
-              status: LoadError(error.message),
-            ),
-            effect.none(),
-          )
-        api.HttpFailure(_) ->
-          #(
-            Model(
-              ..model,
-              pending_delete: option.None,
-              status: LoadError("Could not delete snippet."),
-            ),
-            effect.none(),
-          )
+        api.ApiSuccess(_) -> #(
+          Model(..model, pending_delete: option.None, status: Ready),
+          navigate_to_snippets(),
+        )
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            pending_delete: option.None,
+            status: LoadError(error.message),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            pending_delete: option.None,
+            status: LoadError("Could not delete snippet."),
+          ),
+          effect.none(),
+        )
       }
   }
 }

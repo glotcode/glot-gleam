@@ -26,9 +26,10 @@ pub fn delete_snippet(
   ))
   use snippet <- program.and_then(
     snippet_effect.get_admin_by_slug(request.slug)
-    |> program.require(
-      error.NotFoundError("snippet_not_found", "Snippet not found"),
-    ),
+    |> program.require(error.NotFoundError(
+      "snippet_not_found",
+      "Snippet not found",
+    )),
   )
   use _ <- program.and_then(
     transaction_effect.run_all([

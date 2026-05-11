@@ -106,7 +106,10 @@ pub fn supervised(
   })
 }
 
-fn handle_message(state: State, message: Message) -> actor.Next(State, Message) {
+fn handle_message(
+  state: State,
+  message: Message,
+) -> actor.Next(State, Message) {
   case message {
     Tick -> {
       case server_mode.get_mode(state.server_mode_subject) {

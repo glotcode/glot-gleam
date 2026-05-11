@@ -24,7 +24,10 @@ pub type PeriodicJobEffect(next) {
   )
 }
 
-pub fn map(effect: PeriodicJobEffect(a), f: fn(a) -> b) -> PeriodicJobEffect(b) {
+pub fn map(
+  effect: PeriodicJobEffect(a),
+  f: fn(a) -> b,
+) -> PeriodicJobEffect(b) {
   case effect {
     ListPeriodicJobs(next:) ->
       ListPeriodicJobs(next: fn(value) { f(next(value)) })

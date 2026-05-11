@@ -37,7 +37,9 @@ fn next_metrics_day(
   }
 }
 
-fn aggregate_day_tx(day: calendar.Date) -> program_types.TransactionProgram(Nil) {
+fn aggregate_day_tx(
+  day: calendar.Date,
+) -> program_types.TransactionProgram(Nil) {
   transaction_program.sequence([
     analytics_effect.insert_metrics_pageview_day_tx(day),
     analytics_effect.insert_metrics_product_event_day_tx(day),

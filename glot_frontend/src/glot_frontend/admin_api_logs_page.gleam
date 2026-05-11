@@ -374,7 +374,9 @@ fn text_input(
 }
 
 fn table_heading(text: String) -> Element(Msg) {
-  html.th([attribute.class("admin-request-logs-table__heading")], [html.text(text)])
+  html.th([attribute.class("admin-request-logs-table__heading")], [
+    html.text(text),
+  ])
 }
 
 fn log_row(
@@ -406,7 +408,9 @@ fn log_row(
       ]),
     ]),
     html.td([attribute.class("admin-request-logs-table__cell")], [
-      html.span([attribute.class("jobs-table__cell-value")], [html.text(log.action)]),
+      html.span([attribute.class("jobs-table__cell-value")], [
+        html.text(log.action),
+      ]),
     ]),
     html.td(
       [
@@ -417,12 +421,17 @@ fn log_row(
       [html.text(duration_label.duration_in_ms_label(log.duration_ns))],
     ),
     html.td(
-      [attribute.class("admin-request-logs-table__cell admin-request-logs-table__cell--error")],
       [
-      html.span([attribute.class(error_badge_class(log))], [
-        html.text(error_text(log)),
-      ]),
-    ]),
+        attribute.class(
+          "admin-request-logs-table__cell admin-request-logs-table__cell--error",
+        ),
+      ],
+      [
+        html.span([attribute.class(error_badge_class(log))], [
+          html.text(error_text(log)),
+        ]),
+      ],
+    ),
     html.td(
       [
         attribute.class(
@@ -430,14 +439,15 @@ fn log_row(
         ),
       ],
       [
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminApiLog(log.id)),
-        ],
-        [html.text("Open")],
-      ),
-    ]),
+        html.a(
+          [
+            attribute.class("admin-page__button admin-page__button--secondary"),
+            route.href(route.AdminApiLog(log.id)),
+          ],
+          [html.text("Open")],
+        ),
+      ],
+    ),
   ])
 }
 

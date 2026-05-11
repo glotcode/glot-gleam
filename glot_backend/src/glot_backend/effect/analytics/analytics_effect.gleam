@@ -33,7 +33,9 @@ pub fn insert_metrics_pageview_day(day: Date) -> program_types.Program(Nil) {
   )
 }
 
-pub fn insert_metrics_product_event_day(day: Date) -> program_types.Program(Nil) {
+pub fn insert_metrics_product_event_day(
+  day: Date,
+) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(insert_metrics_product_event_day_effect(day, next)),
   )
@@ -100,7 +102,9 @@ pub fn insert_metrics_completed_day_tx(
   program_types.TxImpure(insert_metrics_completed_day_effect(day, tx_next))
 }
 
-fn next(result: Result(Nil, error.DbCommandError)) -> program_types.Program(Nil) {
+fn next(
+  result: Result(Nil, error.DbCommandError),
+) -> program_types.Program(Nil) {
   case result {
     Ok(_) -> program_types.Pure(Nil)
     Error(err) -> program_types.Fail(error.CommandError(err))

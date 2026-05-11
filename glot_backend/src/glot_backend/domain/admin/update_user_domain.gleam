@@ -22,10 +22,11 @@ pub fn update_user(
   request: user_dto.UpdateUserRequest,
 ) -> program_types.Program(user_dto.UpdateUserResponse) {
   let username = string.trim(request.username)
-  let account_state_reason = normalized_account_state_reason(
-    request.account_state,
-    request.account_state_reason,
-  )
+  let account_state_reason =
+    normalized_account_state_reason(
+      request.account_state,
+      request.account_state_reason,
+    )
 
   use session <- program.and_then(session_domain.require_session(ctx))
   use _ <- program.and_then(admin_authorization_domain.require_admin(session))
@@ -66,13 +67,15 @@ pub fn update_user(
     ]),
   )
 
-  program.succeed(user_dto.from_updated_user(user_model.HydratedUser(
-    identity: user,
-    account: account_model.HydratedAccount(
-      identity: account,
-      delete_scheduled_at: hydrated_user.account.delete_scheduled_at,
-    ),
-  )))
+  program.succeed(
+    user_dto.from_updated_user(user_model.HydratedUser(
+      identity: user,
+      account: account_model.HydratedAccount(
+        identity: account,
+        delete_scheduled_at: hydrated_user.account.delete_scheduled_at,
+      ),
+    )),
+  )
 }
 
 pub fn request_from_dynamic(
