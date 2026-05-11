@@ -30,6 +30,7 @@ pub fn get_account(
       user_id: session.user.identity.id,
       account_state: session.user.account.identity.account_state,
       account_tier: session.user.account.identity.account_tier,
+      role: session.user.identity.role,
     ),
   ))
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))

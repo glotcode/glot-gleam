@@ -45,6 +45,7 @@ pub type ClientInfoError {
 }
 
 pub type AuthorizationError {
+  AuthenticationRequiredError
   NotOwnerError
   AdminRequiredError
 }
@@ -104,6 +105,8 @@ pub fn to_string(err: Error) -> String {
     SessionError(SessionExpiredError) -> "session_error:session_expired"
     ClientInfoError(MissingUserIdAndIpError) ->
       "client_info_error:missing_user_id_and_ip"
+    AuthorizationError(AuthenticationRequiredError) ->
+      "authorization_error:authentication_required"
     AuthorizationError(NotOwnerError) -> "authorization_error:not_owner"
     AuthorizationError(AdminRequiredError) ->
       "authorization_error:admin_required"

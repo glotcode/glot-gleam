@@ -29,6 +29,7 @@ pub fn logout(ctx: context.Context) -> program_types.Program(Nil) {
       user_id: session.user.identity.id,
       account_state: session.user.account.identity.account_state,
       account_tier: session.user.account.identity.account_tier,
+      role: session.user.identity.role,
     ),
   ))
 

@@ -1,7 +1,6 @@
 import gleam/list
 import gleam/option
 import glot_backend/context
-import glot_backend/domain/shared/admin_authorization_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/email_template/email_template_effect
@@ -16,7 +15,6 @@ pub fn get_email_templates(
   ctx: context.Context,
 ) -> program_types.Program(email_template_dto.ListEmailTemplatesResponse) {
   use session <- program.and_then(session_domain.require_session(ctx))
-  use _ <- program.and_then(admin_authorization_domain.require_admin(session))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
     action: api_action.GetAdminEmailTemplatesAction,

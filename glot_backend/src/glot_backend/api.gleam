@@ -806,6 +806,10 @@ fn error_to_response(error: error.Error) -> wisp.Response {
       }
     error.AuthorizationError(authorization_error) ->
       case authorization_error {
+        error.AuthenticationRequiredError -> {
+          wisp.log_error("Authorization error: authentication required")
+          error_response(status, code, message)
+        }
         error.NotOwnerError -> {
           wisp.log_error("Authorization error: not owner")
           error_response(status, code, message)
@@ -944,6 +948,11 @@ pub fn api_error_details(error: error.Error) -> #(Int, String, String) {
       }
     error.AuthorizationError(authorization_error) ->
       case authorization_error {
+        error.AuthenticationRequiredError -> #(
+          401,
+          "authorization_authentication_required",
+          "Authentication required",
+        )
         error.NotOwnerError -> #(
           403,
           "authorization_not_owner",

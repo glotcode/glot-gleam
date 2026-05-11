@@ -17,7 +17,18 @@ pub type ActionActor {
     user_id: Uuid,
     account_state: AccountState,
     account_tier: AccountTier,
+    role: user_model.UserRole,
   )
+}
+
+type AuthenticationPolicy {
+  NoAuthenticationRequired
+  RequireAuthentication
+}
+
+type AuthorizationPolicy {
+  NoSpecialAuthorization
+  RequireAdmin
 }
 
 type AccountStatePolicy {
@@ -25,13 +36,30 @@ type AccountStatePolicy {
   AllowedAccountStates(List(AccountState))
 }
 
+type ApiActionPolicy {
+  ApiActionPolicy(
+    authentication_policy: AuthenticationPolicy,
+    authorization_policy: AuthorizationPolicy,
+    account_state_policy: AccountStatePolicy,
+  )
+}
+
 pub fn enforce(
   ctx ctx: context.Context,
   action action: ApiAction,
   actor actor: ActionActor,
 ) -> program_types.Program(user_action.UserAction) {
+  let policy = action_policy(action)
   use _ <- program.and_then(
-    enforce_account_state(action, actor)
+    enforce_authentication(policy.authentication_policy, actor)
+    |> program.from_result(),
+  )
+  use _ <- program.and_then(
+    enforce_authorization(policy.authorization_policy, actor)
+    |> program.from_result(),
+  )
+  use _ <- program.and_then(
+    enforce_account_state(action, policy.account_state_policy, actor)
     |> program.from_result(),
   )
 
@@ -52,16 +80,49 @@ pub fn actor_from_user(
         user_id: user.identity.id,
         account_state: user.account.identity.account_state,
         account_tier: user.account.identity.account_tier,
+        role: user.identity.role,
       )
     option.None -> Anonymous
   }
 }
 
-fn enforce_account_state(
-  action: ApiAction,
+fn enforce_authentication(
+  policy: AuthenticationPolicy,
   actor: ActionActor,
 ) -> Result(Nil, error.Error) {
-  case account_state_policy(action) {
+  case policy {
+    NoAuthenticationRequired -> Ok(Nil)
+    RequireAuthentication ->
+      case actor {
+        Anonymous ->
+          Error(
+            error.AuthorizationError(error.AuthenticationRequiredError),
+          )
+        KnownUser(_, _, _, _) -> Ok(Nil)
+      }
+  }
+}
+
+fn enforce_authorization(
+  policy: AuthorizationPolicy,
+  actor: ActionActor,
+) -> Result(Nil, error.Error) {
+  case policy {
+    NoSpecialAuthorization -> Ok(Nil)
+    RequireAdmin ->
+      case actor_role(actor) == option.Some(user_model.AdminUser) {
+        True -> Ok(Nil)
+        False -> Error(error.AuthorizationError(error.AdminRequiredError))
+      }
+  }
+}
+
+fn enforce_account_state(
+  action: ApiAction,
+  policy: AccountStatePolicy,
+  actor: ActionActor,
+) -> Result(Nil, error.Error) {
+  case policy {
     NoAccountStateRequirement -> Ok(Nil)
     AllowedAccountStates(allowed_account_states) ->
       case actor_account_state(actor) {
@@ -79,21 +140,28 @@ fn enforce_account_state(
 fn actor_user_id(actor: ActionActor) -> Option(Uuid) {
   case actor {
     Anonymous -> option.None
-    KnownUser(user_id, _, _) -> option.Some(user_id)
+    KnownUser(user_id, _, _, _) -> option.Some(user_id)
   }
 }
 
 fn actor_account_state(actor: ActionActor) -> Option(AccountState) {
   case actor {
     Anonymous -> option.None
-    KnownUser(_, account_state, _) -> option.Some(account_state)
+    KnownUser(_, account_state, _, _) -> option.Some(account_state)
   }
 }
 
 fn actor_account_tier(actor: ActionActor) -> Option(AccountTier) {
   case actor {
     Anonymous -> option.None
-    KnownUser(_, _, account_tier) -> option.Some(account_tier)
+    KnownUser(_, _, account_tier, _) -> option.Some(account_tier)
+  }
+}
+
+fn actor_role(actor: ActionActor) -> Option(user_model.UserRole) {
+  case actor {
+    Anonymous -> option.None
+    KnownUser(_, _, _, role) -> option.Some(role)
   }
 }
 
@@ -118,224 +186,253 @@ fn forbidden_account_state_error(
   ))
 }
 
-fn account_state_policy(action: ApiAction) -> AccountStatePolicy {
+fn action_policy(action: ApiAction) -> ApiActionPolicy {
   case action {
-    api_action.TrackPageviewAction -> NoAccountStateRequirement
-    api_action.GetLanguageVersionAction -> NoAccountStateRequirement
+    api_action.TrackPageviewAction ->
+      public_action_policy(NoAccountStateRequirement)
+    api_action.GetLanguageVersionAction ->
+      public_action_policy(NoAccountStateRequirement)
     api_action.SendLoginTokenAction ->
-      AllowedAccountStates([
+      public_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.LoginAction ->
-      AllowedAccountStates([
+      public_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetSessionAction ->
-      AllowedAccountStates([
+      public_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
         account_model.Suspended,
-      ])
+      ]))
     api_action.LogoutAction ->
-      AllowedAccountStates([
+      authenticated_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
         account_model.Suspended,
-      ])
+      ]))
     api_action.GetAccountAction ->
-      AllowedAccountStates([
+      authenticated_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpdateAccountAction ->
-      AllowedAccountStates([account_model.Active])
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
     api_action.ScheduleDeleteAccountAction ->
-      AllowedAccountStates([account_model.Active])
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
     api_action.CancelDeleteAccountAction ->
-      AllowedAccountStates([account_model.Active])
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
     api_action.GetSnippetAction ->
-      AllowedAccountStates([
+      public_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.ListPublicSnippetsAction ->
-      AllowedAccountStates([
+      public_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.ListSessionSnippetsAction ->
-      AllowedAccountStates([
+      authenticated_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.CreateSnippetAction ->
-      AllowedAccountStates([account_model.Active])
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
     api_action.UpdateSnippetAction ->
-      AllowedAccountStates([account_model.Active])
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
     api_action.DeleteSnippetAction ->
-      AllowedAccountStates([account_model.Active])
-    api_action.RunAction -> AllowedAccountStates([account_model.Active])
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
+    api_action.RunAction ->
+      public_action_policy(AllowedAccountStates([account_model.Active]))
     api_action.GetAdminDebugConfigAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpsertAdminDebugConfigAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminAuthConfigAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpsertAdminAuthConfigAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminCleanupConfigAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpsertAdminCleanupConfigAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminPeriodicJobsAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminPeriodicJobAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpdateAdminPeriodicJobAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminJobsAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminJobAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.CreateAdminJobAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminEmailTemplatesAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminEmailTemplateAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpdateAdminEmailTemplateAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminSnippetsAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminSnippetAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.DeleteAdminSnippetAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminUsersAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminUserAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpdateAdminUserAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.DeleteAdminAccountAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminApiLogsAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminApiLogAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminRunLogsAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminRunLogAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminJobLogsAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminJobLogAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminRateLimitPoliciesAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpsertAdminRateLimitPolicyAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.GetAdminDockerRunConfigAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
     api_action.UpsertAdminDockerRunConfigAction ->
-      AllowedAccountStates([
+      admin_action_policy(AllowedAccountStates([
         account_model.Active,
         account_model.ReadOnly,
-      ])
+      ]))
   }
+}
+
+fn public_action_policy(account_state_policy: AccountStatePolicy) -> ApiActionPolicy {
+  ApiActionPolicy(
+    authentication_policy: NoAuthenticationRequired,
+    authorization_policy: NoSpecialAuthorization,
+    account_state_policy: account_state_policy,
+  )
+}
+
+fn authenticated_action_policy(
+  account_state_policy: AccountStatePolicy,
+) -> ApiActionPolicy {
+  ApiActionPolicy(
+    authentication_policy: RequireAuthentication,
+    authorization_policy: NoSpecialAuthorization,
+    account_state_policy: account_state_policy,
+  )
+}
+
+fn admin_action_policy(account_state_policy: AccountStatePolicy) -> ApiActionPolicy {
+  ApiActionPolicy(
+    authentication_policy: RequireAuthentication,
+    authorization_policy: RequireAdmin,
+    account_state_policy: account_state_policy,
+  )
 }
