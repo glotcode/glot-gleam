@@ -57,6 +57,11 @@ pub fn view(_model: Model) -> Element(Msg) {
               description: "Review and update API rate limit policies.",
               target: route.AdminRateLimits,
             ),
+            link_card(
+              title: "Email templates",
+              description: "Review stored transactional email templates and edit their subject and body content.",
+              target: route.AdminEmailTemplates,
+            ),
           ]),
         ]),
         html.div([attribute.class("admin-page__group")], [
@@ -77,24 +82,33 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminPeriodicJobs,
             ),
             link_card(
+              title: "Jobs",
+              description: "Inspect the execution queue and iterate on the admin jobs workflow.",
+              target: route.AdminJobs,
+            ),
+          ]),
+        ]),
+        html.div([attribute.class("admin-page__group")], [
+          html.div([attribute.class("admin-page__group-header")], [
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Users"),
+            ]),
+            html.p([attribute.class("admin-page__group-copy")], [
+              html.text(
+                "Account administration and user-owned content inspection tools.",
+              ),
+            ]),
+          ]),
+          html.div([attribute.class("admin-page__section-grid")], [
+            link_card(
               title: "Users",
               description: "List accounts, inspect user state, and edit roles or account access.",
               target: route.AdminUsers,
             ),
             link_card(
-              title: "Email templates",
-              description: "Review stored transactional email templates and edit their subject and body content.",
-              target: route.AdminEmailTemplates,
-            ),
-            link_card(
               title: "Snippets",
               description: "Review saved user snippets and inspect their stored files in a read-only admin view.",
               target: route.AdminSnippets,
-            ),
-            link_card(
-              title: "Jobs",
-              description: "Inspect the execution queue and iterate on the admin jobs workflow.",
-              target: route.AdminJobs,
             ),
           ]),
         ]),
