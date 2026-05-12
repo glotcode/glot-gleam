@@ -1,6 +1,7 @@
 import gleam/list
 import gleam/option
 import glot_core/pagination_model
+import glot_frontend/json_helpers
 import glot_frontend/mutation
 import lustre/attribute
 import lustre/element.{type Element}
@@ -168,6 +169,33 @@ pub fn detail_link_item(
       html.text(value),
     ]),
   ])
+}
+
+pub fn code_block(value: String) -> Element(msg) {
+  html.div([attribute.class("admin-page__policy")], [
+    html.pre([attribute.class("admin-page__code-block")], [html.text(value)]),
+  ])
+}
+
+pub fn named_code_block(title title: String, value value: String) -> Element(msg) {
+  html.div([attribute.class("admin-page__group")], [
+    html.h4([attribute.class("admin-page__group-title")], [html.text(title)]),
+    code_block(value),
+  ])
+}
+
+pub fn optional_code_block(value: option.Option(String)) -> Element(msg) {
+  case value {
+    option.Some(text) -> code_block(text)
+    option.None -> code_block("None")
+  }
+}
+
+pub fn optional_raw_block(
+  title title: String,
+  value value: option.Option(String),
+) -> Element(msg) {
+  named_code_block(title: title, value: json_helpers.optional_pretty_print_json_or_none(value))
 }
 
 pub fn status(message: String) -> Element(msg) {

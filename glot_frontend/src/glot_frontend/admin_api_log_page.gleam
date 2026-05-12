@@ -8,7 +8,6 @@ import glot_frontend/admin_effects_table
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
-import glot_frontend/json_helpers
 import glot_frontend/loadable
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -151,22 +150,11 @@ fn raw_blocks(
   effects: option.Option(effect_trace_dto.EffectTraceResponse),
 ) -> Element(Msg) {
   html.div([attribute.class("admin-request-log-page__raw-grid")], [
-    raw_block("Info", info),
-    raw_block("Warnings", warnings),
-    raw_block("Debug", debug),
-    raw_block("Error", error),
+    admin_ui.optional_raw_block("Info", info),
+    admin_ui.optional_raw_block("Warnings", warnings),
+    admin_ui.optional_raw_block("Debug", debug),
+    admin_ui.optional_raw_block("Error", error),
     admin_effects_table.effects_block(effects),
-  ])
-}
-
-fn raw_block(title: String, value: option.Option(String)) -> Element(Msg) {
-  html.div([attribute.class("admin-page__group")], [
-    html.h4([attribute.class("admin-page__group-title")], [html.text(title)]),
-    html.div([attribute.class("admin-page__policy")], [
-      html.pre([attribute.class("admin-job-page__code-block")], [
-        html.text(json_helpers.optional_pretty_print_json_or_none(value)),
-      ]),
-    ]),
   ])
 }
 

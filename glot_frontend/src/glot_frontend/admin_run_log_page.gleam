@@ -128,11 +128,7 @@ fn detail_view(model: Model) -> Element(Msg) {
         admin_ui.section(
           title: "Failure message",
           copy: "Stored only when the execution fails before producing a successful run result.",
-          content: html.div([attribute.class("admin-page__policy")], [
-            html.pre([attribute.class("admin-job-page__code-block")], [
-              html.text(optional_text(log.failure_message)),
-            ]),
-          ]),
+          content: admin_ui.optional_code_block(log.failure_message),
         ),
       ])
     },
@@ -147,13 +143,6 @@ fn format_timestamp(value) -> String {
 fn optional_uuid(value: option.Option(uuid.Uuid)) -> String {
   case value {
     option.Some(id) -> uuid.to_string(id)
-    option.None -> "None"
-  }
-}
-
-fn optional_text(value: option.Option(String)) -> String {
-  case value {
-    option.Some(text) -> text
     option.None -> "None"
   }
 }

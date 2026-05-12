@@ -281,7 +281,7 @@ fn detail_view(model: Model) -> Element(Msg) {
             html.span([attribute.class("admin-info-label")], [
               html.text("stdin"),
             ]),
-            html.pre([attribute.class("admin-job-page__code-block")], [
+            html.pre([attribute.class("admin-page__code-block")], [
               html.text(empty_text(snippet.stdin)),
             ]),
           ]),
@@ -317,7 +317,7 @@ fn file_view(file: snippet_model.File) -> Element(Msg) {
         html.text(file.name),
       ]),
     ]),
-    html.pre([attribute.class("admin-job-page__code-block")], [
+    html.pre([attribute.class("admin-page__code-block")], [
       html.code([], [html.text(empty_text(file.content))]),
     ]),
   ])

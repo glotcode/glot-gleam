@@ -2,6 +2,7 @@ import gleam/int
 import gleam/list
 import gleam/option
 import glot_core/effect_trace_dto
+import glot_frontend/admin_ui
 import glot_frontend/admin_table
 import glot_frontend/duration_label
 import lustre/attribute
@@ -23,12 +24,7 @@ pub fn effects_block(
   html.div([attribute.class("admin-page__group")], [
     html.h4([attribute.class("admin-page__group-title")], [html.text("Effects")]),
     case value {
-      option.None ->
-        html.div([attribute.class("admin-page__policy")], [
-          html.pre([attribute.class("admin-job-page__code-block")], [
-            html.text("None"),
-          ]),
-        ])
+      option.None -> admin_ui.code_block("None")
       option.Some(effect_trace) -> effects_table(effect_trace)
     },
   ])

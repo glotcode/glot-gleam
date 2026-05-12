@@ -7,7 +7,6 @@ import glot_frontend/admin_effects_table
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
-import glot_frontend/json_helpers
 import glot_frontend/loadable
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -117,10 +116,10 @@ fn detail_view(model: Model) -> Element(Msg) {
           title: "Raw output",
           copy: "Stored raw blocks are expanded by default so retries and failures can be inspected immediately.",
           content: html.div([attribute.class("admin-job-log-page__raw-grid")], [
-            raw_block("Info", log.info),
-            raw_block("Warnings", log.warnings),
-            raw_block("Debug", log.debug),
-            raw_block("Error", log.error),
+            admin_ui.optional_raw_block("Info", log.info),
+            admin_ui.optional_raw_block("Warnings", log.warnings),
+            admin_ui.optional_raw_block("Debug", log.debug),
+            admin_ui.optional_raw_block("Error", log.error),
             admin_effects_table.effects_block(log.effects),
           ]),
         ),
@@ -128,17 +127,6 @@ fn detail_view(model: Model) -> Element(Msg) {
     },
     fn(_) { admin_ui.empty_state("This job log could not be loaded.") },
   )
-}
-
-fn raw_block(title: String, value: option.Option(String)) -> Element(Msg) {
-  html.div([attribute.class("admin-page__group")], [
-    html.h4([attribute.class("admin-page__group-title")], [html.text(title)]),
-    html.div([attribute.class("admin-page__policy")], [
-      html.pre([attribute.class("admin-job-page__code-block")], [
-        html.text(json_helpers.optional_pretty_print_json_or_none(value)),
-      ]),
-    ]),
-  ])
 }
 
 fn format_timestamp(value) -> String {

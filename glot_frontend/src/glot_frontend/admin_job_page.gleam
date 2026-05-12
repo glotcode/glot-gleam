@@ -596,9 +596,7 @@ fn periodic_job_detail_item(value: option.Option(uuid.Uuid)) -> Element(Msg) {
 }
 
 fn code_block(value: String) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy")], [
-    html.pre([attribute.class("admin-job-page__code-block")], [html.text(value)]),
-  ])
+  admin_ui.code_block(value)
 }
 
 fn create_job_dialog(model: Model) -> Element(Msg) {
