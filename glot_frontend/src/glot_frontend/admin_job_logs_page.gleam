@@ -178,70 +178,58 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
       pagination_button("Next", NextPageClicked, can_go_next(model)),
     ],
     content: [
-      html.div([attribute.class("admin-page__group")], [
-            html.div([attribute.class("admin-page__group-header")], [
-              html.h3([attribute.class("admin-page__group-title")], [
-                html.text("Filters"),
-              ]),
-              html.p([attribute.class("admin-page__group-copy")], [
-                html.text(filter_summary(model, rows)),
-              ]),
+      admin_ui.filter_section(
+        copy: filter_summary(model, rows),
+        content: admin_ui.filter_surface([], [
+          admin_ui.filter_field_grid(
+            [attribute.class("admin-job-logs-page__field-grid")],
+            [
+              admin_ui.text_input(
+                label: "Request ID",
+                help: request_id_help(model),
+                value: model.request_id_filter,
+                placeholder: "UUID",
+                on_input: RequestIdFilterChanged,
+              ),
+              admin_ui.text_input(
+                label: "Job ID",
+                help: job_id_help(model),
+                value: model.job_id_filter,
+                placeholder: "UUID",
+                on_input: JobIdFilterChanged,
+              ),
+            ],
+          ),
+          admin_ui.filter_row([], [
+            admin_ui.filter_chip_group(title: "Error", copy: option.None, chips: [
+              admin_ui.filter_chip(
+                [event.on_click(ErrorFilterSelected(job_log_dto.AllJobLogs))],
+                "All",
+                model.error_filter == job_log_dto.AllJobLogs,
+              ),
+              admin_ui.filter_chip(
+                [
+                  event.on_click(
+                    ErrorFilterSelected(job_log_dto.OnlyJobLogsWithErrors),
+                  ),
+                ],
+                "Errors only",
+                model.error_filter == job_log_dto.OnlyJobLogsWithErrors,
+              ),
             ]),
-            html.div(
-              [
-                attribute.class(
-                  "admin-page__policy admin-job-logs-page__filters",
-                ),
-              ],
-              [
-                html.div(
-                  [
-                    attribute.class(
-                      "admin-page__field-grid admin-job-logs-page__field-grid",
-                    ),
-                  ],
-                  [
-                    text_input(
-                      label: "Request ID",
-                      help: request_id_help(model),
-                      value: model.request_id_filter,
-                      on_input: RequestIdFilterChanged,
-                    ),
-                    text_input(
-                      label: "Job ID",
-                      help: job_id_help(model),
-                      value: model.job_id_filter,
-                      on_input: JobIdFilterChanged,
-                    ),
-                  ],
-                ),
-                html.div([attribute.class("admin-job-logs-page__filter-row")], [
-                  filter_group(title: "Error", chips: [
-                    filter_chip(
-                      "All",
-                      model.error_filter == job_log_dto.AllJobLogs,
-                      ErrorFilterSelected(job_log_dto.AllJobLogs),
-                    ),
-                    filter_chip(
-                      "Errors only",
-                      model.error_filter == job_log_dto.OnlyJobLogsWithErrors,
-                      ErrorFilterSelected(job_log_dto.OnlyJobLogsWithErrors),
-                    ),
-                  ]),
-                  html.div([attribute.class("admin-job-logs-page__apply")], [
-                    html.button(
-                      [
-                        attribute.class("admin-page__button"),
-                        attribute.attribute("type", "button"),
-                        event.on_click(ApplyFilters),
-                      ],
-                      [html.text("Apply")],
-                    ),
-                  ]),
-                ]),
-              ],
-            ),
-      ]),
+            admin_ui.filter_actions([], [
+              html.button(
+                [
+                  attribute.class("admin-page__button"),
+                  attribute.attribute("type", "button"),
+                  event.on_click(ApplyFilters),
+                ],
+                [html.text("Apply")],
+              ),
+            ]),
+          ]),
+        ]),
+      ),
       html.div([attribute.class("admin-page__group")], [
             html.div([attribute.class("admin-page__group-header")], [
               html.h3([attribute.class("admin-page__group-title")], [
@@ -317,35 +305,6 @@ fn current_page(
   }
 }
 
-fn filter_group(
-  title title: String,
-  chips chips: List(Element(Msg)),
-) -> Element(Msg) {
-  html.div([attribute.class("admin-job-logs-page__filter-group")], [
-    html.span([attribute.class("admin-jobs-page__filter-title")], [
-      html.text(title),
-    ]),
-    html.div([attribute.class("admin-page__actions")], chips),
-  ])
-}
-
-fn filter_chip(label: String, selected: Bool, msg: Msg) -> Element(Msg) {
-  let class_name = case selected {
-    True -> "admin-page__chip admin-page__chip--selected"
-    False -> "admin-page__chip"
-  }
-
-  html.button(
-    [
-      attribute.class(class_name),
-      attribute.attribute("type", "button"),
-      attribute.attribute("aria-pressed", bool_attribute(selected)),
-      event.on_click(msg),
-    ],
-    [html.text(label)],
-  )
-}
-
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
   admin_ui.secondary_button(
     [
@@ -355,25 +314,6 @@ fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
     ],
     label,
   )
-}
-
-fn text_input(
-  label label: String,
-  help help: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.input([
-      attribute.type_("text"),
-      attribute.class("admin-page__input"),
-      attribute.value(value),
-      attribute.attribute("placeholder", "UUID"),
-      event.on_input(on_input),
-    ]),
-    html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
-  ])
 }
 
 fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
@@ -547,12 +487,5 @@ fn error_text(log: job_log_dto.JobLogResponse) -> String {
   case log.has_error {
     True -> "Error"
     False -> "None"
-  }
-}
-
-fn bool_attribute(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
   }
 }

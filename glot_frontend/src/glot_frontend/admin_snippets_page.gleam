@@ -140,27 +140,21 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
       pagination_button("Next", NextPageClicked, can_go_next(model)),
     ],
     content: [
-      html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.div([], [
-              html.h3([attribute.class("admin-page__group-title")], [
-                html.text("Filters"),
-              ]),
-              html.p([attribute.class("admin-page__group-copy")], [
-                html.text("Filter snippets by exact username."),
-              ]),
+      admin_ui.filter_section(
+        copy: "Filter snippets by exact username.",
+        content: admin_ui.filter_surface(
+          [attribute.class("admin-snippets-page__filters")],
+          [
+            admin_ui.filter_field_grid([], [
+              admin_ui.text_input(
+                label: "Username",
+                help: "Matches an exact account username.",
+                value: model.username_filter,
+                placeholder: "username",
+                on_input: UsernameFilterChanged,
+              ),
             ]),
-          ]),
-          html.div(
-            [attribute.class("admin-page__policy admin-snippets-page__filters")],
-            [
-              html.input([
-                attribute.class("admin-page__input"),
-                attribute.type_("text"),
-                attribute.placeholder("username"),
-                attribute.value(model.username_filter),
-                event.on_input(UsernameFilterChanged),
-              ]),
+            admin_ui.filter_actions([], [
               html.button(
                 [
                   attribute.class("admin-page__button"),
@@ -177,9 +171,10 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
                 ],
                 "Clear",
               ),
-            ],
-          ),
-      ]),
+            ]),
+          ],
+        ),
+      ),
       html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.div([], [

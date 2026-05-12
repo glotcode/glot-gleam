@@ -487,8 +487,7 @@ a {
   gap: 0.5rem;
 }
 
-.admin-jobs-page__summary-label,
-.admin-jobs-page__filter-title {
+.admin-jobs-page__summary-label {
   color: #66789f;
   font-size: 0.78rem;
   font-weight: 700;
@@ -548,11 +547,13 @@ a {
   gap: 0.55rem;
 }
 
+.admin-filters,
 .admin-request-logs-page__filters,
 .admin-job-logs-page__filters {
   gap: 1rem;
 }
 
+.admin-filters__row,
 .admin-request-logs-page__filter-row,
 .admin-job-logs-page__filter-row {
   display: flex;
@@ -562,12 +563,30 @@ a {
   flex-wrap: wrap;
 }
 
+.admin-filters__group,
 .admin-request-logs-page__filter-group,
 .admin-job-logs-page__filter-group {
   display: grid;
   gap: 0.55rem;
 }
 
+.admin-filters__title,
+.admin-jobs-page__filter-title {
+  color: #1f2c45;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.admin-filters__copy {
+  margin: 0;
+  color: #6a7890;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.admin-filters__actions,
 .admin-request-logs-page__apply,
 .admin-job-logs-page__apply {
   display: flex;

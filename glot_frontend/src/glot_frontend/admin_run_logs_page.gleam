@@ -232,88 +232,87 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
       pagination_button("Next", NextPageClicked, can_go_next(model)),
     ],
     content: [
-      html.div([attribute.class("admin-page__group")], [
-            html.div([attribute.class("admin-page__group-header")], [
-              html.h3([attribute.class("admin-page__group-title")], [
-                html.text("Filters"),
-              ]),
-              html.p([attribute.class("admin-page__group-copy")], [
-                html.text(filter_summary(model, rows)),
-              ]),
-            ]),
-            html.div(
-              [
-                attribute.class(
-                  "admin-page__policy admin-job-logs-page__filters",
+      admin_ui.filter_section(
+        copy: filter_summary(model, rows),
+        content: admin_ui.filter_surface([], [
+          admin_ui.filter_field_grid(
+            [attribute.class("admin-job-logs-page__field-grid")],
+            [
+              admin_ui.text_input(
+                label: "Request ID",
+                help: request_id_help(model),
+                value: model.request_id_filter,
+                placeholder: "UUID",
+                on_input: RequestIdFilterChanged,
+              ),
+              admin_ui.text_input(
+                label: "Session ID",
+                help: session_id_help(model),
+                value: model.session_id_filter,
+                placeholder: "UUID",
+                on_input: SessionIdFilterChanged,
+              ),
+              admin_ui.text_input(
+                label: "User ID",
+                help: user_id_help(model),
+                value: model.user_id_filter,
+                placeholder: "UUID",
+                on_input: UserIdFilterChanged,
+              ),
+              admin_ui.select_input(
+                label: "Language",
+                value: model.language_filter,
+                on_input: LanguageFilterChanged,
+                options: language_options(),
+                help: language_help(model),
+              ),
+            ],
+          ),
+          admin_ui.filter_row([], [
+            admin_ui.filter_chip_group(
+              title: "Outcome",
+              copy: option.None,
+              chips: [
+                admin_ui.filter_chip(
+                  [event.on_click(OutcomeFilterSelected(run_log_dto.AllRunLogs))],
+                  "All",
+                  model.outcome_filter == run_log_dto.AllRunLogs,
                 ),
-              ],
-              [
-                html.div(
+                admin_ui.filter_chip(
                   [
-                    attribute.class(
-                      "admin-page__field-grid admin-job-logs-page__field-grid",
+                    event.on_click(
+                      OutcomeFilterSelected(
+                        run_log_dto.OnlySuccessfulRunLogs,
+                      ),
                     ),
                   ],
-                  [
-                    text_input(
-                      label: "Request ID",
-                      help: request_id_help(model),
-                      value: model.request_id_filter,
-                      on_input: RequestIdFilterChanged,
-                    ),
-                    text_input(
-                      label: "Session ID",
-                      help: session_id_help(model),
-                      value: model.session_id_filter,
-                      on_input: SessionIdFilterChanged,
-                    ),
-                    text_input(
-                      label: "User ID",
-                      help: user_id_help(model),
-                      value: model.user_id_filter,
-                      on_input: UserIdFilterChanged,
-                    ),
-                    select_input(
-                      label: "Language",
-                      value: model.language_filter,
-                      on_input: LanguageFilterChanged,
-                      options: language_options(),
-                      help: language_help(model),
-                    ),
-                  ],
+                  "Succeeded",
+                  model.outcome_filter == run_log_dto.OnlySuccessfulRunLogs,
                 ),
-                html.div([attribute.class("admin-job-logs-page__filter-row")], [
-                  filter_group(title: "Outcome", chips: [
-                    filter_chip(
-                      "All",
-                      model.outcome_filter == run_log_dto.AllRunLogs,
-                      OutcomeFilterSelected(run_log_dto.AllRunLogs),
-                    ),
-                    filter_chip(
-                      "Succeeded",
-                      model.outcome_filter == run_log_dto.OnlySuccessfulRunLogs,
-                      OutcomeFilterSelected(run_log_dto.OnlySuccessfulRunLogs),
-                    ),
-                    filter_chip(
-                      "Failed",
-                      model.outcome_filter == run_log_dto.OnlyFailedRunLogs,
+                admin_ui.filter_chip(
+                  [
+                    event.on_click(
                       OutcomeFilterSelected(run_log_dto.OnlyFailedRunLogs),
                     ),
-                  ]),
-                  html.div([attribute.class("admin-job-logs-page__apply")], [
-                    html.button(
-                      [
-                        attribute.class("admin-page__button"),
-                        attribute.attribute("type", "button"),
-                        event.on_click(ApplyFilters),
-                      ],
-                      [html.text("Apply")],
-                    ),
-                  ]),
-                ]),
+                  ],
+                  "Failed",
+                  model.outcome_filter == run_log_dto.OnlyFailedRunLogs,
+                ),
               ],
             ),
-      ]),
+            admin_ui.filter_actions([], [
+              html.button(
+                [
+                  attribute.class("admin-page__button"),
+                  attribute.attribute("type", "button"),
+                  event.on_click(ApplyFilters),
+                ],
+                [html.text("Apply")],
+              ),
+            ]),
+          ]),
+        ]),
+      ),
       html.div([attribute.class("admin-page__group")], [
             html.div([attribute.class("admin-page__group-header")], [
               html.h3([attribute.class("admin-page__group-title")], [
@@ -391,35 +390,6 @@ fn current_page(
   }
 }
 
-fn filter_group(
-  title title: String,
-  chips chips: List(Element(Msg)),
-) -> Element(Msg) {
-  html.div([attribute.class("admin-job-logs-page__filter-group")], [
-    html.span([attribute.class("admin-jobs-page__filter-title")], [
-      html.text(title),
-    ]),
-    html.div([attribute.class("admin-page__actions")], chips),
-  ])
-}
-
-fn filter_chip(label: String, selected: Bool, msg: Msg) -> Element(Msg) {
-  let class_name = case selected {
-    True -> "admin-page__chip admin-page__chip--selected"
-    False -> "admin-page__chip"
-  }
-
-  html.button(
-    [
-      attribute.class(class_name),
-      attribute.attribute("type", "button"),
-      attribute.attribute("aria-pressed", bool_attribute(selected)),
-      event.on_click(msg),
-    ],
-    [html.text(label)],
-  )
-}
-
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
   admin_ui.secondary_button(
     [
@@ -429,55 +399,6 @@ fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
     ],
     label,
   )
-}
-
-fn text_input(
-  label label: String,
-  help help: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.input([
-      attribute.type_("text"),
-      attribute.class("admin-page__input"),
-      attribute.value(value),
-      attribute.attribute("placeholder", "UUID"),
-      event.on_input(on_input),
-    ]),
-    html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
-  ])
-}
-
-fn select_input(
-  label label: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-  options options: List(#(String, String)),
-  help help: String,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.select(
-      [
-        attribute.class("admin-page__input"),
-        attribute.value(value),
-        event.on_input(on_input),
-      ],
-      list.map(options, fn(option_item) {
-        let #(option_value, option_label) = option_item
-        html.option(
-          [
-            attribute.value(option_value),
-            attribute.selected(option_value == value),
-          ],
-          option_label,
-        )
-      }),
-    ),
-    html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
-  ])
 }
 
 fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
@@ -723,12 +644,5 @@ fn optional_filter_text(label: String, value: option.Option(String)) -> String {
   case value {
     option.Some(value) -> " " <> label <> ": " <> value <> "."
     option.None -> ""
-  }
-}
-
-fn bool_attribute(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
   }
 }

@@ -1,7 +1,10 @@
+import gleam/list
+import gleam/option
 import glot_frontend/mutation
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
+import lustre/event
 
 pub type BadgeTone {
   NeutralTone
@@ -205,4 +208,155 @@ pub fn section(
     ]),
     content,
   ])
+}
+
+pub fn filter_section(
+  copy copy: String,
+  content content: Element(msg),
+) -> Element(msg) {
+  section(title: "Filters", copy: copy, content: content)
+}
+
+pub fn filter_surface(
+  attributes extra_attributes: List(attribute.Attribute(msg)),
+  content content: List(Element(msg)),
+) -> Element(msg) {
+  html.div(
+    [attribute.class("admin-page__policy admin-filters"), ..extra_attributes],
+    content,
+  )
+}
+
+pub fn filter_field_grid(
+  attributes extra_attributes: List(attribute.Attribute(msg)),
+  fields fields: List(Element(msg)),
+) -> Element(msg) {
+  html.div([attribute.class("admin-page__field-grid"), ..extra_attributes], fields)
+}
+
+pub fn filter_row(
+  attributes extra_attributes: List(attribute.Attribute(msg)),
+  content content: List(Element(msg)),
+) -> Element(msg) {
+  html.div([attribute.class("admin-filters__row"), ..extra_attributes], content)
+}
+
+pub fn filter_group(
+  title title: String,
+  copy copy: option.Option(String),
+  content content: Element(msg),
+) -> Element(msg) {
+  let children = case copy {
+    option.Some(text) -> [
+      html.span([attribute.class("admin-filters__title")], [html.text(title)]),
+      html.p([attribute.class("admin-filters__copy")], [html.text(text)]),
+      content,
+    ]
+    option.None -> [
+      html.span([attribute.class("admin-filters__title")], [html.text(title)]),
+      content,
+    ]
+  }
+
+  html.div([attribute.class("admin-filters__group")], children)
+}
+
+pub fn filter_chip_group(
+  title title: String,
+  copy copy: option.Option(String),
+  chips chips: List(Element(msg)),
+) -> Element(msg) {
+  filter_group(
+    title: title,
+    copy: copy,
+    content: html.div([attribute.class("admin-page__actions")], chips),
+  )
+}
+
+pub fn filter_actions(
+  attributes extra_attributes: List(attribute.Attribute(msg)),
+  actions actions: List(Element(msg)),
+) -> Element(msg) {
+  html.div(
+    [attribute.class("admin-filters__actions"), ..extra_attributes],
+    actions,
+  )
+}
+
+pub fn filter_chip(
+  attributes extra_attributes: List(attribute.Attribute(msg)),
+  label label: String,
+  selected selected: Bool,
+) -> Element(msg) {
+  let class_name = case selected {
+    True -> "admin-page__chip admin-page__chip--selected"
+    False -> "admin-page__chip"
+  }
+
+  html.button(
+    [
+      attribute.class(class_name),
+      attribute.type_("button"),
+      attribute.attribute("aria-pressed", bool_attribute(selected)),
+      ..extra_attributes
+    ],
+    [html.text(label)],
+  )
+}
+
+pub fn text_input(
+  label label: String,
+  help help: String,
+  value value: String,
+  placeholder placeholder: String,
+  on_input on_input: fn(String) -> msg,
+) -> Element(msg) {
+  html.label([attribute.class("admin-page__field")], [
+    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
+    html.input([
+      attribute.type_("text"),
+      attribute.class("admin-page__input"),
+      attribute.value(value),
+      attribute.placeholder(placeholder),
+      event.on_input(on_input),
+    ]),
+    html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
+  ])
+}
+
+pub fn select_input(
+  label label: String,
+  value value: String,
+  on_input on_input: fn(String) -> msg,
+  options options: List(#(String, String)),
+  help help: String,
+) -> Element(msg) {
+  html.label([attribute.class("admin-page__field")], [
+    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
+    html.select(
+      [
+        attribute.class("admin-page__select admin-page__input"),
+        attribute.value(value),
+        event.on_input(on_input),
+      ],
+      list.map(options, fn(option_item) {
+        let #(option_value, option_label) = option_item
+        html.option(
+          [
+            attribute.value(option_value),
+            attribute.selected(option_value == value),
+          ],
+          option_label,
+        )
+      }),
+    ),
+    html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
+  ])
+}
+
+fn bool_attribute(value: Bool) -> String {
+  case value {
+    True -> "true"
+    False -> "false"
+  }
 }
