@@ -351,7 +351,7 @@ fn owner_column() -> admin_table.Column {
 }
 
 fn updated_column() -> admin_table.Column {
-  admin_table.column("Updated")
+  admin_table.column("Updated at")
 }
 
 fn open_column() -> admin_table.Column {

@@ -462,7 +462,7 @@ fn status_column() -> admin_table.Column {
 }
 
 fn schedule_column() -> admin_table.Column {
-  admin_table.column("Schedule")
+  admin_table.column("Run at")
 }
 
 fn attempts_column() -> admin_table.Column {

@@ -419,7 +419,7 @@ fn log_id_column() -> admin_table.Column {
 }
 
 fn when_column() -> admin_table.Column {
-  admin_table.column("When")
+  admin_table.column("Created at")
 }
 
 fn action_column() -> admin_table.Column {

@@ -383,7 +383,7 @@ fn tier_column() -> admin_table.Column {
 }
 
 fn joined_column() -> admin_table.Column {
-  admin_table.fit_column("Joined")
+  admin_table.fit_column("Joined at")
 }
 
 fn open_column() -> admin_table.Column {
