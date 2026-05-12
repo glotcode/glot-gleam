@@ -343,23 +343,21 @@ fn periodic_job_view(
   let save_disabled = editor.state == Saving || !is_dirty(editor)
 
   html.div([attribute.class("admin-job-page__content")], [
-    html.div([attribute.class("admin-job-page__summary-grid")], [
-      summary_card(
+    html.div([attribute.class(admin_ui.summary_grid_class())], [
+      admin_ui.summary_card_with_class(
+        "admin-page__policy admin-periodic-jobs-page__summary-card",
         "Status",
         enabled_text(editor.saved.enabled),
-        schedule_status(editor),
       ),
-      summary_card(
+      admin_ui.summary_card_with_class(
+        "admin-page__policy admin-periodic-jobs-page__summary-card",
         "Next run",
         timestamp_helpers.relative_label(editor.metadata.next_run_at, now),
-        "Updated "
-          <> timestamp_helpers.relative_label(editor.metadata.updated_at, now),
       ),
-      summary_card(
+      admin_ui.summary_card_with_class(
+        "admin-page__policy admin-periodic-jobs-page__summary-card",
         "Cadence",
         editor.saved.interval_seconds <> "s",
-        "Created "
-          <> timestamp_helpers.relative_label(editor.metadata.created_at, now),
       ),
     ]),
     html.div([attribute.class("admin-page__group")], [
@@ -373,21 +371,27 @@ fn periodic_job_view(
           ),
         ]),
       ]),
-      html.div([attribute.class("admin-job-page__detail-grid")], [
-        detail_item("Periodic job ID", uuid.to_string(editor.id)),
-        detail_item("Type", editor.job_type),
-        detail_item("Enabled", enabled_text(editor.saved.enabled)),
-        detail_item(
+      html.div([attribute.class(admin_ui.detail_grid_class())], [
+        admin_ui.detail_item("Periodic job ID", uuid.to_string(editor.id)),
+        admin_ui.detail_item("Type", editor.job_type),
+        admin_ui.detail_item("Enabled", enabled_text(editor.saved.enabled)),
+        admin_ui.detail_item(
           "Next run at",
           format_timestamp(editor.metadata.next_run_at),
         ),
-        detail_item(
+        admin_ui.detail_item(
           "Last enqueued at",
           optional_timestamp(editor.metadata.last_enqueued_at),
         ),
-        detail_item("Created at", format_timestamp(editor.metadata.created_at)),
-        detail_item("Updated at", format_timestamp(editor.metadata.updated_at)),
-        detail_item(
+        admin_ui.detail_item(
+          "Created at",
+          format_timestamp(editor.metadata.created_at),
+        ),
+        admin_ui.detail_item(
+          "Updated at",
+          format_timestamp(editor.metadata.updated_at),
+        ),
+        admin_ui.detail_item(
           "Last enqueue error",
           optional_text(editor.metadata.last_enqueue_error),
         ),
@@ -813,32 +817,6 @@ fn textarea_input(
   )
 }
 
-fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
-  html.div(
-    [
-      attribute.class(
-        "admin-page__policy admin-periodic-jobs-page__summary-card",
-      ),
-    ],
-    [
-      html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.span([attribute.class("admin-job-page__summary-value")], [
-        html.text(value),
-      ]),
-      html.p([attribute.class("admin-job-page__meta")], [html.text(meta)]),
-    ],
-  )
-}
-
-fn detail_item(label: String, value: String) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
-    html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.span([attribute.class("admin-job-page__detail-value")], [
-      html.text(value),
-    ]),
-  ])
-}
-
 fn editor_from_response(
   periodic_job: periodic_job_dto.PeriodicJobResponse,
 ) -> PeriodicJobEditor {
@@ -960,13 +938,6 @@ fn enabled_text(value: Bool) -> String {
   case value {
     True -> "Enabled"
     False -> "Disabled"
-  }
-}
-
-fn schedule_status(editor: PeriodicJobEditor) -> String {
-  case editor.metadata.last_enqueue_error {
-    option.Some(_) -> "Last enqueue failed"
-    option.None -> "No recent enqueue error"
   }
 }
 

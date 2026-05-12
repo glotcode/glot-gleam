@@ -233,13 +233,19 @@ fn detail_view(model: Model) -> Element(Msg) {
       ])
     option.Some(snippet), _ ->
       html.div([attribute.class("admin-job-page__content")], [
-        html.div([attribute.class("admin-job-page__summary-grid")], [
-          summary_card("Title", snippet.title),
-          summary_card("Owner", snippet.user.username),
-          summary_card("Language", language.name(snippet.language)),
-          summary_card("Visibility", visibility_text(snippet.visibility)),
-          summary_card("Slug", snippet.slug),
-          summary_card("Files", int.to_string(list.length(snippet.files))),
+        html.div([attribute.class(admin_ui.summary_grid_class())], [
+          admin_ui.summary_card("Title", snippet.title),
+          admin_ui.summary_card("Owner", snippet.user.username),
+          admin_ui.summary_card("Language", language.name(snippet.language)),
+          admin_ui.summary_card(
+            "Visibility",
+            visibility_text(snippet.visibility),
+          ),
+          admin_ui.summary_card("Slug", snippet.slug),
+          admin_ui.summary_card(
+            "Files",
+            int.to_string(list.length(snippet.files)),
+          ),
         ]),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
@@ -252,15 +258,24 @@ fn detail_view(model: Model) -> Element(Msg) {
               ),
             ]),
           ]),
-          html.div([attribute.class("admin-job-page__detail-grid")], [
-            detail_item("Snippet ID", uuid.to_string(snippet.id)),
-            detail_item("Slug", snippet.slug),
-            detail_item("Owner", snippet.user.username),
-            detail_item("Owner ID", uuid.to_string(snippet.user.id)),
-            detail_item("Language", language.name(snippet.language)),
-            detail_item("Visibility", visibility_text(snippet.visibility)),
-            detail_item("Created at", format_timestamp(snippet.created_at)),
-            detail_item("Updated at", format_timestamp(snippet.updated_at)),
+          html.div([attribute.class(admin_ui.detail_grid_class())], [
+            admin_ui.detail_item("Snippet ID", uuid.to_string(snippet.id)),
+            admin_ui.detail_item("Slug", snippet.slug),
+            admin_ui.detail_item("Owner", snippet.user.username),
+            admin_ui.detail_item("Owner ID", uuid.to_string(snippet.user.id)),
+            admin_ui.detail_item("Language", language.name(snippet.language)),
+            admin_ui.detail_item(
+              "Visibility",
+              visibility_text(snippet.visibility),
+            ),
+            admin_ui.detail_item(
+              "Created at",
+              format_timestamp(snippet.created_at),
+            ),
+            admin_ui.detail_item(
+              "Updated at",
+              format_timestamp(snippet.updated_at),
+            ),
           ]),
         ]),
         html.div([attribute.class("admin-page__group")], [
@@ -274,18 +289,18 @@ fn detail_view(model: Model) -> Element(Msg) {
               ),
             ]),
           ]),
-          html.div([attribute.class("admin-job-page__detail-grid")], [
-            detail_item(
+          html.div([attribute.class(admin_ui.detail_grid_class())], [
+            admin_ui.detail_item(
               "Run command",
               optional_run_command(snippet.run_instructions),
             ),
-            detail_item(
+            admin_ui.detail_item(
               "Build commands",
               build_commands_text(snippet.run_instructions),
             ),
           ]),
           html.div([attribute.class("admin-page__policy")], [
-            html.span([attribute.class("admin-job-page__eyebrow")], [
+            html.span([attribute.class("admin-info-label")], [
               html.text("stdin"),
             ]),
             html.pre([attribute.class("admin-job-page__code-block")], [
@@ -315,7 +330,7 @@ fn detail_view(model: Model) -> Element(Msg) {
 fn file_view(file: snippet_model.File) -> Element(Msg) {
   html.div([attribute.class("admin-page__policy admin-snippet-page__file")], [
     html.div([attribute.class("admin-snippet-page__file-header")], [
-      html.span([attribute.class("admin-job-page__eyebrow")], [
+      html.span([attribute.class("admin-info-label")], [
         html.text("File"),
       ]),
       html.strong([attribute.class("admin-snippet-page__file-name")], [
@@ -380,27 +395,6 @@ fn delete_confirmation_dialog_children(
     ]
     option.None -> []
   }
-}
-
-fn summary_card(title: String, value: String) -> Element(Msg) {
-  html.article(
-    [attribute.class("admin-page__policy admin-job-page__summary-card")],
-    [
-      html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.strong([attribute.class("admin-job-page__summary-value")], [
-        html.text(value),
-      ]),
-    ],
-  )
-}
-
-fn detail_item(label: String, value: String) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
-    html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.span([attribute.class("admin-job-page__detail-value")], [
-      html.text(value),
-    ]),
-  ])
 }
 
 fn optional_run_command(

@@ -419,10 +419,13 @@ fn user_view(
   status: Status,
 ) -> Element(Msg) {
   html.div([attribute.class("admin-job-page__content")], [
-    html.div([attribute.class("admin-job-page__summary-grid")], [
-      summary_card("Role", role_text(editor.draft.role)),
-      summary_card("Access", account_state_text(editor.draft.account_state)),
-      summary_card(
+    html.div([attribute.class(admin_ui.summary_grid_class())], [
+      admin_ui.summary_card("Role", role_text(editor.draft.role)),
+      admin_ui.summary_card(
+        "Access",
+        account_state_text(editor.draft.account_state),
+      ),
+      admin_ui.summary_card(
         "Last login",
         timestamp_helpers.relative_label(editor.metadata.last_login_at, now),
       ),
@@ -436,20 +439,29 @@ fn user_view(
           html.text("Identifiers and read-only account attributes."),
         ]),
       ]),
-      html.div([attribute.class("admin-job-page__detail-grid")], [
-        detail_item("User ID", uuid.to_string(editor.id)),
-        detail_item("Account ID", uuid.to_string(editor.account_id)),
-        detail_item("Email", email_address_model.to_string(editor.email)),
-        detail_item(
+      html.div([attribute.class(admin_ui.detail_grid_class())], [
+        admin_ui.detail_item("User ID", uuid.to_string(editor.id)),
+        admin_ui.detail_item("Account ID", uuid.to_string(editor.account_id)),
+        admin_ui.detail_item(
+          "Email",
+          email_address_model.to_string(editor.email),
+        ),
+        admin_ui.detail_item(
           "Delete job ID",
           optional_uuid(editor.metadata.delete_job_id),
         ),
-        detail_item(
+        admin_ui.detail_item(
           "Delete scheduled at",
           optional_timestamp(editor.metadata.delete_scheduled_at),
         ),
-        detail_item("Created at", format_timestamp(editor.metadata.created_at)),
-        detail_item("Updated at", format_timestamp(editor.metadata.updated_at)),
+        admin_ui.detail_item(
+          "Created at",
+          format_timestamp(editor.metadata.created_at),
+        ),
+        admin_ui.detail_item(
+          "Updated at",
+          format_timestamp(editor.metadata.updated_at),
+        ),
       ]),
     ]),
     html.div([attribute.class("admin-page__group")], [
@@ -692,27 +704,6 @@ fn account_state_reason_value(
 
 fn is_dirty(editor: UserEditor) -> Bool {
   editor.saved != editor.draft
-}
-
-fn summary_card(title: String, value: String) -> Element(Msg) {
-  html.article(
-    [attribute.class("admin-page__policy admin-job-page__summary-card")],
-    [
-      html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.strong([attribute.class("admin-job-page__summary-value")], [
-        html.text(value),
-      ]),
-    ],
-  )
-}
-
-fn detail_item(label: String, value: String) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
-    html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.span([attribute.class("admin-job-page__detail-value")], [
-      html.text(value),
-    ]),
-  ])
 }
 
 fn text_input(

@@ -126,25 +126,25 @@ fn summary_view(model: Model) -> Element(Msg) {
     |> list.length
 
   html.div([attribute.class("admin-periodic-jobs-page__summary-grid")], [
-    summary_card(
+    admin_ui.summary_card_with_class(
+      "admin-page__policy admin-periodic-jobs-page__summary-card",
       "Definitions",
       int.to_string(total_count),
-      "Total configured jobs",
     ),
-    summary_card(
+    admin_ui.summary_card_with_class(
+      "admin-page__policy admin-periodic-jobs-page__summary-card",
       "Enabled",
       int.to_string(enabled_count),
-      "Currently enqueueable",
     ),
-    summary_card(
+    admin_ui.summary_card_with_class(
+      "admin-page__policy admin-periodic-jobs-page__summary-card",
       "Disabled",
       int.to_string(disabled_count),
-      "Paused definitions",
     ),
-    summary_card(
+    admin_ui.summary_card_with_class(
+      "admin-page__policy admin-periodic-jobs-page__summary-card",
       "Errors",
       int.to_string(failing_count),
-      "Last enqueue attempt failed",
     ),
   ])
 }
@@ -265,23 +265,6 @@ fn optional_relative_timestamp(
     option.Some(timestamp) -> timestamp_helpers.relative_label(timestamp, now)
     option.None -> "Never"
   }
-}
-
-fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
-  html.div(
-    [
-      attribute.class(
-        "admin-page__policy admin-periodic-jobs-page__summary-card",
-      ),
-    ],
-    [
-      html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.span([attribute.class("admin-job-page__summary-value")], [
-        html.text(value),
-      ]),
-      html.p([attribute.class("admin-job-page__meta")], [html.text(meta)]),
-    ],
-  )
 }
 
 fn job_type_label(job_type: String) -> String {

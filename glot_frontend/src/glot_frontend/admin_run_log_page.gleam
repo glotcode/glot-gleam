@@ -4,6 +4,7 @@ import gleam/time/timestamp
 import glot_core/admin/run_log_dto
 import glot_core/language
 import glot_core/run_log_model
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
 import lustre/attribute
@@ -125,31 +126,22 @@ fn detail_view(model: Model) -> Element(Msg) {
         html.div(
           [
             attribute.class(
-              "admin-job-page__summary-grid admin-job-log-page__summary-grid",
+              admin_ui.summary_grid_class()
+              <> " admin-job-log-page__summary-grid",
             ),
           ],
           [
-            summary_card("Log ID", uuid.to_string(log.id), "Retained run entry"),
-            summary_card(
-              "Request ID",
-              uuid.to_string(log.request_id),
-              "Originating request",
+            admin_ui.summary_card("Log ID", uuid.to_string(log.id)),
+            admin_ui.summary_card("Request ID", uuid.to_string(log.request_id)),
+            admin_ui.summary_card("Language", language.name(log.language)),
+            admin_ui.summary_card("Outcome", outcome_text(log.outcome)),
+            admin_ui.summary_card(
+              "Created at",
+              format_timestamp(log.created_at),
             ),
-            summary_card(
-              "Language",
-              language.name(log.language),
-              "Runtime language",
-            ),
-            summary_card(
-              "Outcome",
-              outcome_text(log.outcome),
-              "Execution state",
-            ),
-            summary_card("Created at", format_timestamp(log.created_at), "UTC"),
-            summary_card(
+            admin_ui.summary_card(
               "Duration",
               optional_duration(log.duration_ns),
-              "Runtime",
             ),
           ],
         ),
@@ -164,15 +156,15 @@ fn detail_view(model: Model) -> Element(Msg) {
               ),
             ]),
           ]),
-          html.div([attribute.class("admin-job-page__detail-grid")], [
-            detail_item("Log ID", uuid.to_string(log.id)),
-            detail_item("Request ID", uuid.to_string(log.request_id)),
-            detail_item("Session ID", optional_uuid(log.session_id)),
-            detail_item("User ID", optional_uuid(log.user_id)),
-            detail_item("Language", language.name(log.language)),
-            detail_item("Outcome", outcome_text(log.outcome)),
-            detail_item("Created at", format_timestamp(log.created_at)),
-            detail_item("Duration", optional_duration(log.duration_ns)),
+          html.div([attribute.class(admin_ui.detail_grid_class())], [
+            admin_ui.detail_item("Log ID", uuid.to_string(log.id)),
+            admin_ui.detail_item("Request ID", uuid.to_string(log.request_id)),
+            admin_ui.detail_item("Session ID", optional_uuid(log.session_id)),
+            admin_ui.detail_item("User ID", optional_uuid(log.user_id)),
+            admin_ui.detail_item("Language", language.name(log.language)),
+            admin_ui.detail_item("Outcome", outcome_text(log.outcome)),
+            admin_ui.detail_item("Created at", format_timestamp(log.created_at)),
+            admin_ui.detail_item("Duration", optional_duration(log.duration_ns)),
           ]),
         ]),
         html.div([attribute.class("admin-page__group")], [
@@ -194,28 +186,6 @@ fn detail_view(model: Model) -> Element(Msg) {
         ]),
       ])
   }
-}
-
-fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
-  html.article(
-    [attribute.class("admin-page__policy admin-job-page__summary-card")],
-    [
-      html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.strong([attribute.class("admin-job-page__summary-value")], [
-        html.text(value),
-      ]),
-      html.span([attribute.class("admin-job-page__meta")], [html.text(meta)]),
-    ],
-  )
-}
-
-fn detail_item(label: String, value: String) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
-    html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.span([attribute.class("admin-job-page__detail-value")], [
-      html.text(value),
-    ]),
-  ])
 }
 
 fn format_timestamp(value) -> String {

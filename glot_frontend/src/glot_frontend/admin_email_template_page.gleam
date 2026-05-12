@@ -254,13 +254,22 @@ fn detail_view(model: Model) -> Element(Msg) {
       ])
     option.Some(template), _ ->
       html.div([attribute.class("admin-job-page__content")], [
-        html.div([attribute.class("admin-job-page__summary-grid")], [
-          summary_card("Name", template.name),
-          summary_card(
+        html.div([attribute.class(admin_ui.summary_grid_class())], [
+          admin_ui.summary_card_with_class(
+            "admin-page__policy admin-periodic-jobs-page__summary-card",
+            "Name",
+            template.name,
+          ),
+          admin_ui.summary_card_with_class(
+            "admin-page__policy admin-periodic-jobs-page__summary-card",
             "Supported tokens",
             tokens_text(template.supported_tokens),
           ),
-          summary_card("Updated at", format_timestamp(template.updated_at)),
+          admin_ui.summary_card_with_class(
+            "admin-page__policy admin-periodic-jobs-page__summary-card",
+            "Updated at",
+            format_timestamp(template.updated_at),
+          ),
         ]),
         html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
@@ -273,13 +282,16 @@ fn detail_view(model: Model) -> Element(Msg) {
               ),
             ]),
           ]),
-          html.div([attribute.class("admin-job-page__detail-grid")], [
-            detail_item("Template name", template.name),
-            detail_item(
+          html.div([attribute.class(admin_ui.detail_grid_class())], [
+            admin_ui.detail_item("Template name", template.name),
+            admin_ui.detail_item(
               "Supported tokens",
               tokens_text(template.supported_tokens),
             ),
-            detail_item("Updated at", format_timestamp(template.updated_at)),
+            admin_ui.detail_item(
+              "Updated at",
+              format_timestamp(template.updated_at),
+            ),
           ]),
         ]),
         html.div([attribute.class("admin-page__group")], [
@@ -418,31 +430,6 @@ fn plain_status(message: String) -> Element(Msg) {
 fn error_status(message: String) -> Element(Msg) {
   html.p([attribute.class("admin-page__status admin-page__status--error")], [
     html.text(message),
-  ])
-}
-
-fn summary_card(title: String, value: String) -> Element(Msg) {
-  html.div(
-    [
-      attribute.class(
-        "admin-page__policy admin-periodic-jobs-page__summary-card",
-      ),
-    ],
-    [
-      html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.span([attribute.class("admin-job-page__summary-value")], [
-        html.text(value),
-      ]),
-    ],
-  )
-}
-
-fn detail_item(label: String, value: String) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
-    html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.span([attribute.class("admin-job-page__detail-value")], [
-      html.text(value),
-    ]),
   ])
 }
 

@@ -4,6 +4,7 @@ import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/job_log_dto
 import glot_frontend/admin_effects_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
 import glot_frontend/json_helpers
@@ -126,36 +127,23 @@ fn detail_view(model: Model) -> Element(Msg) {
         html.div(
           [
             attribute.class(
-              "admin-job-page__summary-grid admin-job-log-page__summary-grid",
+              admin_ui.summary_grid_class()
+              <> " admin-job-log-page__summary-grid",
             ),
           ],
           [
-            summary_card(
-              "Log ID",
-              uuid.to_string(log.id),
-              "Retained job log entry",
+            admin_ui.summary_card("Log ID", uuid.to_string(log.id)),
+            admin_ui.summary_card("Job ID", uuid.to_string(log.job_id)),
+            admin_ui.summary_card("Request ID", optional_uuid(log.request_id)),
+            admin_ui.summary_card("Job type", log.job_type),
+            admin_ui.summary_card("Attempt", int.to_string(log.attempt)),
+            admin_ui.summary_card(
+              "Created at",
+              format_timestamp(log.created_at),
             ),
-            summary_card(
-              "Job ID",
-              uuid.to_string(log.job_id),
-              "Originating job",
-            ),
-            summary_card(
-              "Request ID",
-              optional_uuid(log.request_id),
-              "Linked request",
-            ),
-            summary_card("Job type", log.job_type, "Execution kind"),
-            summary_card(
-              "Attempt",
-              int.to_string(log.attempt),
-              "Attempt number",
-            ),
-            summary_card("Created at", format_timestamp(log.created_at), "UTC"),
-            summary_card(
+            admin_ui.summary_card(
               "Duration",
               duration_label.duration_in_ms_label(log.duration_ns),
-              "Persisted runtime",
             ),
           ],
         ),
@@ -180,19 +168,6 @@ fn detail_view(model: Model) -> Element(Msg) {
         ]),
       ])
   }
-}
-
-fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
-  html.article(
-    [attribute.class("admin-page__policy admin-job-page__summary-card")],
-    [
-      html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.strong([attribute.class("admin-job-page__summary-value")], [
-        html.text(value),
-      ]),
-      html.span([attribute.class("admin-job-page__meta")], [html.text(meta)]),
-    ],
-  )
 }
 
 fn raw_block(title: String, value: option.Option(String)) -> Element(Msg) {

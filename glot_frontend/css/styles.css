@@ -767,26 +767,25 @@ a {
   color: #8a3127;
 }
 
-.admin-job-page__summary-grid,
-.admin-job-page__detail-grid {
+.admin-info-grid {
   display: grid;
   gap: 0.8rem;
 }
 
-.admin-job-page__summary-grid {
+.admin-info-grid--summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.admin-job-page__detail-grid {
+.admin-info-grid--detail {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.admin-job-page__summary-card,
-.admin-job-page__detail-item {
+.admin-info-card,
+.admin-info-item {
   gap: 0.35rem;
 }
 
-.admin-job-page__eyebrow {
+.admin-info-label {
   color: #66789f;
   font-size: 0.78rem;
   font-weight: 700;
@@ -794,18 +793,16 @@ a {
   text-transform: uppercase;
 }
 
-.admin-job-page__summary-value,
-.admin-job-page__detail-value {
+.admin-info-value {
   color: #1f2c45;
   overflow-wrap: anywhere;
 }
 
-.admin-job-page__summary-value {
+.admin-info-value--summary {
   font-size: 1.2rem;
   line-height: 1.2;
 }
 
-.admin-job-page__meta,
 .admin-job-page__body-text {
   margin: 0;
   color: #58667f;
@@ -896,8 +893,8 @@ a {
   .admin-periodic-jobs-page__summary-grid,
   .admin-periodic-jobs-page__meta-grid,
   .admin-job-logs-page__field-grid,
-  .admin-job-page__summary-grid,
-  .admin-job-page__detail-grid,
+  .admin-info-grid--summary,
+  .admin-info-grid--detail,
   .admin-request-log-page__detail-grid {
     grid-template-columns: 1fr;
   }

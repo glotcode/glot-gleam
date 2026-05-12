@@ -49,3 +49,51 @@ pub fn badge_class(tone: BadgeTone) -> String {
     SuccessTone -> "admin-badge admin-badge--success"
   }
 }
+
+pub fn summary_grid_class() -> String {
+  "admin-info-grid admin-info-grid--summary"
+}
+
+pub fn detail_grid_class() -> String {
+  "admin-info-grid admin-info-grid--detail"
+}
+
+pub fn summary_card(title title: String, value value: String) -> Element(msg) {
+  summary_card_with_class("admin-page__policy", title, value)
+}
+
+pub fn summary_card_with_class(
+  class_name: String,
+  title: String,
+  value: String,
+) -> Element(msg) {
+  html.article([attribute.class(class_name <> " admin-info-card")], [
+    html.span([attribute.class("admin-info-label")], [html.text(title)]),
+    html.strong(
+      [attribute.class("admin-info-value admin-info-value--summary")],
+      [
+        html.text(value),
+      ],
+    ),
+  ])
+}
+
+pub fn detail_item(label: String, value: String) -> Element(msg) {
+  html.div([attribute.class("admin-page__policy admin-info-item")], [
+    html.span([attribute.class("admin-info-label")], [html.text(label)]),
+    html.span([attribute.class("admin-info-value")], [html.text(value)]),
+  ])
+}
+
+pub fn detail_link_item(
+  label: String,
+  value: String,
+  extra_attributes: List(attribute.Attribute(msg)),
+) -> Element(msg) {
+  html.div([attribute.class("admin-page__policy admin-info-item")], [
+    html.span([attribute.class("admin-info-label")], [html.text(label)]),
+    html.a([attribute.class("admin-info-value"), ..extra_attributes], [
+      html.text(value),
+    ]),
+  ])
+}

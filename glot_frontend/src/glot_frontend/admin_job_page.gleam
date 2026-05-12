@@ -407,23 +407,17 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
       ])
     option.Some(job), _ ->
       html.div([attribute.class("admin-job-page__content")], [
-        html.div([attribute.class("admin-job-page__summary-grid")], [
-          summary_card(
-            "Status",
-            status_text(job),
-            type_group_text(job.job_type),
-          ),
-          summary_card(
+        html.div([attribute.class(admin_ui.summary_grid_class())], [
+          admin_ui.summary_card("Status", status_text(job)),
+          admin_ui.summary_card(
             "Scheduled",
             timestamp_helpers.relative_label(job.run_at, now),
-            "Updated " <> timestamp_helpers.relative_label(job.updated_at, now),
           ),
-          summary_card(
+          admin_ui.summary_card(
             "Attempts",
             int.to_string(job.attempts)
               <> " / "
               <> int.to_string(job.max_attempts),
-            "Timeout " <> int.to_string(job.timeout_seconds) <> "s",
           ),
         ]),
         html.div([attribute.class("admin-page__group")], [
@@ -437,18 +431,24 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
               ),
             ]),
           ]),
-          html.div([attribute.class("admin-job-page__detail-grid")], [
-            detail_item("Job ID", uuid.to_string(job.id)),
-            detail_item("Request ID", optional_uuid(job.request_id)),
+          html.div([attribute.class(admin_ui.detail_grid_class())], [
+            admin_ui.detail_item("Job ID", uuid.to_string(job.id)),
+            admin_ui.detail_item("Request ID", optional_uuid(job.request_id)),
             periodic_job_detail_item(job.periodic_job_id),
-            detail_item("Type", job.job_type),
-            detail_item("Status", status_text(job)),
-            detail_item("Overdue", bool_text(job.overdue)),
-            detail_item("Run at", format_timestamp(job.run_at)),
-            detail_item("Started at", optional_timestamp(job.started_at)),
-            detail_item("Completed at", optional_timestamp(job.completed_at)),
-            detail_item("Created at", format_timestamp(job.created_at)),
-            detail_item("Updated at", format_timestamp(job.updated_at)),
+            admin_ui.detail_item("Type", job.job_type),
+            admin_ui.detail_item("Status", status_text(job)),
+            admin_ui.detail_item("Overdue", bool_text(job.overdue)),
+            admin_ui.detail_item("Run at", format_timestamp(job.run_at)),
+            admin_ui.detail_item(
+              "Started at",
+              optional_timestamp(job.started_at),
+            ),
+            admin_ui.detail_item(
+              "Completed at",
+              optional_timestamp(job.completed_at),
+            ),
+            admin_ui.detail_item("Created at", format_timestamp(job.created_at)),
+            admin_ui.detail_item("Updated at", format_timestamp(job.updated_at)),
           ]),
         ]),
         job_logs_group(model, now),
@@ -660,43 +660,12 @@ fn get_job_logs(
   )
 }
 
-fn summary_card(title: String, value: String, meta: String) -> Element(Msg) {
-  html.article(
-    [attribute.class("admin-page__policy admin-job-page__summary-card")],
-    [
-      html.span([attribute.class("admin-job-page__eyebrow")], [html.text(title)]),
-      html.strong([attribute.class("admin-job-page__summary-value")], [
-        html.text(value),
-      ]),
-      html.span([attribute.class("admin-job-page__meta")], [html.text(meta)]),
-    ],
-  )
-}
-
-fn detail_item(label: String, value: String) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
-    html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.span([attribute.class("admin-job-page__detail-value")], [
-      html.text(value),
-    ]),
-  ])
-}
-
 fn linked_detail_item(
   label: String,
   value: String,
   destination: route.Route,
 ) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy admin-job-page__detail-item")], [
-    html.span([attribute.class("admin-job-page__eyebrow")], [html.text(label)]),
-    html.a(
-      [
-        attribute.class("admin-job-page__detail-value"),
-        route.href(destination),
-      ],
-      [html.text(value)],
-    ),
-  ])
+  admin_ui.detail_link_item(label, value, [route.href(destination)])
 }
 
 fn periodic_job_detail_item(value: option.Option(uuid.Uuid)) -> Element(Msg) {
@@ -707,7 +676,7 @@ fn periodic_job_detail_item(value: option.Option(uuid.Uuid)) -> Element(Msg) {
         uuid.to_string(id),
         route.AdminPeriodicJob(id),
       )
-    option.None -> detail_item("Periodic job ID", "None")
+    option.None -> admin_ui.detail_item("Periodic job ID", "None")
   }
 }
 
@@ -762,9 +731,12 @@ fn create_job_dialog_form(editor: CreateJobEditor) -> Element(Msg) {
           ),
         ]),
         html.div([attribute.class("admin-page__modal-grid")], [
-          detail_item("Source job ID", uuid.to_string(editor.source_job_id)),
-          detail_item("Job type", editor.draft.job_type),
-          detail_item(
+          admin_ui.detail_item(
+            "Source job ID",
+            uuid.to_string(editor.source_job_id),
+          ),
+          admin_ui.detail_item("Job type", editor.draft.job_type),
+          admin_ui.detail_item(
             "Periodic job ID",
             optional_uuid(editor.draft.periodic_job_id),
           ),
@@ -1104,14 +1076,6 @@ fn status_text(job: job_dto.JobDetailResponse) -> String {
     "failed", _ -> "Failed"
     "done", _ -> "Done"
     value, _ -> value
-  }
-}
-
-fn type_group_text(job_type: String) -> String {
-  case job_type {
-    "send_email" | "delete_account" -> "User lifecycle"
-    "aggregate_metrics" -> "Infrastructure"
-    _ -> "Cleanup"
   }
 }
 
