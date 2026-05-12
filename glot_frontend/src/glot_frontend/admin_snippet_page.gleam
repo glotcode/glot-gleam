@@ -339,36 +339,27 @@ fn delete_confirmation_dialog_children(
 ) -> List(Element(Msg)) {
   case pending_delete {
     option.Some(snippet) -> [
-      html.form([attribute.class("app-dialog__form")], [
-        html.div([attribute.class("app-dialog__section")], [
-          html.p([attribute.class("app-dialog__label")], [
-            html.text("Delete snippet"),
-          ]),
-          html.p([attribute.class("app-dialog__copy")], [
+      admin_ui.dialog_form([], [
+        admin_ui.dialog_intro("Delete snippet", [
             html.text("Delete "),
             html.code([], [html.text(snippet.title)]),
             html.text("? This action cannot be undone."),
-          ]),
         ]),
-        html.div([attribute.class("app-dialog__actions")], [
-          html.button(
+        admin_ui.dialog_actions([
+          admin_ui.dialog_cancel_button(
             [
               attribute.type_("button"),
               attribute.autofocus(True),
-              attribute.class(
-                "app-dialog__button app-dialog__button--secondary",
-              ),
               event.on_click(DeleteCancelled),
             ],
-            [html.text("Cancel")],
+            "Cancel",
           ),
-          html.button(
+          admin_ui.dialog_danger_button(
             [
               attribute.type_("button"),
-              attribute.class("app-dialog__button app-dialog__button--danger"),
               event.on_click(DeleteConfirmed),
             ],
-            [html.text("Delete snippet")],
+            "Delete snippet",
           ),
         ]),
       ]),

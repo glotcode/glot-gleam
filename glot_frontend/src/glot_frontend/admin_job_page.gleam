@@ -616,33 +616,16 @@ fn create_job_dialog(model: Model) -> Element(Msg) {
 }
 
 fn create_job_dialog_form(editor: CreateJobEditor) -> Element(Msg) {
-  html.form(
+  admin_ui.dialog_form(
+    [event.on_submit(fn(_) { CreateJobSubmitted })],
     [
-      attribute.class("app-dialog__form"),
-      event.on_submit(fn(_) { CreateJobSubmitted }),
-    ],
-    [
-      html.div([attribute.class("app-dialog__section")], [
-        html.div([attribute.class("admin-page__dialog-header")], [
-          html.div([], [
-            html.p([attribute.class("app-dialog__label")], [
-              html.text("Start new job"),
-            ]),
-            html.p([attribute.class("app-dialog__copy")], [
-              html.text(
-                "Seeded from the selected job, but this creates a fresh queued job with the values below.",
-              ),
-            ]),
-          ]),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("admin-page__dialog-close"),
-              event.on_click(CreateJobCancelled),
-            ],
-            [html.text("Close")],
-          ),
-        ]),
+      admin_ui.dialog_section([
+        admin_ui.dialog_header_with_close(
+          title: "Start new job",
+          copy: "Seeded from the selected job, but this creates a fresh queued job with the values below.",
+          close_attributes: [event.on_click(CreateJobCancelled)],
+          close_label: "Close",
+        ),
         html.div([attribute.class("admin-page__modal-grid")], [
           admin_ui.detail_item(
             "Source job ID",
@@ -690,24 +673,22 @@ fn create_job_dialog_form(editor: CreateJobEditor) -> Element(Msg) {
           value: editor.draft.payload,
           on_input: CreateJobPayloadChanged,
         ),
-        create_job_status(editor.state),
+        admin_ui.form_status_block(create_job_status(editor.state)),
       ]),
-      html.div([attribute.class("app-dialog__actions")], [
-        html.button(
+      admin_ui.dialog_actions([
+        admin_ui.dialog_cancel_button(
           [
             attribute.type_("button"),
-            attribute.class("app-dialog__button app-dialog__button--secondary"),
             event.on_click(CreateJobCancelled),
           ],
-          [html.text("Cancel")],
+          "Cancel",
         ),
-        html.button(
+        admin_ui.dialog_primary_button(
           [
             attribute.type_("submit"),
-            attribute.class("app-dialog__button"),
             attribute.disabled(editor.state == CreateJobSaving),
           ],
-          [html.text(create_job_submit_text(editor.state))],
+          create_job_submit_text(editor.state),
         ),
       ]),
     ],

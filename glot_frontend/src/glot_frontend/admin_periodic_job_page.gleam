@@ -440,8 +440,8 @@ fn periodic_job_view(
           ),
         ]),
         html.div([attribute.class("admin-page__policy-footer")], [
-          section_message(editor),
-          html.div([attribute.class("admin-page__actions")], [
+          admin_ui.form_status_block(section_message(editor)),
+          admin_ui.form_actions([
             admin_ui.secondary_button(
               [
                 attribute.type_("button"),
@@ -505,14 +505,8 @@ fn recent_jobs_group(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
 fn recent_jobs_status_view(status: Status) -> Element(Msg) {
   case status {
     NotLoaded | Ready -> html.div([], [])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading recent jobs..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    Loading -> admin_ui.status("Loading recent jobs...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 
@@ -639,14 +633,8 @@ fn update_editor_model(
 fn status_banner(status: Status) -> Element(Msg) {
   case status {
     NotLoaded | Ready -> html.div([], [])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading periodic job..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    Loading -> admin_ui.status("Loading periodic job...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 

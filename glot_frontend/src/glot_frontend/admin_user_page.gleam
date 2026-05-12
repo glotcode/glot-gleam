@@ -480,8 +480,8 @@ fn edit_form(editor: UserEditor, is_deleting: Bool) -> Element(Msg) {
           on_input: AccountStateReasonChanged,
         ),
       ]),
-      save_status(editor.state),
-      html.div([attribute.class("admin-page__actions")], [
+      admin_ui.form_status_block(save_status(editor.state)),
+      admin_ui.form_actions([
         admin_ui.secondary_button(
           [
             attribute.type_("button"),
@@ -521,42 +521,33 @@ fn delete_confirmation_dialog_children(
 ) -> List(Element(Msg)) {
   case pending_delete {
     option.Some(editor) -> [
-      html.form([attribute.class("app-dialog__form")], [
-        html.div([attribute.class("app-dialog__section")], [
-          html.p([attribute.class("app-dialog__label")], [
-            html.text("Delete account"),
+      admin_ui.dialog_form([], [
+        admin_ui.dialog_intro("Delete account", [
+          html.text("Delete "),
+          html.code([], [html.text(editor.draft.username)]),
+          html.text(" and immediately delete the account at "),
+          html.code([], [
+            html.text(email_address_model.to_string(editor.email)),
           ]),
-          html.p([attribute.class("app-dialog__copy")], [
-            html.text("Delete "),
-            html.code([], [html.text(editor.draft.username)]),
-            html.text(" and immediately delete the account at "),
-            html.code([], [
-              html.text(email_address_model.to_string(editor.email)),
-            ]),
-            html.text(
-              "? This also deletes snippets, sessions, and any scheduled account deletion job. This action cannot be undone.",
-            ),
-          ]),
+          html.text(
+            "? This also deletes snippets, sessions, and any scheduled account deletion job. This action cannot be undone.",
+          ),
         ]),
-        html.div([attribute.class("app-dialog__actions")], [
-          html.button(
+        admin_ui.dialog_actions([
+          admin_ui.dialog_cancel_button(
             [
               attribute.type_("button"),
               attribute.autofocus(True),
-              attribute.class(
-                "app-dialog__button app-dialog__button--secondary",
-              ),
               event.on_click(DeleteCancelled),
             ],
-            [html.text("Cancel")],
+            "Cancel",
           ),
-          html.button(
+          admin_ui.dialog_danger_button(
             [
               attribute.type_("button"),
-              attribute.class("app-dialog__button app-dialog__button--danger"),
               event.on_click(DeleteConfirmed),
             ],
-            [html.text("Delete account")],
+            "Delete account",
           ),
         ]),
       ]),

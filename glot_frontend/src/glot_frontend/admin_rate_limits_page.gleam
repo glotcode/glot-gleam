@@ -380,33 +380,16 @@ fn edit_dialog_form(
 ) -> Element(Msg) {
   let active_fields = tab_fields(policy.draft_tabs, active_tab)
 
-  html.form(
+  admin_ui.dialog_form(
+    [event.on_submit(fn(_) { SaveClicked(action) })],
     [
-      attribute.class("app-dialog__form"),
-      event.on_submit(fn(_) { SaveClicked(action) }),
-    ],
-    [
-      html.div([attribute.class("app-dialog__section")], [
-        html.div([attribute.class("admin-page__dialog-header")], [
-          html.div([], [
-            html.p([attribute.class("app-dialog__label")], [
-              html.text(action_label(action)),
-            ]),
-            html.p([attribute.class("app-dialog__copy")], [
-              html.text(
-                "Leave an input empty to remove that limit for the selected tab.",
-              ),
-            ]),
-          ]),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("admin-page__dialog-close"),
-              event.on_click(CancelClicked),
-            ],
-            [html.text("Close")],
-          ),
-        ]),
+      admin_ui.dialog_section([
+        admin_ui.dialog_header_with_close(
+          title: action_label(action),
+          copy: "Leave an input empty to remove that limit for the selected tab.",
+          close_attributes: [event.on_click(CancelClicked)],
+          close_label: "Close",
+        ),
         tab_buttons(action, active_tab),
         html.div([attribute.class("admin-page__modal-grid")], [
           unit_input(
@@ -438,24 +421,22 @@ fn edit_dialog_form(
             active_fields.day,
           ),
         ]),
-        modal_status(policy),
+        admin_ui.form_status_block(modal_status(policy)),
       ]),
-      html.div([attribute.class("app-dialog__actions")], [
-        html.button(
+      admin_ui.dialog_actions([
+        admin_ui.dialog_cancel_button(
           [
             attribute.type_("button"),
-            attribute.class("app-dialog__button app-dialog__button--secondary"),
             event.on_click(CancelClicked),
           ],
-          [html.text("Cancel")],
+          "Cancel",
         ),
-        html.button(
+        admin_ui.dialog_primary_button(
           [
             attribute.type_("submit"),
-            attribute.class("app-dialog__button"),
             attribute.disabled(mutation.is_saving(policy.state)),
           ],
-          [html.text("Save")],
+          "Save",
         ),
       ]),
     ],

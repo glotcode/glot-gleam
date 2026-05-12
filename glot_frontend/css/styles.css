@@ -345,6 +345,11 @@ a {
   font: inherit;
 }
 
+.admin-page__form-status {
+  display: grid;
+  gap: 0.4rem;
+}
+
 .admin-page__tab-row {
   display: flex;
   flex-wrap: wrap;
