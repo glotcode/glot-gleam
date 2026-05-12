@@ -7,6 +7,7 @@ import glot_core/run_log_model
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
+import glot_frontend/loadable
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -14,18 +15,7 @@ import lustre/element/html
 import youid/uuid
 
 pub type Model {
-  Model(
-    id: uuid.Uuid,
-    log: option.Option(run_log_dto.RunLogDetailResponse),
-    status: Status,
-  )
-}
-
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
-  LoadError(String)
+  Model(id: uuid.Uuid, log: loadable.Loadable(run_log_dto.RunLogDetailResponse))
 }
 
 pub type Msg {
@@ -33,19 +23,21 @@ pub type Msg {
 }
 
 pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
-  #(Model(id: id, log: option.None, status: NotLoaded), effect.none())
+  #(Model(id: id, log: loadable.NotLoaded), effect.none())
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> #(
-      Model(..model, status: Loading),
-      api.get_admin_run_log(
-        run_log_dto.GetRunLogRequest(id: model.id),
-        LogLoaded,
-      ),
+  case loadable.ensure_loaded(
+    model.log,
+    api.get_admin_run_log(
+      run_log_dto.GetRunLogRequest(id: model.id),
+      LogLoaded,
+    ),
+  ) {
+    #(next_log, next_effect) -> #(
+      Model(..model, log: next_log),
+      next_effect,
     )
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
   }
 }
 
@@ -54,15 +46,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     LogLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> #(
-          Model(..model, log: option.Some(response.log), status: Ready),
+          Model(..model, log: loadable.Loaded(response.log)),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, log: loadable.LoadError(error.message)),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load run log.")),
+          Model(..model, log: loadable.LoadError("Could not load run log.")),
           effect.none(),
         )
       }
@@ -81,18 +73,21 @@ pub fn view(model: Model) -> Element(Msg) {
 }
 
 fn status_view(model: Model) -> Element(Msg) {
-  case model.status {
-    NotLoaded | Ready -> admin_ui.status("")
-    Loading -> admin_ui.status("Loading run log...")
-    LoadError(message) -> admin_ui.error_status(message)
-  }
+  loadable.fold(
+    model.log,
+    admin_ui.status(""),
+    admin_ui.status("Loading run log..."),
+    fn(_) { admin_ui.status("") },
+    admin_ui.error_status,
+  )
 }
 
 fn detail_view(model: Model) -> Element(Msg) {
-  case model.log, model.status {
-    option.None, Loading -> admin_ui.empty_state("Loading run log...")
-    option.None, _ -> admin_ui.empty_state("This run log could not be loaded.")
-    option.Some(log), _ ->
+  loadable.fold(
+    model.log,
+    admin_ui.empty_state("This run log could not be loaded."),
+    admin_ui.empty_state("Loading run log..."),
+    fn(log) {
       html.div([attribute.class("admin-job-page__content")], [
         html.div(
           [
@@ -140,7 +135,9 @@ fn detail_view(model: Model) -> Element(Msg) {
           ]),
         ),
       ])
-  }
+    },
+    fn(_) { admin_ui.empty_state("This run log could not be loaded.") },
+  )
 }
 
 fn format_timestamp(value) -> String {

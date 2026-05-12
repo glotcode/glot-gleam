@@ -13,6 +13,7 @@ import glot_core/snippet/snippet_model
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
+import glot_frontend/loadable
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -26,18 +27,15 @@ const delete_dialog_id = "admin-snippet-page-delete-dialog"
 pub type Model {
   Model(
     slug: String,
-    snippet: option.Option(snippet_dto.SnippetDetailResponse),
+    snippet: loadable.Loadable(snippet_dto.SnippetDetailResponse),
     pending_delete: option.Option(snippet_dto.SnippetDetailResponse),
-    status: Status,
+    delete_state: DeleteState,
   )
 }
 
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
+pub type DeleteState {
+  DeleteIdle
   Deleting
-  LoadError(String)
 }
 
 pub type Msg {
@@ -53,24 +51,23 @@ pub fn init(slug: String) -> #(Model, Effect(Msg)) {
   #(
     Model(
       slug: slug,
-      snippet: option.None,
+      snippet: loadable.NotLoaded,
       pending_delete: option.None,
-      status: NotLoaded,
+      delete_state: DeleteIdle,
     ),
     effect.none(),
   )
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> #(
-      Model(..model, status: Loading),
-      api.get_admin_snippet(
-        snippet_dto.GetSnippetRequest(slug: model.slug),
-        SnippetLoaded,
-      ),
-    )
-    Loading | Ready | Deleting | LoadError(_) -> #(model, effect.none())
+  case loadable.ensure_loaded(
+    model.snippet,
+    api.get_admin_snippet(
+      snippet_dto.GetSnippetRequest(slug: model.slug),
+      SnippetLoaded,
+    ),
+  ) {
+    #(snippet, next_effect) -> #(Model(..model, snippet: snippet), next_effect)
   }
 }
 
@@ -81,25 +78,27 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiSuccess(response) -> #(
           Model(
             ..model,
-            snippet: option.Some(response.snippet),
+            snippet: loadable.Loaded(response.snippet),
             pending_delete: option.None,
-            status: Ready,
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
           Model(
             ..model,
+            snippet: loadable.LoadError(error.message),
             pending_delete: option.None,
-            status: LoadError(error.message),
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
           Model(
             ..model,
+            snippet: loadable.LoadError("Could not load snippet."),
             pending_delete: option.None,
-            status: LoadError("Could not load snippet."),
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
@@ -107,11 +106,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     DeleteClicked ->
       case model.snippet {
-        option.Some(snippet) -> #(
+        loadable.Loaded(snippet) -> #(
           Model(..model, pending_delete: option.Some(snippet)),
           app_dialog.open(delete_dialog_id),
         )
-        option.None -> #(model, effect.none())
+        _ -> #(model, effect.none())
       }
 
     DeleteCancelled -> #(model, app_dialog.close(delete_dialog_id))
@@ -124,7 +123,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     DeleteConfirmed ->
       case model.pending_delete {
         option.Some(snippet) -> #(
-          Model(..model, status: Deleting),
+          Model(..model, delete_state: Deleting),
           effect.batch([
             app_dialog.close(delete_dialog_id),
             api.delete_admin_snippet(
@@ -139,22 +138,24 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     DeleteFinished(result) ->
       case result {
         api.ApiSuccess(_) -> #(
-          Model(..model, pending_delete: option.None, status: Ready),
+          Model(..model, pending_delete: option.None, delete_state: DeleteIdle),
           navigate_to_snippets(),
         )
         api.ApiFailure(error) -> #(
           Model(
             ..model,
+            snippet: loadable.LoadError(error.message),
             pending_delete: option.None,
-            status: LoadError(error.message),
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
           Model(
             ..model,
+            snippet: loadable.LoadError("Could not delete snippet."),
             pending_delete: option.None,
-            status: LoadError("Could not delete snippet."),
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
@@ -177,13 +178,13 @@ pub fn view(model: Model) -> Element(Msg) {
           [
             attribute.type_("button"),
             attribute.class("admin-page__button admin-page__button--danger"),
-            attribute.disabled(model.status == Deleting),
+            attribute.disabled(model.delete_state == Deleting),
             event.on_click(DeleteClicked),
           ],
           [
-            html.text(case model.status {
+            html.text(case model.delete_state {
               Deleting -> "Deleting..."
-              NotLoaded | Loading | Ready | LoadError(_) -> "Delete snippet"
+              DeleteIdle -> "Delete snippet"
             }),
           ],
         ),
@@ -195,35 +196,20 @@ pub fn view(model: Model) -> Element(Msg) {
 }
 
 fn status_view(model: Model) -> Element(Msg) {
-  case model.status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading snippet..."),
-      ])
-    Deleting ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Deleting snippet..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+  case model.snippet, model.delete_state {
+    loadable.LoadError(message), _ -> admin_ui.error_status(message)
+    loadable.Loading, _ -> admin_ui.status("Loading snippet...")
+    _, Deleting -> admin_ui.status("Deleting snippet...")
+    _, DeleteIdle -> admin_ui.status("")
   }
 }
 
 fn detail_view(model: Model) -> Element(Msg) {
-  case model.snippet, model.status {
-    option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading snippet..."),
-      ])
-    option.None, _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("This snippet could not be loaded."),
-      ])
-    option.Some(snippet), _ ->
+  loadable.fold(
+    model.snippet,
+    admin_ui.empty_state("This snippet could not be loaded."),
+    admin_ui.empty_state("Loading snippet..."),
+    fn(snippet) {
       html.div([attribute.class("admin-job-page__content")], [
         html.div([attribute.class(admin_ui.summary_grid_class())], [
           admin_ui.summary_card("Title", snippet.title),
@@ -316,7 +302,9 @@ fn detail_view(model: Model) -> Element(Msg) {
           }),
         ]),
       ])
-  }
+    },
+    fn(_) { admin_ui.empty_state("This snippet could not be loaded.") },
+  )
 }
 
 fn file_view(file: snippet_model.File) -> Element(Msg) {

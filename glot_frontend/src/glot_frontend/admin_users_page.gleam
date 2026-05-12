@@ -12,6 +12,7 @@ import glot_core/route
 import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
+import glot_frontend/loadable
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -23,20 +24,12 @@ const page_limit = 25
 
 pub type Model {
   Model(
-    page: pagination_model.CursorPage(user_dto.UserSummaryResponse),
+    page: loadable.Loadable(pagination_model.CursorPage(user_dto.UserSummaryResponse)),
     search_filter: String,
     role_filter: String,
     account_state_filter: String,
     account_tier_filter: String,
-    status: Status,
   )
-}
-
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
-  LoadError(String)
 }
 
 pub type Msg {
@@ -54,24 +47,21 @@ pub type Msg {
 pub fn init() -> #(Model, Effect(Msg)) {
   #(
     Model(
-      page: pagination_model.InitialCursorPage(
-        items: [],
-        next_cursor: option.None,
-      ),
+      page: loadable.NotLoaded,
       search_filter: "",
       role_filter: "",
       account_state_filter: "",
       account_tier_filter: "",
-      status: NotLoaded,
     ),
     effect.none(),
   )
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> load_initial(model)
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
+  case model.page {
+    loadable.NotLoaded -> load_initial(model)
+    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) ->
+      #(model, effect.none())
   }
 }
 
@@ -80,15 +70,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     UsersLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> #(
-          Model(..model, page: response.page, status: Ready),
+          Model(..model, page: loadable.Loaded(response.page)),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, page: loadable.LoadError(error.message)),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load users.")),
+          Model(..model, page: loadable.LoadError("Could not load users.")),
           effect.none(),
         )
       }
@@ -113,7 +103,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
-    ApplyFilterClicked -> load_initial(Model(..model, status: Loading))
+    ApplyFilterClicked -> load_initial(model)
 
     ClearFilterClicked ->
       case has_filters(model) {
@@ -125,27 +115,26 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               role_filter: "",
               account_state_filter: "",
               account_tier_filter: "",
-              status: Loading,
             ),
           )
         False -> #(model, effect.none())
       }
 
     NextPageClicked ->
-      case pagination_model.next_cursor(model.page) {
+      case pagination_model.next_cursor(current_page(model)) {
         option.Some(cursor) ->
           load_page(
-            Model(..model, status: Loading),
+            Model(..model, page: loadable.Loading),
             pagination_model.AfterPage(cursor: cursor, limit: page_limit),
           )
         option.None -> #(model, effect.none())
       }
 
     PreviousPageClicked ->
-      case pagination_model.previous_cursor(model.page) {
+      case pagination_model.previous_cursor(current_page(model)) {
         option.Some(cursor) ->
           load_page(
-            Model(..model, status: Loading),
+            Model(..model, page: loadable.Loading),
             pagination_model.BeforePage(cursor: cursor, limit: page_limit),
           )
         option.None -> #(model, effect.none())
@@ -154,7 +143,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
-  let rows = pagination_model.items(model.page)
+  let rows = pagination_model.items(current_page(model))
   let count_text = int.to_string(list.length(rows)) <> " users shown."
 
   admin_ui.page_with_panel_class(
@@ -195,13 +184,7 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
 }
 
 fn load_initial(model: Model) -> #(Model, Effect(Msg)) {
-  let reset_page =
-    pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
-
-  load_page(
-    Model(..model, page: reset_page, status: Loading),
-    pagination_model.InitialPage(limit: page_limit),
-  )
+  load_page(Model(..model, page: loadable.Loading), pagination_model.InitialPage(limit: page_limit))
 }
 
 fn load_page(
@@ -279,39 +262,31 @@ fn filters_view(model: Model) -> Element(Msg) {
 }
 
 fn status_view(model: Model) -> Element(Msg) {
-  case model.status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text(""),
-      ])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading users..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
-  }
+  loadable.fold(
+    model.page,
+    admin_ui.status(""),
+    admin_ui.status("Loading users..."),
+    fn(_) { admin_ui.status("") },
+    admin_ui.error_status,
+  )
 }
 
 fn users_table(model: Model, now: Timestamp) -> Element(Msg) {
-  let rows = pagination_model.items(model.page)
-
-  case rows, model.status {
-    [], Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading users..."),
-      ])
-    [], _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("No users were returned."),
-      ])
-    _, _ ->
-      admin_table.table(user_columns(), {
-        rows |> list.map(fn(user) { user_row(user, now) })
-      })
-  }
+  loadable.fold(
+    model.page,
+    admin_ui.empty_state("No users were returned."),
+    admin_ui.empty_state("Loading users..."),
+    fn(page) {
+      case pagination_model.items(page) {
+        [] -> admin_ui.empty_state("No users were returned.")
+        rows ->
+          admin_table.table(user_columns(), {
+            rows |> list.map(fn(user) { user_row(user, now) })
+          })
+      }
+    },
+    fn(_) { admin_ui.empty_state("No users were returned.") },
+  )
 }
 
 fn user_row(
@@ -375,16 +350,26 @@ fn open_column() -> admin_table.Column {
 }
 
 fn can_go_previous(model: Model) -> Bool {
-  case pagination_model.previous_cursor(model.page) {
+  case pagination_model.previous_cursor(current_page(model)) {
     option.Some(_) -> True
     option.None -> False
   }
 }
 
 fn can_go_next(model: Model) -> Bool {
-  case pagination_model.next_cursor(model.page) {
+  case pagination_model.next_cursor(current_page(model)) {
     option.Some(_) -> True
     option.None -> False
+  }
+}
+
+fn current_page(
+  model: Model,
+) -> pagination_model.CursorPage(user_dto.UserSummaryResponse) {
+  case model.page {
+    loadable.Loaded(page) -> page
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) ->
+      pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
   }
 }
 

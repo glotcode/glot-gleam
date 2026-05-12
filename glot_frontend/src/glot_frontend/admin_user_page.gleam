@@ -15,6 +15,8 @@ import glot_core/route
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
+import glot_frontend/loadable
+import glot_frontend/mutation
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -28,18 +30,15 @@ const delete_dialog_id = "admin-user-page-delete-dialog"
 pub type Model {
   Model(
     id: uuid.Uuid,
-    user: option.Option(UserEditor),
+    user: loadable.Loadable(UserEditor),
     pending_delete: option.Option(UserEditor),
-    status: Status,
+    delete_state: DeleteState,
   )
 }
 
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
+pub type DeleteState {
+  DeleteIdle
   Deleting
-  LoadError(String)
 }
 
 pub type UserEditor {
@@ -50,7 +49,7 @@ pub type UserEditor {
     saved: UserFields,
     draft: UserFields,
     metadata: UserMetadata,
-    state: EditorState,
+    state: mutation.MutationState,
   )
 }
 
@@ -74,13 +73,6 @@ pub type UserMetadata {
   )
 }
 
-pub type EditorState {
-  Idle
-  Saving
-  Saved
-  SaveError(String)
-}
-
 pub type Msg {
   UserLoaded(api.ApiResponse(user_dto.GetUserResponse))
   UsernameChanged(String)
@@ -102,21 +94,20 @@ pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
   #(
     Model(
       id: id,
-      user: option.None,
+      user: loadable.NotLoaded,
       pending_delete: option.None,
-      status: NotLoaded,
+      delete_state: DeleteIdle,
     ),
     effect.none(),
   )
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> #(
-      Model(..model, status: Loading),
-      api.get_admin_user(user_dto.GetUserRequest(id: model.id), UserLoaded),
-    )
-    Loading | Ready | Deleting | LoadError(_) -> #(model, effect.none())
+  case loadable.ensure_loaded(
+    model.user,
+    api.get_admin_user(user_dto.GetUserRequest(id: model.id), UserLoaded),
+  ) {
+    #(user, next_effect) -> #(Model(..model, user: user), next_effect)
   }
 }
 
@@ -127,25 +118,27 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiSuccess(response) -> #(
           Model(
             ..model,
-            user: option.Some(editor_from_response(response.user)),
+            user: loadable.Loaded(editor_from_response(response.user)),
             pending_delete: option.None,
-            status: Ready,
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
           Model(
             ..model,
+            user: loadable.LoadError(error.message),
             pending_delete: option.None,
-            status: LoadError(error.message),
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
           Model(
             ..model,
+            user: loadable.LoadError("Could not load user."),
             pending_delete: option.None,
-            status: LoadError("Could not load user."),
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
@@ -156,7 +149,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         UserEditor(
           ..editor,
           draft: UserFields(..editor.draft, username: value),
-          state: Idle,
+          state: mutation.Idle,
         )
       }),
       effect.none(),
@@ -169,7 +162,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             UserEditor(
               ..editor,
               draft: UserFields(..editor.draft, role: role),
-              state: Idle,
+              state: mutation.Idle,
             )
           }),
           effect.none(),
@@ -194,7 +187,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 account_state: account_state,
                 account_state_reason: next_reason,
               ),
-              state: Idle,
+              state: mutation.Idle,
             )
           }),
           effect.none(),
@@ -207,7 +200,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         UserEditor(
           ..editor,
           draft: UserFields(..editor.draft, account_state_reason: value),
-          state: Idle,
+          state: mutation.Idle,
         )
       }),
       effect.none(),
@@ -220,7 +213,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             UserEditor(
               ..editor,
               draft: UserFields(..editor.draft, account_tier: account_tier),
-              state: Idle,
+              state: mutation.Idle,
             )
           }),
           effect.none(),
@@ -230,38 +223,38 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     ResetClicked -> #(
       update_editor(model, fn(editor) {
-        UserEditor(..editor, draft: editor.saved, state: Idle)
+        UserEditor(..editor, draft: editor.saved, state: mutation.Idle)
       }),
       effect.none(),
     )
 
     SaveClicked ->
       case model.user {
-        option.None -> #(model, effect.none())
-        option.Some(editor) ->
+        loadable.Loaded(editor) ->
           case editor_to_request(editor) {
             Ok(request) -> #(
               update_editor(model, fn(current) {
-                UserEditor(..current, state: Saving)
+                UserEditor(..current, state: mutation.Saving)
               }),
               api.update_admin_user(request, SaveFinished),
             )
             Error(message) -> #(
               update_editor(model, fn(current) {
-                UserEditor(..current, state: SaveError(message))
+                UserEditor(..current, state: mutation.SaveError(message))
               }),
               effect.none(),
             )
           }
+        _ -> #(model, effect.none())
       }
 
     DeleteClicked ->
       case model.user {
-        option.Some(editor) -> #(
+        loadable.Loaded(editor) -> #(
           Model(..model, pending_delete: option.Some(editor)),
           app_dialog.open(delete_dialog_id),
         )
-        option.None -> #(model, effect.none())
+        _ -> #(model, effect.none())
       }
 
     DeleteCancelled -> #(model, app_dialog.close(delete_dialog_id))
@@ -274,7 +267,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     DeleteConfirmed ->
       case model.pending_delete {
         option.Some(editor) -> #(
-          Model(..model, status: Deleting),
+          Model(..model, delete_state: Deleting),
           effect.batch([
             app_dialog.close(delete_dialog_id),
             api.delete_admin_account(
@@ -291,21 +284,24 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiSuccess(response) -> #(
           Model(
             ..model,
-            user: option.Some(editor_from_response(response.user)),
+            user: loadable.Loaded(editor_from_response(response.user)),
             pending_delete: option.None,
-            status: Ready,
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
           update_editor(model, fn(editor) {
-            UserEditor(..editor, state: SaveError(error.message))
+            UserEditor(..editor, state: mutation.SaveError(error.message))
           }),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
           update_editor(model, fn(editor) {
-            UserEditor(..editor, state: SaveError("Could not update user."))
+            UserEditor(
+              ..editor,
+              state: mutation.SaveError("Could not update user."),
+            )
           }),
           effect.none(),
         )
@@ -314,22 +310,24 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     DeleteFinished(result) ->
       case result {
         api.ApiSuccess(_) -> #(
-          Model(..model, pending_delete: option.None, status: Ready),
+          Model(..model, pending_delete: option.None, delete_state: DeleteIdle),
           navigate_to_users(),
         )
         api.ApiFailure(error) -> #(
           Model(
             ..model,
+            user: loadable.LoadError(error.message),
             pending_delete: option.None,
-            status: LoadError(error.message),
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
           Model(
             ..model,
+            user: loadable.LoadError("Could not delete account."),
             pending_delete: option.None,
-            status: LoadError("Could not delete account."),
+            delete_state: DeleteIdle,
           ),
           effect.none(),
         )
@@ -349,13 +347,13 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
           [
             attribute.type_("button"),
             attribute.class("admin-page__button admin-page__button--danger"),
-            attribute.disabled(model.status == Deleting),
+            attribute.disabled(model.delete_state == Deleting),
             event.on_click(DeleteClicked),
           ],
           [
-            html.text(case model.status {
+            html.text(case model.delete_state {
               Deleting -> "Deleting..."
-              NotLoaded | Loading | Ready | LoadError(_) -> "Delete account"
+              DeleteIdle -> "Delete account"
             }),
           ],
         ),
@@ -367,26 +365,28 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
 }
 
 fn status_view(model: Model) -> Element(Msg) {
-  case model.status {
-    NotLoaded | Ready -> admin_ui.status("")
-    Loading -> admin_ui.status("Loading user...")
-    Deleting -> admin_ui.status("Deleting account...")
-    LoadError(message) -> admin_ui.error_status(message)
+  case model.user, model.delete_state {
+    loadable.LoadError(message), _ -> admin_ui.error_status(message)
+    loadable.Loading, _ -> admin_ui.status("Loading user...")
+    _, Deleting -> admin_ui.status("Deleting account...")
+    _, DeleteIdle -> admin_ui.status("")
   }
 }
 
 fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
-  case model.user, model.status {
-    option.None, Loading -> admin_ui.empty_state("Loading user...")
-    option.None, _ -> admin_ui.empty_state("This user could not be loaded.")
-    option.Some(editor), _ -> user_view(editor, now, model.status)
-  }
+  loadable.fold(
+    model.user,
+    admin_ui.empty_state("This user could not be loaded."),
+    admin_ui.empty_state("Loading user..."),
+    fn(editor) { user_view(editor, now, model.delete_state) },
+    fn(_) { admin_ui.empty_state("This user could not be loaded.") },
+  )
 }
 
 fn user_view(
   editor: UserEditor,
   now: Timestamp,
-  status: Status,
+  delete_state: DeleteState,
 ) -> Element(Msg) {
   html.div([attribute.class("admin-job-page__content")], [
     html.div([attribute.class(admin_ui.summary_grid_class())], [
@@ -431,7 +431,7 @@ fn user_view(
     admin_ui.section(
       title: "Editable settings",
       copy: "Changes are persisted to the user and account records for this login identity.",
-      content: edit_form(editor, status == Deleting),
+      content: edit_form(editor, delete_state == Deleting),
     ),
   ])
 }
@@ -486,7 +486,7 @@ fn edit_form(editor: UserEditor, is_deleting: Bool) -> Element(Msg) {
           [
             attribute.type_("button"),
             attribute.disabled(
-              editor.state == Saving || is_deleting || !is_dirty(editor),
+              mutation.is_saving(editor.state) || is_deleting || !is_dirty(editor),
             ),
             event.on_click(ResetClicked),
           ],
@@ -496,7 +496,7 @@ fn edit_form(editor: UserEditor, is_deleting: Bool) -> Element(Msg) {
           [
             attribute.type_("submit"),
             attribute.class("admin-page__button"),
-            attribute.disabled(editor.state == Saving || is_deleting),
+            attribute.disabled(mutation.is_saving(editor.state) || is_deleting),
           ],
           [html.text(save_button_text(editor.state))],
         ),
@@ -565,26 +565,21 @@ fn delete_confirmation_dialog_children(
   }
 }
 
-fn save_status(state: EditorState) -> Element(Msg) {
-  case state {
-    Idle -> admin_ui.status("")
-    Saving -> admin_ui.status("Saving user...")
-    Saved -> admin_ui.status("User updated.")
-    SaveError(message) -> admin_ui.error_status(message)
-  }
+fn save_status(state: mutation.MutationState) -> Element(Msg) {
+  admin_ui.mutation_status(state, "Saving user...", "User updated.")
 }
 
-fn save_button_text(state: EditorState) -> String {
+fn save_button_text(state: mutation.MutationState) -> String {
   case state {
-    Saving -> "Saving..."
-    Idle | Saved | SaveError(_) -> "Save user"
+    mutation.Saving -> "Saving..."
+    mutation.Idle | mutation.Saved | mutation.SaveError(_) -> "Save user"
   }
 }
 
 fn update_editor(model: Model, update: fn(UserEditor) -> UserEditor) -> Model {
   case model.user {
-    option.Some(editor) -> Model(..model, user: option.Some(update(editor)))
-    option.None -> model
+    loadable.Loaded(editor) -> Model(..model, user: loadable.Loaded(update(editor)))
+    _ -> model
   }
 }
 
@@ -611,7 +606,7 @@ fn editor_from_response(user: user_dto.UserDetailResponse) -> UserEditor {
       created_at: user.created_at,
       updated_at: user.updated_at,
     ),
-    state: Idle,
+    state: mutation.Idle,
   )
 }
 

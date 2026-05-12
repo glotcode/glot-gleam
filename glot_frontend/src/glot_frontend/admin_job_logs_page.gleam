@@ -11,6 +11,7 @@ import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
+import glot_frontend/loadable
 import glot_frontend/string_helpers
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -23,8 +24,7 @@ const page_limit = 25
 
 pub type Model {
   Model(
-    page: pagination_model.CursorPage(job_log_dto.JobLogResponse),
-    status: Status,
+    page: loadable.Loadable(pagination_model.CursorPage(job_log_dto.JobLogResponse)),
     error_filter: job_log_dto.JobLogErrorFilter,
     request_id_filter: String,
     job_id_filter: String,
@@ -33,13 +33,6 @@ pub type Model {
     request_id_error: option.Option(String),
     job_id_error: option.Option(String),
   )
-}
-
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
-  LoadError(String)
 }
 
 pub type Msg {
@@ -55,8 +48,7 @@ pub type Msg {
 pub fn init() -> #(Model, Effect(Msg)) {
   #(
     Model(
-      page: empty_page(),
-      status: NotLoaded,
+      page: loadable.NotLoaded,
       error_filter: job_log_dto.AllJobLogs,
       request_id_filter: "",
       job_id_filter: "",
@@ -70,9 +62,10 @@ pub fn init() -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> load_initial(model)
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
+  case model.page {
+    loadable.NotLoaded -> load_initial(model)
+    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) ->
+      #(model, effect.none())
   }
 }
 
@@ -81,15 +74,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     LogsLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> #(
-          Model(..model, page: response.page, status: Ready),
+          Model(..model, page: loadable.Loaded(response.page)),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, page: loadable.LoadError(error.message)),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load job logs.")),
+          Model(..model, page: loadable.LoadError("Could not load job logs.")),
           effect.none(),
         )
       }
@@ -135,8 +128,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             Error(message) -> #(
               Model(
                 ..model,
-                page: empty_page(),
-                status: LoadError(message),
+                page: loadable.LoadError(message),
                 job_id_error: option.Some(message),
               ),
               effect.none(),
@@ -145,8 +137,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Error(message) -> #(
           Model(
             ..model,
-            page: empty_page(),
-            status: LoadError(message),
+            page: loadable.LoadError(message),
             request_id_error: option.Some(message),
           ),
           effect.none(),
@@ -154,20 +145,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
 
     NextPageClicked ->
-      case pagination_model.next_cursor(model.page) {
+      case pagination_model.next_cursor(current_page(model)) {
         option.Some(cursor) ->
           load_page(
-            Model(..model, status: Loading),
+            Model(..model, page: loadable.Loading),
             pagination_model.AfterPage(cursor: cursor, limit: page_limit),
           )
         option.None -> #(model, effect.none())
       }
 
     PreviousPageClicked ->
-      case pagination_model.previous_cursor(model.page) {
+      case pagination_model.previous_cursor(current_page(model)) {
         option.Some(cursor) ->
           load_page(
-            Model(..model, status: Loading),
+            Model(..model, page: loadable.Loading),
             pagination_model.BeforePage(cursor: cursor, limit: page_limit),
           )
         option.None -> #(model, effect.none())
@@ -176,7 +167,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
-  let rows = pagination_model.items(model.page)
+  let rows = pagination_model.items(current_page(model))
 
   admin_ui.page_with_panel_class(
     panel_class: "admin-job-logs-page",
@@ -266,7 +257,7 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
 
 fn load_initial(model: Model) -> #(Model, Effect(Msg)) {
   load_page(
-    Model(..model, page: empty_page(), status: Loading),
+    Model(..model, page: loadable.Loading),
     pagination_model.InitialPage(limit: page_limit),
   )
 }
@@ -290,38 +281,39 @@ fn load_page(
 }
 
 fn status_view(model: Model) -> Element(Msg) {
-  case model.status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading job logs..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
-  }
+  loadable.fold(
+    model.page,
+    admin_ui.status(""),
+    admin_ui.status("Loading job logs..."),
+    fn(_) { admin_ui.status("") },
+    admin_ui.error_status,
+  )
 }
 
 fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
-  let rows = pagination_model.items(model.page)
+  loadable.fold(
+    model.page,
+    admin_ui.empty_state("No job logs matched these filters."),
+    admin_ui.empty_state("Loading job logs..."),
+    fn(page) {
+      case pagination_model.items(page) {
+        [] -> admin_ui.empty_state("No job logs matched these filters.")
+        rows ->
+          admin_table.table(log_columns(), {
+            rows |> list.map(fn(log) { log_row(log, now) })
+          })
+      }
+    },
+    fn(_) { admin_ui.empty_state("No job logs matched these filters.") },
+  )
+}
 
-  case rows, model.status {
-    [], Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading job logs..."),
-      ])
-
-    [], _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("No job logs matched these filters."),
-      ])
-
-    _, _ ->
-      admin_table.table(log_columns(), {
-        rows |> list.map(fn(log) { log_row(log, now) })
-      })
+fn current_page(
+  model: Model,
+) -> pagination_model.CursorPage(job_log_dto.JobLogResponse) {
+  case model.page {
+    loadable.Loaded(page) -> page
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) -> empty_page()
   }
 }
 
@@ -531,14 +523,14 @@ fn empty_page() -> pagination_model.CursorPage(job_log_dto.JobLogResponse) {
 }
 
 fn can_go_previous(model: Model) -> Bool {
-  case pagination_model.previous_cursor(model.page) {
+  case pagination_model.previous_cursor(current_page(model)) {
     option.Some(_) -> True
     option.None -> False
   }
 }
 
 fn can_go_next(model: Model) -> Bool {
-  case pagination_model.next_cursor(model.page) {
+  case pagination_model.next_cursor(current_page(model)) {
     option.Some(_) -> True
     option.None -> False
   }

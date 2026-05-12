@@ -8,23 +8,14 @@ import glot_core/route
 import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
+import glot_frontend/loadable
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 
 pub type Model {
-  Model(
-    periodic_jobs: List(periodic_job_dto.PeriodicJobResponse),
-    status: Status,
-  )
-}
-
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
-  LoadError(String)
+  Model(periodic_jobs: loadable.Loadable(List(periodic_job_dto.PeriodicJobResponse)))
 }
 
 pub type Msg {
@@ -32,33 +23,35 @@ pub type Msg {
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
-  #(Model(periodic_jobs: [], status: NotLoaded), effect.none())
+  #(Model(periodic_jobs: loadable.NotLoaded), effect.none())
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> #(
-      Model(..model, status: Loading),
-      api.get_admin_periodic_jobs(PeriodicJobsLoaded),
-    )
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
+  case loadable.ensure_loaded(
+    model.periodic_jobs,
+    api.get_admin_periodic_jobs(PeriodicJobsLoaded),
+  ) {
+    #(periodic_jobs, next_effect) ->
+      #(Model(periodic_jobs: periodic_jobs), next_effect)
   }
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(_model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     PeriodicJobsLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> #(
-          Model(periodic_jobs: response.periodic_jobs, status: Ready),
+          Model(periodic_jobs: loadable.Loaded(response.periodic_jobs)),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(periodic_jobs: loadable.LoadError(error.message)),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load periodic jobs.")),
+          Model(
+            periodic_jobs: loadable.LoadError("Could not load periodic jobs."),
+          ),
           effect.none(),
         )
       }
@@ -71,7 +64,7 @@ pub fn view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
     intro:
       "Review scheduler definitions, scan health quickly, and open a dedicated detail page when you need to edit one.",
     content: [
-      status_banner(model.status),
+      status_banner(model.periodic_jobs),
       summary_view(model),
       html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
@@ -79,32 +72,31 @@ pub fn view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
               html.text("Definitions"),
             ]),
             html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
+            html.text(
                 "This index stays compact on purpose. Open a periodic job to inspect its payload, timestamps, and editable scheduler settings.",
               ),
             ]),
           ]),
-          case model.periodic_jobs {
-            [] ->
-              html.div([attribute.class("admin-page__empty")], [
-                html.text("No periodic jobs were returned."),
-              ])
-            _ -> periodic_jobs_table(model.periodic_jobs, now)
-          },
+          periodic_jobs_content(model, now),
       ]),
     ],
   )
 }
 
 fn summary_view(model: Model) -> Element(Msg) {
-  let total_count = list.length(model.periodic_jobs)
+  let periodic_jobs = case model.periodic_jobs {
+    loadable.Loaded(periodic_jobs) -> periodic_jobs
+    _ -> []
+  }
+
+  let total_count = list.length(periodic_jobs)
   let enabled_count =
-    model.periodic_jobs
+    periodic_jobs
     |> list.filter(fn(job) { job.enabled })
     |> list.length
   let disabled_count = total_count - enabled_count
   let failing_count =
-    model.periodic_jobs
+    periodic_jobs
     |> list.filter(fn(job) {
       case job.last_enqueue_error {
         option.Some(_) -> True
@@ -186,18 +178,31 @@ fn periodic_job_row(
   ])
 }
 
-fn status_banner(status: Status) -> Element(Msg) {
-  case status {
-    NotLoaded | Ready -> html.div([], [])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading periodic jobs..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
-  }
+fn status_banner(
+  state: loadable.Loadable(List(periodic_job_dto.PeriodicJobResponse)),
+) -> Element(Msg) {
+  loadable.fold(
+    state,
+    html.div([], []),
+    admin_ui.status("Loading periodic jobs..."),
+    fn(_) { html.div([], []) },
+    admin_ui.error_status,
+  )
+}
+
+fn periodic_jobs_content(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
+  loadable.fold(
+    model.periodic_jobs,
+    admin_ui.empty_state("No periodic jobs were returned."),
+    admin_ui.empty_state("Loading periodic jobs..."),
+    fn(periodic_jobs) {
+      case periodic_jobs {
+        [] -> admin_ui.empty_state("No periodic jobs were returned.")
+        _ -> periodic_jobs_table(periodic_jobs, now)
+      }
+    },
+    fn(_) { admin_ui.empty_state("No periodic jobs were returned.") },
+  )
 }
 
 fn periodic_job_columns() -> List(admin_table.Column) {

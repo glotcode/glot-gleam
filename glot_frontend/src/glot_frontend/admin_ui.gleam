@@ -1,3 +1,4 @@
+import glot_frontend/mutation
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
@@ -177,6 +178,19 @@ pub fn error_status(message: String) -> Element(msg) {
 
 pub fn empty_state(message: String) -> Element(msg) {
   html.div([attribute.class("admin-page__empty")], [html.text(message)])
+}
+
+pub fn mutation_status(
+  state: mutation.MutationState,
+  saving_text: String,
+  saved_text: String,
+) -> Element(msg) {
+  case state {
+    mutation.Idle -> status("")
+    mutation.Saving -> status(saving_text)
+    mutation.Saved -> status(saved_text)
+    mutation.SaveError(message) -> error_status(message)
+  }
 }
 
 pub fn section(

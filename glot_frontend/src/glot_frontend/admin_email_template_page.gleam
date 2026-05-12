@@ -6,6 +6,8 @@ import gleam/time/timestamp
 import glot_core/admin/email_template_dto
 import glot_frontend/admin_ui
 import glot_frontend/api
+import glot_frontend/loadable
+import glot_frontend/mutation
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -15,10 +17,9 @@ import lustre/event
 pub type Model {
   Model(
     name: String,
-    template: option.Option(email_template_dto.EmailTemplateDetailResponse),
+    template: loadable.Loadable(email_template_dto.EmailTemplateDetailResponse),
     draft: Draft,
-    status: Status,
-    save_state: SaveState,
+    save_state: mutation.MutationState,
   )
 }
 
@@ -28,20 +29,6 @@ pub type Draft {
     text_body_template: String,
     html_body_template: String,
   )
-}
-
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
-  LoadError(String)
-}
-
-pub type SaveState {
-  Idle
-  Saving
-  Saved
-  SaveError(String)
 }
 
 pub type Msg {
@@ -58,25 +45,26 @@ pub fn init(name: String) -> #(Model, Effect(Msg)) {
   #(
     Model(
       name: name,
-      template: option.None,
+      template: loadable.NotLoaded,
       draft: empty_draft(),
-      status: NotLoaded,
-      save_state: Idle,
+      save_state: mutation.Idle,
     ),
     effect.none(),
   )
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> #(
-      Model(..model, status: Loading),
-      api.get_admin_email_template(
-        email_template_dto.GetEmailTemplateRequest(name: model.name),
-        TemplateLoaded,
-      ),
+  case loadable.ensure_loaded(
+    model.template,
+    api.get_admin_email_template(
+      email_template_dto.GetEmailTemplateRequest(name: model.name),
+      TemplateLoaded,
+    ),
+  ) {
+    #(template, next_effect) -> #(
+      Model(..model, template: template),
+      next_effect,
     )
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
   }
 }
 
@@ -89,20 +77,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(
               ..model,
-              template: option.Some(template),
+              template: loadable.Loaded(template),
               draft: draft_from_template(template),
-              status: Ready,
-              save_state: Idle,
+              save_state: mutation.Idle,
             ),
             effect.none(),
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, template: loadable.LoadError(error.message)),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load email template.")),
+          Model(
+            ..model,
+            template: loadable.LoadError("Could not load email template."),
+          ),
           effect.none(),
         )
       }
@@ -111,7 +101,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(
         ..model,
         draft: Draft(..model.draft, subject_template: value),
-        save_state: idle_state(model.save_state),
+        save_state: mutation.clear_feedback(model.save_state),
       ),
       effect.none(),
     )
@@ -120,7 +110,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(
         ..model,
         draft: Draft(..model.draft, text_body_template: value),
-        save_state: idle_state(model.save_state),
+        save_state: mutation.clear_feedback(model.save_state),
       ),
       effect.none(),
     )
@@ -129,28 +119,32 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       Model(
         ..model,
         draft: Draft(..model.draft, html_body_template: value),
-        save_state: idle_state(model.save_state),
+        save_state: mutation.clear_feedback(model.save_state),
       ),
       effect.none(),
     )
 
     ResetClicked ->
       case model.template {
-        option.Some(template) -> #(
-          Model(..model, draft: draft_from_template(template), save_state: Idle),
+        loadable.Loaded(template) -> #(
+          Model(
+            ..model,
+            draft: draft_from_template(template),
+            save_state: mutation.Idle,
+          ),
           effect.none(),
         )
-        option.None -> #(model, effect.none())
+        _ -> #(model, effect.none())
       }
 
     SaveClicked ->
       case request_from_draft(model) {
         Error(message) -> #(
-          Model(..model, save_state: SaveError(message)),
+          Model(..model, save_state: mutation.SaveError(message)),
           effect.none(),
         )
         Ok(request) -> #(
-          Model(..model, save_state: Saving),
+          Model(..model, save_state: mutation.Saving),
           api.update_admin_email_template(request, SaveFinished),
         )
       }
@@ -162,21 +156,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(
               ..model,
-              template: option.Some(template),
+              template: loadable.Loaded(template),
               draft: draft_from_template(template),
-              save_state: Saved,
+              save_state: mutation.Saved,
             ),
             effect.none(),
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, save_state: SaveError(error.message)),
+          Model(..model, save_state: mutation.SaveError(error.message)),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
           Model(
             ..model,
-            save_state: SaveError("Could not save email template."),
+            save_state: mutation.SaveError("Could not save email template."),
           ),
           effect.none(),
         )
@@ -195,7 +189,8 @@ pub fn view(model: Model) -> Element(Msg) {
         [
           attribute.type_("button"),
           attribute.disabled(
-            model.template == option.None || model.save_state == Saving,
+            loadable.to_option(model.template) == option.None
+              || mutation.is_saving(model.save_state),
           ),
           event.on_click(ResetClicked),
         ],
@@ -206,7 +201,8 @@ pub fn view(model: Model) -> Element(Msg) {
           attribute.class("admin-page__button"),
           attribute.type_("button"),
           attribute.disabled(
-            model.template == option.None || model.save_state == Saving,
+            loadable.to_option(model.template) == option.None
+              || mutation.is_saving(model.save_state),
           ),
           event.on_click(SaveClicked),
         ],
@@ -218,22 +214,24 @@ pub fn view(model: Model) -> Element(Msg) {
 }
 
 fn status_view(model: Model) -> Element(Msg) {
-  case model.status, model.save_state {
-    LoadError(message), _ -> admin_ui.error_status(message)
-    Loading, _ -> admin_ui.status("Loading email template...")
-    _, SaveError(message) -> admin_ui.error_status(message)
-    _, Saving -> admin_ui.status("Saving email template...")
-    _, Saved -> admin_ui.status("Email template saved.")
-    _, Idle -> admin_ui.status("")
+  case model.template, model.save_state {
+    loadable.LoadError(message), _ -> admin_ui.error_status(message)
+    loadable.Loading, _ -> admin_ui.status("Loading email template...")
+    _, save_state ->
+      admin_ui.mutation_status(
+        save_state,
+        "Saving email template...",
+        "Email template saved.",
+      )
   }
 }
 
 fn detail_view(model: Model) -> Element(Msg) {
-  case model.template, model.status {
-    option.None, Loading -> admin_ui.empty_state("Loading email template...")
-    option.None, _ ->
-      admin_ui.empty_state("This email template could not be loaded.")
-    option.Some(template), _ ->
+  loadable.fold(
+    model.template,
+    admin_ui.empty_state("This email template could not be loaded."),
+    admin_ui.empty_state("Loading email template..."),
+    fn(template) {
       html.div([attribute.class("admin-job-page__content")], [
         html.div([attribute.class(admin_ui.summary_grid_class())], [
           admin_ui.summary_card_with_class(
@@ -294,7 +292,9 @@ fn detail_view(model: Model) -> Element(Msg) {
           ]),
         ),
       ])
-  }
+    },
+    fn(_) { admin_ui.empty_state("This email template could not be loaded.") },
+  )
 }
 
 fn text_input(
@@ -374,17 +374,10 @@ fn normalize_html(value: String) -> option.Option(String) {
   }
 }
 
-fn save_button_label(state: SaveState) -> String {
+fn save_button_label(state: mutation.MutationState) -> String {
   case state {
-    Saving -> "Saving..."
-    Idle | Saved | SaveError(_) -> "Save"
-  }
-}
-
-fn idle_state(state: SaveState) -> SaveState {
-  case state {
-    Saving -> Saving
-    Idle | Saved | SaveError(_) -> Idle
+    mutation.Saving -> "Saving..."
+    mutation.Idle | mutation.Saved | mutation.SaveError(_) -> "Save"
   }
 }
 

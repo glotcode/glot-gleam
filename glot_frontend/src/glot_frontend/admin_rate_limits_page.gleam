@@ -10,6 +10,8 @@ import glot_core/rate_limit
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
+import glot_frontend/loadable
+import glot_frontend/mutation
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -20,17 +22,9 @@ const edit_dialog_id = "admin-rate-limits-edit-dialog"
 
 pub type Model {
   Model(
-    policies: List(PolicyEditor),
-    status: Status,
+    policies: loadable.Loadable(List(PolicyEditor)),
     active_editor: option.Option(ActiveEditor),
   )
-}
-
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
-  LoadError(String)
 }
 
 pub type PolicyEditor {
@@ -38,7 +32,7 @@ pub type PolicyEditor {
     action: api_action.ApiAction,
     saved_tabs: PolicyTabs,
     draft_tabs: PolicyTabs,
-    state: EditorState,
+    state: mutation.MutationState,
   )
 }
 
@@ -60,13 +54,6 @@ pub type EditorTab {
   FreePlusTab
 }
 
-pub type EditorState {
-  Idle
-  Saving
-  Saved
-  SaveError(String)
-}
-
 pub type Msg {
   PoliciesLoaded(
     api.ApiResponse(rate_limit_config_dto.RateLimitPoliciesResponse),
@@ -85,15 +72,15 @@ pub type Msg {
 
 pub fn init() -> #(Model, Effect(Msg)) {
   #(
-    Model(policies: [], status: NotLoaded, active_editor: option.None),
+    Model(policies: loadable.NotLoaded, active_editor: option.None),
     effect.none(),
   )
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> #(Model(..model, status: Loading), load_policies())
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
+  case loadable.ensure_loaded(model.policies, load_policies()) {
+    #(policies, next_effect) ->
+      #(Model(..model, policies: policies), next_effect)
   }
 }
 
@@ -103,35 +90,38 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case result {
         api.ApiSuccess(response) -> #(
           Model(
-            policies: ordered_policy_editors(response.policies),
-            status: Ready,
+            policies: loadable.Loaded(ordered_policy_editors(response.policies)),
             active_editor: option.None,
           ),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, policies: loadable.LoadError(error.message)),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
           Model(
             ..model,
-            status: LoadError("Could not load rate limit policies."),
+            policies: loadable.LoadError("Could not load rate limit policies."),
           ),
           effect.none(),
         )
       }
 
     EditClicked(action) -> {
+      let existing_policies = loaded_policies(model)
       let next_policies =
-        update_policy(model.policies, action, fn(policy) {
-          PolicyEditor(..policy, draft_tabs: policy.saved_tabs, state: Idle)
+        update_policy(existing_policies, action, fn(policy) {
+          PolicyEditor(
+            ..policy,
+            draft_tabs: policy.saved_tabs,
+            state: mutation.Idle,
+          )
         })
 
       #(
         Model(
-          ..model,
-          policies: next_policies,
+          policies: loadable.Loaded(next_policies),
           active_editor: option.Some(ActiveEditor(action:, tab: AnonymousTab)),
         ),
         app_dialog.open(edit_dialog_id),
@@ -154,15 +144,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     FieldChanged(action, tab, unit, value) -> #(
       Model(
         ..model,
-        policies: update_policy(model.policies, action, fn(policy) {
+        policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(policy) {
           PolicyEditor(
             ..policy,
             draft_tabs: update_tab_fields(policy.draft_tabs, tab, fn(fields) {
               update_limit_field(fields, unit, value)
             }),
-            state: Idle,
+            state: mutation.Idle,
           )
-        }),
+        })),
       ),
       effect.none(),
     )
@@ -173,16 +163,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     SaveClicked(action) ->
-      case find_policy(model.policies, action) {
+      case find_policy(loaded_policies(model), action) {
         option.None -> #(model, effect.none())
         option.Some(policy) ->
           case policy_to_request(policy) {
             Ok(request) -> #(
               Model(
                 ..model,
-                policies: update_policy(model.policies, action, fn(row) {
-                  PolicyEditor(..row, state: Saving)
-                }),
+                policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(row) {
+                  PolicyEditor(..row, state: mutation.Saving)
+                })),
               ),
               api.upsert_admin_rate_limit_policy(request, fn(result) {
                 SaveFinished(action, result)
@@ -191,9 +181,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             Error(message) -> #(
               Model(
                 ..model,
-                policies: update_policy(model.policies, action, fn(row) {
-                  PolicyEditor(..row, state: SaveError(message))
-                }),
+                policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(row) {
+                  PolicyEditor(..row, state: mutation.SaveError(message))
+                })),
               ),
               effect.none(),
             )
@@ -207,15 +197,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
           #(
             Model(
-              ..model,
-              policies: update_policy(model.policies, action, fn(policy) {
+              policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(policy) {
                 PolicyEditor(
                   ..policy,
                   saved_tabs: saved_tabs,
                   draft_tabs: saved_tabs,
-                  state: Saved,
+                  state: mutation.Saved,
                 )
-              }),
+              })),
               active_editor: option.None,
             ),
             app_dialog.close(edit_dialog_id),
@@ -225,9 +214,9 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            policies: update_policy(model.policies, action, fn(policy) {
-              PolicyEditor(..policy, state: SaveError(error.message))
-            }),
+            policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(policy) {
+              PolicyEditor(..policy, state: mutation.SaveError(error.message))
+            })),
           ),
           effect.none(),
         )
@@ -235,12 +224,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.HttpFailure(_) -> #(
           Model(
             ..model,
-            policies: update_policy(model.policies, action, fn(policy) {
+            policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(policy) {
               PolicyEditor(
                 ..policy,
-                state: SaveError("Could not save rate limit policy."),
+                state: mutation.SaveError("Could not save rate limit policy."),
               )
-            }),
+            })),
           ),
           effect.none(),
         )
@@ -254,30 +243,34 @@ pub fn view(model: Model) -> Element(Msg) {
       title: "Admin rate limits",
       intro:
         "Each action shows its current limits. Edit opens a compact modal.",
-      content: [status_banner(model.status), policies_view(model)],
+      content: [status_banner(model.policies), policies_view(model)],
     ),
     edit_dialog(model),
   ])
 }
 
-fn status_banner(status: Status) -> Element(Msg) {
-  case status {
-    NotLoaded | Ready -> html.div([], [])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading policies..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
-  }
+fn status_banner(state: loadable.Loadable(List(PolicyEditor))) -> Element(Msg) {
+  loadable.fold(
+    state,
+    html.div([], []),
+    admin_ui.status("Loading policies..."),
+    fn(_) { html.div([], []) },
+    admin_ui.error_status,
+  )
 }
 
 fn policies_view(model: Model) -> Element(Msg) {
-  html.div(
-    [attribute.class("admin-page__policies")],
-    list.map(model.policies, policy_summary_view),
+  loadable.fold(
+    model.policies,
+    html.div([], []),
+    html.div([], []),
+    fn(policies) {
+      html.div(
+        [attribute.class("admin-page__policies")],
+        list.map(policies, policy_summary_view),
+      )
+    },
+    fn(_) { html.div([], []) },
   )
 }
 
@@ -460,7 +453,7 @@ fn edit_dialog_form(
           [
             attribute.type_("submit"),
             attribute.class("app-dialog__button"),
-            attribute.disabled(policy.state == Saving),
+            attribute.disabled(mutation.is_saving(policy.state)),
           ],
           [html.text("Save")],
         ),
@@ -524,11 +517,18 @@ fn unit_input(
 fn active_policy(model: Model) -> option.Option(#(PolicyEditor, ActiveEditor)) {
   case model.active_editor {
     option.Some(active) ->
-      case find_policy(model.policies, active.action) {
+      case find_policy(loaded_policies(model), active.action) {
         option.Some(policy) -> option.Some(#(policy, active))
         option.None -> option.None
       }
     option.None -> option.None
+  }
+}
+
+fn loaded_policies(model: Model) -> List(PolicyEditor) {
+  case model.policies {
+    loadable.Loaded(policies) -> policies
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) -> []
   }
 }
 
@@ -569,7 +569,7 @@ fn policy_editor_from_response(
         action: action,
         saved_tabs: tabs,
         draft_tabs: tabs,
-        state: Idle,
+        state: mutation.Idle,
       )
     }
     option.None -> {
@@ -578,7 +578,7 @@ fn policy_editor_from_response(
         action: action,
         saved_tabs: tabs,
         draft_tabs: tabs,
-        state: Idle,
+        state: mutation.Idle,
       )
     }
   }
@@ -788,28 +788,29 @@ fn is_dirty(policy: PolicyEditor) -> Bool {
   policy.draft_tabs != policy.saved_tabs
 }
 
-fn editor_status_text(state: EditorState, dirty: Bool) -> String {
+fn editor_status_text(state: mutation.MutationState, dirty: Bool) -> String {
   case state {
-    Idle ->
+    mutation.Idle ->
       case dirty {
         True -> "Unsaved changes."
         False -> "In sync."
       }
-    Saving -> "Saving..."
-    Saved -> "Saved."
-    SaveError(message) -> message
+    mutation.Saving -> "Saving..."
+    mutation.Saved -> "Saved."
+    mutation.SaveError(message) -> message
   }
 }
 
-fn editor_status_class(state: EditorState, dirty: Bool) -> String {
+fn editor_status_class(state: mutation.MutationState, dirty: Bool) -> String {
   case state {
-    SaveError(_) -> "admin-page__policy-status admin-page__policy-status--error"
-    Idle ->
+    mutation.SaveError(_) ->
+      "admin-page__policy-status admin-page__policy-status--error"
+    mutation.Idle ->
       case dirty {
         True -> "admin-page__policy-status admin-page__policy-status--dirty"
         False -> "admin-page__policy-status"
       }
-    Saving | Saved -> "admin-page__policy-status"
+    mutation.Saving | mutation.Saved -> "admin-page__policy-status"
   }
 }
 
@@ -817,7 +818,7 @@ fn modal_status(policy: PolicyEditor) -> Element(Msg) {
   let dirty = is_dirty(policy)
 
   case policy.state, dirty {
-    Idle, False -> html.div([], [])
+    mutation.Idle, False -> html.div([], [])
     _, _ ->
       html.p([attribute.class(editor_status_class(policy.state, dirty))], [
         html.text(editor_status_text(policy.state, dirty)),

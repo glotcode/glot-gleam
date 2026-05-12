@@ -6,23 +6,14 @@ import glot_core/route
 import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
+import glot_frontend/loadable
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 
 pub type Model {
-  Model(
-    templates: List(email_template_dto.EmailTemplateSummaryResponse),
-    status: Status,
-  )
-}
-
-pub type Status {
-  NotLoaded
-  Loading
-  Ready
-  LoadError(String)
+  Model(templates: loadable.Loadable(List(email_template_dto.EmailTemplateSummaryResponse)))
 }
 
 pub type Msg {
@@ -32,33 +23,32 @@ pub type Msg {
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
-  #(Model(templates: [], status: NotLoaded), effect.none())
+  #(Model(templates: loadable.NotLoaded), effect.none())
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.status {
-    NotLoaded -> #(
-      Model(..model, status: Loading),
-      api.get_admin_email_templates(TemplatesLoaded),
-    )
-    Loading | Ready | LoadError(_) -> #(model, effect.none())
+  case loadable.ensure_loaded(
+    model.templates,
+    api.get_admin_email_templates(TemplatesLoaded),
+  ) {
+    #(templates, next_effect) -> #(Model(templates: templates), next_effect)
   }
 }
 
-pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
+pub fn update(_model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     TemplatesLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> #(
-          Model(templates: response.templates, status: Ready),
+          Model(templates: loadable.Loaded(response.templates)),
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(templates: loadable.LoadError(error.message)),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load email templates.")),
+          Model(templates: loadable.LoadError("Could not load email templates.")),
           effect.none(),
         )
       }
@@ -92,32 +82,28 @@ pub fn view(model: Model) -> Element(Msg) {
 }
 
 fn status_view(model: Model) -> Element(Msg) {
-  case model.status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading email templates..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
-  }
+  loadable.fold(
+    model.templates,
+    admin_ui.status(""),
+    admin_ui.status("Loading email templates..."),
+    fn(_) { admin_ui.status("") },
+    admin_ui.error_status,
+  )
 }
 
 fn templates_view(model: Model) -> Element(Msg) {
-  case model.templates, model.status {
-    [], Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading email templates..."),
-      ])
-    [], _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("No email templates were found."),
-      ])
-    templates, _ -> templates_table(templates)
-  }
+  loadable.fold(
+    model.templates,
+    admin_ui.empty_state("No email templates were found."),
+    admin_ui.empty_state("Loading email templates..."),
+    fn(templates) {
+      case templates {
+        [] -> admin_ui.empty_state("No email templates were found.")
+        _ -> templates_table(templates)
+      }
+    },
+    fn(_) { admin_ui.empty_state("No email templates were found.") },
+  )
 }
 
 fn templates_table(
@@ -160,5 +146,5 @@ fn open_column() -> admin_table.Column {
 }
 
 fn format_timestamp(value) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
+  value |> timestamp.to_rfc3339(calendar.utc_offset)
 }

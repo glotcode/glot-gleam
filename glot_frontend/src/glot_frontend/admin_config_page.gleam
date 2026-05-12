@@ -8,6 +8,7 @@ import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_frontend/admin_ui
 import glot_frontend/api
+import glot_frontend/mutation
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -39,7 +40,7 @@ pub type DockerRunSection {
   DockerRunSection(
     saved: DockerRunFields,
     draft: DockerRunFields,
-    state: SectionState,
+    state: mutation.MutationState,
   )
 }
 
@@ -48,7 +49,11 @@ pub type DockerRunFields {
 }
 
 pub type DebugSection {
-  DebugSection(saved: DebugFields, draft: DebugFields, state: SectionState)
+  DebugSection(
+    saved: DebugFields,
+    draft: DebugFields,
+    state: mutation.MutationState,
+  )
 }
 
 pub type DebugFields {
@@ -56,7 +61,11 @@ pub type DebugFields {
 }
 
 pub type AuthSection {
-  AuthSection(saved: AuthFields, draft: AuthFields, state: SectionState)
+  AuthSection(
+    saved: AuthFields,
+    draft: AuthFields,
+    state: mutation.MutationState,
+  )
 }
 
 pub type AuthFields {
@@ -71,7 +80,7 @@ pub type CleanupSection {
   CleanupSection(
     saved: CleanupFields,
     draft: CleanupFields,
-    state: SectionState,
+    state: mutation.MutationState,
   )
 }
 
@@ -86,13 +95,6 @@ pub type CleanupFields {
     login_tokens_retention_days: String,
     user_actions_retention_days: String,
   )
-}
-
-pub type SectionState {
-  Idle
-  Saving
-  Saved
-  SaveError(String)
 }
 
 pub type Msg {
@@ -173,7 +175,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           let next_model =
             Model(
               ..model,
-              debug: DebugSection(saved: fields, draft: fields, state: Idle),
+              debug: DebugSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
               debug_loaded: True,
             )
 
@@ -198,7 +204,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         debug: DebugSection(
           ..model.debug,
           draft: DebugFields(enabled: !model.debug.draft.enabled),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -210,14 +216,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         debug: DebugSection(
           ..model.debug,
           draft: model.debug.saved,
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
     )
 
     DebugSaveClicked -> #(
-      Model(..model, debug: DebugSection(..model.debug, state: Saving)),
+      Model(
+        ..model,
+        debug: DebugSection(..model.debug, state: mutation.Saving),
+      ),
       api.upsert_admin_debug_config(
         debug_config_dto.UpsertDebugConfigRequest(
           enabled: model.debug.draft.enabled,
@@ -233,7 +242,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(
               ..model,
-              debug: DebugSection(saved: fields, draft: fields, state: Saved),
+              debug: DebugSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Saved,
+              ),
             ),
             effect.none(),
           )
@@ -241,7 +254,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            debug: DebugSection(..model.debug, state: SaveError(error.message)),
+            debug: DebugSection(
+              ..model.debug,
+              state: mutation.SaveError(error.message),
+            ),
           ),
           effect.none(),
         )
@@ -250,7 +266,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             debug: DebugSection(
               ..model.debug,
-              state: SaveError("Could not save debug config."),
+              state: mutation.SaveError("Could not save debug config."),
             ),
           ),
           effect.none(),
@@ -264,7 +280,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           let next_model =
             Model(
               ..model,
-              auth: AuthSection(saved: fields, draft: fields, state: Idle),
+              auth: AuthSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
               auth_loaded: True,
             )
 
@@ -289,7 +309,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         auth: AuthSection(
           ..model.auth,
           draft: AuthFields(..model.auth.draft, login_token_max_age: value),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -301,7 +321,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         auth: AuthSection(
           ..model.auth,
           draft: AuthFields(..model.auth.draft, session_token_max_age: value),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -313,7 +333,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         auth: AuthSection(
           ..model.auth,
           draft: AuthFields(..model.auth.draft, session_cookie_max_age: value),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -322,7 +342,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     AuthResetClicked -> #(
       Model(
         ..model,
-        auth: AuthSection(..model.auth, draft: model.auth.saved, state: Idle),
+        auth: AuthSection(
+          ..model.auth,
+          draft: model.auth.saved,
+          state: mutation.Idle,
+        ),
       ),
       effect.none(),
     )
@@ -332,12 +356,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Error(message) -> #(
           Model(
             ..model,
-            auth: AuthSection(..model.auth, state: SaveError(message)),
+            auth: AuthSection(
+              ..model.auth,
+              state: mutation.SaveError(message),
+            ),
           ),
           effect.none(),
         )
         Ok(request) -> #(
-          Model(..model, auth: AuthSection(..model.auth, state: Saving)),
+          Model(
+            ..model,
+            auth: AuthSection(..model.auth, state: mutation.Saving),
+          ),
           api.upsert_admin_auth_config(request, AuthSaveFinished),
         )
       }
@@ -349,7 +379,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           #(
             Model(
               ..model,
-              auth: AuthSection(saved: fields, draft: fields, state: Saved),
+              auth: AuthSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Saved,
+              ),
             ),
             effect.none(),
           )
@@ -357,7 +391,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            auth: AuthSection(..model.auth, state: SaveError(error.message)),
+            auth: AuthSection(
+              ..model.auth,
+              state: mutation.SaveError(error.message),
+            ),
           ),
           effect.none(),
         )
@@ -366,7 +403,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             auth: AuthSection(
               ..model.auth,
-              state: SaveError("Could not save auth config."),
+              state: mutation.SaveError("Could not save auth config."),
             ),
           ),
           effect.none(),
@@ -380,7 +417,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           let next_model =
             Model(
               ..model,
-              cleanup: CleanupSection(saved: fields, draft: fields, state: Idle),
+              cleanup: CleanupSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
               cleanup_loaded: True,
             )
 
@@ -408,7 +449,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model.cleanup.draft,
             api_log_retention_days: value,
           ),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -423,7 +464,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model.cleanup.draft,
             page_log_retention_days: value,
           ),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -438,7 +479,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model.cleanup.draft,
             pageview_log_retention_days: value,
           ),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -453,7 +494,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model.cleanup.draft,
             run_log_retention_days: value,
           ),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -468,7 +509,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model.cleanup.draft,
             job_log_retention_days: value,
           ),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -483,7 +524,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model.cleanup.draft,
             jobs_retention_days: value,
           ),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -498,7 +539,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model.cleanup.draft,
             login_tokens_retention_days: value,
           ),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -513,7 +554,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model.cleanup.draft,
             user_actions_retention_days: value,
           ),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -525,7 +566,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         cleanup: CleanupSection(
           ..model.cleanup,
           draft: model.cleanup.saved,
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -536,14 +577,20 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Error(message) -> #(
           Model(
             ..model,
-            cleanup: CleanupSection(..model.cleanup, state: SaveError(message)),
+            cleanup: CleanupSection(
+              ..model.cleanup,
+              state: mutation.SaveError(message),
+            ),
           ),
           effect.none(),
         )
         Ok(request) -> #(
           Model(
             ..model,
-            cleanup: CleanupSection(..model.cleanup, state: Saving),
+            cleanup: CleanupSection(
+              ..model.cleanup,
+              state: mutation.Saving,
+            ),
           ),
           api.upsert_admin_cleanup_config(request, CleanupSaveFinished),
         )
@@ -559,7 +606,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               cleanup: CleanupSection(
                 saved: fields,
                 draft: fields,
-                state: Saved,
+                state: mutation.Saved,
               ),
             ),
             effect.none(),
@@ -570,7 +617,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             cleanup: CleanupSection(
               ..model.cleanup,
-              state: SaveError(error.message),
+              state: mutation.SaveError(error.message),
             ),
           ),
           effect.none(),
@@ -580,7 +627,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             cleanup: CleanupSection(
               ..model.cleanup,
-              state: SaveError("Could not save cleanup config."),
+              state: mutation.SaveError("Could not save cleanup config."),
             ),
           ),
           effect.none(),
@@ -597,7 +644,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               docker_run: DockerRunSection(
                 saved: fields,
                 draft: fields,
-                state: Idle,
+                state: mutation.Idle,
               ),
               docker_run_loaded: True,
             )
@@ -639,7 +686,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         docker_run: DockerRunSection(
           ..model.docker_run,
           draft: DockerRunFields(..model.docker_run.draft, base_url: value),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -651,7 +698,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         docker_run: DockerRunSection(
           ..model.docker_run,
           draft: DockerRunFields(..model.docker_run.draft, access_token: value),
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -663,7 +710,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         docker_run: DockerRunSection(
           ..model.docker_run,
           draft: model.docker_run.saved,
-          state: Idle,
+          state: mutation.Idle,
         ),
       ),
       effect.none(),
@@ -676,7 +723,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             docker_run: DockerRunSection(
               ..model.docker_run,
-              state: SaveError(message),
+              state: mutation.SaveError(message),
             ),
           ),
           effect.none(),
@@ -684,7 +731,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Ok(request) -> #(
           Model(
             ..model,
-            docker_run: DockerRunSection(..model.docker_run, state: Saving),
+            docker_run: DockerRunSection(
+              ..model.docker_run,
+              state: mutation.Saving,
+            ),
           ),
           api.upsert_admin_docker_run_config(request, DockerRunSaveFinished),
         )
@@ -700,7 +750,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               docker_run: DockerRunSection(
                 saved: fields,
                 draft: fields,
-                state: Saved,
+                state: mutation.Saved,
               ),
             ),
             effect.none(),
@@ -711,7 +761,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             docker_run: DockerRunSection(
               ..model.docker_run,
-              state: SaveError(error.message),
+              state: mutation.SaveError(error.message),
             ),
           ),
           effect.none(),
@@ -721,7 +771,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             docker_run: DockerRunSection(
               ..model.docker_run,
-              state: SaveError("Could not save docker run config."),
+              state: mutation.SaveError("Could not save docker run config."),
             ),
           ),
           effect.none(),
@@ -750,7 +800,9 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
   let save_disabled =
-    status != Ready || section.state == Saving || !is_dirty_auth(section)
+    status != Ready
+      || mutation.is_saving(section.state)
+      || !is_dirty_auth(section)
 
   html.article(
     [attribute.class("admin-page__policy admin-page__policy--config")],
@@ -797,7 +849,7 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
             [
               attribute.type_("button"),
               attribute.disabled(
-                section.state == Saving || !is_dirty_auth(section),
+                mutation.is_saving(section.state) || !is_dirty_auth(section),
               ),
               event.on_click(AuthResetClicked),
             ],
@@ -811,10 +863,7 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
               event.on_click(AuthSaveClicked),
             ],
             [
-              html.text(case section.state {
-                Saving -> "Saving..."
-                _ -> "Save"
-              }),
+              html.text(save_button_text(section.state)),
             ],
           ),
         ]),
@@ -828,7 +877,9 @@ fn cleanup_section_view(
   status: Status,
 ) -> Element(Msg) {
   let save_disabled =
-    status != Ready || section.state == Saving || !is_dirty_cleanup(section)
+    status != Ready
+      || mutation.is_saving(section.state)
+      || !is_dirty_cleanup(section)
 
   html.article(
     [attribute.class("admin-page__policy admin-page__policy--config")],
@@ -905,7 +956,7 @@ fn cleanup_section_view(
             [
               attribute.type_("button"),
               attribute.disabled(
-                section.state == Saving || !is_dirty_cleanup(section),
+                mutation.is_saving(section.state) || !is_dirty_cleanup(section),
               ),
               event.on_click(CleanupResetClicked),
             ],
@@ -919,10 +970,7 @@ fn cleanup_section_view(
               event.on_click(CleanupSaveClicked),
             ],
             [
-              html.text(case section.state {
-                Saving -> "Saving..."
-                _ -> "Save"
-              }),
+              html.text(save_button_text(section.state)),
             ],
           ),
         ]),
@@ -947,7 +995,9 @@ fn status_banner(status: Status) -> Element(Msg) {
 
 fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
   let save_disabled =
-    status != Ready || section.state == Saving || !is_dirty_debug(section)
+    status != Ready
+      || mutation.is_saving(section.state)
+      || !is_dirty_debug(section)
 
   html.article(
     [attribute.class("admin-page__policy admin-page__policy--config")],
@@ -975,7 +1025,9 @@ fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
           admin_ui.secondary_button(
             [
               attribute.type_("button"),
-              attribute.disabled(status != Ready || section.state == Saving),
+              attribute.disabled(
+                status != Ready || mutation.is_saving(section.state),
+              ),
               event.on_click(DebugToggleClicked),
             ],
             case section.draft.enabled {
@@ -997,7 +1049,7 @@ fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
             [
               attribute.type_("button"),
               attribute.disabled(
-                section.state == Saving || !is_dirty_debug(section),
+                mutation.is_saving(section.state) || !is_dirty_debug(section),
               ),
               event.on_click(DebugResetClicked),
             ],
@@ -1011,10 +1063,7 @@ fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
               event.on_click(DebugSaveClicked),
             ],
             [
-              html.text(case section.state {
-                Saving -> "Saving..."
-                _ -> "Save"
-              }),
+              html.text(save_button_text(section.state)),
             ],
           ),
         ]),
@@ -1028,7 +1077,7 @@ fn docker_run_section_view(
   status: Status,
 ) -> Element(Msg) {
   let save_disabled =
-    status != Ready || section.state == Saving || !is_dirty(section)
+    status != Ready || mutation.is_saving(section.state) || !is_dirty(section)
 
   html.article(
     [attribute.class("admin-page__policy admin-page__policy--config")],
@@ -1068,7 +1117,9 @@ fn docker_run_section_view(
           admin_ui.secondary_button(
             [
               attribute.type_("button"),
-              attribute.disabled(section.state == Saving || !is_dirty(section)),
+              attribute.disabled(
+                mutation.is_saving(section.state) || !is_dirty(section),
+              ),
               event.on_click(DockerRunResetClicked),
             ],
             "Reset",
@@ -1081,10 +1132,7 @@ fn docker_run_section_view(
               event.on_click(DockerRunSaveClicked),
             ],
             [
-              html.text(case section.state {
-                Saving -> "Saving..."
-                _ -> "Save"
-              }),
+              html.text(save_button_text(section.state)),
             ],
           ),
         ]),
@@ -1121,7 +1169,7 @@ fn status_badge(section: DockerRunSection) -> Element(Msg) {
     section.saved == empty_docker_run_fields(),
     is_dirty(section)
   {
-    Idle, False, False -> html.div([], [])
+    mutation.Idle, False, False -> html.div([], [])
     _, _, _ ->
       html.span([attribute.class(status_badge_class(section))], [
         html.text(status_badge_text(section)),
@@ -1131,10 +1179,10 @@ fn status_badge(section: DockerRunSection) -> Element(Msg) {
 
 fn status_badge_text(section: DockerRunSection) -> String {
   case section.state {
-    SaveError(_) -> "Error"
-    Saving -> "Saving"
-    Saved -> "Saved"
-    Idle ->
+    mutation.SaveError(_) -> "Error"
+    mutation.Saving -> "Saving"
+    mutation.Saved -> "Saved"
+    mutation.Idle ->
       case section.saved == empty_docker_run_fields(), is_dirty(section) {
         True, False -> "Not configured"
         _, True -> "Unsaved"
@@ -1145,10 +1193,10 @@ fn status_badge_text(section: DockerRunSection) -> String {
 
 fn status_badge_class(section: DockerRunSection) -> String {
   case section.state {
-    SaveError(_) -> "admin-page__version admin-page__version--error"
-    Saving -> "admin-page__version"
-    Saved -> "admin-page__version admin-page__version--success"
-    Idle ->
+    mutation.SaveError(_) -> "admin-page__version admin-page__version--error"
+    mutation.Saving -> "admin-page__version"
+    mutation.Saved -> "admin-page__version admin-page__version--success"
+    mutation.Idle ->
       case section.saved == empty_docker_run_fields(), is_dirty(section) {
         True, False -> "admin-page__version"
         _, True -> "admin-page__version admin-page__version--dirty"
@@ -1159,14 +1207,15 @@ fn status_badge_class(section: DockerRunSection) -> String {
 
 fn section_message(section: DockerRunSection) -> Element(Msg) {
   let message = case section.state {
-    SaveError(message) ->
+    mutation.SaveError(message) ->
       option.Some(#(
         "admin-page__policy-status admin-page__policy-status--error",
         message,
       ))
-    Saving -> option.Some(#("admin-page__policy-status", "Saving changes..."))
-    Saved -> option.Some(#("admin-page__policy-status", "Config saved."))
-    Idle ->
+    mutation.Saving ->
+      option.Some(#("admin-page__policy-status", "Saving changes..."))
+    mutation.Saved -> option.Some(#("admin-page__policy-status", "Config saved."))
+    mutation.Idle ->
       case section.saved == empty_docker_run_fields(), is_dirty(section) {
         True, False ->
           option.Some(#(
@@ -1187,7 +1236,7 @@ fn section_message(section: DockerRunSection) -> Element(Msg) {
 
 fn debug_status_badge(section: DebugSection) -> Element(Msg) {
   case section.state, is_dirty_debug(section) {
-    Idle, False -> html.div([], [])
+    mutation.Idle, False -> html.div([], [])
     _, _ ->
       html.span([attribute.class(debug_status_badge_class(section))], [
         html.text(debug_status_badge_text(section)),
@@ -1197,10 +1246,10 @@ fn debug_status_badge(section: DebugSection) -> Element(Msg) {
 
 fn debug_status_badge_text(section: DebugSection) -> String {
   case section.state {
-    SaveError(_) -> "Error"
-    Saving -> "Saving"
-    Saved -> "Saved"
-    Idle ->
+    mutation.SaveError(_) -> "Error"
+    mutation.Saving -> "Saving"
+    mutation.Saved -> "Saved"
+    mutation.Idle ->
       case is_dirty_debug(section) {
         True -> "Unsaved"
         False -> ""
@@ -1210,10 +1259,10 @@ fn debug_status_badge_text(section: DebugSection) -> String {
 
 fn debug_status_badge_class(section: DebugSection) -> String {
   case section.state {
-    SaveError(_) -> "admin-page__version admin-page__version--error"
-    Saving -> "admin-page__version"
-    Saved -> "admin-page__version admin-page__version--success"
-    Idle ->
+    mutation.SaveError(_) -> "admin-page__version admin-page__version--error"
+    mutation.Saving -> "admin-page__version"
+    mutation.Saved -> "admin-page__version admin-page__version--success"
+    mutation.Idle ->
       case is_dirty_debug(section) {
         True -> "admin-page__version admin-page__version--dirty"
         False -> "admin-page__version"
@@ -1227,7 +1276,7 @@ fn debug_section_message(section: DebugSection) -> Element(Msg) {
 
 fn auth_status_badge(section: AuthSection) -> Element(Msg) {
   case section.state, is_dirty_auth(section) {
-    Idle, False -> html.div([], [])
+    mutation.Idle, False -> html.div([], [])
     _, _ ->
       html.span([attribute.class(auth_status_badge_class(section))], [
         html.text(auth_status_badge_text(section)),
@@ -1237,10 +1286,10 @@ fn auth_status_badge(section: AuthSection) -> Element(Msg) {
 
 fn auth_status_badge_text(section: AuthSection) -> String {
   case section.state {
-    SaveError(_) -> "Error"
-    Saving -> "Saving"
-    Saved -> "Saved"
-    Idle ->
+    mutation.SaveError(_) -> "Error"
+    mutation.Saving -> "Saving"
+    mutation.Saved -> "Saved"
+    mutation.Idle ->
       case is_dirty_auth(section) {
         True -> "Unsaved"
         False -> ""
@@ -1250,10 +1299,10 @@ fn auth_status_badge_text(section: AuthSection) -> String {
 
 fn auth_status_badge_class(section: AuthSection) -> String {
   case section.state {
-    SaveError(_) -> "admin-page__version admin-page__version--error"
-    Saving -> "admin-page__version"
-    Saved -> "admin-page__version admin-page__version--success"
-    Idle ->
+    mutation.SaveError(_) -> "admin-page__version admin-page__version--error"
+    mutation.Saving -> "admin-page__version"
+    mutation.Saved -> "admin-page__version admin-page__version--success"
+    mutation.Idle ->
       case is_dirty_auth(section) {
         True -> "admin-page__version admin-page__version--dirty"
         False -> "admin-page__version"
@@ -1267,7 +1316,7 @@ fn auth_section_message(section: AuthSection) -> Element(Msg) {
 
 fn cleanup_status_badge(section: CleanupSection) -> Element(Msg) {
   case section.state, is_dirty_cleanup(section) {
-    Idle, False -> html.div([], [])
+    mutation.Idle, False -> html.div([], [])
     _, _ ->
       html.span([attribute.class(cleanup_status_badge_class(section))], [
         html.text(cleanup_status_badge_text(section)),
@@ -1277,10 +1326,10 @@ fn cleanup_status_badge(section: CleanupSection) -> Element(Msg) {
 
 fn cleanup_status_badge_text(section: CleanupSection) -> String {
   case section.state {
-    SaveError(_) -> "Error"
-    Saving -> "Saving"
-    Saved -> "Saved"
-    Idle ->
+    mutation.SaveError(_) -> "Error"
+    mutation.Saving -> "Saving"
+    mutation.Saved -> "Saved"
+    mutation.Idle ->
       case is_dirty_cleanup(section) {
         True -> "Unsaved"
         False -> ""
@@ -1290,10 +1339,10 @@ fn cleanup_status_badge_text(section: CleanupSection) -> String {
 
 fn cleanup_status_badge_class(section: CleanupSection) -> String {
   case section.state {
-    SaveError(_) -> "admin-page__version admin-page__version--error"
-    Saving -> "admin-page__version"
-    Saved -> "admin-page__version admin-page__version--success"
-    Idle ->
+    mutation.SaveError(_) -> "admin-page__version admin-page__version--error"
+    mutation.Saving -> "admin-page__version"
+    mutation.Saved -> "admin-page__version admin-page__version--success"
+    mutation.Idle ->
       case is_dirty_cleanup(section) {
         True -> "admin-page__version admin-page__version--dirty"
         False -> "admin-page__version"
@@ -1305,22 +1354,30 @@ fn cleanup_section_message(section: CleanupSection) -> Element(Msg) {
   section_state_message(section.state)
 }
 
-fn section_state_message(state: SectionState) -> Element(Msg) {
+fn section_state_message(state: mutation.MutationState) -> Element(Msg) {
   let message = case state {
-    SaveError(message) ->
+    mutation.SaveError(message) ->
       option.Some(#(
         "admin-page__policy-status admin-page__policy-status--error",
         message,
       ))
-    Saving -> option.Some(#("admin-page__policy-status", "Saving changes..."))
-    Saved -> option.Some(#("admin-page__policy-status", "Config saved."))
-    Idle -> option.None
+    mutation.Saving ->
+      option.Some(#("admin-page__policy-status", "Saving changes..."))
+    mutation.Saved -> option.Some(#("admin-page__policy-status", "Config saved."))
+    mutation.Idle -> option.None
   }
 
   case message {
     option.Some(#(class_name, text)) ->
       html.p([attribute.class(class_name)], [html.text(text)])
     option.None -> html.div([], [])
+  }
+}
+
+fn save_button_text(state: mutation.MutationState) -> String {
+  case state {
+    mutation.Saving -> "Saving..."
+    mutation.Idle | mutation.Saved | mutation.SaveError(_) -> "Save"
   }
 }
 
@@ -1499,12 +1556,12 @@ fn parse_positive_int(
 
 fn empty_auth_section() -> AuthSection {
   let fields = empty_auth_fields()
-  AuthSection(saved: fields, draft: fields, state: Idle)
+  AuthSection(saved: fields, draft: fields, state: mutation.Idle)
 }
 
 fn empty_debug_section() -> DebugSection {
   let fields = empty_debug_fields()
-  DebugSection(saved: fields, draft: fields, state: Idle)
+  DebugSection(saved: fields, draft: fields, state: mutation.Idle)
 }
 
 fn empty_debug_fields() -> DebugFields {
@@ -1521,7 +1578,7 @@ fn empty_auth_fields() -> AuthFields {
 
 fn empty_cleanup_section() -> CleanupSection {
   let fields = empty_cleanup_fields()
-  CleanupSection(saved: fields, draft: fields, state: Idle)
+  CleanupSection(saved: fields, draft: fields, state: mutation.Idle)
 }
 
 fn empty_cleanup_fields() -> CleanupFields {
@@ -1539,7 +1596,7 @@ fn empty_cleanup_fields() -> CleanupFields {
 
 fn empty_docker_run_section() -> DockerRunSection {
   let fields = empty_docker_run_fields()
-  DockerRunSection(saved: fields, draft: fields, state: Idle)
+  DockerRunSection(saved: fields, draft: fields, state: mutation.Idle)
 }
 
 fn empty_docker_run_fields() -> DockerRunFields {
