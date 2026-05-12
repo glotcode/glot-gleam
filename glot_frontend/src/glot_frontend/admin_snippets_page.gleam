@@ -135,10 +135,12 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     panel_class: "admin-jobs-page",
     title: "Snippets",
     intro: "",
-    actions: [
-      pagination_button("Previous", PreviousPageClicked, can_go_previous(model)),
-      pagination_button("Next", NextPageClicked, can_go_next(model)),
-    ],
+    actions:
+      admin_ui.cursor_pagination_actions(
+        model.page,
+        PreviousPageClicked,
+        NextPageClicked,
+      ),
     content: [
       admin_ui.filter_section(
         copy: "Filter snippets by exact username.",
@@ -347,29 +349,4 @@ fn filter_username(value: String) -> option.Option(String) {
     "" -> option.None
     username -> option.Some(username)
   }
-}
-
-fn can_go_next(model: Model) -> Bool {
-  case pagination_model.next_cursor(model.page) {
-    option.Some(_) -> True
-    option.None -> False
-  }
-}
-
-fn can_go_previous(model: Model) -> Bool {
-  case pagination_model.previous_cursor(model.page) {
-    option.Some(_) -> True
-    option.None -> False
-  }
-}
-
-fn pagination_button(text: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  admin_ui.secondary_button(
-    [
-      attribute.type_("button"),
-      attribute.disabled(!enabled),
-      event.on_click(msg),
-    ],
-    text,
-  )
 }

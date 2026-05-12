@@ -457,14 +457,14 @@ fn job_logs_group(model: Model, now: Timestamp) -> Element(Msg) {
           html.text(count_text),
         ]),
       ]),
-      html.div([attribute.class("admin-page__actions")], [
-        pagination_button(
-          "Previous",
+      html.div(
+        [attribute.class("admin-page__actions")],
+        admin_ui.cursor_pagination_actions(
+          model.logs_page,
           PreviousLogsPageClicked,
-          can_go_previous_logs(model),
+          NextLogsPageClicked,
         ),
-        pagination_button("Next", NextLogsPageClicked, can_go_next_logs(model)),
-      ]),
+      ),
     ]),
     logs_status_view(model),
     job_logs_table(model, now),
@@ -921,30 +921,6 @@ fn textarea_input(
   )
 }
 
-fn can_go_previous_logs(model: Model) -> Bool {
-  case pagination_model.previous_cursor(model.logs_page) {
-    option.Some(_) -> True
-    option.None -> False
-  }
-}
-
-fn can_go_next_logs(model: Model) -> Bool {
-  case pagination_model.next_cursor(model.logs_page) {
-    option.Some(_) -> True
-    option.None -> False
-  }
-}
-
-fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  admin_ui.secondary_button(
-    [
-      attribute.attribute("type", "button"),
-      attribute.disabled(!enabled),
-      event.on_click(msg),
-    ],
-    label,
-  )
-}
 
 fn error_badge(log: job_log_dto.JobLogResponse) -> Element(Msg) {
   case log.has_error {

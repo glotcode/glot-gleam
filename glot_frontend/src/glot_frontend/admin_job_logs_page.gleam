@@ -173,10 +173,12 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     panel_class: "admin-job-logs-page",
     title: "Job logs",
     intro: "",
-    actions: [
-      pagination_button("Previous", PreviousPageClicked, can_go_previous(model)),
-      pagination_button("Next", NextPageClicked, can_go_next(model)),
-    ],
+    actions:
+      admin_ui.cursor_pagination_actions(
+        current_page(model),
+        PreviousPageClicked,
+        NextPageClicked,
+      ),
     content: [
       admin_ui.filter_section(
         copy: filter_summary(model, rows),
@@ -303,17 +305,6 @@ fn current_page(
     loadable.Loaded(page) -> page
     loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) -> empty_page()
   }
-}
-
-fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  admin_ui.secondary_button(
-    [
-      attribute.attribute("type", "button"),
-      attribute.disabled(!enabled),
-      event.on_click(msg),
-    ],
-    label,
-  )
 }
 
 fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
@@ -460,20 +451,6 @@ fn parse_uuid_filter(
 
 fn empty_page() -> pagination_model.CursorPage(job_log_dto.JobLogResponse) {
   pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
-}
-
-fn can_go_previous(model: Model) -> Bool {
-  case pagination_model.previous_cursor(current_page(model)) {
-    option.Some(_) -> True
-    option.None -> False
-  }
-}
-
-fn can_go_next(model: Model) -> Bool {
-  case pagination_model.next_cursor(current_page(model)) {
-    option.Some(_) -> True
-    option.None -> False
-  }
 }
 
 fn error_badge(log: job_log_dto.JobLogResponse) -> Element(Msg) {

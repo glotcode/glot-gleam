@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/option
+import glot_core/pagination_model
 import glot_frontend/mutation
 import lustre/attribute
 import lustre/element.{type Element}
@@ -210,6 +211,78 @@ pub fn section(
   ])
 }
 
+pub fn cursor_pagination_actions(
+  page page: pagination_model.CursorPage(a),
+  previous_msg previous_msg: msg,
+  next_msg next_msg: msg,
+) -> List(Element(msg)) {
+  cursor_pagination_actions_with_disabled(
+    page: page,
+    previous_msg: previous_msg,
+    next_msg: next_msg,
+    disabled: False,
+  )
+}
+
+pub fn cursor_pagination_actions_with_disabled(
+  page page: pagination_model.CursorPage(a),
+  previous_msg previous_msg: msg,
+  next_msg next_msg: msg,
+  disabled disabled: Bool,
+) -> List(Element(msg)) {
+  [
+    secondary_button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(disabled || !has_previous_page(page)),
+        event.on_click(previous_msg),
+      ],
+      "Previous",
+    ),
+    secondary_button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(disabled || !has_next_page(page)),
+        event.on_click(next_msg),
+      ],
+      "Next",
+    ),
+  ]
+}
+
+pub fn cursor_pagination_controls(
+  attributes extra_attributes: List(attribute.Attribute(msg)),
+  page page: pagination_model.CursorPage(a),
+  previous_msg previous_msg: msg,
+  next_msg next_msg: msg,
+) -> Element(msg) {
+  cursor_pagination_controls_with_disabled(
+    attributes: extra_attributes,
+    page: page,
+    previous_msg: previous_msg,
+    next_msg: next_msg,
+    disabled: False,
+  )
+}
+
+pub fn cursor_pagination_controls_with_disabled(
+  attributes extra_attributes: List(attribute.Attribute(msg)),
+  page page: pagination_model.CursorPage(a),
+  previous_msg previous_msg: msg,
+  next_msg next_msg: msg,
+  disabled disabled: Bool,
+) -> Element(msg) {
+  html.div(
+    extra_attributes,
+    cursor_pagination_actions_with_disabled(
+      page: page,
+      previous_msg: previous_msg,
+      next_msg: next_msg,
+      disabled: disabled,
+    ),
+  )
+}
+
 pub fn filter_section(
   copy copy: String,
   content content: Element(msg),
@@ -358,5 +431,19 @@ fn bool_attribute(value: Bool) -> String {
   case value {
     True -> "true"
     False -> "false"
+  }
+}
+
+fn has_previous_page(page: pagination_model.CursorPage(a)) -> Bool {
+  case pagination_model.previous_cursor(page) {
+    option.Some(_) -> True
+    option.None -> False
+  }
+}
+
+fn has_next_page(page: pagination_model.CursorPage(a)) -> Bool {
+  case pagination_model.next_cursor(page) {
+    option.Some(_) -> True
+    option.None -> False
   }
 }

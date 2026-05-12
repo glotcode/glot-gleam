@@ -150,10 +150,12 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     panel_class: "admin-jobs-page",
     title: "Users",
     intro: "Review user accounts, account access state, and role assignments.",
-    actions: [
-      pagination_button("Previous", PreviousPageClicked, can_go_previous(model)),
-      pagination_button("Next", NextPageClicked, can_go_next(model)),
-    ],
+    actions:
+      admin_ui.cursor_pagination_actions(
+        current_page(model),
+        PreviousPageClicked,
+        NextPageClicked,
+      ),
     content: [
       html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
@@ -349,20 +351,6 @@ fn open_column() -> admin_table.Column {
   admin_table.action_column("Open")
 }
 
-fn can_go_previous(model: Model) -> Bool {
-  case pagination_model.previous_cursor(current_page(model)) {
-    option.Some(_) -> True
-    option.None -> False
-  }
-}
-
-fn can_go_next(model: Model) -> Bool {
-  case pagination_model.next_cursor(current_page(model)) {
-    option.Some(_) -> True
-    option.None -> False
-  }
-}
-
 fn current_page(
   model: Model,
 ) -> pagination_model.CursorPage(user_dto.UserSummaryResponse) {
@@ -373,16 +361,6 @@ fn current_page(
   }
 }
 
-fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  admin_ui.secondary_button(
-    [
-      attribute.attribute("type", "button"),
-      attribute.disabled(!enabled),
-      event.on_click(msg),
-    ],
-    label,
-  )
-}
 
 fn text_input(
   id id: String,

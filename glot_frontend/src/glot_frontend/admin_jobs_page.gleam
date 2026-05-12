@@ -124,10 +124,13 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     title: "Jobs overview",
     intro:
       "Review queue health, recent job executions, and filtered slices of the retained jobs history.",
-    actions: [
-      pagination_button("Previous", PreviousPageClicked, can_go_previous(model)),
-      pagination_button("Next", NextPageClicked, can_go_next(model)),
-    ],
+    actions:
+      admin_ui.cursor_pagination_actions_with_disabled(
+        page: current_page(model),
+        previous_msg: PreviousPageClicked,
+        next_msg: NextPageClicked,
+        disabled: loadable.is_loading(model.page),
+      ),
     content: [
       html.div([attribute.class("admin-jobs-page__summary-grid")], {
           summary_stats(model.summary)
@@ -353,17 +356,6 @@ fn filter_chip(label: String, selected: Bool, msg: Msg) -> Element(Msg) {
   )
 }
 
-fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  admin_ui.secondary_button(
-    [
-      attribute.attribute("type", "button"),
-      attribute.disabled(!enabled),
-      event.on_click(msg),
-    ],
-    label,
-  )
-}
-
 fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
   admin_table.row([
     admin_table.cell(job_column(), [
@@ -513,20 +505,6 @@ fn job_type_filter_copy(filter: option.Option(String)) -> String {
   case filter {
     option.None -> "All job types are included."
     option.Some(job_type) -> "Focused on " <> job_type <> "."
-  }
-}
-
-fn can_go_previous(model: Model) -> Bool {
-  case pagination_model.previous_cursor(current_page(model)) {
-    option.Some(_) -> !loadable.is_loading(model.page)
-    option.None -> False
-  }
-}
-
-fn can_go_next(model: Model) -> Bool {
-  case pagination_model.next_cursor(current_page(model)) {
-    option.Some(_) -> !loadable.is_loading(model.page)
-    option.None -> False
   }
 }
 
