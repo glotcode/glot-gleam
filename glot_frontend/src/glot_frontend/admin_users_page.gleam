@@ -296,23 +296,17 @@ fn user_row(
   now: Timestamp,
 ) -> Element(Msg) {
   admin_table.row([
-    admin_table.cell(user_column(), [admin_table.primary_value(user.username)]),
+    admin_table.primary_cell(user_column(), user.username),
     admin_table.cell(role_column(), [role_badge(user)]),
     admin_table.cell(account_column(), [
       admin_table.stack([account_state_badge(user)]),
     ]),
-    admin_table.cell(tier_column(), [
-      admin_table.stack([admin_table.secondary_value(account_tier_text(user))]),
-    ]),
-    admin_table.cell(joined_column(), [
-      admin_table.primary_value(timestamp_helpers.relative_label(
-        user.created_at,
-        now,
-      )),
-    ]),
-    admin_table.cell(open_column(), [
-      admin_ui.secondary_link([route.href(route.AdminUser(user.id))], "Open"),
-    ]),
+    admin_table.secondary_cell(tier_column(), account_tier_text(user)),
+    admin_table.primary_cell(
+      joined_column(),
+      timestamp_helpers.relative_label(user.created_at, now),
+    ),
+    admin_table.open_link_cell([route.href(route.AdminUser(user.id))]),
   ])
 }
 
@@ -348,7 +342,7 @@ fn joined_column() -> admin_table.Column {
 }
 
 fn open_column() -> admin_table.Column {
-  admin_table.action_column("Open")
+  admin_table.open_column()
 }
 
 fn current_page(

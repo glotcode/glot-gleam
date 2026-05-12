@@ -136,53 +136,55 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
           summary_stats(model.summary)
           |> list.map(summary_card)
         }),
-      html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Filters"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(filtered_status_text(model, items)),
-            ]),
-          ]),
-          html.div(
-            [attribute.class("admin-page__policy admin-jobs-page__filters")],
-            [
-              filter_group(title: "Status", chips: [
-                filter_chip(
+      admin_ui.filter_section(
+        copy: filtered_status_text(model, items),
+        content: admin_ui.filter_surface(
+          [attribute.class("admin-jobs-page__filters")],
+          [
+            admin_ui.filter_row([], [
+              admin_ui.filter_chip_group(title: "Status", copy: option.None, chips: [
+                admin_ui.filter_chip(
+                  [event.on_click(StatusFilterSelected(job_dto.AllStatuses))],
                   "All",
                   model.status_filter == job_dto.AllStatuses,
-                  StatusFilterSelected(job_dto.AllStatuses),
                 ),
-                filter_chip(
+                admin_ui.filter_chip(
+                  [event.on_click(StatusFilterSelected(job_dto.PendingStatus))],
                   "Pending",
                   model.status_filter == job_dto.PendingStatus,
-                  StatusFilterSelected(job_dto.PendingStatus),
                 ),
-                filter_chip(
+                admin_ui.filter_chip(
+                  [event.on_click(StatusFilterSelected(job_dto.RunningStatus))],
                   "Running",
                   model.status_filter == job_dto.RunningStatus,
-                  StatusFilterSelected(job_dto.RunningStatus),
                 ),
-                filter_chip(
+                admin_ui.filter_chip(
+                  [event.on_click(StatusFilterSelected(job_dto.FailedStatus))],
                   "Failed",
                   model.status_filter == job_dto.FailedStatus,
-                  StatusFilterSelected(job_dto.FailedStatus),
                 ),
-                filter_chip(
+                admin_ui.filter_chip(
+                  [event.on_click(StatusFilterSelected(job_dto.DoneStatus))],
                   "Done",
                   model.status_filter == job_dto.DoneStatus,
-                  StatusFilterSelected(job_dto.DoneStatus),
                 ),
               ]),
-              select_filter_group(
+              admin_ui.filter_group(
                 title: "Job type",
-                selected_value: selected_job_type_value(model.job_type_filter),
-                on_input: JobTypeFilterSelected,
+                copy: option.None,
+                content: html.select(
+                  [
+                    attribute.class("admin-page__select admin-page__input"),
+                    attribute.value(selected_job_type_value(model.job_type_filter)),
+                    event.on_input(JobTypeFilterSelected),
+                  ],
+                  job_type_options(selected_job_type_value(model.job_type_filter)),
+                ),
               ),
-            ],
-          ),
-      ]),
+            ]),
+          ],
+        ),
+      ),
       html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.h3([attribute.class("admin-page__group-title")], [
@@ -304,55 +306,6 @@ fn summary_card(stat: SummaryStat) -> Element(Msg) {
         ]),
       ]),
     ],
-  )
-}
-
-fn filter_group(
-  title title: String,
-  chips chips: List(Element(Msg)),
-) -> Element(Msg) {
-  html.div([attribute.class("admin-jobs-page__filter-group")], [
-    html.span([attribute.class("admin-jobs-page__filter-title")], [
-      html.text(title),
-    ]),
-    html.div([attribute.class("admin-page__actions")], chips),
-  ])
-}
-
-fn select_filter_group(
-  title title: String,
-  selected_value selected_value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-jobs-page__filter-group")], [
-    html.span([attribute.class("admin-jobs-page__filter-title")], [
-      html.text(title),
-    ]),
-    html.select(
-      [
-        attribute.class("admin-page__input"),
-        attribute.value(selected_value),
-        event.on_input(on_input),
-      ],
-      job_type_options(selected_value),
-    ),
-  ])
-}
-
-fn filter_chip(label: String, selected: Bool, msg: Msg) -> Element(Msg) {
-  let class_name = case selected {
-    True -> "admin-page__chip admin-page__chip--selected"
-    False -> "admin-page__chip"
-  }
-
-  html.button(
-    [
-      attribute.class(class_name),
-      attribute.attribute("type", "button"),
-      attribute.attribute("aria-pressed", bool_attribute(selected)),
-      event.on_click(msg),
-    ],
-    [html.text(label)],
   )
 }
 
@@ -513,13 +466,6 @@ fn current_page(model: Model) -> pagination_model.CursorPage(job_dto.JobResponse
     loadable.Loaded(page) -> page
     loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) ->
       pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
-  }
-}
-
-fn bool_attribute(value: Bool) -> String {
-  case value {
-    True -> "true"
-    False -> "false"
   }
 }
 

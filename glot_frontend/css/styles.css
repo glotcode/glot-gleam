@@ -597,14 +597,12 @@ a {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.admin-request-logs-page__link,
-.admin-job-logs-page__link {
+.admin-table__link {
   color: #1f2c45;
   text-decoration: none;
 }
 
-.admin-request-logs-page__link:hover,
-.admin-job-logs-page__link:hover {
+.admin-table__link:hover {
   text-decoration: underline;
 }
 

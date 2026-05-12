@@ -262,51 +262,38 @@ fn snippet_row(
   now: Timestamp,
 ) -> Element(Msg) {
   admin_table.row([
-    cell(slug_column(), snippet.slug, []),
-    cell(language_column(), language.name(snippet.language), [
+    admin_table.value_cell(slug_column(), snippet.slug),
+    admin_table.cell_with(language_column(), [
       attribute.class("admin-table__cell admin-table__cell--language"),
-    ]),
-    cell(
+    ], [admin_table.value(language.name(snippet.language))]),
+    admin_table.cell_with(
       title_column(),
-      string_helpers.truncate_stem_middle(snippet.title, title_max_length),
+      [attribute.class("admin-table__cell admin-table__cell--title")],
       [
-        attribute.class("admin-table__cell admin-table__cell--title"),
+        admin_table.value(string_helpers.truncate_stem_middle(
+          snippet.title,
+          title_max_length,
+        )),
       ],
     ),
-    cell(
+    admin_table.value_cell(
       owner_column(),
       string_helpers.truncate_stem_middle(
         snippet.user.username,
         owner_max_length,
       ),
-      [
-        attribute.class("admin-table__cell"),
-      ],
     ),
-    admin_table.cell(updated_column(), [
-      admin_table.stack([
-        admin_table.value(timestamp_helpers.relative_label(
-          snippet.updated_at,
-          now,
-        )),
-        admin_table.meta(int.to_string(snippet.file_count) <> " files"),
-      ]),
-    ]),
-    admin_table.cell(open_column(), [
-      admin_ui.secondary_link(
-        [route.href(route.AdminSnippet(snippet.slug))],
-        "Details",
-      ),
-    ]),
+    admin_table.primary_meta_cell(
+      updated_column(),
+      timestamp_helpers.relative_label(snippet.updated_at, now),
+      option.Some(int.to_string(snippet.file_count) <> " files"),
+    ),
+    admin_table.action_link_cell(
+      open_column(),
+      [route.href(route.AdminSnippet(snippet.slug))],
+      "Details",
+    ),
   ])
-}
-
-fn cell(
-  column: admin_table.Column,
-  value: String,
-  attrs: List(attribute.Attribute(Msg)),
-) -> Element(Msg) {
-  admin_table.cell_with(column, attrs, [admin_table.value(value)])
 }
 
 fn snippet_columns() -> List(admin_table.Column) {
@@ -341,7 +328,7 @@ fn updated_column() -> admin_table.Column {
 }
 
 fn open_column() -> admin_table.Column {
-  admin_table.action_column("Open")
+  admin_table.open_column()
 }
 
 fn filter_username(value: String) -> option.Option(String) {

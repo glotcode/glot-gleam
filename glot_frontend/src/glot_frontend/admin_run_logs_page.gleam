@@ -394,43 +394,20 @@ fn current_page(
 
 fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
   admin_table.row([
-    admin_table.cell(log_id_column(), [
-      admin_table.stack([
-        html.a(
-          [
-            attribute.class(
-              "admin-table__value admin-table__value--primary admin-job-logs-page__link",
-            ),
-            route.href(route.AdminRunLog(log.id)),
-          ],
-          [
-            html.text(string_helpers.truncate_stem_middle(
-              uuid.to_string(log.id),
-              18,
-            )),
-          ],
-        ),
-      ]),
-    ]),
-    admin_table.cell(when_column(), [
-      html.span([attribute.class("admin-table__value--primary")], [
-        html.text(timestamp_helpers.relative_label(log.created_at, now)),
-      ]),
-    ]),
-    admin_table.cell(language_column(), [
-      admin_table.stack([
-        html.span([attribute.class("admin-table__value--primary")], [
-          html.text(language.name(log.language)),
-        ]),
-      ]),
-    ]),
+    admin_table.linked_primary_cell(
+      log_id_column(),
+      [route.href(route.AdminRunLog(log.id))],
+      string_helpers.truncate_stem_middle(uuid.to_string(log.id), 18),
+      option.None,
+    ),
+    admin_table.primary_cell(
+      when_column(),
+      timestamp_helpers.relative_label(log.created_at, now),
+    ),
+    admin_table.primary_cell(language_column(), language.name(log.language)),
     admin_table.cell(outcome_column(), [outcome_badge(log)]),
-    admin_table.cell(duration_column(), [
-      html.text(optional_duration(log.duration_ns)),
-    ]),
-    admin_table.cell(open_column(), [
-      admin_ui.secondary_link([route.href(route.AdminRunLog(log.id))], "Open"),
-    ]),
+    admin_table.value_cell(duration_column(), optional_duration(log.duration_ns)),
+    admin_table.open_link_cell([route.href(route.AdminRunLog(log.id))]),
   ])
 }
 
@@ -466,7 +443,7 @@ fn duration_column() -> admin_table.Column {
 }
 
 fn open_column() -> admin_table.Column {
-  admin_table.action_column("Open")
+  admin_table.open_column()
 }
 
 fn filter_summary(
