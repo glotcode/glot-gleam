@@ -98,29 +98,16 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading API log..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    NotLoaded | Ready -> admin_ui.status("")
+    Loading -> admin_ui.status("Loading API log...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 
 fn detail_view(model: Model) -> Element(Msg) {
   case model.log, model.status {
-    option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading API log..."),
-      ])
-    option.None, _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("This API log could not be loaded."),
-      ])
+    option.None, Loading -> admin_ui.empty_state("Loading API log...")
+    option.None, _ -> admin_ui.empty_state("This API log could not be loaded.")
     option.Some(log), _ ->
       html.div([attribute.class("admin-job-page__content")], [
         html.div(
@@ -140,35 +127,13 @@ fn detail_view(model: Model) -> Element(Msg) {
             admin_ui.summary_card("Action", log.log.action),
           ],
         ),
-        section_view(
-          "API log",
-          "Request-handling metadata and raw API log payloads.",
-          option.Some(api_log_content(log)),
-          "",
+        admin_ui.section(
+          title: "API log",
+          copy: "Request-handling metadata and raw API log payloads.",
+          content: api_log_content(log),
         ),
       ])
   }
-}
-
-fn section_view(
-  title: String,
-  copy: String,
-  content: option.Option(Element(Msg)),
-  empty_message: String,
-) -> Element(Msg) {
-  html.div([attribute.class("admin-page__group")], [
-    html.div([attribute.class("admin-page__group-header")], [
-      html.h3([attribute.class("admin-page__group-title")], [html.text(title)]),
-      html.p([attribute.class("admin-page__group-copy")], [html.text(copy)]),
-    ]),
-    case content {
-      option.Some(content) -> content
-      option.None ->
-        html.div([attribute.class("admin-page__empty")], [
-          html.text(empty_message),
-        ])
-    },
-  ])
 }
 
 fn api_log_content(log: api_log_dto.ApiLogDetailResponse) -> Element(Msg) {

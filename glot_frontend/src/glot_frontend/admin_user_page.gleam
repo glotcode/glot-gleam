@@ -380,35 +380,17 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text(""),
-      ])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading user..."),
-      ])
-    Deleting ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Deleting account..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    NotLoaded | Ready -> admin_ui.status("")
+    Loading -> admin_ui.status("Loading user...")
+    Deleting -> admin_ui.status("Deleting account...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 
 fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
   case model.user, model.status {
-    option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading user..."),
-      ])
-    option.None, _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("This user could not be loaded."),
-      ])
+    option.None, Loading -> admin_ui.empty_state("Loading user...")
+    option.None, _ -> admin_ui.empty_state("This user could not be loaded.")
     option.Some(editor), _ -> user_view(editor, now, model.status)
   }
 }
@@ -430,16 +412,10 @@ fn user_view(
         timestamp_helpers.relative_label(editor.metadata.last_login_at, now),
       ),
     ]),
-    html.div([attribute.class("admin-page__group")], [
-      html.div([attribute.class("admin-page__group-header")], [
-        html.h3([attribute.class("admin-page__group-title")], [
-          html.text("Metadata"),
-        ]),
-        html.p([attribute.class("admin-page__group-copy")], [
-          html.text("Identifiers and read-only account attributes."),
-        ]),
-      ]),
-      html.div([attribute.class(admin_ui.detail_grid_class())], [
+    admin_ui.section(
+      title: "Metadata",
+      copy: "Identifiers and read-only account attributes.",
+      content: html.div([attribute.class(admin_ui.detail_grid_class())], [
         admin_ui.detail_item("User ID", uuid.to_string(editor.id)),
         admin_ui.detail_item("Account ID", uuid.to_string(editor.account_id)),
         admin_ui.detail_item(
@@ -447,11 +423,11 @@ fn user_view(
           email_address_model.to_string(editor.email),
         ),
         admin_ui.detail_item(
-          "Delete job ID",
+          "Account deletion job ID",
           optional_uuid(editor.metadata.delete_job_id),
         ),
         admin_ui.detail_item(
-          "Delete scheduled at",
+          "Account deletion scheduled at",
           optional_timestamp(editor.metadata.delete_scheduled_at),
         ),
         admin_ui.detail_item(
@@ -463,20 +439,12 @@ fn user_view(
           format_timestamp(editor.metadata.updated_at),
         ),
       ]),
-    ]),
-    html.div([attribute.class("admin-page__group")], [
-      html.div([attribute.class("admin-page__group-header")], [
-        html.h3([attribute.class("admin-page__group-title")], [
-          html.text("Editable settings"),
-        ]),
-        html.p([attribute.class("admin-page__group-copy")], [
-          html.text(
-            "Changes are persisted to the user and account records for this login identity.",
-          ),
-        ]),
-      ]),
-      edit_form(editor, status == Deleting),
-    ]),
+    ),
+    admin_ui.section(
+      title: "Editable settings",
+      copy: "Changes are persisted to the user and account records for this login identity.",
+      content: edit_form(editor, status == Deleting),
+    ),
   ])
 }
 
@@ -611,19 +579,10 @@ fn delete_confirmation_dialog_children(
 
 fn save_status(state: EditorState) -> Element(Msg) {
   case state {
-    Idle -> html.p([attribute.class("admin-page__status")], [html.text("")])
-    Saving ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Saving user..."),
-      ])
-    Saved ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("User updated."),
-      ])
-    SaveError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    Idle -> admin_ui.status("")
+    Saving -> admin_ui.status("Saving user...")
+    Saved -> admin_ui.status("User updated.")
+    SaveError(message) -> admin_ui.error_status(message)
   }
 }
 

@@ -373,7 +373,7 @@ fn periodic_job_view(
       ]),
       html.div([attribute.class(admin_ui.detail_grid_class())], [
         admin_ui.detail_item("Periodic job ID", uuid.to_string(editor.id)),
-        admin_ui.detail_item("Type", editor.job_type),
+        admin_ui.detail_item("Job type", editor.job_type),
         admin_ui.detail_item("Enabled", enabled_text(editor.saved.enabled)),
         admin_ui.detail_item(
           "Next run at",

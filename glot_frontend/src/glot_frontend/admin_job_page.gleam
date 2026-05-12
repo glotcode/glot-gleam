@@ -382,35 +382,22 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
 
 fn job_status_view(model: Model) -> Element(Msg) {
   case model.job_status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading job..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    NotLoaded | Ready -> admin_ui.status("")
+    Loading -> admin_ui.status("Loading job...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 
 fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
   case model.job, model.job_status {
-    option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading job..."),
-      ])
-    option.None, _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("This job could not be loaded."),
-      ])
+    option.None, Loading -> admin_ui.empty_state("Loading job...")
+    option.None, _ -> admin_ui.empty_state("This job could not be loaded.")
     option.Some(job), _ ->
       html.div([attribute.class("admin-job-page__content")], [
         html.div([attribute.class(admin_ui.summary_grid_class())], [
           admin_ui.summary_card("Status", status_text(job)),
           admin_ui.summary_card(
-            "Scheduled",
+            "Run at",
             timestamp_helpers.relative_label(job.run_at, now),
           ),
           admin_ui.summary_card(
@@ -420,22 +407,14 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
               <> int.to_string(job.max_attempts),
           ),
         ]),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Metadata"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Identifiers and timestamps captured for this execution.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class(admin_ui.detail_grid_class())], [
+        admin_ui.section(
+          title: "Metadata",
+          copy: "Identifiers and timestamps captured for this execution.",
+          content: html.div([attribute.class(admin_ui.detail_grid_class())], [
             admin_ui.detail_item("Job ID", uuid.to_string(job.id)),
             admin_ui.detail_item("Request ID", optional_uuid(job.request_id)),
             periodic_job_detail_item(job.periodic_job_id),
-            admin_ui.detail_item("Type", job.job_type),
+            admin_ui.detail_item("Job type", job.job_type),
             admin_ui.detail_item("Status", status_text(job)),
             admin_ui.detail_item("Overdue", bool_text(job.overdue)),
             admin_ui.detail_item("Run at", format_timestamp(job.run_at)),
@@ -450,49 +429,27 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
             admin_ui.detail_item("Created at", format_timestamp(job.created_at)),
             admin_ui.detail_item("Updated at", format_timestamp(job.updated_at)),
           ]),
-        ]),
+        ),
         job_logs_group(model, now),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Notes"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Current operator-facing interpretation of this job state.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__policy")], [
+        admin_ui.section(
+          title: "Notes",
+          copy: "Current operator-facing interpretation of this job state.",
+          content: html.div([attribute.class("admin-page__policy")], [
             html.p([attribute.class("admin-job-page__body-text")], [
               html.text(note_text(job)),
             ]),
           ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Payload"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text("Stored raw payload string for this job, if any."),
-            ]),
-          ]),
-          code_block(optional_text(job.payload)),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Last error"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Latest persisted failure message, if one was recorded.",
-              ),
-            ]),
-          ]),
-          code_block(optional_text(job.last_error)),
-        ]),
+        ),
+        admin_ui.section(
+          title: "Payload",
+          copy: "Stored raw payload string for this job, if any.",
+          content: code_block(optional_text(job.payload)),
+        ),
+        admin_ui.section(
+          title: "Last error",
+          copy: "Latest persisted failure message, if one was recorded.",
+          content: code_block(optional_text(job.last_error)),
+        ),
       ])
   }
 }
@@ -528,16 +485,9 @@ fn job_logs_group(model: Model, now: Timestamp) -> Element(Msg) {
 
 fn logs_status_view(model: Model) -> Element(Msg) {
   case model.logs_status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading job logs..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    NotLoaded | Ready -> admin_ui.status("")
+    Loading -> admin_ui.status("Loading job logs...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 
@@ -545,15 +495,8 @@ fn job_logs_table(model: Model, now: Timestamp) -> Element(Msg) {
   let rows = pagination_model.items(model.logs_page)
 
   case rows, model.logs_status {
-    [], Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading job logs..."),
-      ])
-
-    [], _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("No job logs were found for this job."),
-      ])
+    [], Loading -> admin_ui.empty_state("Loading job logs...")
+    [], _ -> admin_ui.empty_state("No job logs were found for this job.")
 
     _, _ ->
       admin_table.table(job_log_columns(), {
@@ -803,16 +746,9 @@ fn create_job_dialog_form(editor: CreateJobEditor) -> Element(Msg) {
 
 fn create_job_status(state: CreateJobState) -> Element(Msg) {
   case state {
-    CreateJobIdle ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    CreateJobSaving ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Creating job..."),
-      ])
-    CreateJobError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    CreateJobIdle -> admin_ui.status("")
+    CreateJobSaving -> admin_ui.status("Creating job...")
+    CreateJobError(message) -> admin_ui.error_status(message)
     CreateJobSaved(job) ->
       html.p([attribute.class("admin-page__status")], [
         html.text("Created new job successfully. "),

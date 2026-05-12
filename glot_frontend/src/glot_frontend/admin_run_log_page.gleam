@@ -98,29 +98,16 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading run log..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    NotLoaded | Ready -> admin_ui.status("")
+    Loading -> admin_ui.status("Loading run log...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 
 fn detail_view(model: Model) -> Element(Msg) {
   case model.log, model.status {
-    option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading run log..."),
-      ])
-    option.None, _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("This run log could not be loaded."),
-      ])
+    option.None, Loading -> admin_ui.empty_state("Loading run log...")
+    option.None, _ -> admin_ui.empty_state("This run log could not be loaded.")
     option.Some(log), _ ->
       html.div([attribute.class("admin-job-page__content")], [
         html.div(
@@ -145,18 +132,10 @@ fn detail_view(model: Model) -> Element(Msg) {
             ),
           ],
         ),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Run log"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Persistent correlation fields are separated from the summary so failed runs can be traced cleanly.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class(admin_ui.detail_grid_class())], [
+        admin_ui.section(
+          title: "Run log",
+          copy: "Persistent correlation fields are separated from the summary so failed runs can be traced cleanly.",
+          content: html.div([attribute.class(admin_ui.detail_grid_class())], [
             admin_ui.detail_item("Log ID", uuid.to_string(log.id)),
             admin_ui.detail_item("Request ID", uuid.to_string(log.request_id)),
             admin_ui.detail_item("Session ID", optional_uuid(log.session_id)),
@@ -166,24 +145,16 @@ fn detail_view(model: Model) -> Element(Msg) {
             admin_ui.detail_item("Created at", format_timestamp(log.created_at)),
             admin_ui.detail_item("Duration", optional_duration(log.duration_ns)),
           ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Failure message"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Stored only when the execution fails before producing a successful run result.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__policy")], [
+        ),
+        admin_ui.section(
+          title: "Failure message",
+          copy: "Stored only when the execution fails before producing a successful run result.",
+          content: html.div([attribute.class("admin-page__policy")], [
             html.pre([attribute.class("admin-job-page__code-block")], [
               html.text(optional_text(log.failure_message)),
             ]),
           ]),
-        ]),
+        ),
       ])
   }
 }

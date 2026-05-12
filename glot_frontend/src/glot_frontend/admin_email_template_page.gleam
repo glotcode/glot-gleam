@@ -233,31 +233,26 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.status, model.save_state {
-    LoadError(message), _ -> error_status(message)
-    Loading, _ -> plain_status("Loading email template...")
-    _, SaveError(message) -> error_status(message)
-    _, Saving -> plain_status("Saving email template...")
-    _, Saved -> plain_status("Email template saved.")
-    _, Idle -> plain_status("")
+    LoadError(message), _ -> admin_ui.error_status(message)
+    Loading, _ -> admin_ui.status("Loading email template...")
+    _, SaveError(message) -> admin_ui.error_status(message)
+    _, Saving -> admin_ui.status("Saving email template...")
+    _, Saved -> admin_ui.status("Email template saved.")
+    _, Idle -> admin_ui.status("")
   }
 }
 
 fn detail_view(model: Model) -> Element(Msg) {
   case model.template, model.status {
-    option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading email template..."),
-      ])
+    option.None, Loading -> admin_ui.empty_state("Loading email template...")
     option.None, _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("This email template could not be loaded."),
-      ])
+      admin_ui.empty_state("This email template could not be loaded.")
     option.Some(template), _ ->
       html.div([attribute.class("admin-job-page__content")], [
         html.div([attribute.class(admin_ui.summary_grid_class())], [
           admin_ui.summary_card_with_class(
             "admin-page__policy admin-periodic-jobs-page__summary-card",
-            "Name",
+            "Template name",
             template.name,
           ),
           admin_ui.summary_card_with_class(
@@ -271,18 +266,10 @@ fn detail_view(model: Model) -> Element(Msg) {
             format_timestamp(template.updated_at),
           ),
         ]),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Metadata"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Only known template names are editable, which keeps the route, validation rules, and DB rows aligned.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class(admin_ui.detail_grid_class())], [
+        admin_ui.section(
+          title: "Metadata",
+          copy: "Only known template names are editable, which keeps the route, validation rules, and DB rows aligned.",
+          content: html.div([attribute.class(admin_ui.detail_grid_class())], [
             admin_ui.detail_item("Template name", template.name),
             admin_ui.detail_item(
               "Supported tokens",
@@ -293,19 +280,11 @@ fn detail_view(model: Model) -> Element(Msg) {
               format_timestamp(template.updated_at),
             ),
           ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Editor"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Leave the HTML body empty to store no HTML variant for this email.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class("admin-snippets-page__filters")], [
+        ),
+        admin_ui.section(
+          title: "Editor",
+          copy: "Leave the HTML body empty to store no HTML variant for this email.",
+          content: html.div([attribute.class("admin-snippets-page__filters")], [
             text_input(
               label: "Subject template",
               help: "Rendered subject line.",
@@ -327,7 +306,7 @@ fn detail_view(model: Model) -> Element(Msg) {
               on_input: HtmlBodyChanged,
             ),
           ]),
-        ]),
+        ),
       ])
   }
 }
@@ -421,16 +400,6 @@ fn idle_state(state: SaveState) -> SaveState {
     Saving -> Saving
     Idle | Saved | SaveError(_) -> Idle
   }
-}
-
-fn plain_status(message: String) -> Element(Msg) {
-  html.p([attribute.class("admin-page__status")], [html.text(message)])
-}
-
-fn error_status(message: String) -> Element(Msg) {
-  html.p([attribute.class("admin-page__status admin-page__status--error")], [
-    html.text(message),
-  ])
 }
 
 fn tokens_text(tokens: List(String)) -> String {

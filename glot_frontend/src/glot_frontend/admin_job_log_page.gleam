@@ -99,29 +99,16 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.status {
-    NotLoaded | Ready ->
-      html.p([attribute.class("admin-page__status")], [html.text("")])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading job log..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    NotLoaded | Ready -> admin_ui.status("")
+    Loading -> admin_ui.status("Loading job log...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 
 fn detail_view(model: Model) -> Element(Msg) {
   case model.log, model.status {
-    option.None, Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading job log..."),
-      ])
-    option.None, _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("This job log could not be loaded."),
-      ])
+    option.None, Loading -> admin_ui.empty_state("Loading job log...")
+    option.None, _ -> admin_ui.empty_state("This job log could not be loaded.")
     option.Some(log), _ ->
       html.div([attribute.class("admin-job-page__content")], [
         html.div(
@@ -147,25 +134,17 @@ fn detail_view(model: Model) -> Element(Msg) {
             ),
           ],
         ),
-        html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Raw output"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Stored raw blocks are expanded by default so retries and failures can be inspected immediately.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class("admin-job-log-page__raw-grid")], [
+        admin_ui.section(
+          title: "Raw output",
+          copy: "Stored raw blocks are expanded by default so retries and failures can be inspected immediately.",
+          content: html.div([attribute.class("admin-job-log-page__raw-grid")], [
             raw_block("Info", log.info),
             raw_block("Warnings", log.warnings),
             raw_block("Debug", log.debug),
             raw_block("Error", log.error),
             admin_effects_table.effects_block(log.effects),
           ]),
-        ]),
+        ),
       ])
   }
 }

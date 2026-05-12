@@ -97,3 +97,31 @@ pub fn detail_link_item(
     ]),
   ])
 }
+
+pub fn status(message: String) -> Element(msg) {
+  html.p([attribute.class("admin-page__status")], [html.text(message)])
+}
+
+pub fn error_status(message: String) -> Element(msg) {
+  html.p([attribute.class("admin-page__status admin-page__status--error")], [
+    html.text(message),
+  ])
+}
+
+pub fn empty_state(message: String) -> Element(msg) {
+  html.div([attribute.class("admin-page__empty")], [html.text(message)])
+}
+
+pub fn section(
+  title title: String,
+  copy copy: String,
+  content content: Element(msg),
+) -> Element(msg) {
+  html.div([attribute.class("admin-page__group")], [
+    html.div([attribute.class("admin-page__group-header")], [
+      html.h3([attribute.class("admin-page__group-title")], [html.text(title)]),
+      html.p([attribute.class("admin-page__group-copy")], [html.text(copy)]),
+    ]),
+    content,
+  ])
+}
