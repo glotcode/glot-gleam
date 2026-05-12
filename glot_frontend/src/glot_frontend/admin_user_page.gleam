@@ -12,6 +12,7 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/route
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
 import lustre/attribute
@@ -513,16 +514,15 @@ fn edit_form(editor: UserEditor, is_deleting: Bool) -> Element(Msg) {
       ]),
       save_status(editor.state),
       html.div([attribute.class("admin-page__policy-actions")], [
-        html.button(
+        admin_ui.secondary_button(
           [
             attribute.type_("button"),
-            attribute.class("admin-page__button admin-page__button--secondary"),
             attribute.disabled(
               editor.state == Saving || is_deleting || !is_dirty(editor),
             ),
             event.on_click(ResetClicked),
           ],
-          [html.text("Reset")],
+          "Reset",
         ),
         html.button(
           [

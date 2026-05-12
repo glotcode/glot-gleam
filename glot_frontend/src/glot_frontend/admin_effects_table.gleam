@@ -2,6 +2,7 @@ import gleam/int
 import gleam/list
 import gleam/option
 import glot_core/effect_trace_dto
+import glot_frontend/admin_table
 import glot_frontend/duration_label
 import lustre/attribute
 import lustre/element.{type Element}
@@ -44,58 +45,40 @@ fn effects_table(
       html.div([attribute.class("admin-page__empty")], [
         html.text("No effects were recorded for this run."),
       ])
-    _ ->
-      html.div([attribute.class("admin-effects-table")], [
-        html.table([attribute.class("admin-effects-table__element")], [
-          html.thead([], [
-            html.tr([], [
-              html.th([attribute.class("admin-effects-table__heading")], [
-                html.text("Name"),
-              ]),
-              html.th([attribute.class("admin-effects-table__heading")], [
-                html.text("Category"),
-              ]),
-              html.th(
-                [
-                  attribute.class(
-                    "admin-effects-table__heading admin-effects-table__heading--duration",
-                  ),
-                ],
-                [html.text("Duration")],
-              ),
-            ]),
-          ]),
-          html.tbody([], { rows |> list.map(effect_row) }),
-        ]),
-      ])
+    _ -> admin_table.table(effect_columns(), { rows |> list.map(effect_row) })
   }
 }
 
 fn effect_row(row: EffectTableRow) -> Element(msg) {
   let EffectTableRow(name:, category:, duration_ns:, is_rollback:) = row
-  html.tr([attribute.class(effect_row_class(is_rollback))], [
-    html.td([attribute.class("admin-effects-table__cell")], [
-      html.span([attribute.class("jobs-table__primary")], [html.text(name)]),
+  let extra_attributes = case is_rollback {
+    True -> [attribute.class("admin-table__row--rollback")]
+    False -> []
+  }
+
+  admin_table.row_with(extra_attributes, [
+    admin_table.cell(name_column(), [admin_table.primary_value(name)]),
+    admin_table.cell(category_column(), [admin_table.value(category)]),
+    admin_table.cell(duration_column(), [
+      html.text(optional_duration_label(duration_ns)),
     ]),
-    html.td([attribute.class("admin-effects-table__cell")], [
-      html.text(category),
-    ]),
-    html.td(
-      [
-        attribute.class(
-          "admin-effects-table__cell admin-effects-table__cell--duration",
-        ),
-      ],
-      [html.text(optional_duration_label(duration_ns))],
-    ),
   ])
 }
 
-fn effect_row_class(is_rollback: Bool) -> String {
-  case is_rollback {
-    True -> "admin-effects-table__row admin-effects-table__row--rollback"
-    False -> "admin-effects-table__row"
-  }
+fn effect_columns() -> List(admin_table.Column) {
+  [name_column(), category_column(), duration_column()]
+}
+
+fn name_column() -> admin_table.Column {
+  admin_table.column("Name")
+}
+
+fn category_column() -> admin_table.Column {
+  admin_table.column("Category")
+}
+
+fn duration_column() -> admin_table.Column {
+  admin_table.fit_column("Duration")
 }
 
 fn optional_duration_label(duration_ns: option.Option(Int)) -> String {

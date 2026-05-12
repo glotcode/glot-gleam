@@ -6,6 +6,7 @@ import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_frontend/admin_ui
 import glot_frontend/api
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -800,18 +801,15 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
       html.div([attribute.class("admin-page__policy-footer")], [
         auth_section_message(section),
         html.div([attribute.class("admin-page__policy-actions")], [
-          html.button(
+          admin_ui.secondary_button(
             [
               attribute.type_("button"),
-              attribute.class(
-                "admin-page__button admin-page__button--secondary",
-              ),
               attribute.disabled(
                 section.state == Saving || !is_dirty_auth(section),
               ),
               event.on_click(AuthResetClicked),
             ],
-            [html.text("Reset")],
+            "Reset",
           ),
           html.button(
             [
@@ -911,18 +909,15 @@ fn cleanup_section_view(
       html.div([attribute.class("admin-page__policy-footer")], [
         cleanup_section_message(section),
         html.div([attribute.class("admin-page__policy-actions")], [
-          html.button(
+          admin_ui.secondary_button(
             [
               attribute.type_("button"),
-              attribute.class(
-                "admin-page__button admin-page__button--secondary",
-              ),
               attribute.disabled(
                 section.state == Saving || !is_dirty_cleanup(section),
               ),
               event.on_click(CleanupResetClicked),
             ],
-            [html.text("Reset")],
+            "Reset",
           ),
           html.button(
             [
@@ -985,21 +980,16 @@ fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
           html.span([attribute.class("admin-page__field-label")], [
             html.text("Debug logging"),
           ]),
-          html.button(
+          admin_ui.secondary_button(
             [
               attribute.type_("button"),
-              attribute.class(
-                "admin-page__button admin-page__button--secondary",
-              ),
               attribute.disabled(status != Ready || section.state == Saving),
               event.on_click(DebugToggleClicked),
             ],
-            [
-              html.text(case section.draft.enabled {
-                True -> "Enabled"
-                False -> "Disabled"
-              }),
-            ],
+            case section.draft.enabled {
+              True -> "Enabled"
+              False -> "Disabled"
+            },
           ),
           html.span([attribute.class("admin-page__field-help")], [
             html.text(
@@ -1011,18 +1001,15 @@ fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
       html.div([attribute.class("admin-page__policy-footer")], [
         debug_section_message(section),
         html.div([attribute.class("admin-page__policy-actions")], [
-          html.button(
+          admin_ui.secondary_button(
             [
               attribute.type_("button"),
-              attribute.class(
-                "admin-page__button admin-page__button--secondary",
-              ),
               attribute.disabled(
                 section.state == Saving || !is_dirty_debug(section),
               ),
               event.on_click(DebugResetClicked),
             ],
-            [html.text("Reset")],
+            "Reset",
           ),
           html.button(
             [
@@ -1086,16 +1073,13 @@ fn docker_run_section_view(
       html.div([attribute.class("admin-page__policy-footer")], [
         section_message(section),
         html.div([attribute.class("admin-page__policy-actions")], [
-          html.button(
+          admin_ui.secondary_button(
             [
               attribute.type_("button"),
-              attribute.class(
-                "admin-page__button admin-page__button--secondary",
-              ),
               attribute.disabled(section.state == Saving || !is_dirty(section)),
               event.on_click(DockerRunResetClicked),
             ],
-            [html.text("Reset")],
+            "Reset",
           ),
           html.button(
             [

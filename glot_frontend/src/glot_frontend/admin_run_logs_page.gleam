@@ -9,6 +9,8 @@ import glot_core/language
 import glot_core/pagination_model
 import glot_core/route
 import glot_core/run_log_model
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
 import glot_frontend/string_helpers
@@ -407,21 +409,9 @@ fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
       ])
 
     _, _ ->
-      html.div([attribute.class("admin-job-logs-table")], [
-        html.table([attribute.class("admin-job-logs-table__element")], [
-          html.thead([], [
-            html.tr([], [
-              table_heading("Log ID"),
-              table_heading("When"),
-              table_heading("Language"),
-              table_heading("Outcome"),
-              table_heading("Duration"),
-              table_heading("Open"),
-            ]),
-          ]),
-          html.tbody([], { rows |> list.map(fn(log) { log_row(log, now) }) }),
-        ]),
-      ])
+      admin_table.table(log_columns(), {
+        rows |> list.map(fn(log) { log_row(log, now) })
+      })
   }
 }
 
@@ -455,14 +445,13 @@ fn filter_chip(label: String, selected: Bool, msg: Msg) -> Element(Msg) {
 }
 
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  html.button(
+  admin_ui.secondary_button(
     [
-      attribute.class("admin-page__button admin-page__button--secondary"),
       attribute.attribute("type", "button"),
       attribute.disabled(!enabled),
       event.on_click(msg),
     ],
-    [html.text(label)],
+    label,
   )
 }
 
@@ -515,17 +504,15 @@ fn select_input(
   ])
 }
 
-fn table_heading(text: String) -> Element(Msg) {
-  html.th([attribute.class("admin-job-logs-table__heading")], [html.text(text)])
-}
-
 fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
-  html.tr([attribute.class("admin-job-logs-table__row")], [
-    html.td([attribute.class("admin-job-logs-table__cell")], [
-      html.div([attribute.class("jobs-table__stack")], [
+  admin_table.row([
+    admin_table.cell(log_id_column(), [
+      admin_table.stack([
         html.a(
           [
-            attribute.class("jobs-table__primary admin-job-logs-page__link"),
+            attribute.class(
+              "admin-table__value admin-table__value--primary admin-job-logs-page__link",
+            ),
             route.href(route.AdminRunLog(log.id)),
           ],
           [
@@ -537,55 +524,61 @@ fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
         ),
       ]),
     ]),
-    html.td([attribute.class("admin-job-logs-table__cell")], [
-      html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(when_column(), [
+      html.span([attribute.class("admin-table__value--primary")], [
         html.text(timestamp_helpers.relative_label(log.created_at, now)),
       ]),
     ]),
-    html.td([attribute.class("admin-job-logs-table__cell")], [
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(language_column(), [
+      admin_table.stack([
+        html.span([attribute.class("admin-table__value--primary")], [
           html.text(language.name(log.language)),
         ]),
       ]),
     ]),
-    html.td(
-      [
-        attribute.class(
-          "admin-job-logs-table__cell admin-job-logs-table__cell--error",
-        ),
-      ],
-      [
-        html.span([attribute.class(outcome_badge_class(log))], [
-          html.text(outcome_text(log.outcome)),
-        ]),
-      ],
-    ),
-    html.td(
-      [
-        attribute.class(
-          "admin-job-logs-table__cell admin-job-logs-table__cell--duration",
-        ),
-      ],
-      [html.text(optional_duration(log.duration_ns))],
-    ),
-    html.td(
-      [
-        attribute.class(
-          "admin-job-logs-table__cell admin-job-logs-table__cell--actions",
-        ),
-      ],
-      [
-        html.a(
-          [
-            attribute.class("admin-page__button admin-page__button--secondary"),
-            route.href(route.AdminRunLog(log.id)),
-          ],
-          [html.text("Open")],
-        ),
-      ],
-    ),
+    admin_table.cell(outcome_column(), [outcome_badge(log)]),
+    admin_table.cell(duration_column(), [
+      html.text(optional_duration(log.duration_ns)),
+    ]),
+    admin_table.cell(open_column(), [
+      admin_ui.secondary_link([route.href(route.AdminRunLog(log.id))], "Open"),
+    ]),
   ])
+}
+
+fn log_columns() -> List(admin_table.Column) {
+  [
+    log_id_column(),
+    when_column(),
+    language_column(),
+    outcome_column(),
+    duration_column(),
+    open_column(),
+  ]
+}
+
+fn log_id_column() -> admin_table.Column {
+  admin_table.column("Log ID")
+}
+
+fn when_column() -> admin_table.Column {
+  admin_table.column("When")
+}
+
+fn language_column() -> admin_table.Column {
+  admin_table.column("Language")
+}
+
+fn outcome_column() -> admin_table.Column {
+  admin_table.fit_column("Outcome")
+}
+
+fn duration_column() -> admin_table.Column {
+  admin_table.fit_column("Duration")
+}
+
+fn open_column() -> admin_table.Column {
+  admin_table.action_column("Open")
 }
 
 fn filter_summary(
@@ -727,10 +720,12 @@ fn can_go_next(model: Model) -> Bool {
   }
 }
 
-fn outcome_badge_class(log: run_log_dto.RunLogResponse) -> String {
+fn outcome_badge(log: run_log_dto.RunLogResponse) -> Element(Msg) {
   case log.outcome {
-    run_log_model.RunSucceeded -> "jobs-table__badge jobs-table__badge--done"
-    run_log_model.RunFailed -> "jobs-table__badge jobs-table__badge--failed"
+    run_log_model.RunSucceeded ->
+      admin_ui.badge(outcome_text(log.outcome), admin_ui.SuccessTone)
+    run_log_model.RunFailed ->
+      admin_ui.badge(outcome_text(log.outcome), admin_ui.DangerTone)
   }
 }
 

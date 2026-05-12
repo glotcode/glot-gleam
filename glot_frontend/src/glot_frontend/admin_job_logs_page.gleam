@@ -7,6 +7,8 @@ import glot_core/admin/job_log_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
 import glot_frontend/string_helpers
@@ -331,22 +333,9 @@ fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
       ])
 
     _, _ ->
-      html.div([attribute.class("admin-job-logs-table")], [
-        html.table([attribute.class("admin-job-logs-table__element")], [
-          html.thead([], [
-            html.tr([], [
-              table_heading("Log ID"),
-              table_heading("When"),
-              table_heading("Job type"),
-              table_heading("Attempt"),
-              table_heading("Duration"),
-              table_heading("Error"),
-              table_heading("Open"),
-            ]),
-          ]),
-          html.tbody([], { rows |> list.map(fn(log) { log_row(log, now) }) }),
-        ]),
-      ])
+      admin_table.table(log_columns(), {
+        rows |> list.map(fn(log) { log_row(log, now) })
+      })
   }
 }
 
@@ -380,14 +369,13 @@ fn filter_chip(label: String, selected: Bool, msg: Msg) -> Element(Msg) {
 }
 
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  html.button(
+  admin_ui.secondary_button(
     [
-      attribute.class("admin-page__button admin-page__button--secondary"),
       attribute.attribute("type", "button"),
       attribute.disabled(!enabled),
       event.on_click(msg),
     ],
-    [html.text(label)],
+    label,
   )
 }
 
@@ -410,17 +398,15 @@ fn text_input(
   ])
 }
 
-fn table_heading(text: String) -> Element(Msg) {
-  html.th([attribute.class("admin-job-logs-table__heading")], [html.text(text)])
-}
-
 fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
-  html.tr([attribute.class("admin-job-logs-table__row")], [
-    html.td([attribute.class("admin-job-logs-table__cell")], [
-      html.div([attribute.class("jobs-table__stack")], [
+  admin_table.row([
+    admin_table.cell(log_id_column(), [
+      admin_table.stack([
         html.a(
           [
-            attribute.class("jobs-table__primary admin-job-logs-page__link"),
+            attribute.class(
+              "admin-table__value admin-table__value--primary admin-job-logs-page__link",
+            ),
             route.href(route.AdminJobLog(log.id)),
           ],
           [
@@ -432,63 +418,67 @@ fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
         ),
       ]),
     ]),
-    html.td([attribute.class("admin-job-logs-table__cell")], [
-      html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(when_column(), [
+      html.span([attribute.class("admin-table__value--primary")], [
         html.text(timestamp_helpers.relative_label(log.created_at, now)),
       ]),
     ]),
-    html.td([attribute.class("admin-job-logs-table__cell")], [
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(job_type_column(), [
+      admin_table.stack([
+        html.span([attribute.class("admin-table__value--primary")], [
           html.text(log.job_type),
         ]),
       ]),
     ]),
-    html.td(
-      [
-        attribute.class(
-          "admin-job-logs-table__cell admin-job-logs-table__cell--attempt",
-        ),
-      ],
-      [html.text(int.to_string(log.attempt))],
-    ),
-    html.td(
-      [
-        attribute.class(
-          "admin-job-logs-table__cell admin-job-logs-table__cell--duration",
-        ),
-      ],
-      [html.text(duration_label.duration_in_ms_label(log.duration_ns))],
-    ),
-    html.td(
-      [
-        attribute.class(
-          "admin-job-logs-table__cell admin-job-logs-table__cell--error",
-        ),
-      ],
-      [
-        html.span([attribute.class(error_badge_class(log))], [
-          html.text(error_text(log)),
-        ]),
-      ],
-    ),
-    html.td(
-      [
-        attribute.class(
-          "admin-job-logs-table__cell admin-job-logs-table__cell--actions",
-        ),
-      ],
-      [
-        html.a(
-          [
-            attribute.class("admin-page__button admin-page__button--secondary"),
-            route.href(route.AdminJobLog(log.id)),
-          ],
-          [html.text("Open")],
-        ),
-      ],
-    ),
+    admin_table.cell(attempt_column(), [html.text(int.to_string(log.attempt))]),
+    admin_table.cell(duration_column(), [
+      html.text(duration_label.duration_in_ms_label(log.duration_ns)),
+    ]),
+    admin_table.cell(error_column(), [error_badge(log)]),
+    admin_table.cell(open_column(), [
+      admin_ui.secondary_link([route.href(route.AdminJobLog(log.id))], "Open"),
+    ]),
   ])
+}
+
+fn log_columns() -> List(admin_table.Column) {
+  [
+    log_id_column(),
+    when_column(),
+    job_type_column(),
+    attempt_column(),
+    duration_column(),
+    error_column(),
+    open_column(),
+  ]
+}
+
+fn log_id_column() -> admin_table.Column {
+  admin_table.column("Log ID")
+}
+
+fn when_column() -> admin_table.Column {
+  admin_table.column("When")
+}
+
+fn job_type_column() -> admin_table.Column {
+  admin_table.column("Job type")
+}
+
+fn attempt_column() -> admin_table.Column {
+  admin_table.fit_column("Attempt")
+}
+
+fn duration_column() -> admin_table.Column {
+  admin_table.fit_column("Duration")
+}
+
+fn error_column() -> admin_table.Column {
+  admin_table.fit_column("Error")
+}
+
+fn open_column() -> admin_table.Column {
+  admin_table.action_column("Open")
 }
 
 fn filter_summary(
@@ -568,10 +558,10 @@ fn can_go_next(model: Model) -> Bool {
   }
 }
 
-fn error_badge_class(log: job_log_dto.JobLogResponse) -> String {
+fn error_badge(log: job_log_dto.JobLogResponse) -> Element(Msg) {
   case log.has_error {
-    True -> "jobs-table__badge jobs-table__badge--failed"
-    False -> "jobs-table__badge jobs-table__badge--done"
+    True -> admin_ui.badge(error_text(log), admin_ui.DangerTone)
+    False -> admin_ui.badge(error_text(log), admin_ui.SuccessTone)
   }
 }
 

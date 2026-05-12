@@ -9,6 +9,8 @@ import glot_core/admin/periodic_job_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/local_datetime
 import lustre/attribute
@@ -451,16 +453,13 @@ fn periodic_job_view(
         html.div([attribute.class("admin-page__policy-footer")], [
           section_message(editor),
           html.div([attribute.class("admin-page__policy-actions")], [
-            html.button(
+            admin_ui.secondary_button(
               [
                 attribute.type_("button"),
-                attribute.class(
-                  "admin-page__button admin-page__button--secondary",
-                ),
                 attribute.disabled(editor.state == Saving || !is_dirty(editor)),
                 event.on_click(ResetClicked),
               ],
-              [html.text("Reset")],
+              "Reset",
             ),
             html.button(
               [
@@ -543,21 +542,9 @@ fn recent_jobs_table(
         html.text("No jobs were found for this periodic definition."),
       ])
     _, _ ->
-      html.div([attribute.class("jobs-table admin-job-logs-page__table")], [
-        html.div(
-          [attribute.class("jobs-table__head admin-job-logs-page__head")],
-          [
-            table_heading("Job"),
-            table_heading("Status"),
-            table_heading("Schedule"),
-            table_heading("Attempts"),
-            table_heading("Open"),
-          ],
-        ),
-        html.div([attribute.class("jobs-table__body")], {
-          recent_jobs |> list.map(fn(job) { recent_job_row(job, now) })
-        }),
-      ])
+      admin_table.table(recent_job_columns(), {
+        recent_jobs |> list.map(fn(job) { recent_job_row(job, now) })
+      })
   }
 }
 
@@ -565,28 +552,20 @@ fn recent_job_row(
   job: job_dto.JobResponse,
   now: timestamp.Timestamp,
 ) -> Element(Msg) {
-  html.div([attribute.class("jobs-table__row")], [
-    html.div([attribute.class("jobs-table__cell jobs-table__cell--job")], [
-      cell_label("Job"),
-      html.span([attribute.class("jobs-table__primary")], [
+  admin_table.row([
+    admin_table.cell(job_column(), [
+      html.span([attribute.class("admin-table__value--primary")], [
         html.text(job.job_type),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Status"),
-      html.span([attribute.class(recent_job_status_badge_class(job))], [
-        html.text(recent_job_status_text(job)),
-      ]),
-    ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Schedule"),
-      html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(status_column(), [recent_job_status_badge(job)]),
+    admin_table.cell(schedule_column(), [
+      html.span([attribute.class("admin-table__value--primary")], [
         html.text(timestamp_helpers.relative_label(job.run_at, now)),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Attempts"),
-      html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(attempts_column(), [
+      html.span([attribute.class("admin-table__value--primary")], [
         html.text(
           int.to_string(job.attempts)
           <> " / "
@@ -594,35 +573,55 @@ fn recent_job_row(
         ),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell jobs-table__cell--actions")], [
-      cell_label("Open"),
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminJob(job.id)),
-        ],
-        [html.text("Open")],
-      ),
+    admin_table.cell(open_column(), [
+      admin_ui.secondary_link([route.href(route.AdminJob(job.id))], "Open"),
     ]),
   ])
 }
 
-fn table_heading(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__heading")], [html.text(text)])
+fn recent_job_columns() -> List(admin_table.Column) {
+  [
+    job_column(),
+    status_column(),
+    schedule_column(),
+    attempts_column(),
+    open_column(),
+  ]
 }
 
-fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__cell-label")], [html.text(text)])
+fn job_column() -> admin_table.Column {
+  admin_table.column("Job")
 }
 
-fn recent_job_status_badge_class(job: job_dto.JobResponse) -> String {
+fn status_column() -> admin_table.Column {
+  admin_table.fit_column("Status")
+}
+
+fn schedule_column() -> admin_table.Column {
+  admin_table.column("Schedule")
+}
+
+fn attempts_column() -> admin_table.Column {
+  admin_table.fit_column("Attempts")
+}
+
+fn open_column() -> admin_table.Column {
+  admin_table.action_column("Open")
+}
+
+fn recent_job_status_badge(job: job_dto.JobResponse) -> Element(Msg) {
   case job.status, job.overdue {
-    "failed", _ -> "jobs-table__badge jobs-table__badge--failed"
-    "running", _ -> "jobs-table__badge jobs-table__badge--running"
-    "pending", True -> "jobs-table__badge jobs-table__badge--overdue"
-    "pending", False -> "jobs-table__badge jobs-table__badge--pending"
-    "done", _ -> "jobs-table__badge jobs-table__badge--done"
-    _, _ -> "jobs-table__badge"
+    "failed", _ ->
+      admin_ui.badge(recent_job_status_text(job), admin_ui.DangerTone)
+    "running", _ ->
+      admin_ui.badge(recent_job_status_text(job), admin_ui.WarningTone)
+    "pending", True ->
+      admin_ui.badge(recent_job_status_text(job), admin_ui.DangerTone)
+    "pending", False ->
+      admin_ui.badge(recent_job_status_text(job), admin_ui.InfoTone)
+    "done", _ ->
+      admin_ui.badge(recent_job_status_text(job), admin_ui.SuccessTone)
+    _, _ -> admin_ui.badge(recent_job_status_text(job), admin_ui.NeutralTone)
   }
 }
 
@@ -973,8 +972,8 @@ fn schedule_status(editor: PeriodicJobEditor) -> String {
 
 fn toggle_button_class(enabled: Bool) -> String {
   case enabled {
-    True -> "admin-page__button"
-    False -> "admin-page__button admin-page__button--secondary"
+    True -> admin_ui.primary_button_class()
+    False -> admin_ui.secondary_button_class()
   }
 }
 

@@ -8,6 +8,8 @@ import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/string_helpers
 import lustre/attribute
@@ -177,16 +179,13 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
                 ],
                 [html.text("Apply")],
               ),
-              html.button(
+              admin_ui.secondary_button(
                 [
-                  attribute.class(
-                    "admin-page__button admin-page__button--secondary",
-                  ),
                   attribute.type_("button"),
                   attribute.disabled(model.username_filter == ""),
                   event.on_click(ClearFilterClicked),
                 ],
-                [html.text("Clear")],
+                "Clear",
               ),
             ],
           ),
@@ -266,23 +265,9 @@ fn snippets_table(model: Model, now: Timestamp) -> Element(Msg) {
         html.text("No snippets were returned."),
       ])
     _, _ ->
-      html.div([attribute.class("admin-data-table__wrap")], [
-        html.table([attribute.class("admin-data-table")], [
-          html.thead([], [
-            html.tr([], [
-              table_heading("Slug"),
-              table_heading("Language"),
-              table_heading("Title"),
-              table_heading("Owner"),
-              table_heading("Updated"),
-              table_heading("Open"),
-            ]),
-          ]),
-          html.tbody([], {
-            rows |> list.map(fn(snippet) { snippet_row(snippet, now) })
-          }),
-        ]),
-      ])
+      admin_table.table(snippet_columns(), {
+        rows |> list.map(fn(snippet) { snippet_row(snippet, now) })
+      })
   }
 }
 
@@ -290,71 +275,87 @@ fn snippet_row(
   snippet: snippet_dto.SnippetSummaryResponse,
   now: Timestamp,
 ) -> Element(Msg) {
-  html.tr([], [
-    cell("Slug", snippet.slug, [attribute.class("admin-data-table__cell")]),
-    cell("Language", language.name(snippet.language), [
-      attribute.class("admin-data-table__cell admin-data-table__cell--language"),
+  admin_table.row([
+    cell(slug_column(), snippet.slug, []),
+    cell(language_column(), language.name(snippet.language), [
+      attribute.class("admin-table__cell admin-table__cell--language"),
     ]),
     cell(
-      "Title",
+      title_column(),
       string_helpers.truncate_stem_middle(snippet.title, title_max_length),
       [
-        attribute.class("admin-data-table__cell admin-data-table__cell--title"),
+        attribute.class("admin-table__cell admin-table__cell--title"),
       ],
     ),
     cell(
-      "Owner",
+      owner_column(),
       string_helpers.truncate_stem_middle(
         snippet.user.username,
         owner_max_length,
       ),
       [
-        attribute.class("admin-data-table__cell"),
+        attribute.class("admin-table__cell"),
       ],
     ),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Updated"),
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("admin-data-table__value")], [
-          html.text(timestamp_helpers.relative_label(snippet.updated_at, now)),
-        ]),
-        html.span([attribute.class("jobs-table__meta")], [
-          html.text(int.to_string(snippet.file_count) <> " files"),
-        ]),
+    admin_table.cell(updated_column(), [
+      admin_table.stack([
+        admin_table.value(timestamp_helpers.relative_label(
+          snippet.updated_at,
+          now,
+        )),
+        admin_table.meta(int.to_string(snippet.file_count) <> " files"),
       ]),
     ]),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Open"),
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminSnippet(snippet.slug)),
-        ],
-        [html.text("Details")],
+    admin_table.cell(open_column(), [
+      admin_ui.secondary_link(
+        [route.href(route.AdminSnippet(snippet.slug))],
+        "Details",
       ),
     ]),
   ])
 }
 
 fn cell(
-  label_text: String,
+  column: admin_table.Column,
   value: String,
   attrs: List(attribute.Attribute(Msg)),
 ) -> Element(Msg) {
-  html.td(attrs, [
-    cell_label(label_text),
-    html.span([attribute.class("admin-data-table__value")], [
-      html.text(value),
-    ]),
-  ])
+  admin_table.cell_with(column, attrs, [admin_table.value(value)])
 }
 
-fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("admin-data-table__label")], [html.text(text)])
+fn snippet_columns() -> List(admin_table.Column) {
+  [
+    slug_column(),
+    language_column(),
+    title_column(),
+    owner_column(),
+    updated_column(),
+    open_column(),
+  ]
 }
 
-fn table_heading(text: String) -> Element(Msg) {
-  html.th([attribute.class("admin-data-table__heading")], [html.text(text)])
+fn slug_column() -> admin_table.Column {
+  admin_table.column("Slug")
+}
+
+fn language_column() -> admin_table.Column {
+  admin_table.fit_column("Language")
+}
+
+fn title_column() -> admin_table.Column {
+  admin_table.column("Title")
+}
+
+fn owner_column() -> admin_table.Column {
+  admin_table.column("Owner")
+}
+
+fn updated_column() -> admin_table.Column {
+  admin_table.column("Updated")
+}
+
+fn open_column() -> admin_table.Column {
+  admin_table.action_column("Open")
 }
 
 fn filter_username(value: String) -> option.Option(String) {
@@ -379,13 +380,12 @@ fn can_go_previous(model: Model) -> Bool {
 }
 
 fn pagination_button(text: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  html.button(
+  admin_ui.secondary_button(
     [
-      attribute.class("admin-page__button admin-page__button--secondary"),
       attribute.type_("button"),
       attribute.disabled(!enabled),
       event.on_click(msg),
     ],
-    [html.text(text)],
+    text,
   )
 }

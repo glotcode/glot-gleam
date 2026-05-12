@@ -3,6 +3,8 @@ import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/email_template_dto
 import glot_core/route
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -131,61 +133,40 @@ fn templates_view(model: Model) -> Element(Msg) {
 fn templates_table(
   templates: List(email_template_dto.EmailTemplateSummaryResponse),
 ) -> Element(Msg) {
-  html.div([attribute.class("admin-data-table__wrap")], [
-    html.table([attribute.class("admin-data-table")], [
-      html.thead([], [
-        html.tr([], [
-          table_heading("Name"),
-          table_heading("Updated at"),
-          table_heading("Open"),
-        ]),
-      ]),
-      html.tbody([], templates |> list.map(template_row)),
-    ]),
-  ])
+  admin_table.table(template_columns(), templates |> list.map(template_row))
 }
 
 fn template_row(
   template: email_template_dto.EmailTemplateSummaryResponse,
 ) -> Element(Msg) {
-  html.tr([], [
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Name"),
-      html.span(
-        [attribute.class("admin-data-table__value jobs-table__primary")],
-        [
-          html.text(template.name),
-        ],
-      ),
+  admin_table.row([
+    admin_table.cell(name_column(), [admin_table.primary_value(template.name)]),
+    admin_table.cell(updated_at_column(), [
+      admin_table.secondary_value(format_timestamp(template.updated_at)),
     ]),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Updated at"),
-      html.span(
-        [attribute.class("admin-data-table__value jobs-table__secondary")],
-        [
-          html.text(format_timestamp(template.updated_at)),
-        ],
-      ),
-    ]),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Open"),
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminEmailTemplate(template.name)),
-        ],
-        [html.text("Open")],
+    admin_table.cell(open_column(), [
+      admin_ui.secondary_link(
+        [route.href(route.AdminEmailTemplate(template.name))],
+        "Open",
       ),
     ]),
   ])
 }
 
-fn table_heading(text: String) -> Element(Msg) {
-  html.th([attribute.class("admin-data-table__heading")], [html.text(text)])
+fn template_columns() -> List(admin_table.Column) {
+  [name_column(), updated_at_column(), open_column()]
 }
 
-fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("admin-data-table__label")], [html.text(text)])
+fn name_column() -> admin_table.Column {
+  admin_table.column("Name")
+}
+
+fn updated_at_column() -> admin_table.Column {
+  admin_table.column("Updated at")
+}
+
+fn open_column() -> admin_table.Column {
+  admin_table.action_column("Open")
 }
 
 fn format_timestamp(value) -> String {

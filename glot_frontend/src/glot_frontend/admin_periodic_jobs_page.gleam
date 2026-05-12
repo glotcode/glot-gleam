@@ -5,6 +5,8 @@ import gleam/time/timestamp
 import glot_core/admin/periodic_job_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/route
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -151,56 +153,46 @@ fn periodic_jobs_table(
   periodic_jobs: List(periodic_job_dto.PeriodicJobResponse),
   now: timestamp.Timestamp,
 ) -> Element(Msg) {
-  html.div([attribute.class("jobs-table admin-periodic-jobs-page__table")], [
-    html.div(
-      [attribute.class("jobs-table__head admin-periodic-jobs-page__head")],
-      [
-        heading("Job type"),
-        heading("State"),
-        heading("Cadence"),
-        heading("Next run"),
-        heading("Last enqueued"),
-        heading("Action"),
-      ],
-    ),
-    html.div(
-      [attribute.class("jobs-table__body")],
-      list.map(periodic_jobs, fn(periodic_job) {
-        periodic_job_row(periodic_job, now)
-      }),
-    ),
-  ])
+  admin_table.table(
+    periodic_job_columns(),
+    list.map(periodic_jobs, fn(periodic_job) {
+      periodic_job_row(periodic_job, now)
+    }),
+  )
 }
 
 fn periodic_job_row(
   periodic_job: periodic_job_dto.PeriodicJobResponse,
   now: timestamp.Timestamp,
 ) -> Element(Msg) {
-  html.div([attribute.class("jobs-table__row admin-periodic-jobs-page__row")], [
-    cell("Job type", [
-      html.span([attribute.class("jobs-table__primary")], [
+  admin_table.row([
+    admin_table.cell(job_type_column(), [
+      html.span([attribute.class("admin-table__value--primary")], [
         html.text(job_type_label(periodic_job.job_type)),
       ]),
     ]),
-    cell("State", [
+    admin_table.cell(state_column(), [
       status_chip(periodic_job),
     ]),
-    cell("Cadence", [
+    admin_table.cell(cadence_column(), [
       html.text(int.to_string(periodic_job.interval_seconds) <> "s"),
     ]),
-    cell("Next run", [
-      html.text(timestamp_helpers.relative_label(periodic_job.next_run_at, now)),
+    admin_table.cell(next_run_column(), [
+      admin_table.primary_value(timestamp_helpers.relative_label(
+        periodic_job.next_run_at,
+        now,
+      )),
     ]),
-    cell("Last enqueued", [
-      html.text(optional_relative_timestamp(periodic_job.last_enqueued_at, now)),
+    admin_table.cell(last_enqueued_column(), [
+      admin_table.value(optional_relative_timestamp(
+        periodic_job.last_enqueued_at,
+        now,
+      )),
     ]),
-    cell("Action", [
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminPeriodicJob(periodic_job.id)),
-        ],
-        [html.text("Open")],
+    admin_table.cell(action_column(), [
+      admin_ui.secondary_link(
+        [route.href(route.AdminPeriodicJob(periodic_job.id))],
+        "Open",
       ),
     ]),
   ])
@@ -220,36 +212,49 @@ fn status_banner(status: Status) -> Element(Msg) {
   }
 }
 
-fn heading(label: String) -> Element(Msg) {
-  html.div([attribute.class("jobs-table__heading")], [html.text(label)])
+fn periodic_job_columns() -> List(admin_table.Column) {
+  [
+    job_type_column(),
+    state_column(),
+    cadence_column(),
+    next_run_column(),
+    last_enqueued_column(),
+    action_column(),
+  ]
 }
 
-fn cell(label: String, children: List(Element(Msg))) -> Element(Msg) {
-  html.div([], [
-    html.span([attribute.class("jobs-table__cell-label")], [html.text(label)]),
-    html.div([attribute.class("jobs-table__primary-cell")], children),
-  ])
+fn job_type_column() -> admin_table.Column {
+  admin_table.column("Job type")
+}
+
+fn state_column() -> admin_table.Column {
+  admin_table.fit_column("State")
+}
+
+fn cadence_column() -> admin_table.Column {
+  admin_table.fit_column("Cadence")
+}
+
+fn next_run_column() -> admin_table.Column {
+  admin_table.column("Next run")
+}
+
+fn last_enqueued_column() -> admin_table.Column {
+  admin_table.column("Last enqueued")
+}
+
+fn action_column() -> admin_table.Column {
+  admin_table.action_column("Action")
 }
 
 fn status_chip(
   periodic_job: periodic_job_dto.PeriodicJobResponse,
 ) -> Element(Msg) {
-  let #(label, class_name) = case
-    periodic_job.enabled,
-    periodic_job.last_enqueue_error
-  {
-    False, _ -> #("Disabled", "jobs-table__badge")
-    True, option.Some(_) -> #(
-      "Error",
-      "jobs-table__badge jobs-table__badge--failed",
-    )
-    True, option.None -> #(
-      "Enabled",
-      "jobs-table__badge jobs-table__badge--done",
-    )
+  case periodic_job.enabled, periodic_job.last_enqueue_error {
+    False, _ -> admin_ui.badge("Disabled", admin_ui.NeutralTone)
+    True, option.Some(_) -> admin_ui.badge("Error", admin_ui.DangerTone)
+    True, option.None -> admin_ui.badge("Enabled", admin_ui.SuccessTone)
   }
-
-  html.span([attribute.class(class_name)], [html.text(label)])
 }
 
 fn optional_relative_timestamp(

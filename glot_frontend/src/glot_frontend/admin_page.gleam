@@ -1,4 +1,5 @@
 import glot_core/route
+import glot_frontend/admin_ui
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -163,13 +164,7 @@ fn link_card(
             html.text(description),
           ]),
         ]),
-        html.a(
-          [
-            attribute.class("admin-page__button admin-page__button--secondary"),
-            route.href(target),
-          ],
-          [html.text("Open")],
-        ),
+        admin_ui.secondary_link([route.href(target)], "Open"),
       ]),
     ],
   )

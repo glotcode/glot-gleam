@@ -10,6 +10,8 @@ import glot_core/admin/job_log_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
 import glot_frontend/clock
@@ -554,22 +556,9 @@ fn job_logs_table(model: Model, now: Timestamp) -> Element(Msg) {
       ])
 
     _, _ ->
-      html.div([attribute.class("jobs-table admin-job-logs-page__table")], [
-        html.div(
-          [attribute.class("jobs-table__head admin-job-logs-page__head")],
-          [
-            table_heading("Log ID"),
-            table_heading("When"),
-            table_heading("Attempt"),
-            table_heading("Duration"),
-            table_heading("Error"),
-            table_heading("Open"),
-          ],
-        ),
-        html.div([attribute.class("jobs-table__body")], {
-          rows |> list.map(fn(log) { job_log_row(log, now) })
-        }),
-      ])
+      admin_table.table(job_log_columns(), {
+        rows |> list.map(fn(log) { job_log_row(log, now) })
+      })
   }
 }
 
@@ -577,13 +566,14 @@ fn job_log_row(
   log: job_log_dto.JobLogResponse,
   now: Timestamp,
 ) -> Element(Msg) {
-  html.div([attribute.class("jobs-table__row admin-job-logs-page__row")], [
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Log ID"),
-      html.div([attribute.class("jobs-table__stack")], [
+  admin_table.row([
+    admin_table.cell(log_id_column(), [
+      admin_table.stack([
         html.a(
           [
-            attribute.class("jobs-table__primary admin-job-logs-page__link"),
+            attribute.class(
+              "admin-table__value admin-table__value--primary admin-job-logs-page__link",
+            ),
             route.href(route.AdminJobLog(log.id)),
           ],
           [
@@ -595,41 +585,57 @@ fn job_log_row(
         ),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("When"),
-      html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(when_column(), [
+      html.span([attribute.class("admin-table__value--primary")], [
         html.text(timestamp_helpers.relative_label(log.created_at, now)),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Attempt"),
-      html.span([attribute.class("jobs-table__cell-value")], [
-        html.text(int.to_string(log.attempt)),
-      ]),
+    admin_table.cell(attempt_column(), [
+      admin_table.value(int.to_string(log.attempt)),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Duration"),
-      html.span([attribute.class("jobs-table__cell-value")], [
-        html.text(duration_label.duration_in_ms_label(log.duration_ns)),
-      ]),
+    admin_table.cell(duration_column(), [
+      admin_table.value(duration_label.duration_in_ms_label(log.duration_ns)),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Error"),
-      html.span([attribute.class(error_badge_class(log))], [
-        html.text(error_text(log)),
-      ]),
-    ]),
-    html.div([attribute.class("jobs-table__cell jobs-table__cell--actions")], [
-      cell_label("Open"),
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminJobLog(log.id)),
-        ],
-        [html.text("Open")],
-      ),
+    admin_table.cell(error_column(), [error_badge(log)]),
+    admin_table.cell(open_column(), [
+      admin_ui.secondary_link([route.href(route.AdminJobLog(log.id))], "Open"),
     ]),
   ])
+}
+
+fn job_log_columns() -> List(admin_table.Column) {
+  [
+    log_id_column(),
+    when_column(),
+    attempt_column(),
+    duration_column(),
+    error_column(),
+    open_column(),
+  ]
+}
+
+fn log_id_column() -> admin_table.Column {
+  admin_table.column("Log ID")
+}
+
+fn when_column() -> admin_table.Column {
+  admin_table.column("When")
+}
+
+fn attempt_column() -> admin_table.Column {
+  admin_table.fit_column("Attempt")
+}
+
+fn duration_column() -> admin_table.Column {
+  admin_table.fit_column("Duration")
+}
+
+fn error_column() -> admin_table.Column {
+  admin_table.fit_column("Error")
+}
+
+fn open_column() -> admin_table.Column {
+  admin_table.action_column("Open")
 }
 
 fn load_job_logs_page(
@@ -1034,29 +1040,20 @@ fn can_go_next_logs(model: Model) -> Bool {
 }
 
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  html.button(
+  admin_ui.secondary_button(
     [
-      attribute.class("admin-page__button admin-page__button--secondary"),
       attribute.attribute("type", "button"),
       attribute.disabled(!enabled),
       event.on_click(msg),
     ],
-    [html.text(label)],
+    label,
   )
 }
 
-fn table_heading(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__heading")], [html.text(text)])
-}
-
-fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__cell-label")], [html.text(text)])
-}
-
-fn error_badge_class(log: job_log_dto.JobLogResponse) -> String {
+fn error_badge(log: job_log_dto.JobLogResponse) -> Element(Msg) {
   case log.has_error {
-    True -> "jobs-table__badge jobs-table__badge--failed"
-    False -> "jobs-table__badge jobs-table__badge--done"
+    True -> admin_ui.badge(error_text(log), admin_ui.DangerTone)
+    False -> admin_ui.badge(error_text(log), admin_ui.SuccessTone)
   }
 }
 

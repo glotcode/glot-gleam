@@ -4,6 +4,7 @@ import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/email_template_dto
+import glot_frontend/admin_ui
 import glot_frontend/api
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -200,18 +201,15 @@ pub fn view(model: Model) -> Element(Msg) {
             ]),
           ]),
           html.div([attribute.class("admin-page__policy-actions")], [
-            html.button(
+            admin_ui.secondary_button(
               [
-                attribute.class(
-                  "admin-page__button admin-page__button--secondary",
-                ),
                 attribute.type_("button"),
                 attribute.disabled(
                   model.template == option.None || model.save_state == Saving,
                 ),
                 event.on_click(ResetClicked),
               ],
-              [html.text("Reset")],
+              "Reset",
             ),
             html.button(
               [

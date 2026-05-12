@@ -7,6 +7,7 @@ import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/rate_limit
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
 import lustre/attribute
@@ -302,13 +303,12 @@ fn policy_summary_view(policy: PolicyEditor) -> Element(Msg) {
         ]),
       ]),
       html.div([attribute.class("admin-page__policy-header-actions")], [
-        html.button(
+        admin_ui.secondary_button(
           [
             attribute.type_("button"),
-            attribute.class("admin-page__button admin-page__button--secondary"),
             event.on_click(EditClicked(policy.action)),
           ],
-          [html.text("Edit")],
+          "Edit",
         ),
       ]),
     ]),

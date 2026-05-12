@@ -7,6 +7,8 @@ import glot_core/helpers/timestamp_helpers
 import glot_core/job/job_model
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/string_helpers
 import lustre/attribute
@@ -282,19 +284,9 @@ fn jobs_table(model: Model, now: Timestamp) -> Element(Msg) {
       ])
 
     _, _ ->
-      html.div([attribute.class("jobs-table")], [
-        html.div([attribute.class("jobs-table__head")], [
-          table_heading("Job"),
-          table_heading("Status"),
-          table_heading("Schedule"),
-          table_heading("Attempts"),
-          table_heading("Notes"),
-          table_heading("Action"),
-        ]),
-        html.div([attribute.class("jobs-table__body")], {
-          rows |> list.map(fn(job) { job_row(job, now) })
-        }),
-      ])
+      admin_table.table(job_columns(), {
+        rows |> list.map(fn(job) { job_row(job, now) })
+      })
   }
 }
 
@@ -401,51 +393,40 @@ fn filter_chip(label: String, selected: Bool, msg: Msg) -> Element(Msg) {
 }
 
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  html.button(
+  admin_ui.secondary_button(
     [
-      attribute.class("admin-page__button admin-page__button--secondary"),
       attribute.attribute("type", "button"),
       attribute.disabled(!enabled),
       event.on_click(msg),
     ],
-    [html.text(label)],
+    label,
   )
 }
 
-fn table_heading(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__heading")], [html.text(text)])
-}
-
 fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
-  html.div([attribute.class("jobs-table__row")], [
-    html.div([attribute.class("jobs-table__cell jobs-table__cell--job")], [
-      cell_label("Job"),
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("jobs-table__primary")], [
+  admin_table.row([
+    admin_table.cell(job_column(), [
+      admin_table.stack([
+        html.span([attribute.class("admin-table__value--primary")], [
           html.text(job.job_type),
         ]),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Status"),
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class(status_badge_class(job))], [
-          html.text(status_text(job)),
-        ]),
+    admin_table.cell(status_column(), [
+      admin_table.stack([
+        status_badge(job),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Schedule"),
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(schedule_column(), [
+      admin_table.stack([
+        html.span([attribute.class("admin-table__value--primary")], [
           html.text(timestamp_helpers.relative_label(job.run_at, now)),
         ]),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Attempts"),
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class("jobs-table__primary")], [
+    admin_table.cell(attempts_column(), [
+      admin_table.stack([
+        html.span([attribute.class("admin-table__value--primary")], [
           html.text(
             int.to_string(job.attempts)
             <> " / "
@@ -454,23 +435,46 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
         ]),
       ]),
     ]),
-    html.div([attribute.class("jobs-table__cell")], [
-      cell_label("Notes"),
-      html.span([attribute.class("jobs-table__cell-value")], [
-        html.text(note_text(job)),
-      ]),
-    ]),
-    html.div([attribute.class("jobs-table__cell jobs-table__cell--actions")], [
-      cell_label("Action"),
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminJob(job.id)),
-        ],
-        [html.text("Open")],
-      ),
+    admin_table.cell(notes_column(), [admin_table.value(note_text(job))]),
+    admin_table.cell(action_column(), [
+      admin_ui.secondary_link([route.href(route.AdminJob(job.id))], "Open"),
     ]),
   ])
+}
+
+fn job_columns() -> List(admin_table.Column) {
+  [
+    job_column(),
+    status_column(),
+    schedule_column(),
+    attempts_column(),
+    notes_column(),
+    action_column(),
+  ]
+}
+
+fn job_column() -> admin_table.Column {
+  admin_table.column("Job")
+}
+
+fn status_column() -> admin_table.Column {
+  admin_table.fit_column("Status")
+}
+
+fn schedule_column() -> admin_table.Column {
+  admin_table.column("Schedule")
+}
+
+fn attempts_column() -> admin_table.Column {
+  admin_table.fit_column("Attempts")
+}
+
+fn notes_column() -> admin_table.Column {
+  admin_table.column("Notes")
+}
+
+fn action_column() -> admin_table.Column {
+  admin_table.action_column("Action")
 }
 
 fn note_text(job: job_dto.JobResponse) -> String {
@@ -489,10 +493,6 @@ fn note_text(job: job_dto.JobResponse) -> String {
         _ -> ""
       }
   }
-}
-
-fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("jobs-table__cell-label")], [html.text(text)])
 }
 
 fn summary_tone_class(tone: SummaryTone) -> String {
@@ -516,14 +516,14 @@ fn summary_tone_text(tone: SummaryTone) -> String {
   }
 }
 
-fn status_badge_class(job: job_dto.JobResponse) -> String {
+fn status_badge(job: job_dto.JobResponse) -> Element(Msg) {
   case job.status, job.overdue {
-    "failed", _ -> "jobs-table__badge jobs-table__badge--failed"
-    "running", _ -> "jobs-table__badge jobs-table__badge--running"
-    "pending", True -> "jobs-table__badge jobs-table__badge--overdue"
-    "pending", False -> "jobs-table__badge jobs-table__badge--pending"
-    "done", _ -> "jobs-table__badge jobs-table__badge--done"
-    _, _ -> "jobs-table__badge"
+    "failed", _ -> admin_ui.badge(status_text(job), admin_ui.DangerTone)
+    "running", _ -> admin_ui.badge(status_text(job), admin_ui.WarningTone)
+    "pending", True -> admin_ui.badge(status_text(job), admin_ui.DangerTone)
+    "pending", False -> admin_ui.badge(status_text(job), admin_ui.InfoTone)
+    "done", _ -> admin_ui.badge(status_text(job), admin_ui.SuccessTone)
+    _, _ -> admin_ui.badge(status_text(job), admin_ui.NeutralTone)
   }
 }
 

@@ -9,6 +9,8 @@ import glot_core/auth/user_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/api
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -280,14 +282,13 @@ fn filters_view(model: Model) -> Element(Msg) {
         ],
         [html.text("Apply")],
       ),
-      html.button(
+      admin_ui.secondary_button(
         [
-          attribute.class("admin-page__button admin-page__button--secondary"),
           attribute.type_("button"),
           attribute.disabled(!has_filters(model)),
           event.on_click(ClearFilterClicked),
         ],
-        [html.text("Clear")],
+        "Clear",
       ),
     ]),
   ])
@@ -323,21 +324,9 @@ fn users_table(model: Model, now: Timestamp) -> Element(Msg) {
         html.text("No users were returned."),
       ])
     _, _ ->
-      html.div([attribute.class("admin-data-table__wrap")], [
-        html.table([attribute.class("admin-data-table")], [
-          html.thead([], [
-            html.tr([], [
-              table_heading("User"),
-              table_heading("Role"),
-              table_heading("Account"),
-              table_heading("Tier"),
-              table_heading("Joined"),
-              table_heading("Open"),
-            ]),
-          ]),
-          html.tbody([], { rows |> list.map(fn(user) { user_row(user, now) }) }),
-        ]),
-      ])
+      admin_table.table(user_columns(), {
+        rows |> list.map(fn(user) { user_row(user, now) })
+      })
   }
 }
 
@@ -345,61 +334,60 @@ fn user_row(
   user: user_dto.UserSummaryResponse,
   now: Timestamp,
 ) -> Element(Msg) {
-  html.tr([], [
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("User"),
-      html.span(
-        [attribute.class("admin-data-table__value jobs-table__primary")],
-        [
-          html.text(user.username),
-        ],
-      ),
+  admin_table.row([
+    admin_table.cell(user_column(), [admin_table.primary_value(user.username)]),
+    admin_table.cell(role_column(), [role_badge(user)]),
+    admin_table.cell(account_column(), [
+      admin_table.stack([account_state_badge(user)]),
     ]),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Role"),
-      html.span([attribute.class(role_badge_class(user))], [
-        html.text(role_text(user)),
-      ]),
+    admin_table.cell(tier_column(), [
+      admin_table.stack([admin_table.secondary_value(account_tier_text(user))]),
     ]),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Account"),
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span([attribute.class(account_state_badge_class(user))], [
-          html.text(account_state_text(user)),
-        ]),
-      ]),
+    admin_table.cell(joined_column(), [
+      admin_table.primary_value(timestamp_helpers.relative_label(
+        user.created_at,
+        now,
+      )),
     ]),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Tier"),
-      html.div([attribute.class("jobs-table__stack")], [
-        html.span(
-          [attribute.class("admin-data-table__value jobs-table__secondary")],
-          [
-            html.text(account_tier_text(user)),
-          ],
-        ),
-      ]),
-    ]),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Joined"),
-      html.span(
-        [attribute.class("admin-data-table__value jobs-table__primary")],
-        [
-          html.text(timestamp_helpers.relative_label(user.created_at, now)),
-        ],
-      ),
-    ]),
-    html.td([attribute.class("admin-data-table__cell")], [
-      cell_label("Open"),
-      html.a(
-        [
-          attribute.class("admin-page__button admin-page__button--secondary"),
-          route.href(route.AdminUser(user.id)),
-        ],
-        [html.text("Open")],
-      ),
+    admin_table.cell(open_column(), [
+      admin_ui.secondary_link([route.href(route.AdminUser(user.id))], "Open"),
     ]),
   ])
+}
+
+fn user_columns() -> List(admin_table.Column) {
+  [
+    user_column(),
+    role_column(),
+    account_column(),
+    tier_column(),
+    joined_column(),
+    open_column(),
+  ]
+}
+
+fn user_column() -> admin_table.Column {
+  admin_table.column("User")
+}
+
+fn role_column() -> admin_table.Column {
+  admin_table.fit_column("Role")
+}
+
+fn account_column() -> admin_table.Column {
+  admin_table.fit_column("Account")
+}
+
+fn tier_column() -> admin_table.Column {
+  admin_table.column("Tier")
+}
+
+fn joined_column() -> admin_table.Column {
+  admin_table.fit_column("Joined")
+}
+
+fn open_column() -> admin_table.Column {
+  admin_table.action_column("Open")
 }
 
 fn can_go_previous(model: Model) -> Bool {
@@ -417,23 +405,14 @@ fn can_go_next(model: Model) -> Bool {
 }
 
 fn pagination_button(label: String, msg: Msg, enabled: Bool) -> Element(Msg) {
-  html.button(
+  admin_ui.secondary_button(
     [
-      attribute.class("admin-page__button admin-page__button--secondary"),
       attribute.attribute("type", "button"),
       attribute.disabled(!enabled),
       event.on_click(msg),
     ],
-    [html.text(label)],
+    label,
   )
-}
-
-fn table_heading(text: String) -> Element(Msg) {
-  html.th([attribute.class("admin-data-table__heading")], [html.text(text)])
-}
-
-fn cell_label(text: String) -> Element(Msg) {
-  html.span([attribute.class("admin-data-table__label")], [html.text(text)])
 }
 
 fn text_input(
@@ -529,10 +508,12 @@ fn role_text(user: user_dto.UserSummaryResponse) -> String {
   }
 }
 
-fn role_badge_class(user: user_dto.UserSummaryResponse) -> String {
+fn role_badge(user: user_dto.UserSummaryResponse) -> Element(Msg) {
   case user.role {
-    user_model.AdminUser -> "jobs-table__badge jobs-table__badge--running"
-    user_model.RegularUser -> "jobs-table__badge jobs-table__badge--done"
+    user_model.AdminUser ->
+      admin_ui.badge(role_text(user), admin_ui.WarningTone)
+    user_model.RegularUser ->
+      admin_ui.badge(role_text(user), admin_ui.SuccessTone)
   }
 }
 
@@ -544,11 +525,14 @@ fn account_state_text(user: user_dto.UserSummaryResponse) -> String {
   }
 }
 
-fn account_state_badge_class(user: user_dto.UserSummaryResponse) -> String {
+fn account_state_badge(user: user_dto.UserSummaryResponse) -> Element(Msg) {
   case user.account_state {
-    account_model.Active -> "jobs-table__badge jobs-table__badge--done"
-    account_model.ReadOnly -> "jobs-table__badge jobs-table__badge--pending"
-    account_model.Suspended -> "jobs-table__badge jobs-table__badge--failed"
+    account_model.Active ->
+      admin_ui.badge(account_state_text(user), admin_ui.SuccessTone)
+    account_model.ReadOnly ->
+      admin_ui.badge(account_state_text(user), admin_ui.InfoTone)
+    account_model.Suspended ->
+      admin_ui.badge(account_state_text(user), admin_ui.DangerTone)
   }
 }
 

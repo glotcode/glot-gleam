@@ -10,6 +10,7 @@ import glot_core/language
 import glot_core/route
 import glot_core/snippet/snippet_dto as public_snippet_dto
 import glot_core/snippet/snippet_model
+import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
 import lustre/attribute
@@ -173,14 +174,9 @@ pub fn view(model: Model) -> Element(Msg) {
             ]),
           ]),
           html.div([attribute.class("admin-page__policy-actions")], [
-            html.a(
-              [
-                attribute.class(
-                  "admin-page__button admin-page__button--secondary",
-                ),
-                route.href(route.Snippet(model.slug)),
-              ],
-              [html.text("Open public snippet")],
+            admin_ui.secondary_link(
+              [route.href(route.Snippet(model.slug))],
+              "Open public snippet",
             ),
             html.button(
               [
