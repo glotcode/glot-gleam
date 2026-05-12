@@ -150,28 +150,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   let rows = pagination_model.items(model.page)
 
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section(
-        [attribute.class("app-panel admin-page admin-request-logs-page")],
-        [
-          html.div([attribute.class("admin-page__header")], [
-            html.div([], [
-              html.h2([attribute.class("admin-page__title")], [
-                html.text("API logs"),
-              ]),
-            ]),
-            html.div([attribute.class("admin-page__policy-actions")], [
-              pagination_button(
-                "Previous",
-                PreviousPageClicked,
-                can_go_previous(model),
-              ),
-              pagination_button("Next", NextPageClicked, can_go_next(model)),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__group")], [
+  admin_ui.page_with_panel_class(
+    panel_class: "admin-request-logs-page",
+    title: "API logs",
+    intro: "",
+    actions: [
+      pagination_button("Previous", PreviousPageClicked, can_go_previous(model)),
+      pagination_button("Next", NextPageClicked, can_go_next(model)),
+    ],
+    content: [
+      html.div([attribute.class("admin-page__group")], [
             html.div([attribute.class("admin-page__group-header")], [
               html.h3([attribute.class("admin-page__group-title")], [
                 html.text("Filters"),
@@ -227,8 +215,8 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
                 ),
               ],
             ),
-          ]),
-          html.div([attribute.class("admin-page__group")], [
+      ]),
+      html.div([attribute.class("admin-page__group")], [
             html.div([attribute.class("admin-page__group-header")], [
               html.h3([attribute.class("admin-page__group-title")], [
                 html.text("Results"),
@@ -236,11 +224,9 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
             ]),
             status_view(model),
             logs_table(model, now),
-          ]),
-        ],
-      ),
-    ]),
-  ])
+      ]),
+    ],
+  )
 }
 
 fn load_initial(model: Model) -> #(Model, Effect(Msg)) {
@@ -311,7 +297,7 @@ fn filter_group(
     html.span([attribute.class("admin-jobs-page__filter-title")], [
       html.text(title),
     ]),
-    html.div([attribute.class("admin-page__policy-actions")], chips),
+    html.div([attribute.class("admin-page__actions")], chips),
   ])
 }
 

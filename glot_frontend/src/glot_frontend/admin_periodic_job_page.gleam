@@ -298,27 +298,12 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Periodic job detail"),
-            ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text(
-                "Inspect one scheduler definition and update cadence, enabled state, next enqueue time, or payload.",
-              ),
-            ]),
-          ]),
-        ]),
-        status_banner(model.status),
-        detail_view(model, now),
-      ]),
-    ]),
-  ])
+  admin_ui.page(
+    title: "Periodic job detail",
+    intro:
+      "Inspect one scheduler definition and update cadence, enabled state, next enqueue time, or payload.",
+    content: [status_banner(model.status), detail_view(model, now)],
+  )
 }
 
 fn detail_view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
@@ -456,7 +441,7 @@ fn periodic_job_view(
         ]),
         html.div([attribute.class("admin-page__policy-footer")], [
           section_message(editor),
-          html.div([attribute.class("admin-page__policy-actions")], [
+          html.div([attribute.class("admin-page__actions")], [
             admin_ui.secondary_button(
               [
                 attribute.type_("button"),

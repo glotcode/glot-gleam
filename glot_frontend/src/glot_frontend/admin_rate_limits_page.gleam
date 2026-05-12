@@ -249,26 +249,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Admin rate limits"),
-            ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text(
-                "Each action shows its current limits. Edit opens a compact modal.",
-              ),
-            ]),
-          ]),
-        ]),
-        status_banner(model.status),
-        policies_view(model),
-      ]),
-    ]),
+  html.div([], [
+    admin_ui.page(
+      title: "Admin rate limits",
+      intro:
+        "Each action shows its current limits. Edit opens a compact modal.",
+      content: [status_banner(model.status), policies_view(model)],
+    ),
     edit_dialog(model),
   ])
 }

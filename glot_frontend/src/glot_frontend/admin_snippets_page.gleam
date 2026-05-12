@@ -131,26 +131,16 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   let rows = pagination_model.items(model.page)
   let count_text = int.to_string(list.length(rows)) <> " snippets shown."
 
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page admin-jobs-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Snippets"),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            pagination_button(
-              "Previous",
-              PreviousPageClicked,
-              can_go_previous(model),
-            ),
-            pagination_button("Next", NextPageClicked, can_go_next(model)),
-          ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
+  admin_ui.page_with_panel_class(
+    panel_class: "admin-jobs-page",
+    title: "Snippets",
+    intro: "",
+    actions: [
+      pagination_button("Previous", PreviousPageClicked, can_go_previous(model)),
+      pagination_button("Next", NextPageClicked, can_go_next(model)),
+    ],
+    content: [
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.div([], [
               html.h3([attribute.class("admin-page__group-title")], [
@@ -189,8 +179,8 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               ),
             ],
           ),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
+      ]),
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.div([], [
               html.h3([attribute.class("admin-page__group-title")], [
@@ -203,10 +193,9 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
           ]),
           status_view(model),
           snippets_table(model, now),
-        ]),
       ]),
-    ]),
-  ])
+    ],
+  )
 }
 
 fn load_initial(model: Model) -> #(Model, Effect(Msg)) {

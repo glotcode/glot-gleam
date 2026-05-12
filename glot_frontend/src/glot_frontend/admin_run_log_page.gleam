@@ -70,30 +70,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section(
-        [attribute.class("app-panel admin-page admin-job-log-page")],
-        [
-          html.div([attribute.class("admin-page__header")], [
-            html.div([], [
-              html.h2([attribute.class("admin-page__title")], [
-                html.text("Run log detail"),
-              ]),
-              html.p([attribute.class("admin-page__status")], [
-                html.text(
-                  "Inspect one retained code execution outcome and its request correlation fields.",
-                ),
-              ]),
-            ]),
-          ]),
-          status_view(model),
-          detail_view(model),
-        ],
-      ),
-    ]),
-  ])
+  admin_ui.page_with_panel_class(
+    panel_class: "admin-job-log-page",
+    title: "Run log detail",
+    intro:
+      "Inspect one retained code execution outcome and its request correlation fields.",
+    actions: [],
+    content: [status_view(model), detail_view(model)],
+  )
 }
 
 fn status_view(model: Model) -> Element(Msg) {

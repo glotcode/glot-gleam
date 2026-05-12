@@ -163,41 +163,33 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page admin-job-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Snippet detail"),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            admin_ui.secondary_link(
-              [route.href(route.Snippet(model.slug))],
-              "Open public snippet",
-            ),
-            html.button(
-              [
-                attribute.type_("button"),
-                attribute.class("admin-page__button admin-page__button--danger"),
-                attribute.disabled(model.status == Deleting),
-                event.on_click(DeleteClicked),
-              ],
-              [
-                html.text(case model.status {
-                  Deleting -> "Deleting..."
-                  NotLoaded | Loading | Ready | LoadError(_) -> "Delete snippet"
-                }),
-              ],
-            ),
-          ]),
-        ]),
-        status_view(model),
-        detail_view(model),
-      ]),
-    ]),
+  html.div([], [
+    admin_ui.page_with_panel_class(
+      panel_class: "admin-job-page",
+      title: "Snippet detail",
+      intro: "",
+      actions: [
+        admin_ui.secondary_link(
+          [route.href(route.Snippet(model.slug))],
+          "Open public snippet",
+        ),
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class("admin-page__button admin-page__button--danger"),
+            attribute.disabled(model.status == Deleting),
+            event.on_click(DeleteClicked),
+          ],
+          [
+            html.text(case model.status {
+              Deleting -> "Deleting..."
+              NotLoaded | Loading | Ready | LoadError(_) -> "Delete snippet"
+            }),
+          ],
+        ),
+      ],
+      content: [status_view(model), detail_view(model)],
+    ),
     delete_confirmation_dialog(model),
   ])
 }

@@ -157,31 +157,16 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   let rows = pagination_model.items(model.page)
   let count_text = int.to_string(list.length(rows)) <> " users shown."
 
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page admin-jobs-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Users"),
-            ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text(
-                "Review user accounts, account access state, and role assignments.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            pagination_button(
-              "Previous",
-              PreviousPageClicked,
-              can_go_previous(model),
-            ),
-            pagination_button("Next", NextPageClicked, can_go_next(model)),
-          ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
+  admin_ui.page_with_panel_class(
+    panel_class: "admin-jobs-page",
+    title: "Users",
+    intro: "Review user accounts, account access state, and role assignments.",
+    actions: [
+      pagination_button("Previous", PreviousPageClicked, can_go_previous(model)),
+      pagination_button("Next", NextPageClicked, can_go_next(model)),
+    ],
+    content: [
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.div([], [
               html.h3([attribute.class("admin-page__group-title")], [
@@ -190,8 +175,8 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
             ]),
           ]),
           filters_view(model),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
+      ]),
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.div([], [
               html.h3([attribute.class("admin-page__group-title")], [
@@ -204,10 +189,9 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
           ]),
           status_view(model),
           users_table(model, now),
-        ]),
       ]),
-    ]),
-  ])
+    ],
+  )
 }
 
 fn load_initial(model: Model) -> #(Model, Effect(Msg)) {
@@ -273,7 +257,7 @@ fn filters_view(model: Model) -> Element(Msg) {
         options: account_tier_filter_options(),
       ),
     ]),
-    html.div([attribute.class("admin-page__policy-actions")], [
+    html.div([attribute.class("admin-page__actions")], [
       html.button(
         [
           attribute.class("admin-page__button"),

@@ -66,25 +66,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Periodic jobs"),
-            ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text(
-                "Review scheduler definitions, scan health quickly, and open a dedicated detail page when you need to edit one.",
-              ),
-            ]),
-          ]),
-        ]),
-        status_banner(model.status),
-        summary_view(model),
-        html.div([attribute.class("admin-page__group")], [
+  admin_ui.page(
+    title: "Periodic jobs",
+    intro:
+      "Review scheduler definitions, scan health quickly, and open a dedicated detail page when you need to edit one.",
+    content: [
+      status_banner(model.status),
+      summary_view(model),
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.h3([attribute.class("admin-page__group-title")], [
               html.text("Definitions"),
@@ -102,10 +91,9 @@ pub fn view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
               ])
             _ -> periodic_jobs_table(model.periodic_jobs, now)
           },
-        ]),
       ]),
-    ]),
-  ])
+    ],
+  )
 }
 
 fn summary_view(model: Model) -> Element(Msg) {

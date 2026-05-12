@@ -185,50 +185,36 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page admin-job-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Email template detail"),
-            ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text(
-                "Template token validation runs in the backend on save, so the editor can stay simple while preserving long-term safety.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            admin_ui.secondary_button(
-              [
-                attribute.type_("button"),
-                attribute.disabled(
-                  model.template == option.None || model.save_state == Saving,
-                ),
-                event.on_click(ResetClicked),
-              ],
-              "Reset",
-            ),
-            html.button(
-              [
-                attribute.class("admin-page__button"),
-                attribute.type_("button"),
-                attribute.disabled(
-                  model.template == option.None || model.save_state == Saving,
-                ),
-                event.on_click(SaveClicked),
-              ],
-              [html.text(save_button_label(model.save_state))],
-            ),
-          ]),
-        ]),
-        status_view(model),
-        detail_view(model),
-      ]),
-    ]),
-  ])
+  admin_ui.page_with_panel_class(
+    panel_class: "admin-job-page",
+    title: "Email template detail",
+    intro:
+      "Template token validation runs in the backend on save, so the editor can stay simple while preserving long-term safety.",
+    actions: [
+      admin_ui.secondary_button(
+        [
+          attribute.type_("button"),
+          attribute.disabled(
+            model.template == option.None || model.save_state == Saving,
+          ),
+          event.on_click(ResetClicked),
+        ],
+        "Reset",
+      ),
+      html.button(
+        [
+          attribute.class("admin-page__button"),
+          attribute.type_("button"),
+          attribute.disabled(
+            model.template == option.None || model.save_state == Saving,
+          ),
+          event.on_click(SaveClicked),
+        ],
+        [html.text(save_button_label(model.save_state))],
+      ),
+    ],
+    content: [status_view(model), detail_view(model)],
+  )
 }
 
 fn status_view(model: Model) -> Element(Msg) {

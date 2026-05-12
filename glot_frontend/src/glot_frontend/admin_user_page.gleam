@@ -338,42 +338,30 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page admin-job-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("User detail"),
-            ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text(
-                "Review account access and edit persisted user and account settings.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            html.button(
-              [
-                attribute.type_("button"),
-                attribute.class("admin-page__button admin-page__button--danger"),
-                attribute.disabled(model.status == Deleting),
-                event.on_click(DeleteClicked),
-              ],
-              [
-                html.text(case model.status {
-                  Deleting -> "Deleting..."
-                  NotLoaded | Loading | Ready | LoadError(_) -> "Delete account"
-                }),
-              ],
-            ),
-          ]),
-        ]),
-        status_view(model),
-        detail_view(model, now),
-      ]),
-    ]),
+  html.div([], [
+    admin_ui.page_with_panel_class(
+      panel_class: "admin-job-page",
+      title: "User detail",
+      intro:
+        "Review account access and edit persisted user and account settings.",
+      actions: [
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class("admin-page__button admin-page__button--danger"),
+            attribute.disabled(model.status == Deleting),
+            event.on_click(DeleteClicked),
+          ],
+          [
+            html.text(case model.status {
+              Deleting -> "Deleting..."
+              NotLoaded | Loading | Ready | LoadError(_) -> "Delete account"
+            }),
+          ],
+        ),
+      ],
+      content: [status_view(model), detail_view(model, now)],
+    ),
     delete_confirmation_dialog(model),
   ])
 }
@@ -493,7 +481,7 @@ fn edit_form(editor: UserEditor, is_deleting: Bool) -> Element(Msg) {
         ),
       ]),
       save_status(editor.state),
-      html.div([attribute.class("admin-page__policy-actions")], [
+      html.div([attribute.class("admin-page__actions")], [
         admin_ui.secondary_button(
           [
             attribute.type_("button"),

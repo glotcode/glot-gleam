@@ -141,6 +141,11 @@ a {
   flex-wrap: wrap;
 }
 
+.admin-page__heading {
+  display: grid;
+  gap: 0.35rem;
+}
+
 .admin-page__title {
   margin: 0;
   font-size: 1rem;
@@ -149,6 +154,7 @@ a {
   text-transform: uppercase;
 }
 
+.admin-page__intro,
 .admin-page__status,
 .admin-page__policy-status,
 .admin-page__policy-subtitle {
@@ -218,7 +224,7 @@ a {
 
 .admin-page__add-actions,
 .admin-page__tier-actions,
-.admin-page__policy-actions {
+.admin-page__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;

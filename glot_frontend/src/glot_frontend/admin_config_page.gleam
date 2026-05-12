@@ -731,29 +731,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("App config"),
-            ]),
-          ]),
-        ]),
-        status_banner(model.status),
-        html.div([attribute.class("admin-page__group")], [
+  admin_ui.page(
+    title: "App config",
+    intro: "",
+    content: [
+      status_banner(model.status),
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__section-grid")], [
             debug_section_view(model.debug, model.status),
             auth_section_view(model.auth, model.status),
             cleanup_section_view(model.cleanup, model.status),
             docker_run_section_view(model.docker_run, model.status),
           ]),
-        ]),
       ]),
-    ]),
-  ])
+    ],
+  )
 }
 
 fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
@@ -800,7 +792,7 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
       ]),
       html.div([attribute.class("admin-page__policy-footer")], [
         auth_section_message(section),
-        html.div([attribute.class("admin-page__policy-actions")], [
+        html.div([attribute.class("admin-page__actions")], [
           admin_ui.secondary_button(
             [
               attribute.type_("button"),
@@ -908,7 +900,7 @@ fn cleanup_section_view(
       ]),
       html.div([attribute.class("admin-page__policy-footer")], [
         cleanup_section_message(section),
-        html.div([attribute.class("admin-page__policy-actions")], [
+        html.div([attribute.class("admin-page__actions")], [
           admin_ui.secondary_button(
             [
               attribute.type_("button"),
@@ -1000,7 +992,7 @@ fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
       ]),
       html.div([attribute.class("admin-page__policy-footer")], [
         debug_section_message(section),
-        html.div([attribute.class("admin-page__policy-actions")], [
+        html.div([attribute.class("admin-page__actions")], [
           admin_ui.secondary_button(
             [
               attribute.type_("button"),
@@ -1072,7 +1064,7 @@ fn docker_run_section_view(
       ]),
       html.div([attribute.class("admin-page__policy-footer")], [
         section_message(section),
-        html.div([attribute.class("admin-page__policy-actions")], [
+        html.div([attribute.class("admin-page__actions")], [
           admin_ui.secondary_button(
             [
               attribute.type_("button"),

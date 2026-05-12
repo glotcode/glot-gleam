@@ -345,38 +345,26 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page admin-job-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Job detail"),
-            ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text(
-                "Inspect one job execution, its scheduling metadata, and any stored payload or error output.",
-              ),
-            ]),
-          ]),
-          html.div([attribute.class("admin-page__policy-actions")], [
-            html.button(
-              [
-                attribute.class("admin-page__button"),
-                attribute.type_("button"),
-                attribute.disabled(option.is_none(model.job)),
-                event.on_click(OpenCreateJobClicked),
-              ],
-              [html.text("Start new job")],
-            ),
-          ]),
-        ]),
-        job_status_view(model),
-        detail_view(model, now),
-      ]),
-      create_job_dialog(model),
-    ]),
+  html.div([], [
+    admin_ui.page_with_panel_class(
+      panel_class: "admin-job-page",
+      title: "Job detail",
+      intro:
+        "Inspect one job execution, its scheduling metadata, and any stored payload or error output.",
+      actions: [
+        html.button(
+          [
+            attribute.class("admin-page__button"),
+            attribute.type_("button"),
+            attribute.disabled(option.is_none(model.job)),
+            event.on_click(OpenCreateJobClicked),
+          ],
+          [html.text("Start new job")],
+        ),
+      ],
+      content: [job_status_view(model), detail_view(model, now)],
+    ),
+    create_job_dialog(model),
   ])
 }
 
@@ -469,7 +457,7 @@ fn job_logs_group(model: Model, now: Timestamp) -> Element(Msg) {
           html.text(count_text),
         ]),
       ]),
-      html.div([attribute.class("admin-page__policy-actions")], [
+      html.div([attribute.class("admin-page__actions")], [
         pagination_button(
           "Previous",
           PreviousLogsPageClicked,

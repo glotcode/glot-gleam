@@ -72,28 +72,13 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section(
-        [attribute.class("app-panel admin-page admin-request-log-page")],
-        [
-          html.div([attribute.class("admin-page__header")], [
-            html.div([], [
-              html.h2([attribute.class("admin-page__title")], [
-                html.text("API log detail"),
-              ]),
-              html.p([attribute.class("admin-page__status")], [
-                html.text("Inspect the API log captured for one request."),
-              ]),
-            ]),
-          ]),
-          status_view(model),
-          detail_view(model),
-        ],
-      ),
-    ]),
-  ])
+  admin_ui.page_with_panel_class(
+    panel_class: "admin-request-log-page",
+    title: "API log detail",
+    intro: "Inspect the API log captured for one request.",
+    actions: [],
+    content: [status_view(model), detail_view(model)],
+  )
 }
 
 fn status_view(model: Model) -> Element(Msg) {

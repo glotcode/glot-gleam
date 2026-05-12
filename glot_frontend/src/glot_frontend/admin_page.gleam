@@ -22,21 +22,11 @@ pub fn update(model: Model, _msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(_model: Model) -> Element(Msg) {
-  html.div([attribute.class("app-page")], [
-    html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel admin-page")], [
-        html.div([attribute.class("admin-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("admin-page__title")], [
-              html.text("Admin"),
-            ]),
-            html.p([attribute.class("admin-page__status")], [
-              html.text("Administrative configuration, jobs, and logs."),
-            ]),
-          ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
+  admin_ui.page(
+    title: "Admin",
+    intro: "Administrative configuration, jobs, and logs.",
+    content: [
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.h3([attribute.class("admin-page__group-title")], [
               html.text("Configuration"),
@@ -64,8 +54,8 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminEmailTemplates,
             ),
           ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
+      ]),
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.h3([attribute.class("admin-page__group-title")], [
               html.text("Jobs"),
@@ -88,8 +78,8 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminJobs,
             ),
           ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
+      ]),
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.h3([attribute.class("admin-page__group-title")], [
               html.text("Users"),
@@ -112,8 +102,8 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminSnippets,
             ),
           ]),
-        ]),
-        html.div([attribute.class("admin-page__group")], [
+      ]),
+      html.div([attribute.class("admin-page__group")], [
           html.div([attribute.class("admin-page__group-header")], [
             html.h3([attribute.class("admin-page__group-title")], [
               html.text("Logs"),
@@ -141,10 +131,9 @@ pub fn view(_model: Model) -> Element(Msg) {
               target: route.AdminJobLogs,
             ),
           ]),
-        ]),
       ]),
-    ]),
-  ])
+    ],
+  )
 }
 
 fn link_card(
