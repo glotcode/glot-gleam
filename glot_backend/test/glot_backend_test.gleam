@@ -1014,10 +1014,12 @@ pub fn clean_jobs_deletes_only_done_jobs_before_cutoff_test() {
         1_650_000_010,
         0,
       )),
+      lease_expires_at: option.None,
       completed_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(
         1_697_300_000,
         0,
       )),
+      timed_out_at: option.None,
       last_error: option.None,
       created_at: timestamp.from_unix_seconds_and_nanoseconds(1_650_000_000, 0),
       updated_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),

@@ -13,7 +13,9 @@ SELECT
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
@@ -35,7 +37,9 @@ SELECT
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
@@ -62,7 +66,9 @@ SELECT
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
@@ -101,7 +107,9 @@ SELECT
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
@@ -214,11 +222,13 @@ INSERT INTO jobs (
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);
 
 -- name: InsertPeriodicJob :exec
 INSERT INTO periodic_jobs (
@@ -252,10 +262,12 @@ SET request_id = $2,
     max_backoff_seconds = $11,
     run_at = $12,
     started_at = $13,
-    completed_at = $14,
-    last_error = $15,
-    created_at = $16,
-    updated_at = $17
+    lease_expires_at = $14,
+    completed_at = $15,
+    timed_out_at = $16,
+    last_error = $17,
+    created_at = $18,
+    updated_at = $19
 WHERE id = $1;
 
 -- name: UpdatePeriodicJob :exec

@@ -117,6 +117,35 @@ pub fn program_attempt_recovers_from_non_transaction_interpreter_failure_test() 
   assert state.updated_job_ids == []
 }
 
+pub fn job_start_sets_lease_expiry_test() {
+  let now = timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0)
+  let job = test_job(must_uuid("00000000-0000-0000-0000-000000000301"))
+
+  let started = job_model.start(job, now)
+
+  assert started.status == job_model.Running
+  assert started.attempts == 1
+  assert started.started_at == option.Some(now)
+  assert started.lease_expires_at
+    == option.Some(timestamp.from_unix_seconds_and_nanoseconds(1_700_000_120, 0))
+}
+
+pub fn job_timed_out_clears_lease_and_sets_timestamp_test() {
+  let started_at = timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0)
+  let retry_at = timestamp.from_unix_seconds_and_nanoseconds(1_700_000_200, 0)
+  let started_job =
+    test_job(must_uuid("00000000-0000-0000-0000-000000000302"))
+    |> job_model.start(started_at)
+
+  let timed_out = job_model.timed_out(started_job, retry_at, retry_at)
+
+  assert timed_out.status == job_model.Pending
+  assert timed_out.started_at == option.None
+  assert timed_out.lease_expires_at == option.None
+  assert timed_out.timed_out_at == option.Some(retry_at)
+  assert timed_out.last_error == option.Some("timeout_exceeded")
+}
+
 fn run_program(
   effect: program_types.Program(a),
   state: TestState,
@@ -262,7 +291,9 @@ fn test_job(id: uuid.Uuid) -> job_model.Job {
     max_backoff_seconds: 300,
     run_at: now,
     started_at: option.None,
+    lease_expires_at: option.None,
     completed_at: option.None,
+    timed_out_at: option.None,
     last_error: option.None,
     created_at: now,
     updated_at: now,

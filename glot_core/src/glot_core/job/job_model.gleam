@@ -156,7 +156,9 @@ pub type Job {
     max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
+    lease_expires_at: Option(Timestamp),
     completed_at: Option(Timestamp),
+    timed_out_at: Option(Timestamp),
     last_error: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -193,7 +195,9 @@ fn new(
     max_backoff_seconds: policy.max_backoff_seconds,
     run_at: now,
     started_at: option.None,
+    lease_expires_at: option.None,
     completed_at: option.None,
+    timed_out_at: option.None,
     last_error: option.None,
     created_at: now,
     updated_at: now,
@@ -291,6 +295,7 @@ pub fn done(job: Job, now: Timestamp) -> Job {
   Job(
     ..job,
     status: Done,
+    lease_expires_at: option.None,
     completed_at: option.Some(now),
     last_error: option.None,
     updated_at: now,
@@ -303,6 +308,7 @@ pub fn start(job: Job, now: Timestamp) -> Job {
     status: Running,
     attempts: job.attempts + 1,
     started_at: option.Some(now),
+    lease_expires_at: option.Some(add_seconds(now, job.timeout_seconds)),
     updated_at: now,
   )
 }
@@ -323,10 +329,35 @@ pub fn reschedule(
     status: status,
     run_at: run_at,
     started_at: option.None,
+    lease_expires_at: option.None,
     completed_at: option.None,
     last_error: last_error,
     updated_at: updated_at,
   )
+}
+
+pub fn timed_out(job: Job, run_at: Timestamp, updated_at: Timestamp) -> Job {
+  let status = case job.attempts >= job.max_attempts {
+    True -> Failed
+    False -> Pending
+  }
+
+  Job(
+    ..job,
+    status: status,
+    run_at: run_at,
+    started_at: option.None,
+    lease_expires_at: option.None,
+    completed_at: option.None,
+    timed_out_at: option.Some(updated_at),
+    last_error: option.Some("timeout_exceeded"),
+    updated_at: updated_at,
+  )
+}
+
+fn add_seconds(ts: Timestamp, seconds_to_add: Int) -> Timestamp {
+  let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
+  timestamp.from_unix_seconds_and_nanoseconds(seconds + seconds_to_add, nanos)
 }
 
 pub type Outcome {

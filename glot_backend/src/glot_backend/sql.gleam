@@ -371,7 +371,9 @@ pub type GetJobById {
     max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
+    lease_expires_at: Option(Timestamp),
     completed_at: Option(Timestamp),
+    timed_out_at: Option(Timestamp),
     last_error: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -394,7 +396,9 @@ pub fn get_job_by_id(id id: BitArray) {
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
@@ -417,10 +421,15 @@ pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
   use max_backoff_seconds <- decode.field(10, decode.int)
   use run_at <- decode.field(11, dev.datetime_decoder())
   use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(13, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(14, decode.optional(decode.string))
-  use created_at <- decode.field(15, dev.datetime_decoder())
-  use updated_at <- decode.field(16, dev.datetime_decoder())
+  use lease_expires_at <- decode.field(
+    13,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use completed_at <- decode.field(14, decode.optional(dev.datetime_decoder()))
+  use timed_out_at <- decode.field(15, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(16, decode.optional(decode.string))
+  use created_at <- decode.field(17, dev.datetime_decoder())
+  use updated_at <- decode.field(18, dev.datetime_decoder())
   decode.success(GetJobById(
     id:,
     request_id:,
@@ -435,7 +444,9 @@ pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
     max_backoff_seconds:,
     run_at:,
     started_at:,
+    lease_expires_at:,
     completed_at:,
+    timed_out_at:,
     last_error:,
     created_at:,
     updated_at:,
@@ -457,7 +468,9 @@ pub type GetNextJob {
     max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
+    lease_expires_at: Option(Timestamp),
     completed_at: Option(Timestamp),
+    timed_out_at: Option(Timestamp),
     last_error: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -480,7 +493,9 @@ pub fn get_next_job(pending_status pending_status: String, now now: Timestamp) {
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
@@ -512,10 +527,15 @@ pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
   use max_backoff_seconds <- decode.field(10, decode.int)
   use run_at <- decode.field(11, dev.datetime_decoder())
   use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(13, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(14, decode.optional(decode.string))
-  use created_at <- decode.field(15, dev.datetime_decoder())
-  use updated_at <- decode.field(16, dev.datetime_decoder())
+  use lease_expires_at <- decode.field(
+    13,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use completed_at <- decode.field(14, decode.optional(dev.datetime_decoder()))
+  use timed_out_at <- decode.field(15, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(16, decode.optional(decode.string))
+  use created_at <- decode.field(17, dev.datetime_decoder())
+  use updated_at <- decode.field(18, dev.datetime_decoder())
   decode.success(GetNextJob(
     id:,
     request_id:,
@@ -530,7 +550,9 @@ pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
     max_backoff_seconds:,
     run_at:,
     started_at:,
+    lease_expires_at:,
     completed_at:,
+    timed_out_at:,
     last_error:,
     created_at:,
     updated_at:,
@@ -552,7 +574,9 @@ pub type ListJobsAfter {
     max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
+    lease_expires_at: Option(Timestamp),
     completed_at: Option(Timestamp),
+    timed_out_at: Option(Timestamp),
     last_error: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -581,7 +605,9 @@ pub fn list_jobs_after(
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
@@ -633,10 +659,15 @@ pub fn list_jobs_after_decoder() -> decode.Decoder(ListJobsAfter) {
   use max_backoff_seconds <- decode.field(10, decode.int)
   use run_at <- decode.field(11, dev.datetime_decoder())
   use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(13, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(14, decode.optional(decode.string))
-  use created_at <- decode.field(15, dev.datetime_decoder())
-  use updated_at <- decode.field(16, dev.datetime_decoder())
+  use lease_expires_at <- decode.field(
+    13,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use completed_at <- decode.field(14, decode.optional(dev.datetime_decoder()))
+  use timed_out_at <- decode.field(15, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(16, decode.optional(decode.string))
+  use created_at <- decode.field(17, dev.datetime_decoder())
+  use updated_at <- decode.field(18, dev.datetime_decoder())
   decode.success(ListJobsAfter(
     id:,
     request_id:,
@@ -651,7 +682,9 @@ pub fn list_jobs_after_decoder() -> decode.Decoder(ListJobsAfter) {
     max_backoff_seconds:,
     run_at:,
     started_at:,
+    lease_expires_at:,
     completed_at:,
+    timed_out_at:,
     last_error:,
     created_at:,
     updated_at:,
@@ -673,7 +706,9 @@ pub type ListJobsBefore {
     max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
+    lease_expires_at: Option(Timestamp),
     completed_at: Option(Timestamp),
+    timed_out_at: Option(Timestamp),
     last_error: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
@@ -702,7 +737,9 @@ pub fn list_jobs_before(
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
@@ -754,10 +791,15 @@ pub fn list_jobs_before_decoder() -> decode.Decoder(ListJobsBefore) {
   use max_backoff_seconds <- decode.field(10, decode.int)
   use run_at <- decode.field(11, dev.datetime_decoder())
   use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(13, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(14, decode.optional(decode.string))
-  use created_at <- decode.field(15, dev.datetime_decoder())
-  use updated_at <- decode.field(16, dev.datetime_decoder())
+  use lease_expires_at <- decode.field(
+    13,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use completed_at <- decode.field(14, decode.optional(dev.datetime_decoder()))
+  use timed_out_at <- decode.field(15, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(16, decode.optional(decode.string))
+  use created_at <- decode.field(17, dev.datetime_decoder())
+  use updated_at <- decode.field(18, dev.datetime_decoder())
   decode.success(ListJobsBefore(
     id:,
     request_id:,
@@ -772,7 +814,9 @@ pub fn list_jobs_before_decoder() -> decode.Decoder(ListJobsBefore) {
     max_backoff_seconds:,
     run_at:,
     started_at:,
+    lease_expires_at:,
     completed_at:,
+    timed_out_at:,
     last_error:,
     created_at:,
     updated_at:,
@@ -1052,7 +1096,9 @@ pub fn insert_job(
   max_backoff_seconds max_backoff_seconds: Int,
   run_at run_at: Timestamp,
   started_at started_at: Option(Timestamp),
+  lease_expires_at lease_expires_at: Option(Timestamp),
   completed_at completed_at: Option(Timestamp),
+  timed_out_at timed_out_at: Option(Timestamp),
   last_error last_error: Option(String),
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
@@ -1072,11 +1118,13 @@ pub fn insert_job(
   max_backoff_seconds,
   run_at,
   started_at,
+  lease_expires_at,
   completed_at,
+  timed_out_at,
   last_error,
   created_at,
   updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
@@ -1093,7 +1141,11 @@ pub fn insert_job(
     dev.ParamInt(max_backoff_seconds),
     dev.ParamTimestamp(run_at),
     dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(
+      option.map(lease_expires_at, fn(v) { dev.ParamTimestamp(v) }),
+    ),
     dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(timed_out_at, fn(v) { dev.ParamTimestamp(v) })),
     dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
@@ -1190,7 +1242,9 @@ pub fn update_job(
   max_backoff_seconds max_backoff_seconds: Int,
   run_at run_at: Timestamp,
   started_at started_at: Option(Timestamp),
+  lease_expires_at lease_expires_at: Option(Timestamp),
   completed_at completed_at: Option(Timestamp),
+  timed_out_at timed_out_at: Option(Timestamp),
   last_error last_error: Option(String),
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
@@ -1209,10 +1263,12 @@ SET request_id = $2,
     max_backoff_seconds = $11,
     run_at = $12,
     started_at = $13,
-    completed_at = $14,
-    last_error = $15,
-    created_at = $16,
-    updated_at = $17
+    lease_expires_at = $14,
+    completed_at = $15,
+    timed_out_at = $16,
+    last_error = $17,
+    created_at = $18,
+    updated_at = $19
 WHERE id = $1"
   #(sql, [
     dev.ParamBitArray(id),
@@ -1230,7 +1286,11 @@ WHERE id = $1"
     dev.ParamInt(max_backoff_seconds),
     dev.ParamTimestamp(run_at),
     dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(
+      option.map(lease_expires_at, fn(v) { dev.ParamTimestamp(v) }),
+    ),
     dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamNullable(option.map(timed_out_at, fn(v) { dev.ParamTimestamp(v) })),
     dev.ParamNullable(option.map(last_error, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),

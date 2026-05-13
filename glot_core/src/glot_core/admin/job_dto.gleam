@@ -123,7 +123,9 @@ pub type JobResponse {
     timeout_seconds: Int,
     run_at: timestamp.Timestamp,
     started_at: option.Option(timestamp.Timestamp),
+    lease_expires_at: option.Option(timestamp.Timestamp),
     completed_at: option.Option(timestamp.Timestamp),
+    timed_out_at: option.Option(timestamp.Timestamp),
     last_error: option.Option(String),
     created_at: timestamp.Timestamp,
     updated_at: timestamp.Timestamp,
@@ -162,7 +164,9 @@ pub type JobDetailResponse {
     timeout_seconds: Int,
     run_at: timestamp.Timestamp,
     started_at: option.Option(timestamp.Timestamp),
+    lease_expires_at: option.Option(timestamp.Timestamp),
     completed_at: option.Option(timestamp.Timestamp),
+    timed_out_at: option.Option(timestamp.Timestamp),
     last_error: option.Option(String),
     created_at: timestamp.Timestamp,
     updated_at: timestamp.Timestamp,
@@ -244,7 +248,9 @@ pub fn from_job_detail(
     timeout_seconds: job.timeout_seconds,
     run_at: job.run_at,
     started_at: job.started_at,
+    lease_expires_at: job.lease_expires_at,
     completed_at: job.completed_at,
+    timed_out_at: job.timed_out_at,
     last_error: job.last_error,
     created_at: job.created_at,
     updated_at: job.updated_at,
@@ -264,7 +270,9 @@ pub fn from_job(job: job_model.Job, now: timestamp.Timestamp) -> JobResponse {
     timeout_seconds: job.timeout_seconds,
     run_at: job.run_at,
     started_at: job.started_at,
+    lease_expires_at: job.lease_expires_at,
     completed_at: job.completed_at,
+    timed_out_at: job.timed_out_at,
     last_error: job.last_error,
     created_at: job.created_at,
     updated_at: job.updated_at,
@@ -313,8 +321,16 @@ fn job_decoder() -> decode.Decoder(JobResponse) {
     "startedAt",
     decode.optional(timestamp_helpers.decoder()),
   )
+  use lease_expires_at <- decode.field(
+    "leaseExpiresAt",
+    decode.optional(timestamp_helpers.decoder()),
+  )
   use completed_at <- decode.field(
     "completedAt",
+    decode.optional(timestamp_helpers.decoder()),
+  )
+  use timed_out_at <- decode.field(
+    "timedOutAt",
     decode.optional(timestamp_helpers.decoder()),
   )
   use last_error <- decode.field("lastError", decode.optional(decode.string))
@@ -333,7 +349,9 @@ fn job_decoder() -> decode.Decoder(JobResponse) {
     timeout_seconds: timeout_seconds,
     run_at: run_at,
     started_at: started_at,
+    lease_expires_at: lease_expires_at,
     completed_at: completed_at,
+    timed_out_at: timed_out_at,
     last_error: last_error,
     created_at: created_at,
     updated_at: updated_at,
@@ -362,8 +380,16 @@ fn job_detail_decoder() -> decode.Decoder(JobDetailResponse) {
     "startedAt",
     decode.optional(timestamp_helpers.decoder()),
   )
+  use lease_expires_at <- decode.field(
+    "leaseExpiresAt",
+    decode.optional(timestamp_helpers.decoder()),
+  )
   use completed_at <- decode.field(
     "completedAt",
+    decode.optional(timestamp_helpers.decoder()),
+  )
+  use timed_out_at <- decode.field(
+    "timedOutAt",
     decode.optional(timestamp_helpers.decoder()),
   )
   use last_error <- decode.field("lastError", decode.optional(decode.string))
@@ -383,7 +409,9 @@ fn job_detail_decoder() -> decode.Decoder(JobDetailResponse) {
     timeout_seconds: timeout_seconds,
     run_at: run_at,
     started_at: started_at,
+    lease_expires_at: lease_expires_at,
     completed_at: completed_at,
+    timed_out_at: timed_out_at,
     last_error: last_error,
     created_at: created_at,
     updated_at: updated_at,
@@ -403,7 +431,12 @@ fn encode_job(job: JobResponse) -> json.Json {
     #("timeoutSeconds", json.int(job.timeout_seconds)),
     #("runAt", timestamp_helpers.encode(job.run_at)),
     #("startedAt", json.nullable(job.started_at, timestamp_helpers.encode)),
+    #(
+      "leaseExpiresAt",
+      json.nullable(job.lease_expires_at, timestamp_helpers.encode),
+    ),
     #("completedAt", json.nullable(job.completed_at, timestamp_helpers.encode)),
+    #("timedOutAt", json.nullable(job.timed_out_at, timestamp_helpers.encode)),
     #("lastError", json.nullable(job.last_error, json.string)),
     #("createdAt", timestamp_helpers.encode(job.created_at)),
     #("updatedAt", timestamp_helpers.encode(job.updated_at)),
@@ -424,7 +457,12 @@ fn encode_job_detail(job: JobDetailResponse) -> json.Json {
     #("timeoutSeconds", json.int(job.timeout_seconds)),
     #("runAt", timestamp_helpers.encode(job.run_at)),
     #("startedAt", json.nullable(job.started_at, timestamp_helpers.encode)),
+    #(
+      "leaseExpiresAt",
+      json.nullable(job.lease_expires_at, timestamp_helpers.encode),
+    ),
     #("completedAt", json.nullable(job.completed_at, timestamp_helpers.encode)),
+    #("timedOutAt", json.nullable(job.timed_out_at, timestamp_helpers.encode)),
     #("lastError", json.nullable(job.last_error, json.string)),
     #("createdAt", timestamp_helpers.encode(job.created_at)),
     #("updatedAt", timestamp_helpers.encode(job.updated_at)),

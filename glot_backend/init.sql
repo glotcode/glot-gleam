@@ -39,7 +39,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   max_backoff_seconds INT NOT NULL, -- Maximum retry delay in seconds.
   run_at TIMESTAMPTZ NOT NULL, -- Eligible to run at.
   started_at TIMESTAMPTZ NULL, -- Started processing at.
+  lease_expires_at TIMESTAMPTZ NULL, -- Current processing lease deadline.
   completed_at TIMESTAMPTZ NULL, -- Completed successfully at.
+  timed_out_at TIMESTAMPTZ NULL, -- Most recent attempt timeout timestamp.
   last_error TEXT NULL, -- Last failure message.
   created_at TIMESTAMPTZ NOT NULL, -- Inserted at.
   updated_at TIMESTAMPTZ NOT NULL
@@ -47,6 +49,7 @@ CREATE TABLE IF NOT EXISTS jobs (
 
 CREATE INDEX idx_jobs_status_run_at ON jobs(status, run_at);
 CREATE INDEX idx_jobs_periodic_job_id ON jobs(periodic_job_id);
+CREATE INDEX idx_jobs_lease_expires_at ON jobs(lease_expires_at);
 
 -- ACCOUNTS
 
