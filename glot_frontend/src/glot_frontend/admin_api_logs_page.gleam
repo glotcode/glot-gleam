@@ -7,6 +7,7 @@ import glot_core/admin/api_log_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_cursor_page
 import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
@@ -57,12 +58,16 @@ pub fn init() -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case model.page {
-    loadable.NotLoaded -> load_initial(model)
-    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) -> #(
-      model,
-      effect.none(),
+  case
+    admin_cursor_page.ensure_loaded(
+      model.page,
+      load_page(
+        Model(..model, page: loadable.Loading),
+        pagination_model.InitialPage(limit: page_limit),
+      ).1,
     )
+  {
+    #(page, next_effect) -> #(Model(..model, page: page), next_effect)
   }
 }
 
@@ -70,16 +75,15 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
     LogsLoaded(result) ->
       case result {
-        api.ApiSuccess(response) -> #(
-          Model(..model, page: loadable.Loaded(response.page)),
-          effect.none(),
-        )
-        api.ApiFailure(error) -> #(
-          Model(..model, page: loadable.LoadError(error.message)),
-          effect.none(),
-        )
-        api.HttpFailure(_) -> #(
-          Model(..model, page: loadable.LoadError("Could not load API logs.")),
+        _ -> #(
+          Model(
+            ..model,
+            page: admin_cursor_page.page_from_response(
+              result,
+              fn(response) { response.page },
+              "Could not load API logs.",
+            ),
+          ),
           effect.none(),
         )
       }
@@ -119,24 +123,22 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
 
     NextPageClicked ->
-      case pagination_model.next_cursor(current_page(model)) {
-        option.Some(cursor) ->
-          load_page(
-            Model(..model, page: loadable.Loading),
-            pagination_model.AfterPage(cursor: cursor, limit: page_limit),
-          )
-        option.None -> #(model, effect.none())
-      }
+      admin_cursor_page.next_page(
+        model,
+        model.page,
+        fn(model, page) { Model(..model, page: page) },
+        load_page,
+        page_limit,
+      )
 
     PreviousPageClicked ->
-      case pagination_model.previous_cursor(current_page(model)) {
-        option.Some(cursor) ->
-          load_page(
-            Model(..model, page: loadable.Loading),
-            pagination_model.BeforePage(cursor: cursor, limit: page_limit),
-          )
-        option.None -> #(model, effect.none())
-      }
+      admin_cursor_page.previous_page(
+        model,
+        model.page,
+        fn(model, page) { Model(..model, page: page) },
+        load_page,
+        page_limit,
+      )
   }
 }
 
@@ -213,9 +215,11 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
 }
 
 fn load_initial(model: Model) -> #(Model, Effect(Msg)) {
-  load_page(
-    Model(..model, page: loadable.Loading),
-    pagination_model.InitialPage(limit: page_limit),
+  admin_cursor_page.load_initial(
+    model,
+    fn(model, page) { Model(..model, page: page) },
+    load_page,
+    page_limit,
   )
 }
 
@@ -252,7 +256,7 @@ fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
 fn current_page(
   model: Model,
 ) -> pagination_model.CursorPage(api_log_dto.ApiLogSummaryResponse) {
-  admin_ui.current_cursor_page(model.page)
+  admin_cursor_page.current_page(model.page)
 }
 
 fn log_row(
