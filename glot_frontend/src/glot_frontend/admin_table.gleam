@@ -83,7 +83,9 @@ pub fn primary_link(
 ) -> Element(msg) {
   html.a(
     [
-      attribute.class("admin-table__value admin-table__value--primary admin-table__link"),
+      attribute.class(
+        "admin-table__value admin-table__value--primary admin-table__link",
+      ),
       ..extra_attributes
     ],
     [html.text(text)],

@@ -79,8 +79,10 @@ pub fn init() -> #(Model, Effect(Msg)) {
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
   case loadable.ensure_loaded(model.policies, load_policies()) {
-    #(policies, next_effect) ->
-      #(Model(..model, policies: policies), next_effect)
+    #(policies, next_effect) -> #(
+      Model(..model, policies: policies),
+      next_effect,
+    )
   }
 }
 
@@ -144,15 +146,17 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     FieldChanged(action, tab, unit, value) -> #(
       Model(
         ..model,
-        policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(policy) {
-          PolicyEditor(
-            ..policy,
-            draft_tabs: update_tab_fields(policy.draft_tabs, tab, fn(fields) {
-              update_limit_field(fields, unit, value)
-            }),
-            state: mutation.Idle,
-          )
-        })),
+        policies: loadable.Loaded(
+          update_policy(loaded_policies(model), action, fn(policy) {
+            PolicyEditor(
+              ..policy,
+              draft_tabs: update_tab_fields(policy.draft_tabs, tab, fn(fields) {
+                update_limit_field(fields, unit, value)
+              }),
+              state: mutation.Idle,
+            )
+          }),
+        ),
       ),
       effect.none(),
     )
@@ -170,9 +174,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             Ok(request) -> #(
               Model(
                 ..model,
-                policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(row) {
-                  PolicyEditor(..row, state: mutation.Saving)
-                })),
+                policies: loadable.Loaded(
+                  update_policy(loaded_policies(model), action, fn(row) {
+                    PolicyEditor(..row, state: mutation.Saving)
+                  }),
+                ),
               ),
               api.upsert_admin_rate_limit_policy(request, fn(result) {
                 SaveFinished(action, result)
@@ -181,9 +187,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             Error(message) -> #(
               Model(
                 ..model,
-                policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(row) {
-                  PolicyEditor(..row, state: mutation.SaveError(message))
-                })),
+                policies: loadable.Loaded(
+                  update_policy(loaded_policies(model), action, fn(row) {
+                    PolicyEditor(..row, state: mutation.SaveError(message))
+                  }),
+                ),
               ),
               effect.none(),
             )
@@ -197,14 +205,16 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
           #(
             Model(
-              policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(policy) {
-                PolicyEditor(
-                  ..policy,
-                  saved_tabs: saved_tabs,
-                  draft_tabs: saved_tabs,
-                  state: mutation.Saved,
-                )
-              })),
+              policies: loadable.Loaded(
+                update_policy(loaded_policies(model), action, fn(policy) {
+                  PolicyEditor(
+                    ..policy,
+                    saved_tabs: saved_tabs,
+                    draft_tabs: saved_tabs,
+                    state: mutation.Saved,
+                  )
+                }),
+              ),
               active_editor: option.None,
             ),
             app_dialog.close(edit_dialog_id),
@@ -214,9 +224,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(policy) {
-              PolicyEditor(..policy, state: mutation.SaveError(error.message))
-            })),
+            policies: loadable.Loaded(
+              update_policy(loaded_policies(model), action, fn(policy) {
+                PolicyEditor(..policy, state: mutation.SaveError(error.message))
+              }),
+            ),
           ),
           effect.none(),
         )
@@ -224,12 +236,14 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.HttpFailure(_) -> #(
           Model(
             ..model,
-            policies: loadable.Loaded(update_policy(loaded_policies(model), action, fn(policy) {
-              PolicyEditor(
-                ..policy,
-                state: mutation.SaveError("Could not save rate limit policy."),
-              )
-            })),
+            policies: loadable.Loaded(
+              update_policy(loaded_policies(model), action, fn(policy) {
+                PolicyEditor(
+                  ..policy,
+                  state: mutation.SaveError("Could not save rate limit policy."),
+                )
+              }),
+            ),
           ),
           effect.none(),
         )
@@ -241,8 +255,7 @@ pub fn view(model: Model) -> Element(Msg) {
   html.div([], [
     admin_ui.page(
       title: "Admin rate limits",
-      intro:
-        "Each action shows its current limits. Edit opens a compact modal.",
+      intro: "Each action shows its current limits. Edit opens a compact modal.",
       content: [status_banner(model.policies), policies_view(model)],
     ),
     edit_dialog(model),
@@ -380,67 +393,64 @@ fn edit_dialog_form(
 ) -> Element(Msg) {
   let active_fields = tab_fields(policy.draft_tabs, active_tab)
 
-  admin_ui.dialog_form(
-    [event.on_submit(fn(_) { SaveClicked(action) })],
-    [
-      admin_ui.dialog_section([
-        admin_ui.dialog_header_with_close(
-          title: action_label(action),
-          copy: "Leave an input empty to remove that limit for the selected tab.",
-          close_attributes: [event.on_click(CancelClicked)],
-          close_label: "Close",
+  admin_ui.dialog_form([event.on_submit(fn(_) { SaveClicked(action) })], [
+    admin_ui.dialog_section([
+      admin_ui.dialog_header_with_close(
+        title: action_label(action),
+        copy: "Leave an input empty to remove that limit for the selected tab.",
+        close_attributes: [event.on_click(CancelClicked)],
+        close_label: "Close",
+      ),
+      tab_buttons(action, active_tab),
+      html.div([attribute.class("admin-page__modal-grid")], [
+        unit_input(
+          action,
+          active_tab,
+          rate_limit.Second,
+          "Per second",
+          active_fields.second,
         ),
-        tab_buttons(action, active_tab),
-        html.div([attribute.class("admin-page__modal-grid")], [
-          unit_input(
-            action,
-            active_tab,
-            rate_limit.Second,
-            "Per second",
-            active_fields.second,
-          ),
-          unit_input(
-            action,
-            active_tab,
-            rate_limit.Minute,
-            "Per minute",
-            active_fields.minute,
-          ),
-          unit_input(
-            action,
-            active_tab,
-            rate_limit.Hour,
-            "Per hour",
-            active_fields.hour,
-          ),
-          unit_input(
-            action,
-            active_tab,
-            rate_limit.Day,
-            "Per day",
-            active_fields.day,
-          ),
-        ]),
-        admin_ui.form_status_block(modal_status(policy)),
-      ]),
-      admin_ui.dialog_actions([
-        admin_ui.dialog_cancel_button(
-          [
-            attribute.type_("button"),
-            event.on_click(CancelClicked),
-          ],
-          "Cancel",
+        unit_input(
+          action,
+          active_tab,
+          rate_limit.Minute,
+          "Per minute",
+          active_fields.minute,
         ),
-        admin_ui.dialog_primary_button(
-          [
-            attribute.type_("submit"),
-            attribute.disabled(mutation.is_saving(policy.state)),
-          ],
-          "Save",
+        unit_input(
+          action,
+          active_tab,
+          rate_limit.Hour,
+          "Per hour",
+          active_fields.hour,
+        ),
+        unit_input(
+          action,
+          active_tab,
+          rate_limit.Day,
+          "Per day",
+          active_fields.day,
         ),
       ]),
-    ],
-  )
+      admin_ui.form_status_block(modal_status(policy)),
+    ]),
+    admin_ui.dialog_actions([
+      admin_ui.dialog_cancel_button(
+        [
+          attribute.type_("button"),
+          event.on_click(CancelClicked),
+        ],
+        "Cancel",
+      ),
+      admin_ui.dialog_primary_button(
+        [
+          attribute.type_("submit"),
+          attribute.disabled(mutation.is_saving(policy.state)),
+        ],
+        "Save",
+      ),
+    ]),
+  ])
 }
 
 fn tab_buttons(

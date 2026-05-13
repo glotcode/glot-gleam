@@ -2,8 +2,8 @@ import gleam/int
 import gleam/list
 import gleam/option
 import glot_core/effect_trace_dto
-import glot_frontend/admin_ui
 import glot_frontend/admin_table
+import glot_frontend/admin_ui
 import glot_frontend/duration_label
 import lustre/attribute
 import lustre/element.{type Element}
