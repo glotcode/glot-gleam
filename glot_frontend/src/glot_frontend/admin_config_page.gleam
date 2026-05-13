@@ -786,79 +786,43 @@ pub fn view(model: Model) -> Element(Msg) {
 }
 
 fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
-  let save_disabled =
-    status != Ready
-    || mutation.is_saving(section.state)
-    || !is_dirty_auth(section)
+  let dirty = is_dirty_auth(section)
 
-  html.article(
-    [attribute.class("admin-page__policy admin-page__policy--config")],
-    [
-      html.div([attribute.class("admin-page__policy-header")], [
-        html.div([], [
-          html.h3([attribute.class("admin-page__policy-title")], [
-            html.text("Auth"),
-          ]),
-          html.p([attribute.class("admin-page__policy-subtitle")], [
-            html.text(
-              "Controls login token and session expiration values used by the backend.",
-            ),
-          ]),
-        ]),
-        html.div([attribute.class("admin-page__policy-header-actions")], [
-          auth_status_badge(section),
-        ]),
-      ]),
-      html.div([attribute.class("admin-page__field-grid")], [
-        admin_ui.text_input(
-          label: "Login token max age",
-          help: "Seconds before a login token expires.",
-          value: section.draft.login_token_max_age,
-          placeholder: "",
-          on_input: AuthLoginTokenMaxAgeChanged,
-        ),
-        admin_ui.text_input(
-          label: "Session token max age",
-          help: "Seconds before a session becomes invalid.",
-          value: section.draft.session_token_max_age,
-          placeholder: "",
-          on_input: AuthSessionTokenMaxAgeChanged,
-        ),
-        admin_ui.text_input(
-          label: "Session cookie max age",
-          help: "Seconds used when setting the signed session cookie.",
-          value: section.draft.session_cookie_max_age,
-          placeholder: "",
-          on_input: AuthSessionCookieMaxAgeChanged,
-        ),
-      ]),
-      html.div([attribute.class("admin-page__policy-footer")], [
-        auth_section_message(section),
-        html.div([attribute.class("admin-page__actions")], [
-          admin_ui.secondary_button(
-            [
-              attribute.type_("button"),
-              attribute.disabled(
-                mutation.is_saving(section.state) || !is_dirty_auth(section),
-              ),
-              event.on_click(AuthResetClicked),
-            ],
-            "Reset",
-          ),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("admin-page__button"),
-              attribute.disabled(save_disabled),
-              event.on_click(AuthSaveClicked),
-            ],
-            [
-              html.text(save_button_text(section.state)),
-            ],
-          ),
-        ]),
-      ]),
-    ],
+  config_section(
+    title: "Auth",
+    subtitle: "Controls login token and session expiration values used by the backend.",
+    badge: section_badge(section.state, dirty, option.None),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      admin_ui.text_input(
+        label: "Login token max age",
+        help: "Seconds before a login token expires.",
+        value: section.draft.login_token_max_age,
+        placeholder: "",
+        on_input: AuthLoginTokenMaxAgeChanged,
+      ),
+      admin_ui.text_input(
+        label: "Session token max age",
+        help: "Seconds before a session becomes invalid.",
+        value: section.draft.session_token_max_age,
+        placeholder: "",
+        on_input: AuthSessionTokenMaxAgeChanged,
+      ),
+      admin_ui.text_input(
+        label: "Session cookie max age",
+        help: "Seconds used when setting the signed session cookie.",
+        value: section.draft.session_cookie_max_age,
+        placeholder: "",
+        on_input: AuthSessionCookieMaxAgeChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(section.state, option.None),
+      reset_msg: AuthResetClicked,
+      save_msg: AuthSaveClicked,
+    ),
   )
 }
 
@@ -866,114 +830,78 @@ fn cleanup_section_view(
   section: CleanupSection,
   status: Status,
 ) -> Element(Msg) {
-  let save_disabled =
-    status != Ready
-    || mutation.is_saving(section.state)
-    || !is_dirty_cleanup(section)
+  let dirty = is_dirty_cleanup(section)
 
-  html.article(
-    [attribute.class("admin-page__policy admin-page__policy--config")],
-    [
-      html.div([attribute.class("admin-page__policy-header")], [
-        html.div([], [
-          html.h3([attribute.class("admin-page__policy-title")], [
-            html.text("Cleanup"),
-          ]),
-          html.p([attribute.class("admin-page__policy-subtitle")], [
-            html.text(
-              "Controls retention windows, in days, for scheduled cleanup jobs.",
-            ),
-          ]),
-        ]),
-        html.div([attribute.class("admin-page__policy-header-actions")], [
-          cleanup_status_badge(section),
-        ]),
-      ]),
-      html.div([attribute.class("admin-page__field-grid")], [
-        admin_ui.text_input(
-          label: "API log retention",
-          help: "Days to keep API log records.",
-          value: section.draft.api_log_retention_days,
-          placeholder: "",
-          on_input: CleanupApiLogRetentionDaysChanged,
-        ),
-        admin_ui.text_input(
-          label: "Page log retention",
-          help: "Days to keep page log records.",
-          value: section.draft.page_log_retention_days,
-          placeholder: "",
-          on_input: CleanupPageLogRetentionDaysChanged,
-        ),
-        admin_ui.text_input(
-          label: "Pageview log retention",
-          help: "Days to keep pageview log records.",
-          value: section.draft.pageview_log_retention_days,
-          placeholder: "",
-          on_input: CleanupPageviewLogRetentionDaysChanged,
-        ),
-        admin_ui.text_input(
-          label: "Run log retention",
-          help: "Days to keep run log records.",
-          value: section.draft.run_log_retention_days,
-          placeholder: "",
-          on_input: CleanupRunLogRetentionDaysChanged,
-        ),
-        admin_ui.text_input(
-          label: "Job log retention",
-          help: "Days to keep job log records.",
-          value: section.draft.job_log_retention_days,
-          placeholder: "",
-          on_input: CleanupJobLogRetentionDaysChanged,
-        ),
-        admin_ui.text_input(
-          label: "Jobs retention",
-          help: "Days to keep completed jobs.",
-          value: section.draft.jobs_retention_days,
-          placeholder: "",
-          on_input: CleanupJobsRetentionDaysChanged,
-        ),
-        admin_ui.text_input(
-          label: "Login token retention",
-          help: "Days to keep used or expired login tokens.",
-          value: section.draft.login_tokens_retention_days,
-          placeholder: "",
-          on_input: CleanupLoginTokensRetentionDaysChanged,
-        ),
-        admin_ui.text_input(
-          label: "User actions retention",
-          help: "Days to keep user action audit records.",
-          value: section.draft.user_actions_retention_days,
-          placeholder: "",
-          on_input: CleanupUserActionsRetentionDaysChanged,
-        ),
-      ]),
-      html.div([attribute.class("admin-page__policy-footer")], [
-        cleanup_section_message(section),
-        html.div([attribute.class("admin-page__actions")], [
-          admin_ui.secondary_button(
-            [
-              attribute.type_("button"),
-              attribute.disabled(
-                mutation.is_saving(section.state) || !is_dirty_cleanup(section),
-              ),
-              event.on_click(CleanupResetClicked),
-            ],
-            "Reset",
-          ),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("admin-page__button"),
-              attribute.disabled(save_disabled),
-              event.on_click(CleanupSaveClicked),
-            ],
-            [
-              html.text(save_button_text(section.state)),
-            ],
-          ),
-        ]),
-      ]),
-    ],
+  config_section(
+    title: "Cleanup",
+    subtitle: "Controls retention windows, in days, for scheduled cleanup jobs.",
+    badge: section_badge(section.state, dirty, option.None),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      admin_ui.text_input(
+        label: "API log retention",
+        help: "Days to keep API log records.",
+        value: section.draft.api_log_retention_days,
+        placeholder: "",
+        on_input: CleanupApiLogRetentionDaysChanged,
+      ),
+      admin_ui.text_input(
+        label: "Page log retention",
+        help: "Days to keep page log records.",
+        value: section.draft.page_log_retention_days,
+        placeholder: "",
+        on_input: CleanupPageLogRetentionDaysChanged,
+      ),
+      admin_ui.text_input(
+        label: "Pageview log retention",
+        help: "Days to keep pageview log records.",
+        value: section.draft.pageview_log_retention_days,
+        placeholder: "",
+        on_input: CleanupPageviewLogRetentionDaysChanged,
+      ),
+      admin_ui.text_input(
+        label: "Run log retention",
+        help: "Days to keep run log records.",
+        value: section.draft.run_log_retention_days,
+        placeholder: "",
+        on_input: CleanupRunLogRetentionDaysChanged,
+      ),
+      admin_ui.text_input(
+        label: "Job log retention",
+        help: "Days to keep job log records.",
+        value: section.draft.job_log_retention_days,
+        placeholder: "",
+        on_input: CleanupJobLogRetentionDaysChanged,
+      ),
+      admin_ui.text_input(
+        label: "Jobs retention",
+        help: "Days to keep completed jobs.",
+        value: section.draft.jobs_retention_days,
+        placeholder: "",
+        on_input: CleanupJobsRetentionDaysChanged,
+      ),
+      admin_ui.text_input(
+        label: "Login token retention",
+        help: "Days to keep used or expired login tokens.",
+        value: section.draft.login_tokens_retention_days,
+        placeholder: "",
+        on_input: CleanupLoginTokensRetentionDaysChanged,
+      ),
+      admin_ui.text_input(
+        label: "User actions retention",
+        help: "Days to keep user action audit records.",
+        value: section.draft.user_actions_retention_days,
+        placeholder: "",
+        on_input: CleanupUserActionsRetentionDaysChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(section.state, option.None),
+      reset_msg: CleanupResetClicked,
+      save_msg: CleanupSaveClicked,
+    ),
   )
 }
 
@@ -986,81 +914,45 @@ fn status_banner(status: Status) -> Element(Msg) {
 }
 
 fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
-  let save_disabled =
-    status != Ready
-    || mutation.is_saving(section.state)
-    || !is_dirty_debug(section)
+  let dirty = is_dirty_debug(section)
 
-  html.article(
-    [attribute.class("admin-page__policy admin-page__policy--config")],
-    [
-      html.div([attribute.class("admin-page__policy-header")], [
-        html.div([], [
-          html.h3([attribute.class("admin-page__policy-title")], [
-            html.text("Debug"),
-          ]),
-          html.p([attribute.class("admin-page__policy-subtitle")], [
-            html.text(
-              "Controls whether backend debug log fields are collected into API and page logs.",
+  config_section(
+    title: "Debug",
+    subtitle: "Controls whether backend debug log fields are collected into API and page logs.",
+    badge: section_badge(section.state, dirty, option.None),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      html.div([attribute.class("admin-page__field")], [
+        html.span([attribute.class("admin-page__field-label")], [
+          html.text("Debug logging"),
+        ]),
+        admin_ui.secondary_button(
+          [
+            attribute.type_("button"),
+            attribute.disabled(
+              status != Ready || mutation.is_saving(section.state),
             ),
-          ]),
-        ]),
-        html.div([attribute.class("admin-page__policy-header-actions")], [
-          debug_status_badge(section),
-        ]),
-      ]),
-      html.div([attribute.class("admin-page__field-grid")], [
-        html.div([attribute.class("admin-page__field")], [
-          html.span([attribute.class("admin-page__field-label")], [
-            html.text("Debug logging"),
-          ]),
-          admin_ui.secondary_button(
-            [
-              attribute.type_("button"),
-              attribute.disabled(
-                status != Ready || mutation.is_saving(section.state),
-              ),
-              event.on_click(DebugToggleClicked),
-            ],
-            case section.draft.enabled {
-              True -> "Enabled"
-              False -> "Disabled"
-            },
-          ),
-          html.span([attribute.class("admin-page__field-help")], [
-            html.text(
-              "When enabled, debug fields are persisted with API logs. Toggle to change the draft value.",
-            ),
-          ]),
-        ]),
-      ]),
-      html.div([attribute.class("admin-page__policy-footer")], [
-        debug_section_message(section),
-        html.div([attribute.class("admin-page__actions")], [
-          admin_ui.secondary_button(
-            [
-              attribute.type_("button"),
-              attribute.disabled(
-                mutation.is_saving(section.state) || !is_dirty_debug(section),
-              ),
-              event.on_click(DebugResetClicked),
-            ],
-            "Reset",
-          ),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("admin-page__button"),
-              attribute.disabled(save_disabled),
-              event.on_click(DebugSaveClicked),
-            ],
-            [
-              html.text(save_button_text(section.state)),
-            ],
+            event.on_click(DebugToggleClicked),
+          ],
+          case section.draft.enabled {
+            True -> "Enabled"
+            False -> "Disabled"
+          },
+        ),
+        html.span([attribute.class("admin-page__field-help")], [
+          html.text(
+            "When enabled, debug fields are persisted with API logs. Toggle to change the draft value.",
           ),
         ]),
       ]),
-    ],
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(section.state, option.None),
+      reset_msg: DebugResetClicked,
+      save_msg: DebugSaveClicked,
+    ),
   )
 }
 
@@ -1068,266 +960,155 @@ fn docker_run_section_view(
   section: DockerRunSection,
   status: Status,
 ) -> Element(Msg) {
-  let save_disabled =
-    status != Ready || mutation.is_saving(section.state) || !is_dirty(section)
+  let dirty = is_dirty(section)
+  let is_empty = section.saved == empty_docker_run_fields()
 
+  config_section(
+    title: "Docker run",
+    subtitle: "Controls the base URL and access token used when the backend calls the docker-run service.",
+    badge: section_badge(section.state, dirty, idle_text(is_empty)),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      admin_ui.text_input(
+        label: "Base URL",
+        help: "Example: https://docker-run.internal",
+        value: section.draft.base_url,
+        placeholder: "",
+        on_input: DockerRunBaseUrlChanged,
+      ),
+      admin_ui.text_input(
+        label: "Access token",
+        help: "Stored as a regular app config value.",
+        value: section.draft.access_token,
+        placeholder: "",
+        on_input: DockerRunAccessTokenChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(
+        section.state,
+        idle_message(
+          is_empty,
+          "This section is empty until you save initial values.",
+        ),
+      ),
+      reset_msg: DockerRunResetClicked,
+      save_msg: DockerRunSaveClicked,
+    ),
+  )
+}
+
+fn config_section(
+  title title: String,
+  subtitle subtitle: String,
+  badge badge: Element(Msg),
+  fields fields: Element(Msg),
+  footer footer: Element(Msg),
+) -> Element(Msg) {
   html.article(
     [attribute.class("admin-page__policy admin-page__policy--config")],
     [
       html.div([attribute.class("admin-page__policy-header")], [
         html.div([], [
           html.h3([attribute.class("admin-page__policy-title")], [
-            html.text("Docker run"),
+            html.text(title),
           ]),
           html.p([attribute.class("admin-page__policy-subtitle")], [
-            html.text(
-              "Controls the base URL and access token used when the backend calls the docker-run service.",
-            ),
+            html.text(subtitle),
           ]),
         ]),
-        html.div([attribute.class("admin-page__policy-header-actions")], [
-          status_badge(section),
-        ]),
+        html.div([attribute.class("admin-page__policy-header-actions")], [badge]),
       ]),
-      html.div([attribute.class("admin-page__field-grid")], [
-        admin_ui.text_input(
-          label: "Base URL",
-          help: "Example: https://docker-run.internal",
-          value: section.draft.base_url,
-          placeholder: "",
-          on_input: DockerRunBaseUrlChanged,
-        ),
-        admin_ui.text_input(
-          label: "Access token",
-          help: "Stored as a regular app config value.",
-          value: section.draft.access_token,
-          placeholder: "",
-          on_input: DockerRunAccessTokenChanged,
-        ),
-      ]),
-      html.div([attribute.class("admin-page__policy-footer")], [
-        section_message(section),
-        html.div([attribute.class("admin-page__actions")], [
-          admin_ui.secondary_button(
-            [
-              attribute.type_("button"),
-              attribute.disabled(
-                mutation.is_saving(section.state) || !is_dirty(section),
-              ),
-              event.on_click(DockerRunResetClicked),
-            ],
-            "Reset",
-          ),
-          html.button(
-            [
-              attribute.type_("button"),
-              attribute.class("admin-page__button"),
-              attribute.disabled(save_disabled),
-              event.on_click(DockerRunSaveClicked),
-            ],
-            [
-              html.text(save_button_text(section.state)),
-            ],
-          ),
-        ]),
-      ]),
+      fields,
+      footer,
     ],
   )
 }
 
-fn status_badge(section: DockerRunSection) -> Element(Msg) {
-  case
-    section.state,
-    section.saved == empty_docker_run_fields(),
-    is_dirty(section)
-  {
-    mutation.Idle, False, False -> html.div([], [])
-    _, _, _ ->
-      html.span([attribute.class(status_badge_class(section))], [
-        html.text(status_badge_text(section)),
+fn section_footer(
+  status status: Status,
+  state state: mutation.MutationState,
+  dirty dirty: Bool,
+  message message: Element(Msg),
+  reset_msg reset_msg: Msg,
+  save_msg save_msg: Msg,
+) -> Element(Msg) {
+  let save_disabled = status != Ready || mutation.is_saving(state) || !dirty
+
+  html.div([attribute.class("admin-page__policy-footer")], [
+    message,
+    html.div([attribute.class("admin-page__actions")], [
+      admin_ui.secondary_button(
+        [
+          attribute.type_("button"),
+          attribute.disabled(mutation.is_saving(state) || !dirty),
+          event.on_click(reset_msg),
+        ],
+        "Reset",
+      ),
+      html.button(
+        [
+          attribute.type_("button"),
+          attribute.class("admin-page__button"),
+          attribute.disabled(save_disabled),
+          event.on_click(save_msg),
+        ],
+        [html.text(save_button_text(state))],
+      ),
+    ]),
+  ])
+}
+
+fn section_badge(
+  state: mutation.MutationState,
+  dirty: Bool,
+  idle_text: option.Option(String),
+) -> Element(Msg) {
+  case section_badge_copy(state, dirty, idle_text) {
+    option.Some(text) ->
+      html.span([attribute.class(section_badge_class(state, dirty))], [
+        html.text(text),
       ])
-  }
-}
-
-fn status_badge_text(section: DockerRunSection) -> String {
-  case section.state {
-    mutation.SaveError(_) -> "Error"
-    mutation.Saving -> "Saving"
-    mutation.Saved -> "Saved"
-    mutation.Idle ->
-      case section.saved == empty_docker_run_fields(), is_dirty(section) {
-        True, False -> "Not configured"
-        _, True -> "Unsaved"
-        _, False -> ""
-      }
-  }
-}
-
-fn status_badge_class(section: DockerRunSection) -> String {
-  case section.state {
-    mutation.SaveError(_) -> "admin-page__version admin-page__version--error"
-    mutation.Saving -> "admin-page__version"
-    mutation.Saved -> "admin-page__version admin-page__version--success"
-    mutation.Idle ->
-      case section.saved == empty_docker_run_fields(), is_dirty(section) {
-        True, False -> "admin-page__version"
-        _, True -> "admin-page__version admin-page__version--dirty"
-        _, False -> "admin-page__version"
-      }
-  }
-}
-
-fn section_message(section: DockerRunSection) -> Element(Msg) {
-  let message = case section.state {
-    mutation.SaveError(message) ->
-      option.Some(#(
-        "admin-page__policy-status admin-page__policy-status--error",
-        message,
-      ))
-    mutation.Saving ->
-      option.Some(#("admin-page__policy-status", "Saving changes..."))
-    mutation.Saved ->
-      option.Some(#("admin-page__policy-status", "Config saved."))
-    mutation.Idle ->
-      case section.saved == empty_docker_run_fields(), is_dirty(section) {
-        True, False ->
-          option.Some(#(
-            "admin-page__policy-status",
-            "This section is empty until you save initial values.",
-          ))
-        _, True -> option.None
-        _, False -> option.None
-      }
-  }
-
-  case message {
-    option.Some(#(class_name, text)) ->
-      html.p([attribute.class(class_name)], [html.text(text)])
     option.None -> html.div([], [])
   }
 }
 
-fn debug_status_badge(section: DebugSection) -> Element(Msg) {
-  case section.state, is_dirty_debug(section) {
-    mutation.Idle, False -> html.div([], [])
-    _, _ ->
-      html.span([attribute.class(debug_status_badge_class(section))], [
-        html.text(debug_status_badge_text(section)),
-      ])
-  }
-}
-
-fn debug_status_badge_text(section: DebugSection) -> String {
-  case section.state {
-    mutation.SaveError(_) -> "Error"
-    mutation.Saving -> "Saving"
-    mutation.Saved -> "Saved"
+fn section_badge_copy(
+  state: mutation.MutationState,
+  dirty: Bool,
+  idle_text: option.Option(String),
+) -> option.Option(String) {
+  case state {
+    mutation.SaveError(_) -> option.Some("Error")
+    mutation.Saving -> option.Some("Saving")
+    mutation.Saved -> option.Some("Saved")
     mutation.Idle ->
-      case is_dirty_debug(section) {
-        True -> "Unsaved"
-        False -> ""
+      case dirty {
+        True -> option.Some("Unsaved")
+        False -> idle_text
       }
   }
 }
 
-fn debug_status_badge_class(section: DebugSection) -> String {
-  case section.state {
+fn section_badge_class(state: mutation.MutationState, dirty: Bool) -> String {
+  case state {
     mutation.SaveError(_) -> "admin-page__version admin-page__version--error"
     mutation.Saving -> "admin-page__version"
     mutation.Saved -> "admin-page__version admin-page__version--success"
     mutation.Idle ->
-      case is_dirty_debug(section) {
+      case dirty {
         True -> "admin-page__version admin-page__version--dirty"
         False -> "admin-page__version"
       }
   }
 }
 
-fn debug_section_message(section: DebugSection) -> Element(Msg) {
-  section_state_message(section.state)
-}
-
-fn auth_status_badge(section: AuthSection) -> Element(Msg) {
-  case section.state, is_dirty_auth(section) {
-    mutation.Idle, False -> html.div([], [])
-    _, _ ->
-      html.span([attribute.class(auth_status_badge_class(section))], [
-        html.text(auth_status_badge_text(section)),
-      ])
-  }
-}
-
-fn auth_status_badge_text(section: AuthSection) -> String {
-  case section.state {
-    mutation.SaveError(_) -> "Error"
-    mutation.Saving -> "Saving"
-    mutation.Saved -> "Saved"
-    mutation.Idle ->
-      case is_dirty_auth(section) {
-        True -> "Unsaved"
-        False -> ""
-      }
-  }
-}
-
-fn auth_status_badge_class(section: AuthSection) -> String {
-  case section.state {
-    mutation.SaveError(_) -> "admin-page__version admin-page__version--error"
-    mutation.Saving -> "admin-page__version"
-    mutation.Saved -> "admin-page__version admin-page__version--success"
-    mutation.Idle ->
-      case is_dirty_auth(section) {
-        True -> "admin-page__version admin-page__version--dirty"
-        False -> "admin-page__version"
-      }
-  }
-}
-
-fn auth_section_message(section: AuthSection) -> Element(Msg) {
-  section_state_message(section.state)
-}
-
-fn cleanup_status_badge(section: CleanupSection) -> Element(Msg) {
-  case section.state, is_dirty_cleanup(section) {
-    mutation.Idle, False -> html.div([], [])
-    _, _ ->
-      html.span([attribute.class(cleanup_status_badge_class(section))], [
-        html.text(cleanup_status_badge_text(section)),
-      ])
-  }
-}
-
-fn cleanup_status_badge_text(section: CleanupSection) -> String {
-  case section.state {
-    mutation.SaveError(_) -> "Error"
-    mutation.Saving -> "Saving"
-    mutation.Saved -> "Saved"
-    mutation.Idle ->
-      case is_dirty_cleanup(section) {
-        True -> "Unsaved"
-        False -> ""
-      }
-  }
-}
-
-fn cleanup_status_badge_class(section: CleanupSection) -> String {
-  case section.state {
-    mutation.SaveError(_) -> "admin-page__version admin-page__version--error"
-    mutation.Saving -> "admin-page__version"
-    mutation.Saved -> "admin-page__version admin-page__version--success"
-    mutation.Idle ->
-      case is_dirty_cleanup(section) {
-        True -> "admin-page__version admin-page__version--dirty"
-        False -> "admin-page__version"
-      }
-  }
-}
-
-fn cleanup_section_message(section: CleanupSection) -> Element(Msg) {
-  section_state_message(section.state)
-}
-
-fn section_state_message(state: mutation.MutationState) -> Element(Msg) {
+fn section_state_message(
+  state: mutation.MutationState,
+  idle_message: option.Option(String),
+) -> Element(Msg) {
   let message = case state {
     mutation.SaveError(message) ->
       option.Some(#(
@@ -1338,13 +1119,29 @@ fn section_state_message(state: mutation.MutationState) -> Element(Msg) {
       option.Some(#("admin-page__policy-status", "Saving changes..."))
     mutation.Saved ->
       option.Some(#("admin-page__policy-status", "Config saved."))
-    mutation.Idle -> option.None
+    mutation.Idle ->
+      idle_message
+      |> option.map(fn(message) { #("admin-page__policy-status", message) })
   }
 
   case message {
     option.Some(#(class_name, text)) ->
       html.p([attribute.class(class_name)], [html.text(text)])
     option.None -> html.div([], [])
+  }
+}
+
+fn idle_text(is_empty: Bool) -> option.Option(String) {
+  case is_empty {
+    True -> option.Some("Not configured")
+    False -> option.None
+  }
+}
+
+fn idle_message(is_empty: Bool, message: String) -> option.Option(String) {
+  case is_empty {
+    True -> option.Some(message)
+    False -> option.None
   }
 }
 
