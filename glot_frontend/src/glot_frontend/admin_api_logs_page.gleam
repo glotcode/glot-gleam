@@ -24,7 +24,9 @@ const page_limit = 25
 
 pub type Model {
   Model(
-    page: loadable.Loadable(pagination_model.CursorPage(api_log_dto.ApiLogSummaryResponse)),
+    page: loadable.Loadable(
+      pagination_model.CursorPage(api_log_dto.ApiLogSummaryResponse),
+    ),
     error_filter: api_log_dto.ApiLogErrorFilter,
     request_id_filter: String,
     applied_request_id_filter: option.Option(uuid.Uuid),
@@ -57,8 +59,10 @@ pub fn init() -> #(Model, Effect(Msg)) {
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
   case model.page {
     loadable.NotLoaded -> load_initial(model)
-    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) ->
-      #(model, effect.none())
+    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) -> #(
+      model,
+      effect.none(),
+    )
   }
 }
 
@@ -143,12 +147,11 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     panel_class: "admin-request-logs-page",
     title: "API logs",
     intro: "",
-    actions:
-      admin_ui.cursor_pagination_actions(
-        current_page(model),
-        PreviousPageClicked,
-        NextPageClicked,
-      ),
+    actions: admin_ui.cursor_pagination_actions(
+      current_page(model),
+      PreviousPageClicked,
+      NextPageClicked,
+    ),
     content: [
       admin_ui.filter_section(
         copy: filter_summary(model, rows),
@@ -163,22 +166,26 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
             ),
           ]),
           admin_ui.filter_row([], [
-            admin_ui.filter_chip_group(title: "Error", copy: option.None, chips: [
-              admin_ui.filter_chip(
-                [event.on_click(ErrorFilterSelected(api_log_dto.AllApiLogs))],
-                "All",
-                model.error_filter == api_log_dto.AllApiLogs,
-              ),
-              admin_ui.filter_chip(
-                [
-                  event.on_click(
-                    ErrorFilterSelected(api_log_dto.OnlyApiLogsWithErrors),
-                  ),
-                ],
-                "Errors only",
-                model.error_filter == api_log_dto.OnlyApiLogsWithErrors,
-              ),
-            ]),
+            admin_ui.filter_chip_group(
+              title: "Error",
+              copy: option.None,
+              chips: [
+                admin_ui.filter_chip(
+                  [event.on_click(ErrorFilterSelected(api_log_dto.AllApiLogs))],
+                  "All",
+                  model.error_filter == api_log_dto.AllApiLogs,
+                ),
+                admin_ui.filter_chip(
+                  [
+                    event.on_click(ErrorFilterSelected(
+                      api_log_dto.OnlyApiLogsWithErrors,
+                    )),
+                  ],
+                  "Errors only",
+                  model.error_filter == api_log_dto.OnlyApiLogsWithErrors,
+                ),
+              ],
+            ),
             admin_ui.filter_actions([], [
               html.button(
                 [
@@ -193,13 +200,13 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
         ]),
       ),
       html.div([attribute.class("admin-page__group")], [
-            html.div([attribute.class("admin-page__group-header")], [
-              html.h3([attribute.class("admin-page__group-title")], [
-                html.text("Results"),
-              ]),
-            ]),
-            status_view(model),
-            logs_table(model, now),
+        html.div([attribute.class("admin-page__group-header")], [
+          html.h3([attribute.class("admin-page__group-title")], [
+            html.text("Results"),
+          ]),
+        ]),
+        admin_ui.loadable_status(model.page, "Loading API logs..."),
+        logs_table(model, now),
       ]),
     ],
   )
@@ -229,41 +236,23 @@ fn load_page(
   )
 }
 
-fn status_view(model: Model) -> Element(Msg) {
-  loadable.fold(
-    model.page,
-    admin_ui.status(""),
-    admin_ui.status("Loading API logs..."),
-    fn(_) { admin_ui.status("") },
-    admin_ui.error_status,
-  )
-}
-
 fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
-  loadable.fold(
+  admin_ui.loadable_cursor_page_content(
     model.page,
-    admin_ui.empty_state("No API logs matched these filters."),
-    admin_ui.empty_state("Loading API logs..."),
-    fn(page) {
-      case pagination_model.items(page) {
-        [] -> admin_ui.empty_state("No API logs matched these filters.")
-        rows ->
-          admin_table.table(log_columns(), {
-            rows |> list.map(fn(log) { log_row(log, now) })
-          })
-      }
+    "Loading API logs...",
+    "No API logs matched these filters.",
+    fn(rows) {
+      admin_table.table(log_columns(), {
+        rows |> list.map(fn(log) { log_row(log, now) })
+      })
     },
-    fn(_) { admin_ui.empty_state("No API logs matched these filters.") },
   )
 }
 
 fn current_page(
   model: Model,
 ) -> pagination_model.CursorPage(api_log_dto.ApiLogSummaryResponse) {
-  case model.page {
-    loadable.Loaded(page) -> page
-    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) -> empty_page()
-  }
+  admin_ui.current_cursor_page(model.page)
 }
 
 fn log_row(
@@ -286,7 +275,7 @@ fn log_row(
       duration_column(),
       duration_label.duration_in_ms_label(log.duration_ns),
     ),
-    admin_table.cell(error_column(), [error_badge(log)]),
+    admin_table.cell(error_column(), [admin_ui.error_badge(log.has_error)]),
     admin_table.open_link_cell([route.href(route.AdminApiLog(log.id))]),
   ])
 }
@@ -324,20 +313,6 @@ fn error_column() -> admin_table.Column {
 
 fn open_column() -> admin_table.Column {
   admin_table.open_column()
-}
-
-fn error_text(log: api_log_dto.ApiLogSummaryResponse) -> String {
-  case log.has_error {
-    True -> "Error"
-    False -> "None"
-  }
-}
-
-fn error_badge(log: api_log_dto.ApiLogSummaryResponse) -> Element(Msg) {
-  case log.has_error {
-    True -> admin_ui.badge(error_text(log), admin_ui.DangerTone)
-    False -> admin_ui.badge(error_text(log), admin_ui.SuccessTone)
-  }
 }
 
 fn filter_summary(
@@ -384,10 +359,4 @@ fn parse_uuid_filter(
         Error(_) -> Error(label <> " must be a valid UUID.")
       }
   }
-}
-
-fn empty_page() -> pagination_model.CursorPage(
-  api_log_dto.ApiLogSummaryResponse,
-) {
-  pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
 }

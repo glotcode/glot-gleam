@@ -3,13 +3,14 @@ import gleam/int
 import gleam/list
 import gleam/option
 import gleam/result
-import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_format
+import glot_frontend/admin_job_ui
 import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
@@ -349,8 +350,7 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     admin_ui.page_with_panel_class(
       panel_class: "admin-job-page",
       title: "Job detail",
-      intro:
-        "Inspect one job execution, its scheduling metadata, and any stored payload or error output.",
+      intro: "Inspect one job execution, its scheduling metadata, and any stored payload or error output.",
       actions: [
         html.button(
           [
@@ -383,7 +383,10 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
     option.Some(job), _ ->
       html.div([attribute.class("admin-job-page__content")], [
         html.div([attribute.class(admin_ui.summary_grid_class())], [
-          admin_ui.summary_card("Status", status_text(job)),
+          admin_ui.summary_card(
+            "Status",
+            admin_job_ui.status_text(job.status, job.overdue),
+          ),
           admin_ui.summary_card(
             "Run at",
             timestamp_helpers.relative_label(job.run_at, now),
@@ -400,22 +403,37 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
           copy: "Identifiers and timestamps captured for this execution.",
           content: html.div([attribute.class(admin_ui.detail_grid_class())], [
             admin_ui.detail_item("Job ID", uuid.to_string(job.id)),
-            admin_ui.detail_item("Request ID", optional_uuid(job.request_id)),
+            admin_ui.detail_item(
+              "Request ID",
+              admin_format.optional_uuid(job.request_id),
+            ),
             periodic_job_detail_item(job.periodic_job_id),
             admin_ui.detail_item("Job type", job.job_type),
-            admin_ui.detail_item("Status", status_text(job)),
+            admin_ui.detail_item(
+              "Status",
+              admin_job_ui.status_text(job.status, job.overdue),
+            ),
             admin_ui.detail_item("Overdue", bool_text(job.overdue)),
-            admin_ui.detail_item("Run at", format_timestamp(job.run_at)),
+            admin_ui.detail_item(
+              "Run at",
+              admin_format.format_timestamp(job.run_at),
+            ),
             admin_ui.detail_item(
               "Started at",
-              optional_timestamp(job.started_at),
+              admin_format.optional_timestamp(job.started_at),
             ),
             admin_ui.detail_item(
               "Completed at",
-              optional_timestamp(job.completed_at),
+              admin_format.optional_timestamp(job.completed_at),
             ),
-            admin_ui.detail_item("Created at", format_timestamp(job.created_at)),
-            admin_ui.detail_item("Updated at", format_timestamp(job.updated_at)),
+            admin_ui.detail_item(
+              "Created at",
+              admin_format.format_timestamp(job.created_at),
+            ),
+            admin_ui.detail_item(
+              "Updated at",
+              admin_format.format_timestamp(job.updated_at),
+            ),
           ]),
         ),
         job_logs_group(model, now),
@@ -431,12 +449,12 @@ fn detail_view(model: Model, now: Timestamp) -> Element(Msg) {
         admin_ui.section(
           title: "Payload",
           copy: "Stored raw payload string for this job, if any.",
-          content: code_block(optional_text(job.payload)),
+          content: code_block(admin_format.optional_text(job.payload)),
         ),
         admin_ui.section(
           title: "Last error",
           copy: "Latest persisted failure message, if one was recorded.",
-          content: code_block(optional_text(job.last_error)),
+          content: code_block(admin_format.optional_text(job.last_error)),
         ),
       ])
   }
@@ -513,7 +531,7 @@ fn job_log_row(
       duration_column(),
       duration_label.duration_in_ms_label(log.duration_ns),
     ),
-    admin_table.cell(error_column(), [error_badge(log)]),
+    admin_table.cell(error_column(), [admin_ui.error_badge(log.has_error)]),
     admin_table.open_link_cell([route.href(route.AdminJobLog(log.id))]),
   ])
 }
@@ -616,83 +634,100 @@ fn create_job_dialog(model: Model) -> Element(Msg) {
 }
 
 fn create_job_dialog_form(editor: CreateJobEditor) -> Element(Msg) {
-  admin_ui.dialog_form(
-    [event.on_submit(fn(_) { CreateJobSubmitted })],
-    [
-      admin_ui.dialog_section([
-        admin_ui.dialog_header_with_close(
-          title: "Start new job",
-          copy: "Seeded from the selected job, but this creates a fresh queued job with the values below.",
-          close_attributes: [event.on_click(CreateJobCancelled)],
-          close_label: "Close",
+  admin_ui.dialog_form([event.on_submit(fn(_) { CreateJobSubmitted })], [
+    admin_ui.dialog_section([
+      admin_ui.dialog_header_with_close(
+        title: "Start new job",
+        copy: "Seeded from the selected job, but this creates a fresh queued job with the values below.",
+        close_attributes: [event.on_click(CreateJobCancelled)],
+        close_label: "Close",
+      ),
+      html.div([attribute.class("admin-page__modal-grid")], [
+        admin_ui.detail_item(
+          "Source job ID",
+          uuid.to_string(editor.source_job_id),
         ),
-        html.div([attribute.class("admin-page__modal-grid")], [
-          admin_ui.detail_item(
-            "Source job ID",
-            uuid.to_string(editor.source_job_id),
-          ),
-          admin_ui.detail_item("Job type", editor.draft.job_type),
-          admin_ui.detail_item(
-            "Periodic job ID",
-            optional_uuid(editor.draft.periodic_job_id),
-          ),
-        ]),
-        html.div([attribute.class("admin-page__modal-grid")], [
-          text_input(
-            label: "Max attempts",
-            help: "Whole number greater than zero.",
-            input_type: "text",
-            value: editor.draft.max_attempts,
-            on_input: CreateJobMaxAttemptsChanged,
-          ),
-          text_input(
-            label: "Timeout seconds",
-            help: "Whole number greater than zero.",
-            input_type: "text",
-            value: editor.draft.timeout_seconds,
-            on_input: CreateJobTimeoutSecondsChanged,
-          ),
-          text_input(
-            label: "Run date",
-            help: "Local calendar date for when the job should be eligible.",
-            input_type: "date",
-            value: editor.draft.run_date,
-            on_input: CreateJobRunDateChanged,
-          ),
-          text_input(
-            label: "Run time",
-            help: "Local clock time for when the job should be eligible.",
-            input_type: "time",
-            value: editor.draft.run_time,
-            on_input: CreateJobRunTimeChanged,
-          ),
-        ]),
-        textarea_input(
-          label: "Payload",
-          help: "Raw payload string. Leave empty to create the job without a payload.",
-          value: editor.draft.payload,
-          on_input: CreateJobPayloadChanged,
-        ),
-        admin_ui.form_status_block(create_job_status(editor.state)),
-      ]),
-      admin_ui.dialog_actions([
-        admin_ui.dialog_cancel_button(
-          [
-            attribute.type_("button"),
-            event.on_click(CreateJobCancelled),
-          ],
-          "Cancel",
-        ),
-        admin_ui.dialog_primary_button(
-          [
-            attribute.type_("submit"),
-            attribute.disabled(editor.state == CreateJobSaving),
-          ],
-          create_job_submit_text(editor.state),
+        admin_ui.detail_item("Job type", editor.draft.job_type),
+        admin_ui.detail_item(
+          "Periodic job ID",
+          admin_format.optional_uuid(editor.draft.periodic_job_id),
         ),
       ]),
-    ],
-  )
+      html.div([attribute.class("admin-page__modal-grid")], [
+        admin_ui.text_input_with_attrs(
+          label: "Max attempts",
+          help: "Whole number greater than zero.",
+          value: editor.draft.max_attempts,
+          placeholder: "",
+          input_type: "text",
+          field_class: "",
+          input_class: "",
+          input_attributes: [],
+          on_input: CreateJobMaxAttemptsChanged,
+        ),
+        admin_ui.text_input_with_attrs(
+          label: "Timeout seconds",
+          help: "Whole number greater than zero.",
+          value: editor.draft.timeout_seconds,
+          placeholder: "",
+          input_type: "text",
+          field_class: "",
+          input_class: "",
+          input_attributes: [],
+          on_input: CreateJobTimeoutSecondsChanged,
+        ),
+        admin_ui.text_input_with_attrs(
+          label: "Run date",
+          help: "Local calendar date for when the job should be eligible.",
+          value: editor.draft.run_date,
+          placeholder: "",
+          input_type: "date",
+          field_class: "",
+          input_class: "",
+          input_attributes: [],
+          on_input: CreateJobRunDateChanged,
+        ),
+        admin_ui.text_input_with_attrs(
+          label: "Run time",
+          help: "Local clock time for when the job should be eligible.",
+          value: editor.draft.run_time,
+          placeholder: "",
+          input_type: "time",
+          field_class: "",
+          input_class: "",
+          input_attributes: [],
+          on_input: CreateJobRunTimeChanged,
+        ),
+      ]),
+      admin_ui.textarea_input_with_attrs(
+        label: "Payload",
+        help: "Raw payload string. Leave empty to create the job without a payload.",
+        value: editor.draft.payload,
+        rows: 6,
+        field_class: "admin-periodic-jobs-page__payload-field",
+        textarea_class: "admin-periodic-jobs-page__payload-input",
+        textarea_attributes: [],
+        on_input: CreateJobPayloadChanged,
+      ),
+      admin_ui.form_status_block(create_job_status(editor.state)),
+    ]),
+    admin_ui.dialog_actions([
+      admin_ui.dialog_cancel_button(
+        [
+          attribute.type_("button"),
+          event.on_click(CreateJobCancelled),
+        ],
+        "Cancel",
+      ),
+      admin_ui.dialog_primary_button(
+        [
+          attribute.type_("submit"),
+          attribute.disabled(editor.state == CreateJobSaving),
+        ],
+        create_job_submit_text(editor.state),
+      ),
+    ]),
+  ])
 }
 
 fn create_job_status(state: CreateJobState) -> Element(Msg) {
@@ -771,11 +806,11 @@ fn editor_from_job(
 fn editor_to_request(
   editor: CreateJobEditor,
 ) -> Result(job_dto.CreateJobRequest, String) {
-  use max_attempts <- result.try(parse_positive_int(
+  use max_attempts <- result.try(admin_format.parse_positive_int(
     editor.draft.max_attempts,
     "Max attempts",
   ))
-  use timeout_seconds <- result.try(parse_positive_int(
+  use timeout_seconds <- result.try(admin_format.parse_positive_int(
     editor.draft.timeout_seconds,
     "Timeout seconds",
   ))
@@ -792,18 +827,6 @@ fn editor_to_request(
     timeout_seconds: timeout_seconds,
     run_at: run_at,
   ))
-}
-
-fn parse_positive_int(value: String, label: String) -> Result(Int, String) {
-  use parsed <- result.try(
-    int.parse(value)
-    |> result.map_error(fn(_) { label <> " must be a whole number." }),
-  )
-
-  case parsed > 0 {
-    True -> Ok(parsed)
-    False -> Error(label <> " must be greater than zero.")
-  }
 }
 
 fn parse_local_run_at(date: String, time: String) -> Result(Timestamp, String) {
@@ -828,117 +851,10 @@ fn optional_payload(value: String) -> option.Option(String) {
   }
 }
 
-fn text_input(
-  label label: String,
-  help help: String,
-  input_type input_type: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [
-      html.text(label),
-    ]),
-    html.input([
-      attribute.type_(input_type),
-      attribute.class("admin-page__input"),
-      attribute.value(value),
-      event.on_input(on_input),
-    ]),
-    html.span([attribute.class("admin-page__field-help")], [
-      html.text(help),
-    ]),
-  ])
-}
-
-fn textarea_input(
-  label label: String,
-  help help: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label(
-    [
-      attribute.class(
-        "admin-page__field admin-periodic-jobs-page__payload-field",
-      ),
-    ],
-    [
-      html.span([attribute.class("admin-page__field-label")], [
-        html.text(label),
-      ]),
-      html.textarea(
-        [
-          attribute.class(
-            "admin-page__input admin-periodic-jobs-page__payload-input",
-          ),
-          attribute.rows(6),
-          event.on_input(on_input),
-        ],
-        value,
-      ),
-      html.span([attribute.class("admin-page__field-help")], [
-        html.text(help),
-      ]),
-    ],
-  )
-}
-
-
-fn error_badge(log: job_log_dto.JobLogResponse) -> Element(Msg) {
-  case log.has_error {
-    True -> admin_ui.badge(error_text(log), admin_ui.DangerTone)
-    False -> admin_ui.badge(error_text(log), admin_ui.SuccessTone)
-  }
-}
-
-fn error_text(log: job_log_dto.JobLogResponse) -> String {
-  case log.has_error {
-    True -> "Error"
-    False -> "None"
-  }
-}
-
-fn optional_uuid(value: option.Option(uuid.Uuid)) -> String {
-  case value {
-    option.Some(id) -> uuid.to_string(id)
-    option.None -> "None"
-  }
-}
-
-fn optional_timestamp(value: option.Option(Timestamp)) -> String {
-  case value {
-    option.Some(timestamp) -> format_timestamp(timestamp)
-    option.None -> "None"
-  }
-}
-
-fn format_timestamp(value: Timestamp) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
-}
-
-fn optional_text(value: option.Option(String)) -> String {
-  case value {
-    option.Some(text) -> text
-    option.None -> "None"
-  }
-}
-
 fn bool_text(value: Bool) -> String {
   case value {
     True -> "Yes"
     False -> "No"
-  }
-}
-
-fn status_text(job: job_dto.JobDetailResponse) -> String {
-  case job.status, job.overdue {
-    "pending", True -> "Pending • overdue"
-    "pending", False -> "Pending"
-    "running", _ -> "Running"
-    "failed", _ -> "Failed"
-    "done", _ -> "Done"
-    value, _ -> value
   }
 }
 

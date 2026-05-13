@@ -1,9 +1,7 @@
 import gleam/dynamic/decode
-import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
-import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/admin/account_dto
 import glot_core/admin/user_dto
@@ -12,6 +10,7 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/route
+import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
@@ -103,10 +102,12 @@ pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case loadable.ensure_loaded(
-    model.user,
-    api.get_admin_user(user_dto.GetUserRequest(id: model.id), UserLoaded),
-  ) {
+  case
+    loadable.ensure_loaded(
+      model.user,
+      api.get_admin_user(user_dto.GetUserRequest(id: model.id), UserLoaded),
+    )
+  {
     #(user, next_effect) -> #(Model(..model, user: user), next_effect)
   }
 }
@@ -340,8 +341,7 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     admin_ui.page_with_panel_class(
       panel_class: "admin-job-page",
       title: "User detail",
-      intro:
-        "Review account access and edit persisted user and account settings.",
+      intro: "Review account access and edit persisted user and account settings.",
       actions: [
         html.button(
           [
@@ -358,13 +358,13 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
           ],
         ),
       ],
-      content: [status_view(model), detail_view(model, now)],
+      content: [user_status(model), detail_view(model, now)],
     ),
     delete_confirmation_dialog(model),
   ])
 }
 
-fn status_view(model: Model) -> Element(Msg) {
+fn user_status(model: Model) -> Element(Msg) {
   case model.user, model.delete_state {
     loadable.LoadError(message), _ -> admin_ui.error_status(message)
     loadable.Loading, _ -> admin_ui.status("Loading user...")
@@ -412,19 +412,19 @@ fn user_view(
         ),
         admin_ui.detail_item(
           "Account deletion job ID",
-          optional_uuid(editor.metadata.delete_job_id),
+          admin_format.optional_uuid(editor.metadata.delete_job_id),
         ),
         admin_ui.detail_item(
           "Account deletion scheduled at",
-          optional_timestamp(editor.metadata.delete_scheduled_at),
+          admin_format.optional_timestamp(editor.metadata.delete_scheduled_at),
         ),
         admin_ui.detail_item(
           "Created at",
-          format_timestamp(editor.metadata.created_at),
+          admin_format.format_timestamp(editor.metadata.created_at),
         ),
         admin_ui.detail_item(
           "Updated at",
-          format_timestamp(editor.metadata.updated_at),
+          admin_format.format_timestamp(editor.metadata.updated_at),
         ),
       ]),
     ),
@@ -444,39 +444,58 @@ fn edit_form(editor: UserEditor, is_deleting: Bool) -> Element(Msg) {
     ],
     [
       html.div([attribute.class("admin-page__modal-grid")], [
-        text_input(
-          id: "admin-user-username",
+        admin_ui.text_input_with_attrs(
           label: "Username",
+          help: "",
           value: editor.draft.username,
+          placeholder: "",
+          input_type: "text",
+          field_class: "",
+          input_class: "",
+          input_attributes: [attribute.id("admin-user-username")],
           on_input: UsernameChanged,
         ),
-        select_input(
-          id: "admin-user-role",
+        admin_ui.select_input_with_attrs(
           label: "Role",
           value: user_model.role_to_string(editor.draft.role),
           on_input: RoleChanged,
           options: role_options(),
+          help: "",
+          field_class: "",
+          select_class: "",
+          select_attributes: [attribute.id("admin-user-role")],
         ),
-        select_input(
-          id: "admin-user-account-state",
+        admin_ui.select_input_with_attrs(
           label: "Account state",
           value: account_model.account_state_to_string(
             editor.draft.account_state,
           ),
           on_input: AccountStateChanged,
           options: account_state_options(),
+          help: "",
+          field_class: "",
+          select_class: "",
+          select_attributes: [attribute.id("admin-user-account-state")],
         ),
-        select_input(
-          id: "admin-user-account-tier",
+        admin_ui.select_input_with_attrs(
           label: "Account tier",
           value: account_model.account_tier_to_string(editor.draft.account_tier),
           on_input: AccountTierChanged,
           options: account_tier_options(),
+          help: "",
+          field_class: "",
+          select_class: "",
+          select_attributes: [attribute.id("admin-user-account-tier")],
         ),
-        text_input(
-          id: "admin-user-account-state-reason",
+        admin_ui.text_input_with_attrs(
           label: "Account state reason",
+          help: "",
           value: editor.draft.account_state_reason,
+          placeholder: "",
+          input_type: "text",
+          field_class: "",
+          input_class: "",
+          input_attributes: [attribute.id("admin-user-account-state-reason")],
           on_input: AccountStateReasonChanged,
         ),
       ]),
@@ -486,7 +505,9 @@ fn edit_form(editor: UserEditor, is_deleting: Bool) -> Element(Msg) {
           [
             attribute.type_("button"),
             attribute.disabled(
-              mutation.is_saving(editor.state) || is_deleting || !is_dirty(editor),
+              mutation.is_saving(editor.state)
+              || is_deleting
+              || !is_dirty(editor),
             ),
             event.on_click(ResetClicked),
           ],
@@ -569,7 +590,8 @@ fn save_button_text(state: mutation.MutationState) -> String {
 
 fn update_editor(model: Model, update: fn(UserEditor) -> UserEditor) -> Model {
   case model.user {
-    loadable.Loaded(editor) -> Model(..model, user: loadable.Loaded(update(editor)))
+    loadable.Loaded(editor) ->
+      Model(..model, user: loadable.Loaded(update(editor)))
     _ -> model
   }
 }
@@ -639,54 +661,6 @@ fn is_dirty(editor: UserEditor) -> Bool {
   editor.saved != editor.draft
 }
 
-fn text_input(
-  id id: String,
-  label label: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.input([
-      attribute.id(id),
-      attribute.type_("text"),
-      attribute.class("admin-page__input"),
-      attribute.value(value),
-      event.on_input(on_input),
-    ]),
-  ])
-}
-
-fn select_input(
-  id id: String,
-  label label: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-  options options: List(#(String, String)),
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.select(
-      [
-        attribute.id(id),
-        attribute.class("admin-page__input"),
-        attribute.value(value),
-        event.on_input(on_input),
-      ],
-      list.map(options, fn(option_item) {
-        let #(option_value, option_label) = option_item
-        html.option(
-          [
-            attribute.value(option_value),
-            attribute.selected(option_value == value),
-          ],
-          option_label,
-        )
-      }),
-    ),
-  ])
-}
-
 fn role_options() -> List(#(String, String)) {
   [
     #(user_model.role_to_string(user_model.RegularUser), "User"),
@@ -731,24 +705,6 @@ fn account_state_text(account_state: account_model.AccountState) -> String {
     account_model.ReadOnly -> "Read only"
     account_model.Suspended -> "Suspended"
   }
-}
-
-fn optional_uuid(value: option.Option(uuid.Uuid)) -> String {
-  case value {
-    option.Some(id) -> uuid.to_string(id)
-    option.None -> "None"
-  }
-}
-
-fn optional_timestamp(value: option.Option(Timestamp)) -> String {
-  case value {
-    option.Some(timestamp) -> format_timestamp(timestamp)
-    option.None -> "None"
-  }
-}
-
-fn format_timestamp(value: Timestamp) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
 }
 
 fn navigate_to_users() -> Effect(Msg) {

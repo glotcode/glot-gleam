@@ -1,11 +1,11 @@
 import gleam/int
 import gleam/option
 import gleam/result
-import gleam/string
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/mutation
@@ -223,10 +223,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     DebugSaveClicked -> #(
-      Model(
-        ..model,
-        debug: DebugSection(..model.debug, state: mutation.Saving),
-      ),
+      Model(..model, debug: DebugSection(..model.debug, state: mutation.Saving)),
       api.upsert_admin_debug_config(
         debug_config_dto.UpsertDebugConfigRequest(
           enabled: model.debug.draft.enabled,
@@ -356,10 +353,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Error(message) -> #(
           Model(
             ..model,
-            auth: AuthSection(
-              ..model.auth,
-              state: mutation.SaveError(message),
-            ),
+            auth: AuthSection(..model.auth, state: mutation.SaveError(message)),
           ),
           effect.none(),
         )
@@ -587,10 +581,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Ok(request) -> #(
           Model(
             ..model,
-            cleanup: CleanupSection(
-              ..model.cleanup,
-              state: mutation.Saving,
-            ),
+            cleanup: CleanupSection(..model.cleanup, state: mutation.Saving),
           ),
           api.upsert_admin_cleanup_config(request, CleanupSaveFinished),
         )
@@ -781,28 +772,24 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(model: Model) -> Element(Msg) {
-  admin_ui.page(
-    title: "App config",
-    intro: "",
-    content: [
-      status_banner(model.status),
-      html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__section-grid")], [
-            debug_section_view(model.debug, model.status),
-            auth_section_view(model.auth, model.status),
-            cleanup_section_view(model.cleanup, model.status),
-            docker_run_section_view(model.docker_run, model.status),
-          ]),
+  admin_ui.page(title: "App config", intro: "", content: [
+    status_banner(model.status),
+    html.div([attribute.class("admin-page__group")], [
+      html.div([attribute.class("admin-page__section-grid")], [
+        debug_section_view(model.debug, model.status),
+        auth_section_view(model.auth, model.status),
+        cleanup_section_view(model.cleanup, model.status),
+        docker_run_section_view(model.docker_run, model.status),
       ]),
-    ],
-  )
+    ]),
+  ])
 }
 
 fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
   let save_disabled =
     status != Ready
-      || mutation.is_saving(section.state)
-      || !is_dirty_auth(section)
+    || mutation.is_saving(section.state)
+    || !is_dirty_auth(section)
 
   html.article(
     [attribute.class("admin-page__policy admin-page__policy--config")],
@@ -823,22 +810,25 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
         ]),
       ]),
       html.div([attribute.class("admin-page__field-grid")], [
-        text_input(
+        admin_ui.text_input(
           label: "Login token max age",
           help: "Seconds before a login token expires.",
           value: section.draft.login_token_max_age,
+          placeholder: "",
           on_input: AuthLoginTokenMaxAgeChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Session token max age",
           help: "Seconds before a session becomes invalid.",
           value: section.draft.session_token_max_age,
+          placeholder: "",
           on_input: AuthSessionTokenMaxAgeChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Session cookie max age",
           help: "Seconds used when setting the signed session cookie.",
           value: section.draft.session_cookie_max_age,
+          placeholder: "",
           on_input: AuthSessionCookieMaxAgeChanged,
         ),
       ]),
@@ -878,8 +868,8 @@ fn cleanup_section_view(
 ) -> Element(Msg) {
   let save_disabled =
     status != Ready
-      || mutation.is_saving(section.state)
-      || !is_dirty_cleanup(section)
+    || mutation.is_saving(section.state)
+    || !is_dirty_cleanup(section)
 
   html.article(
     [attribute.class("admin-page__policy admin-page__policy--config")],
@@ -900,52 +890,60 @@ fn cleanup_section_view(
         ]),
       ]),
       html.div([attribute.class("admin-page__field-grid")], [
-        text_input(
+        admin_ui.text_input(
           label: "API log retention",
           help: "Days to keep API log records.",
           value: section.draft.api_log_retention_days,
+          placeholder: "",
           on_input: CleanupApiLogRetentionDaysChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Page log retention",
           help: "Days to keep page log records.",
           value: section.draft.page_log_retention_days,
+          placeholder: "",
           on_input: CleanupPageLogRetentionDaysChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Pageview log retention",
           help: "Days to keep pageview log records.",
           value: section.draft.pageview_log_retention_days,
+          placeholder: "",
           on_input: CleanupPageviewLogRetentionDaysChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Run log retention",
           help: "Days to keep run log records.",
           value: section.draft.run_log_retention_days,
+          placeholder: "",
           on_input: CleanupRunLogRetentionDaysChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Job log retention",
           help: "Days to keep job log records.",
           value: section.draft.job_log_retention_days,
+          placeholder: "",
           on_input: CleanupJobLogRetentionDaysChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Jobs retention",
           help: "Days to keep completed jobs.",
           value: section.draft.jobs_retention_days,
+          placeholder: "",
           on_input: CleanupJobsRetentionDaysChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Login token retention",
           help: "Days to keep used or expired login tokens.",
           value: section.draft.login_tokens_retention_days,
+          placeholder: "",
           on_input: CleanupLoginTokensRetentionDaysChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "User actions retention",
           help: "Days to keep user action audit records.",
           value: section.draft.user_actions_retention_days,
+          placeholder: "",
           on_input: CleanupUserActionsRetentionDaysChanged,
         ),
       ]),
@@ -981,23 +979,17 @@ fn cleanup_section_view(
 
 fn status_banner(status: Status) -> Element(Msg) {
   case status {
-    NotLoaded | Ready -> html.div([], [])
-    Loading ->
-      html.p([attribute.class("admin-page__status")], [
-        html.text("Loading configuration..."),
-      ])
-    LoadError(message) ->
-      html.p([attribute.class("admin-page__status admin-page__status--error")], [
-        html.text(message),
-      ])
+    NotLoaded | Ready -> admin_ui.blank_status()
+    Loading -> admin_ui.status("Loading configuration...")
+    LoadError(message) -> admin_ui.error_status(message)
   }
 }
 
 fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
   let save_disabled =
     status != Ready
-      || mutation.is_saving(section.state)
-      || !is_dirty_debug(section)
+    || mutation.is_saving(section.state)
+    || !is_dirty_debug(section)
 
   html.article(
     [attribute.class("admin-page__policy admin-page__policy--config")],
@@ -1098,16 +1090,18 @@ fn docker_run_section_view(
         ]),
       ]),
       html.div([attribute.class("admin-page__field-grid")], [
-        text_input(
+        admin_ui.text_input(
           label: "Base URL",
           help: "Example: https://docker-run.internal",
           value: section.draft.base_url,
+          placeholder: "",
           on_input: DockerRunBaseUrlChanged,
         ),
-        text_input(
+        admin_ui.text_input(
           label: "Access token",
           help: "Stored as a regular app config value.",
           value: section.draft.access_token,
+          placeholder: "",
           on_input: DockerRunAccessTokenChanged,
         ),
       ]),
@@ -1139,28 +1133,6 @@ fn docker_run_section_view(
       ]),
     ],
   )
-}
-
-fn text_input(
-  label label: String,
-  help help: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [
-      html.text(label),
-    ]),
-    html.input([
-      attribute.type_("text"),
-      attribute.class("admin-page__input"),
-      attribute.value(value),
-      event.on_input(on_input),
-    ]),
-    html.span([attribute.class("admin-page__field-help")], [
-      html.text(help),
-    ]),
-  ])
 }
 
 fn status_badge(section: DockerRunSection) -> Element(Msg) {
@@ -1214,7 +1186,8 @@ fn section_message(section: DockerRunSection) -> Element(Msg) {
       ))
     mutation.Saving ->
       option.Some(#("admin-page__policy-status", "Saving changes..."))
-    mutation.Saved -> option.Some(#("admin-page__policy-status", "Config saved."))
+    mutation.Saved ->
+      option.Some(#("admin-page__policy-status", "Config saved."))
     mutation.Idle ->
       case section.saved == empty_docker_run_fields(), is_dirty(section) {
         True, False ->
@@ -1363,7 +1336,8 @@ fn section_state_message(state: mutation.MutationState) -> Element(Msg) {
       ))
     mutation.Saving ->
       option.Some(#("admin-page__policy-status", "Saving changes..."))
-    mutation.Saved -> option.Some(#("admin-page__policy-status", "Config saved."))
+    mutation.Saved ->
+      option.Some(#("admin-page__policy-status", "Config saved."))
     mutation.Idle -> option.None
   }
 
@@ -1476,18 +1450,24 @@ fn is_dirty_cleanup(section: CleanupSection) -> Bool {
 fn validate_auth_fields(
   fields: AuthFields,
 ) -> Result(auth_config_dto.UpsertAuthConfigRequest, String) {
-  use login_token_max_age <- result.try(parse_positive_int(
-    fields.login_token_max_age,
-    "Login token max age must be a positive integer.",
-  ))
-  use session_token_max_age <- result.try(parse_positive_int(
-    fields.session_token_max_age,
-    "Session token max age must be a positive integer.",
-  ))
-  use session_cookie_max_age <- result.try(parse_positive_int(
-    fields.session_cookie_max_age,
-    "Session cookie max age must be a positive integer.",
-  ))
+  use login_token_max_age <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.login_token_max_age,
+      "Login token max age must be a positive integer.",
+    ),
+  )
+  use session_token_max_age <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.session_token_max_age,
+      "Session token max age must be a positive integer.",
+    ),
+  )
+  use session_cookie_max_age <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.session_cookie_max_age,
+      "Session cookie max age must be a positive integer.",
+    ),
+  )
 
   Ok(auth_config_dto.UpsertAuthConfigRequest(
     login_token_max_age: login_token_max_age,
@@ -1499,38 +1479,54 @@ fn validate_auth_fields(
 fn validate_cleanup_fields(
   fields: CleanupFields,
 ) -> Result(cleanup_config_dto.UpsertCleanupConfigRequest, String) {
-  use api_log_retention_days <- result.try(parse_positive_int(
-    fields.api_log_retention_days,
-    "API log retention must be a positive integer.",
-  ))
-  use page_log_retention_days <- result.try(parse_positive_int(
-    fields.page_log_retention_days,
-    "Page log retention must be a positive integer.",
-  ))
-  use pageview_log_retention_days <- result.try(parse_positive_int(
-    fields.pageview_log_retention_days,
-    "Pageview log retention must be a positive integer.",
-  ))
-  use run_log_retention_days <- result.try(parse_positive_int(
-    fields.run_log_retention_days,
-    "Run log retention must be a positive integer.",
-  ))
-  use job_log_retention_days <- result.try(parse_positive_int(
-    fields.job_log_retention_days,
-    "Job log retention must be a positive integer.",
-  ))
-  use jobs_retention_days <- result.try(parse_positive_int(
-    fields.jobs_retention_days,
-    "Jobs retention must be a positive integer.",
-  ))
-  use login_tokens_retention_days <- result.try(parse_positive_int(
-    fields.login_tokens_retention_days,
-    "Login token retention must be a positive integer.",
-  ))
-  use user_actions_retention_days <- result.try(parse_positive_int(
-    fields.user_actions_retention_days,
-    "User actions retention must be a positive integer.",
-  ))
+  use api_log_retention_days <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.api_log_retention_days,
+      "API log retention must be a positive integer.",
+    ),
+  )
+  use page_log_retention_days <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.page_log_retention_days,
+      "Page log retention must be a positive integer.",
+    ),
+  )
+  use pageview_log_retention_days <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.pageview_log_retention_days,
+      "Pageview log retention must be a positive integer.",
+    ),
+  )
+  use run_log_retention_days <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.run_log_retention_days,
+      "Run log retention must be a positive integer.",
+    ),
+  )
+  use job_log_retention_days <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.job_log_retention_days,
+      "Job log retention must be a positive integer.",
+    ),
+  )
+  use jobs_retention_days <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.jobs_retention_days,
+      "Jobs retention must be a positive integer.",
+    ),
+  )
+  use login_tokens_retention_days <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.login_tokens_retention_days,
+      "Login token retention must be a positive integer.",
+    ),
+  )
+  use user_actions_retention_days <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.user_actions_retention_days,
+      "User actions retention must be a positive integer.",
+    ),
+  )
 
   Ok(cleanup_config_dto.UpsertCleanupConfigRequest(
     api_log_retention_days: api_log_retention_days,
@@ -1542,16 +1538,6 @@ fn validate_cleanup_fields(
     login_tokens_retention_days: login_tokens_retention_days,
     user_actions_retention_days: user_actions_retention_days,
   ))
-}
-
-fn parse_positive_int(
-  value: String,
-  error_message: String,
-) -> Result(Int, String) {
-  case int.parse(string.trim(value)) {
-    Ok(parsed) if parsed > 0 -> Ok(parsed)
-    _ -> Error(error_message)
-  }
 }
 
 fn empty_auth_section() -> AuthSection {

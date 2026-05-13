@@ -7,6 +7,7 @@ import glot_core/helpers/timestamp_helpers
 import glot_core/job/job_model
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_job_ui
 import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
@@ -52,8 +53,10 @@ pub fn init() -> #(Model, Effect(Msg)) {
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
   case model.page {
     loadable.NotLoaded -> load_initial(model)
-    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) ->
-      #(model, effect.none())
+    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) -> #(
+      model,
+      effect.none(),
+    )
   }
 }
 
@@ -122,63 +125,73 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   admin_ui.page_with_panel_class(
     panel_class: "admin-jobs-page",
     title: "Jobs overview",
-    intro:
-      "Review queue health, recent job executions, and filtered slices of the retained jobs history.",
-    actions:
-      admin_ui.cursor_pagination_actions_with_disabled(
-        page: current_page(model),
-        previous_msg: PreviousPageClicked,
-        next_msg: NextPageClicked,
-        disabled: loadable.is_loading(model.page),
-      ),
+    intro: "Review queue health, recent job executions, and filtered slices of the retained jobs history.",
+    actions: admin_ui.cursor_pagination_actions_with_disabled(
+      page: current_page(model),
+      previous_msg: PreviousPageClicked,
+      next_msg: NextPageClicked,
+      disabled: loadable.is_loading(model.page),
+    ),
     content: [
       html.div([attribute.class("admin-jobs-page__summary-grid")], {
-          summary_stats(model.summary)
-          |> list.map(summary_card)
-        }),
+        summary_stats(model.summary)
+        |> list.map(summary_card)
+      }),
       admin_ui.filter_section(
         copy: filtered_status_text(model, items),
         content: admin_ui.filter_surface(
           [attribute.class("admin-jobs-page__filters")],
           [
             admin_ui.filter_row([], [
-              admin_ui.filter_chip_group(title: "Status", copy: option.None, chips: [
-                admin_ui.filter_chip(
-                  [event.on_click(StatusFilterSelected(job_dto.AllStatuses))],
-                  "All",
-                  model.status_filter == job_dto.AllStatuses,
-                ),
-                admin_ui.filter_chip(
-                  [event.on_click(StatusFilterSelected(job_dto.PendingStatus))],
-                  "Pending",
-                  model.status_filter == job_dto.PendingStatus,
-                ),
-                admin_ui.filter_chip(
-                  [event.on_click(StatusFilterSelected(job_dto.RunningStatus))],
-                  "Running",
-                  model.status_filter == job_dto.RunningStatus,
-                ),
-                admin_ui.filter_chip(
-                  [event.on_click(StatusFilterSelected(job_dto.FailedStatus))],
-                  "Failed",
-                  model.status_filter == job_dto.FailedStatus,
-                ),
-                admin_ui.filter_chip(
-                  [event.on_click(StatusFilterSelected(job_dto.DoneStatus))],
-                  "Done",
-                  model.status_filter == job_dto.DoneStatus,
-                ),
-              ]),
+              admin_ui.filter_chip_group(
+                title: "Status",
+                copy: option.None,
+                chips: [
+                  admin_ui.filter_chip(
+                    [event.on_click(StatusFilterSelected(job_dto.AllStatuses))],
+                    "All",
+                    model.status_filter == job_dto.AllStatuses,
+                  ),
+                  admin_ui.filter_chip(
+                    [
+                      event.on_click(StatusFilterSelected(job_dto.PendingStatus)),
+                    ],
+                    "Pending",
+                    model.status_filter == job_dto.PendingStatus,
+                  ),
+                  admin_ui.filter_chip(
+                    [
+                      event.on_click(StatusFilterSelected(job_dto.RunningStatus)),
+                    ],
+                    "Running",
+                    model.status_filter == job_dto.RunningStatus,
+                  ),
+                  admin_ui.filter_chip(
+                    [event.on_click(StatusFilterSelected(job_dto.FailedStatus))],
+                    "Failed",
+                    model.status_filter == job_dto.FailedStatus,
+                  ),
+                  admin_ui.filter_chip(
+                    [event.on_click(StatusFilterSelected(job_dto.DoneStatus))],
+                    "Done",
+                    model.status_filter == job_dto.DoneStatus,
+                  ),
+                ],
+              ),
               admin_ui.filter_group(
                 title: "Job type",
                 copy: option.None,
                 content: html.select(
                   [
                     attribute.class("admin-page__select admin-page__input"),
-                    attribute.value(selected_job_type_value(model.job_type_filter)),
+                    attribute.value(selected_job_type_value(
+                      model.job_type_filter,
+                    )),
                     event.on_input(JobTypeFilterSelected),
                   ],
-                  job_type_options(selected_job_type_value(model.job_type_filter)),
+                  job_type_options(selected_job_type_value(
+                    model.job_type_filter,
+                  )),
                 ),
               ),
             ]),
@@ -186,18 +199,18 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
         ),
       ),
       html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Queue"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-              html.text(
-                "Rows are paginated from the backend and use the current filter set, so this view can scale with retained job history.",
-              ),
-            ]),
+        html.div([attribute.class("admin-page__group-header")], [
+          html.h3([attribute.class("admin-page__group-title")], [
+            html.text("Queue"),
           ]),
-          status_view(model),
-          jobs_table(model, now),
+          html.p([attribute.class("admin-page__group-copy")], [
+            html.text(
+              "Rows are paginated from the backend and use the current filter set, so this view can scale with retained job history.",
+            ),
+          ]),
+        ]),
+        admin_ui.loadable_status(model.page, "Loading jobs..."),
+        jobs_table(model, now),
       ]),
     ],
   )
@@ -228,31 +241,16 @@ fn load_page(
   )
 }
 
-fn status_view(model: Model) -> Element(Msg) {
-  loadable.fold(
-    model.page,
-    admin_ui.status(""),
-    admin_ui.status("Loading jobs..."),
-    fn(_) { admin_ui.status("") },
-    admin_ui.error_status,
-  )
-}
-
 fn jobs_table(model: Model, now: Timestamp) -> Element(Msg) {
-  loadable.fold(
+  admin_ui.loadable_cursor_page_content(
     model.page,
-    admin_ui.empty_state("No jobs match the current filters."),
-    admin_ui.empty_state("Loading jobs..."),
-    fn(page) {
-      case pagination_model.items(page) {
-        [] -> admin_ui.empty_state("No jobs match the current filters.")
-        rows ->
-          admin_table.table(job_columns(), {
-            rows |> list.map(fn(job) { job_row(job, now) })
-          })
-      }
+    "Loading jobs...",
+    "No jobs match the current filters.",
+    fn(rows) {
+      admin_table.table(job_columns(), {
+        rows |> list.map(fn(job) { job_row(job, now) })
+      })
     },
-    fn(_) { admin_ui.empty_state("No jobs match the current filters.") },
   )
 }
 
@@ -320,7 +318,7 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
     ]),
     admin_table.cell(status_column(), [
       admin_table.stack([
-        status_badge(job),
+        admin_job_ui.status_badge(job.status, job.overdue),
       ]),
     ]),
     admin_table.cell(schedule_column(), [
@@ -422,28 +420,6 @@ fn summary_tone_text(tone: SummaryTone) -> String {
   }
 }
 
-fn status_badge(job: job_dto.JobResponse) -> Element(Msg) {
-  case job.status, job.overdue {
-    "failed", _ -> admin_ui.badge(status_text(job), admin_ui.DangerTone)
-    "running", _ -> admin_ui.badge(status_text(job), admin_ui.WarningTone)
-    "pending", True -> admin_ui.badge(status_text(job), admin_ui.DangerTone)
-    "pending", False -> admin_ui.badge(status_text(job), admin_ui.InfoTone)
-    "done", _ -> admin_ui.badge(status_text(job), admin_ui.SuccessTone)
-    _, _ -> admin_ui.badge(status_text(job), admin_ui.NeutralTone)
-  }
-}
-
-fn status_text(job: job_dto.JobResponse) -> String {
-  case job.status, job.overdue {
-    "pending", True -> "Pending • overdue"
-    "pending", False -> "Pending"
-    "running", _ -> "Running"
-    "failed", _ -> "Failed"
-    "done", _ -> "Done"
-    value, _ -> value
-  }
-}
-
 fn status_filter_copy(filter: job_dto.StatusFilter) -> String {
   case filter {
     job_dto.AllStatuses -> "Showing every status."
@@ -461,7 +437,9 @@ fn job_type_filter_copy(filter: option.Option(String)) -> String {
   }
 }
 
-fn current_page(model: Model) -> pagination_model.CursorPage(job_dto.JobResponse) {
+fn current_page(
+  model: Model,
+) -> pagination_model.CursorPage(job_dto.JobResponse) {
   case model.page {
     loadable.Loaded(page) -> page
     loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) ->

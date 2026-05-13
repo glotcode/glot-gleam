@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option
 import glot_core/pagination_model
 import glot_frontend/json_helpers
+import glot_frontend/loadable
 import glot_frontend/mutation
 import lustre/attribute
 import lustre/element.{type Element}
@@ -177,7 +178,10 @@ pub fn code_block(value: String) -> Element(msg) {
   ])
 }
 
-pub fn named_code_block(title title: String, value value: String) -> Element(msg) {
+pub fn named_code_block(
+  title title: String,
+  value value: String,
+) -> Element(msg) {
   html.div([attribute.class("admin-page__group")], [
     html.h4([attribute.class("admin-page__group-title")], [html.text(title)]),
     code_block(value),
@@ -195,11 +199,18 @@ pub fn optional_raw_block(
   title title: String,
   value value: option.Option(String),
 ) -> Element(msg) {
-  named_code_block(title: title, value: json_helpers.optional_pretty_print_json_or_none(value))
+  named_code_block(
+    title: title,
+    value: json_helpers.optional_pretty_print_json_or_none(value),
+  )
 }
 
 pub fn status(message: String) -> Element(msg) {
   html.p([attribute.class("admin-page__status")], [html.text(message)])
+}
+
+pub fn blank_status() -> Element(msg) {
+  status("")
 }
 
 pub fn error_status(message: String) -> Element(msg) {
@@ -223,6 +234,73 @@ pub fn mutation_status(
     mutation.Saved -> status(saved_text)
     mutation.SaveError(message) -> error_status(message)
   }
+}
+
+pub fn loadable_status(
+  state: loadable.Loadable(a),
+  loading_text: String,
+) -> Element(msg) {
+  loadable.fold(
+    state,
+    blank_status(),
+    status(loading_text),
+    fn(_) { blank_status() },
+    error_status,
+  )
+}
+
+pub fn empty_cursor_page() -> pagination_model.CursorPage(a) {
+  pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
+}
+
+pub fn current_cursor_page(
+  state: loadable.Loadable(pagination_model.CursorPage(a)),
+) -> pagination_model.CursorPage(a) {
+  case state {
+    loadable.Loaded(page) -> page
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) ->
+      empty_cursor_page()
+  }
+}
+
+pub fn loadable_cursor_page_content(
+  state: loadable.Loadable(pagination_model.CursorPage(a)),
+  loading_text: String,
+  empty_text: String,
+  content content: fn(List(a)) -> Element(msg),
+) -> Element(msg) {
+  loadable.fold(
+    state,
+    empty_state(empty_text),
+    empty_state(loading_text),
+    fn(page) {
+      case pagination_model.items(page) {
+        [] -> empty_state(empty_text)
+        items -> content(items)
+      }
+    },
+    fn(_) { empty_state(empty_text) },
+  )
+}
+
+pub fn loadable_list_content(
+  state: loadable.Loadable(List(a)),
+  loading_text: String,
+  empty_text: String,
+  content content: fn(List(a)) -> Element(msg),
+) -> Element(msg) {
+  loadable.fold(
+    state,
+    empty_state(empty_text),
+    empty_state(loading_text),
+    fn(items) {
+      case items {
+        [] -> empty_state(empty_text)
+        _ -> content(items)
+      }
+    },
+    fn(_) { empty_state(empty_text) },
+  )
 }
 
 pub fn section(
@@ -258,7 +336,10 @@ pub fn dialog_section(content: List(Element(msg))) -> Element(msg) {
   html.div([attribute.class("app-dialog__section")], content)
 }
 
-pub fn dialog_intro(title title: String, copy copy: List(Element(msg))) -> Element(msg) {
+pub fn dialog_intro(
+  title title: String,
+  copy copy: List(Element(msg)),
+) -> Element(msg) {
   dialog_section([
     html.p([attribute.class("app-dialog__label")], [html.text(title)]),
     html.p([attribute.class("app-dialog__copy")], copy),
@@ -325,7 +406,9 @@ fn dialog_button_with_class(
   extra_attributes: List(attribute.Attribute(msg)),
   label: String,
 ) -> Element(msg) {
-  html.button([attribute.class(class_name), ..extra_attributes], [html.text(label)])
+  html.button([attribute.class(class_name), ..extra_attributes], [
+    html.text(label),
+  ])
 }
 
 pub fn cursor_pagination_actions(
@@ -421,7 +504,10 @@ pub fn filter_field_grid(
   attributes extra_attributes: List(attribute.Attribute(msg)),
   fields fields: List(Element(msg)),
 ) -> Element(msg) {
-  html.div([attribute.class("admin-page__field-grid"), ..extra_attributes], fields)
+  html.div(
+    [attribute.class("admin-page__field-grid"), ..extra_attributes],
+    fields,
+  )
 }
 
 pub fn filter_row(
@@ -494,6 +580,13 @@ pub fn filter_chip(
   )
 }
 
+pub fn error_badge(has_error: Bool) -> Element(msg) {
+  case has_error {
+    True -> badge("Error", DangerTone)
+    False -> badge("None", SuccessTone)
+  }
+}
+
 pub fn text_input(
   label label: String,
   help help: String,
@@ -501,15 +594,102 @@ pub fn text_input(
   placeholder placeholder: String,
   on_input on_input: fn(String) -> msg,
 ) -> Element(msg) {
-  html.label([attribute.class("admin-page__field")], [
+  text_input_with_attrs(
+    label: label,
+    help: help,
+    value: value,
+    placeholder: placeholder,
+    input_type: "text",
+    field_class: "",
+    input_class: "",
+    input_attributes: [],
+    on_input: on_input,
+  )
+}
+
+pub fn text_input_with_attrs(
+  label label: String,
+  help help: String,
+  value value: String,
+  placeholder placeholder: String,
+  input_type input_type: String,
+  field_class field_class: String,
+  input_class input_class: String,
+  input_attributes input_attributes: List(attribute.Attribute(msg)),
+  on_input on_input: fn(String) -> msg,
+) -> Element(msg) {
+  let label_class = case field_class {
+    "" -> "admin-page__field"
+    _ -> "admin-page__field " <> field_class
+  }
+  let merged_input_class = case input_class {
+    "" -> "admin-page__input"
+    _ -> "admin-page__input " <> input_class
+  }
+
+  html.label([attribute.class(label_class)], [
     html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
     html.input([
-      attribute.type_("text"),
-      attribute.class("admin-page__input"),
+      attribute.type_(input_type),
+      attribute.class(merged_input_class),
       attribute.value(value),
       attribute.placeholder(placeholder),
       event.on_input(on_input),
+      ..input_attributes
     ]),
+    html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
+  ])
+}
+
+pub fn textarea_input(
+  label label: String,
+  help help: String,
+  value value: String,
+  rows rows: Int,
+  on_input on_input: fn(String) -> msg,
+) -> Element(msg) {
+  textarea_input_with_attrs(
+    label: label,
+    help: help,
+    value: value,
+    rows: rows,
+    field_class: "",
+    textarea_class: "",
+    textarea_attributes: [],
+    on_input: on_input,
+  )
+}
+
+pub fn textarea_input_with_attrs(
+  label label: String,
+  help help: String,
+  value value: String,
+  rows rows: Int,
+  field_class field_class: String,
+  textarea_class textarea_class: String,
+  textarea_attributes textarea_attributes: List(attribute.Attribute(msg)),
+  on_input on_input: fn(String) -> msg,
+) -> Element(msg) {
+  let label_class = case field_class {
+    "" -> "admin-page__field"
+    _ -> "admin-page__field " <> field_class
+  }
+  let merged_textarea_class = case textarea_class {
+    "" -> "admin-page__input"
+    _ -> "admin-page__input " <> textarea_class
+  }
+
+  html.label([attribute.class(label_class)], [
+    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
+    html.textarea(
+      [
+        attribute.class(merged_textarea_class),
+        attribute.rows(rows),
+        event.on_input(on_input),
+        ..textarea_attributes
+      ],
+      value,
+    ),
     html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
   ])
 }
@@ -521,13 +701,45 @@ pub fn select_input(
   options options: List(#(String, String)),
   help help: String,
 ) -> Element(msg) {
-  html.label([attribute.class("admin-page__field")], [
+  select_input_with_attrs(
+    label: label,
+    value: value,
+    on_input: on_input,
+    options: options,
+    help: help,
+    field_class: "",
+    select_class: "",
+    select_attributes: [],
+  )
+}
+
+pub fn select_input_with_attrs(
+  label label: String,
+  value value: String,
+  on_input on_input: fn(String) -> msg,
+  options options: List(#(String, String)),
+  help help: String,
+  field_class field_class: String,
+  select_class select_class: String,
+  select_attributes select_attributes: List(attribute.Attribute(msg)),
+) -> Element(msg) {
+  let label_class = case field_class {
+    "" -> "admin-page__field"
+    _ -> "admin-page__field " <> field_class
+  }
+  let merged_select_class = case select_class {
+    "" -> "admin-page__select admin-page__input"
+    _ -> "admin-page__select admin-page__input " <> select_class
+  }
+
+  html.label([attribute.class(label_class)], [
     html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
     html.select(
       [
-        attribute.class("admin-page__select admin-page__input"),
+        attribute.class(merged_select_class),
         attribute.value(value),
         event.on_input(on_input),
+        ..select_attributes
       ],
       list.map(options, fn(option_item) {
         let #(option_value, option_label) = option_item

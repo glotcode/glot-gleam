@@ -1,9 +1,8 @@
 import gleam/option
-import gleam/time/calendar
-import gleam/time/timestamp
 import glot_core/admin/run_log_dto
 import glot_core/language
 import glot_core/run_log_model
+import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
@@ -27,17 +26,16 @@ pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case loadable.ensure_loaded(
-    model.log,
-    api.get_admin_run_log(
-      run_log_dto.GetRunLogRequest(id: model.id),
-      LogLoaded,
-    ),
-  ) {
-    #(next_log, next_effect) -> #(
-      Model(..model, log: next_log),
-      next_effect,
+  case
+    loadable.ensure_loaded(
+      model.log,
+      api.get_admin_run_log(
+        run_log_dto.GetRunLogRequest(id: model.id),
+        LogLoaded,
+      ),
     )
+  {
+    #(next_log, next_effect) -> #(Model(..model, log: next_log), next_effect)
   }
 }
 
@@ -65,20 +63,12 @@ pub fn view(model: Model) -> Element(Msg) {
   admin_ui.page_with_panel_class(
     panel_class: "admin-job-log-page",
     title: "Run log detail",
-    intro:
-      "Inspect one retained code execution outcome and its request correlation fields.",
+    intro: "Inspect one retained code execution outcome and its request correlation fields.",
     actions: [],
-    content: [status_view(model), detail_view(model)],
-  )
-}
-
-fn status_view(model: Model) -> Element(Msg) {
-  loadable.fold(
-    model.log,
-    admin_ui.status(""),
-    admin_ui.status("Loading run log..."),
-    fn(_) { admin_ui.status("") },
-    admin_ui.error_status,
+    content: [
+      admin_ui.loadable_status(model.log, "Loading run log..."),
+      detail_view(model),
+    ],
   )
 }
 
@@ -103,7 +93,7 @@ fn detail_view(model: Model) -> Element(Msg) {
             admin_ui.summary_card("Outcome", outcome_text(log.outcome)),
             admin_ui.summary_card(
               "Created at",
-              format_timestamp(log.created_at),
+              admin_format.format_timestamp(log.created_at),
             ),
             admin_ui.summary_card(
               "Duration",
@@ -117,11 +107,20 @@ fn detail_view(model: Model) -> Element(Msg) {
           content: html.div([attribute.class(admin_ui.detail_grid_class())], [
             admin_ui.detail_item("Log ID", uuid.to_string(log.id)),
             admin_ui.detail_item("Request ID", uuid.to_string(log.request_id)),
-            admin_ui.detail_item("Session ID", optional_uuid(log.session_id)),
-            admin_ui.detail_item("User ID", optional_uuid(log.user_id)),
+            admin_ui.detail_item(
+              "Session ID",
+              admin_format.optional_uuid(log.session_id),
+            ),
+            admin_ui.detail_item(
+              "User ID",
+              admin_format.optional_uuid(log.user_id),
+            ),
             admin_ui.detail_item("Language", language.name(log.language)),
             admin_ui.detail_item("Outcome", outcome_text(log.outcome)),
-            admin_ui.detail_item("Created at", format_timestamp(log.created_at)),
+            admin_ui.detail_item(
+              "Created at",
+              admin_format.format_timestamp(log.created_at),
+            ),
             admin_ui.detail_item("Duration", optional_duration(log.duration_ns)),
           ]),
         ),
@@ -134,17 +133,6 @@ fn detail_view(model: Model) -> Element(Msg) {
     },
     fn(_) { admin_ui.empty_state("This run log could not be loaded.") },
   )
-}
-
-fn format_timestamp(value) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
-}
-
-fn optional_uuid(value: option.Option(uuid.Uuid)) -> String {
-  case value {
-    option.Some(id) -> uuid.to_string(id)
-    option.None -> "None"
-  }
 }
 
 fn optional_duration(duration_ns: option.Option(Int)) -> String {

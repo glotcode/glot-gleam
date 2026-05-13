@@ -3,13 +3,12 @@ import gleam/int
 import gleam/list
 import gleam/option
 import gleam/string
-import gleam/time/calendar
-import gleam/time/timestamp
 import glot_core/admin/snippet_dto
 import glot_core/language
 import glot_core/route
 import glot_core/snippet/snippet_dto as public_snippet_dto
 import glot_core/snippet/snippet_model
+import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
@@ -60,13 +59,15 @@ pub fn init(slug: String) -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case loadable.ensure_loaded(
-    model.snippet,
-    api.get_admin_snippet(
-      snippet_dto.GetSnippetRequest(slug: model.slug),
-      SnippetLoaded,
-    ),
-  ) {
+  case
+    loadable.ensure_loaded(
+      model.snippet,
+      api.get_admin_snippet(
+        snippet_dto.GetSnippetRequest(slug: model.slug),
+        SnippetLoaded,
+      ),
+    )
+  {
     #(snippet, next_effect) -> #(Model(..model, snippet: snippet), next_effect)
   }
 }
@@ -189,13 +190,13 @@ pub fn view(model: Model) -> Element(Msg) {
           ],
         ),
       ],
-      content: [status_view(model), detail_view(model)],
+      content: [snippet_status(model), detail_view(model)],
     ),
     delete_confirmation_dialog(model),
   ])
 }
 
-fn status_view(model: Model) -> Element(Msg) {
+fn snippet_status(model: Model) -> Element(Msg) {
   case model.snippet, model.delete_state {
     loadable.LoadError(message), _ -> admin_ui.error_status(message)
     loadable.Loading, _ -> admin_ui.status("Loading snippet...")
@@ -248,11 +249,11 @@ fn detail_view(model: Model) -> Element(Msg) {
             ),
             admin_ui.detail_item(
               "Created at",
-              format_timestamp(snippet.created_at),
+              admin_format.format_timestamp(snippet.created_at),
             ),
             admin_ui.detail_item(
               "Updated at",
-              format_timestamp(snippet.updated_at),
+              admin_format.format_timestamp(snippet.updated_at),
             ),
           ]),
         ]),
@@ -341,9 +342,9 @@ fn delete_confirmation_dialog_children(
     option.Some(snippet) -> [
       admin_ui.dialog_form([], [
         admin_ui.dialog_intro("Delete snippet", [
-            html.text("Delete "),
-            html.code([], [html.text(snippet.title)]),
-            html.text("? This action cannot be undone."),
+          html.text("Delete "),
+          html.code([], [html.text(snippet.title)]),
+          html.text("? This action cannot be undone."),
         ]),
         admin_ui.dialog_actions([
           admin_ui.dialog_cancel_button(
@@ -402,10 +403,6 @@ fn empty_text(value: String) -> String {
     True -> "Empty"
     False -> value
   }
-}
-
-fn format_timestamp(value) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
 }
 
 fn navigate_to_snippets() -> Effect(Msg) {

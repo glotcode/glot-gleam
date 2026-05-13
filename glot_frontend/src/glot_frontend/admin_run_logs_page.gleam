@@ -26,7 +26,9 @@ const page_limit = 25
 
 pub type Model {
   Model(
-    page: loadable.Loadable(pagination_model.CursorPage(run_log_dto.RunLogResponse)),
+    page: loadable.Loadable(
+      pagination_model.CursorPage(run_log_dto.RunLogResponse),
+    ),
     outcome_filter: run_log_dto.RunLogOutcomeFilter,
     request_id_filter: String,
     session_id_filter: String,
@@ -80,8 +82,10 @@ pub fn init() -> #(Model, Effect(Msg)) {
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
   case model.page {
     loadable.NotLoaded -> load_initial(model)
-    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) ->
-      #(model, effect.none())
+    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) -> #(
+      model,
+      effect.none(),
+    )
   }
 }
 
@@ -227,12 +231,11 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     panel_class: "admin-job-logs-page",
     title: "Run logs",
     intro: "",
-    actions:
-      admin_ui.cursor_pagination_actions(
-        current_page(model),
-        PreviousPageClicked,
-        NextPageClicked,
-      ),
+    actions: admin_ui.cursor_pagination_actions(
+      current_page(model),
+      PreviousPageClicked,
+      NextPageClicked,
+    ),
     content: [
       admin_ui.filter_section(
         copy: filter_summary(model, rows),
@@ -276,26 +279,26 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
               copy: option.None,
               chips: [
                 admin_ui.filter_chip(
-                  [event.on_click(OutcomeFilterSelected(run_log_dto.AllRunLogs))],
+                  [
+                    event.on_click(OutcomeFilterSelected(run_log_dto.AllRunLogs)),
+                  ],
                   "All",
                   model.outcome_filter == run_log_dto.AllRunLogs,
                 ),
                 admin_ui.filter_chip(
                   [
-                    event.on_click(
-                      OutcomeFilterSelected(
-                        run_log_dto.OnlySuccessfulRunLogs,
-                      ),
-                    ),
+                    event.on_click(OutcomeFilterSelected(
+                      run_log_dto.OnlySuccessfulRunLogs,
+                    )),
                   ],
                   "Succeeded",
                   model.outcome_filter == run_log_dto.OnlySuccessfulRunLogs,
                 ),
                 admin_ui.filter_chip(
                   [
-                    event.on_click(
-                      OutcomeFilterSelected(run_log_dto.OnlyFailedRunLogs),
-                    ),
+                    event.on_click(OutcomeFilterSelected(
+                      run_log_dto.OnlyFailedRunLogs,
+                    )),
                   ],
                   "Failed",
                   model.outcome_filter == run_log_dto.OnlyFailedRunLogs,
@@ -316,13 +319,13 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
         ]),
       ),
       html.div([attribute.class("admin-page__group")], [
-            html.div([attribute.class("admin-page__group-header")], [
-              html.h3([attribute.class("admin-page__group-title")], [
-                html.text("Results"),
-              ]),
-            ]),
-            status_view(model),
-            logs_table(model, now),
+        html.div([attribute.class("admin-page__group-header")], [
+          html.h3([attribute.class("admin-page__group-title")], [
+            html.text("Results"),
+          ]),
+        ]),
+        admin_ui.loadable_status(model.page, "Loading run logs..."),
+        logs_table(model, now),
       ]),
     ],
   )
@@ -355,41 +358,23 @@ fn load_page(
   )
 }
 
-fn status_view(model: Model) -> Element(Msg) {
-  loadable.fold(
-    model.page,
-    admin_ui.status(""),
-    admin_ui.status("Loading run logs..."),
-    fn(_) { admin_ui.status("") },
-    admin_ui.error_status,
-  )
-}
-
 fn logs_table(model: Model, now: Timestamp) -> Element(Msg) {
-  loadable.fold(
+  admin_ui.loadable_cursor_page_content(
     model.page,
-    admin_ui.empty_state("No run logs matched these filters."),
-    admin_ui.empty_state("Loading run logs..."),
-    fn(page) {
-      case pagination_model.items(page) {
-        [] -> admin_ui.empty_state("No run logs matched these filters.")
-        rows ->
-          admin_table.table(log_columns(), {
-            rows |> list.map(fn(log) { log_row(log, now) })
-          })
-      }
+    "Loading run logs...",
+    "No run logs matched these filters.",
+    fn(rows) {
+      admin_table.table(log_columns(), {
+        rows |> list.map(fn(log) { log_row(log, now) })
+      })
     },
-    fn(_) { admin_ui.empty_state("No run logs matched these filters.") },
   )
 }
 
 fn current_page(
   model: Model,
 ) -> pagination_model.CursorPage(run_log_dto.RunLogResponse) {
-  case model.page {
-    loadable.Loaded(page) -> page
-    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) -> empty_page()
-  }
+  admin_ui.current_cursor_page(model.page)
 }
 
 fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
@@ -406,7 +391,10 @@ fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
     ),
     admin_table.primary_cell(language_column(), language.name(log.language)),
     admin_table.cell(outcome_column(), [outcome_badge(log)]),
-    admin_table.value_cell(duration_column(), optional_duration(log.duration_ns)),
+    admin_table.value_cell(
+      duration_column(),
+      optional_duration(log.duration_ns),
+    ),
     admin_table.open_link_cell([route.href(route.AdminRunLog(log.id))]),
   ])
 }
@@ -565,10 +553,6 @@ fn language_options() -> List(#(String, String)) {
       #(language.to_string(lang), language.name(lang))
     }),
   )
-}
-
-fn empty_page() -> pagination_model.CursorPage(run_log_dto.RunLogResponse) {
-  pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
 }
 
 fn outcome_badge(log: run_log_dto.RunLogResponse) -> Element(Msg) {

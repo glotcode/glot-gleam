@@ -1,8 +1,7 @@
 import gleam/list
-import gleam/time/calendar
-import gleam/time/timestamp
 import glot_core/admin/email_template_dto
 import glot_core/route
+import glot_frontend/admin_format
 import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
@@ -13,7 +12,11 @@ import lustre/element.{type Element}
 import lustre/element/html
 
 pub type Model {
-  Model(templates: loadable.Loadable(List(email_template_dto.EmailTemplateSummaryResponse)))
+  Model(
+    templates: loadable.Loadable(
+      List(email_template_dto.EmailTemplateSummaryResponse),
+    ),
+  )
 }
 
 pub type Msg {
@@ -27,10 +30,12 @@ pub fn init() -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case loadable.ensure_loaded(
-    model.templates,
-    api.get_admin_email_templates(TemplatesLoaded),
-  ) {
+  case
+    loadable.ensure_loaded(
+      model.templates,
+      api.get_admin_email_templates(TemplatesLoaded),
+    )
+  {
     #(templates, next_effect) -> #(Model(templates: templates), next_effect)
   }
 }
@@ -59,50 +64,33 @@ pub fn view(model: Model) -> Element(Msg) {
   admin_ui.page_with_panel_class(
     panel_class: "admin-jobs-page",
     title: "Email templates",
-    intro:
-      "This directory is read-only. Open a template to edit the stored subject and body content.",
+    intro: "This directory is read-only. Open a template to edit the stored subject and body content.",
     actions: [],
     content: [
       html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.div([], [
-              html.h3([attribute.class("admin-page__group-title")], [
-                html.text("Templates"),
-              ]),
-              html.p([attribute.class("admin-page__group-copy")], [
-                html.text("Open a template row to edit its stored content."),
-              ]),
+        html.div([attribute.class("admin-page__group-header")], [
+          html.div([], [
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Templates"),
+            ]),
+            html.p([attribute.class("admin-page__group-copy")], [
+              html.text("Open a template row to edit its stored content."),
             ]),
           ]),
-          status_view(model),
-          templates_view(model),
+        ]),
+        admin_ui.loadable_status(model.templates, "Loading email templates..."),
+        templates_view(model),
       ]),
     ],
   )
 }
 
-fn status_view(model: Model) -> Element(Msg) {
-  loadable.fold(
-    model.templates,
-    admin_ui.status(""),
-    admin_ui.status("Loading email templates..."),
-    fn(_) { admin_ui.status("") },
-    admin_ui.error_status,
-  )
-}
-
 fn templates_view(model: Model) -> Element(Msg) {
-  loadable.fold(
+  admin_ui.loadable_list_content(
     model.templates,
-    admin_ui.empty_state("No email templates were found."),
-    admin_ui.empty_state("Loading email templates..."),
-    fn(templates) {
-      case templates {
-        [] -> admin_ui.empty_state("No email templates were found.")
-        _ -> templates_table(templates)
-      }
-    },
-    fn(_) { admin_ui.empty_state("No email templates were found.") },
+    "Loading email templates...",
+    "No email templates were found.",
+    templates_table,
   )
 }
 
@@ -118,7 +106,9 @@ fn template_row(
   admin_table.row([
     admin_table.cell(name_column(), [admin_table.primary_value(template.name)]),
     admin_table.cell(updated_at_column(), [
-      admin_table.secondary_value(format_timestamp(template.updated_at)),
+      admin_table.secondary_value(admin_format.format_timestamp(
+        template.updated_at,
+      )),
     ]),
     admin_table.cell(open_column(), [
       admin_ui.secondary_link(
@@ -143,8 +133,4 @@ fn updated_at_column() -> admin_table.Column {
 
 fn open_column() -> admin_table.Column {
   admin_table.action_column("Open")
-}
-
-fn format_timestamp(value) -> String {
-  value |> timestamp.to_rfc3339(calendar.utc_offset)
 }

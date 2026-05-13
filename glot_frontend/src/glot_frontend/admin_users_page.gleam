@@ -24,7 +24,9 @@ const page_limit = 25
 
 pub type Model {
   Model(
-    page: loadable.Loadable(pagination_model.CursorPage(user_dto.UserSummaryResponse)),
+    page: loadable.Loadable(
+      pagination_model.CursorPage(user_dto.UserSummaryResponse),
+    ),
     search_filter: String,
     role_filter: String,
     account_state_filter: String,
@@ -60,8 +62,10 @@ pub fn init() -> #(Model, Effect(Msg)) {
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
   case model.page {
     loadable.NotLoaded -> load_initial(model)
-    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) ->
-      #(model, effect.none())
+    loadable.Loading | loadable.Loaded(_) | loadable.LoadError(_) -> #(
+      model,
+      effect.none(),
+    )
   }
 }
 
@@ -150,43 +154,45 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
     panel_class: "admin-jobs-page",
     title: "Users",
     intro: "Review user accounts, account access state, and role assignments.",
-    actions:
-      admin_ui.cursor_pagination_actions(
-        current_page(model),
-        PreviousPageClicked,
-        NextPageClicked,
-      ),
+    actions: admin_ui.cursor_pagination_actions(
+      current_page(model),
+      PreviousPageClicked,
+      NextPageClicked,
+    ),
     content: [
       html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.div([], [
-              html.h3([attribute.class("admin-page__group-title")], [
-                html.text("Filters"),
-              ]),
+        html.div([attribute.class("admin-page__group-header")], [
+          html.div([], [
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Filters"),
             ]),
           ]),
-          filters_view(model),
+        ]),
+        filters_view(model),
       ]),
       html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.div([], [
-              html.h3([attribute.class("admin-page__group-title")], [
-                html.text("Directory"),
-              ]),
-              html.p([attribute.class("admin-page__group-copy")], [
-                html.text(count_text),
-              ]),
+        html.div([attribute.class("admin-page__group-header")], [
+          html.div([], [
+            html.h3([attribute.class("admin-page__group-title")], [
+              html.text("Directory"),
+            ]),
+            html.p([attribute.class("admin-page__group-copy")], [
+              html.text(count_text),
             ]),
           ]),
-          status_view(model),
-          users_table(model, now),
+        ]),
+        admin_ui.loadable_status(model.page, "Loading users..."),
+        users_table(model, now),
       ]),
     ],
   )
 }
 
 fn load_initial(model: Model) -> #(Model, Effect(Msg)) {
-  load_page(Model(..model, page: loadable.Loading), pagination_model.InitialPage(limit: page_limit))
+  load_page(
+    Model(..model, page: loadable.Loading),
+    pagination_model.InitialPage(limit: page_limit),
+  )
 }
 
 fn load_page(
@@ -211,38 +217,51 @@ fn load_page(
 }
 
 fn filters_view(model: Model) -> Element(Msg) {
-  html.div([attribute.class("admin-page__policy")], [
-    html.div([attribute.class("admin-page__modal-grid")], [
-      text_input(
-        id: "admin-users-search",
+  admin_ui.filter_surface([], [
+    admin_ui.filter_field_grid([attribute.class("admin-page__modal-grid")], [
+      admin_ui.text_input_with_attrs(
         label: "Email, username, or id",
-        placeholder: "exact email, username, or uuid",
+        help: "",
         value: model.search_filter,
+        placeholder: "exact email, username, or uuid",
+        input_type: "text",
+        field_class: "",
+        input_class: "",
+        input_attributes: [attribute.id("admin-users-search")],
         on_input: SearchFilterChanged,
       ),
-      select_input(
-        id: "admin-users-role",
+      admin_ui.select_input_with_attrs(
         label: "Role",
         value: model.role_filter,
         on_input: RoleFilterChanged,
         options: role_filter_options(),
+        help: "",
+        field_class: "",
+        select_class: "",
+        select_attributes: [attribute.id("admin-users-role")],
       ),
-      select_input(
-        id: "admin-users-account-state",
+      admin_ui.select_input_with_attrs(
         label: "Account status",
         value: model.account_state_filter,
         on_input: AccountStateFilterChanged,
         options: account_state_filter_options(),
+        help: "",
+        field_class: "",
+        select_class: "",
+        select_attributes: [attribute.id("admin-users-account-state")],
       ),
-      select_input(
-        id: "admin-users-account-tier",
+      admin_ui.select_input_with_attrs(
         label: "Tier",
         value: model.account_tier_filter,
         on_input: AccountTierFilterChanged,
         options: account_tier_filter_options(),
+        help: "",
+        field_class: "",
+        select_class: "",
+        select_attributes: [attribute.id("admin-users-account-tier")],
       ),
     ]),
-    html.div([attribute.class("admin-page__actions")], [
+    admin_ui.filter_actions([], [
       html.button(
         [
           attribute.class("admin-page__button"),
@@ -263,31 +282,16 @@ fn filters_view(model: Model) -> Element(Msg) {
   ])
 }
 
-fn status_view(model: Model) -> Element(Msg) {
-  loadable.fold(
-    model.page,
-    admin_ui.status(""),
-    admin_ui.status("Loading users..."),
-    fn(_) { admin_ui.status("") },
-    admin_ui.error_status,
-  )
-}
-
 fn users_table(model: Model, now: Timestamp) -> Element(Msg) {
-  loadable.fold(
+  admin_ui.loadable_cursor_page_content(
     model.page,
-    admin_ui.empty_state("No users were returned."),
-    admin_ui.empty_state("Loading users..."),
-    fn(page) {
-      case pagination_model.items(page) {
-        [] -> admin_ui.empty_state("No users were returned.")
-        rows ->
-          admin_table.table(user_columns(), {
-            rows |> list.map(fn(user) { user_row(user, now) })
-          })
-      }
+    "Loading users...",
+    "No users were returned.",
+    fn(rows) {
+      admin_table.table(user_columns(), {
+        rows |> list.map(fn(user) { user_row(user, now) })
+      })
     },
-    fn(_) { admin_ui.empty_state("No users were returned.") },
   )
 }
 
@@ -348,64 +352,7 @@ fn open_column() -> admin_table.Column {
 fn current_page(
   model: Model,
 ) -> pagination_model.CursorPage(user_dto.UserSummaryResponse) {
-  case model.page {
-    loadable.Loaded(page) -> page
-    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) ->
-      pagination_model.InitialCursorPage(items: [], next_cursor: option.None)
-  }
-}
-
-
-fn text_input(
-  id id: String,
-  label label: String,
-  placeholder placeholder: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.input([
-      attribute.id(id),
-      attribute.type_("text"),
-      attribute.class("admin-page__input"),
-      attribute.placeholder(placeholder),
-      attribute.value(value),
-      event.on_input(on_input),
-    ]),
-  ])
-}
-
-fn select_input(
-  id id: String,
-  label label: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-  options options: List(#(String, String)),
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.select(
-      [
-        attribute.id(id),
-        attribute.class("admin-page__input"),
-        attribute.value(value),
-        event.on_input(on_input),
-      ],
-      options
-        |> list.map(fn(option_entry) {
-          let #(option_value, option_label) = option_entry
-
-          html.option(
-            [
-              attribute.value(option_value),
-              attribute.selected(option_value == value),
-            ],
-            option_label,
-          )
-        }),
-    ),
-  ])
+  admin_ui.current_cursor_page(model.page)
 }
 
 fn role_filter_options() -> List(#(String, String)) {

@@ -1,10 +1,9 @@
 import gleam/int
 import gleam/option
-import gleam/time/calendar
-import gleam/time/timestamp
 import glot_core/admin/api_log_dto
 import glot_core/effect_trace_dto
 import glot_frontend/admin_effects_table
+import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
@@ -28,17 +27,16 @@ pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case loadable.ensure_loaded(
-    model.log,
-    api.get_admin_api_log(
-      api_log_dto.GetApiLogRequest(id: model.id),
-      LogLoaded,
-    ),
-  ) {
-    #(next_log, next_effect) -> #(
-      Model(..model, log: next_log),
-      next_effect,
+  case
+    loadable.ensure_loaded(
+      model.log,
+      api.get_admin_api_log(
+        api_log_dto.GetApiLogRequest(id: model.id),
+        LogLoaded,
+      ),
     )
+  {
+    #(next_log, next_effect) -> #(Model(..model, log: next_log), next_effect)
   }
 }
 
@@ -68,17 +66,10 @@ pub fn view(model: Model) -> Element(Msg) {
     title: "API log detail",
     intro: "Inspect the API log captured for one request.",
     actions: [],
-    content: [status_view(model), detail_view(model)],
-  )
-}
-
-fn status_view(model: Model) -> Element(Msg) {
-  loadable.fold(
-    model.log,
-    admin_ui.status(""),
-    admin_ui.status("Loading API log..."),
-    fn(_) { admin_ui.status("") },
-    admin_ui.error_status,
+    content: [
+      admin_ui.loadable_status(model.log, "Loading API log..."),
+      detail_view(model),
+    ],
   )
 }
 
@@ -101,7 +92,7 @@ fn detail_view(model: Model) -> Element(Msg) {
             admin_ui.summary_card("Request ID", uuid.to_string(log.request_id)),
             admin_ui.summary_card(
               "Created at",
-              format_timestamp(log.created_at),
+              admin_format.format_timestamp(log.created_at),
             ),
             admin_ui.summary_card("Action", log.log.action),
           ],
@@ -122,15 +113,21 @@ fn api_log_content(log: api_log_dto.ApiLogDetailResponse) -> Element(Msg) {
     html.div([attribute.class(admin_ui.detail_grid_class())], [
       admin_ui.detail_item("Log ID", uuid.to_string(log.id)),
       admin_ui.detail_item("Request ID", uuid.to_string(log.request_id)),
-      admin_ui.detail_item("Created at", format_timestamp(log.created_at)),
+      admin_ui.detail_item(
+        "Created at",
+        admin_format.format_timestamp(log.created_at),
+      ),
       admin_ui.detail_item("Action", log.log.action),
       admin_ui.detail_item("Body bytes", int.to_string(log.log.body_bytes)),
       admin_ui.detail_item(
         "Duration",
         duration_label.duration_in_ms_label(log.log.duration_ns),
       ),
-      admin_ui.detail_item("IP", optional_text(log.log.ip)),
-      admin_ui.detail_item("User agent", optional_text(log.log.user_agent)),
+      admin_ui.detail_item("IP", admin_format.optional_text(log.log.ip)),
+      admin_ui.detail_item(
+        "User agent",
+        admin_format.optional_text(log.log.user_agent),
+      ),
     ]),
     raw_blocks(
       log.log.info,
@@ -156,15 +153,4 @@ fn raw_blocks(
     admin_ui.optional_raw_block("Error", error),
     admin_effects_table.effects_block(effects),
   ])
-}
-
-fn format_timestamp(value) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
-}
-
-fn optional_text(value: option.Option(String)) -> String {
-  case value {
-    option.Some(text) -> text
-    option.None -> "None"
-  }
 }

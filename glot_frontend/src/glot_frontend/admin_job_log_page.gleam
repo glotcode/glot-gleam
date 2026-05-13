@@ -1,9 +1,7 @@
 import gleam/int
-import gleam/option
-import gleam/time/calendar
-import gleam/time/timestamp
 import glot_core/admin/job_log_dto
 import glot_frontend/admin_effects_table
+import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/duration_label
@@ -27,17 +25,16 @@ pub fn init(id: uuid.Uuid) -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case loadable.ensure_loaded(
-    model.log,
-    api.get_admin_job_log(
-      job_log_dto.GetJobLogRequest(id: model.id),
-      LogLoaded,
-    ),
-  ) {
-    #(next_log, next_effect) -> #(
-      Model(..model, log: next_log),
-      next_effect,
+  case
+    loadable.ensure_loaded(
+      model.log,
+      api.get_admin_job_log(
+        job_log_dto.GetJobLogRequest(id: model.id),
+        LogLoaded,
+      ),
     )
+  {
+    #(next_log, next_effect) -> #(Model(..model, log: next_log), next_effect)
   }
 }
 
@@ -65,20 +62,12 @@ pub fn view(model: Model) -> Element(Msg) {
   admin_ui.page_with_panel_class(
     panel_class: "admin-job-log-page",
     title: "Job log detail",
-    intro:
-      "Inspect one retained job log execution and its raw operator-facing payloads.",
+    intro: "Inspect one retained job log execution and its raw operator-facing payloads.",
     actions: [],
-    content: [status_view(model), detail_view(model)],
-  )
-}
-
-fn status_view(model: Model) -> Element(Msg) {
-  loadable.fold(
-    model.log,
-    admin_ui.status(""),
-    admin_ui.status("Loading job log..."),
-    fn(_) { admin_ui.status("") },
-    admin_ui.error_status,
+    content: [
+      admin_ui.loadable_status(model.log, "Loading job log..."),
+      detail_view(model),
+    ],
   )
 }
 
@@ -99,12 +88,15 @@ fn detail_view(model: Model) -> Element(Msg) {
           [
             admin_ui.summary_card("Log ID", uuid.to_string(log.id)),
             admin_ui.summary_card("Job ID", uuid.to_string(log.job_id)),
-            admin_ui.summary_card("Request ID", optional_uuid(log.request_id)),
+            admin_ui.summary_card(
+              "Request ID",
+              admin_format.optional_uuid(log.request_id),
+            ),
             admin_ui.summary_card("Job type", log.job_type),
             admin_ui.summary_card("Attempt", int.to_string(log.attempt)),
             admin_ui.summary_card(
               "Created at",
-              format_timestamp(log.created_at),
+              admin_format.format_timestamp(log.created_at),
             ),
             admin_ui.summary_card(
               "Duration",
@@ -127,15 +119,4 @@ fn detail_view(model: Model) -> Element(Msg) {
     },
     fn(_) { admin_ui.empty_state("This job log could not be loaded.") },
   )
-}
-
-fn format_timestamp(value) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
-}
-
-fn optional_uuid(value: option.Option(uuid.Uuid)) -> String {
-  case value {
-    option.Some(id) -> uuid.to_string(id)
-    option.None -> "None"
-  }
 }

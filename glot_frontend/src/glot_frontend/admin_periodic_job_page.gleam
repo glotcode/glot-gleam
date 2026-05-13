@@ -2,13 +2,14 @@ import gleam/int
 import gleam/list
 import gleam/option
 import gleam/result
-import gleam/time/calendar
 import gleam/time/timestamp
 import glot_core/admin/job_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/pagination_model
 import glot_core/route
+import glot_frontend/admin_format
+import glot_frontend/admin_job_ui
 import glot_frontend/admin_table
 import glot_frontend/admin_ui
 import glot_frontend/api
@@ -300,8 +301,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 pub fn view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
   admin_ui.page(
     title: "Periodic job detail",
-    intro:
-      "Inspect one scheduler definition and update cadence, enabled state, next enqueue time, or payload.",
+    intro: "Inspect one scheduler definition and update cadence, enabled state, next enqueue time, or payload.",
     content: [status_banner(model.status), detail_view(model, now)],
   )
 }
@@ -362,23 +362,23 @@ fn periodic_job_view(
         admin_ui.detail_item("Enabled", enabled_text(editor.saved.enabled)),
         admin_ui.detail_item(
           "Next run at",
-          format_timestamp(editor.metadata.next_run_at),
+          admin_format.format_timestamp(editor.metadata.next_run_at),
         ),
         admin_ui.detail_item(
           "Last enqueued at",
-          optional_timestamp(editor.metadata.last_enqueued_at),
+          admin_format.optional_timestamp(editor.metadata.last_enqueued_at),
         ),
         admin_ui.detail_item(
           "Created at",
-          format_timestamp(editor.metadata.created_at),
+          admin_format.format_timestamp(editor.metadata.created_at),
         ),
         admin_ui.detail_item(
           "Updated at",
-          format_timestamp(editor.metadata.updated_at),
+          admin_format.format_timestamp(editor.metadata.updated_at),
         ),
         admin_ui.detail_item(
           "Last enqueue error",
-          optional_text(editor.metadata.last_enqueue_error),
+          admin_format.optional_text(editor.metadata.last_enqueue_error),
         ),
       ]),
     ]),
@@ -407,35 +407,48 @@ fn periodic_job_view(
           ]),
         ]),
         html.div([attribute.class("admin-page__field-grid")], [
-          text_input(
+          admin_ui.text_input_with_attrs(
             label: "Interval seconds",
             help: "Scheduler cadence in seconds. Must be greater than zero.",
             value: editor.draft.interval_seconds,
             input_type: "text",
-            extra_attributes: [],
+            placeholder: "",
+            field_class: "",
+            input_class: "",
+            input_attributes: [],
             on_input: IntervalSecondsChanged,
           ),
-          text_input(
+          admin_ui.text_input_with_attrs(
             label: "Next run date",
             help: "Local calendar date for the next enqueue time.",
             value: editor.draft.next_run_date,
             input_type: "date",
-            extra_attributes: [],
+            placeholder: "",
+            field_class: "",
+            input_class: "",
+            input_attributes: [],
             on_input: NextRunDateChanged,
           ),
-          text_input(
+          admin_ui.text_input_with_attrs(
             label: "Next run time",
             help: "Local time for the next enqueue time. It is converted back to UTC when saved.",
             value: editor.draft.next_run_time,
             input_type: "time",
-            extra_attributes: [attribute.attribute("step", "1")],
+            placeholder: "",
+            field_class: "",
+            input_class: "",
+            input_attributes: [attribute.attribute("step", "1")],
             on_input: NextRunTimeChanged,
           ),
           toggle_field(editor),
-          textarea_input(
+          admin_ui.textarea_input_with_attrs(
             label: "Payload JSON",
             help: "Leave blank for no payload. Saved as raw JSON text without frontend validation.",
             value: editor.draft.payload,
+            rows: 6,
+            field_class: "admin-periodic-jobs-page__payload-field",
+            textarea_class: "admin-periodic-jobs-page__payload-input",
+            textarea_attributes: [],
             on_input: PayloadChanged,
           ),
         ]),
@@ -504,7 +517,7 @@ fn recent_jobs_group(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
 
 fn recent_jobs_status_view(status: Status) -> Element(Msg) {
   case status {
-    NotLoaded | Ready -> html.div([], [])
+    NotLoaded | Ready -> admin_ui.blank_status()
     Loading -> admin_ui.status("Loading recent jobs...")
     LoadError(message) -> admin_ui.error_status(message)
   }
@@ -516,14 +529,9 @@ fn recent_jobs_table(
   now: timestamp.Timestamp,
 ) -> Element(Msg) {
   case recent_jobs, status {
-    [], Loading ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("Loading recent jobs..."),
-      ])
+    [], Loading -> admin_ui.empty_state("Loading recent jobs...")
     [], _ ->
-      html.div([attribute.class("admin-page__empty")], [
-        html.text("No jobs were found for this periodic definition."),
-      ])
+      admin_ui.empty_state("No jobs were found for this periodic definition.")
     _, _ ->
       admin_table.table(recent_job_columns(), {
         recent_jobs |> list.map(fn(job) { recent_job_row(job, now) })
@@ -541,7 +549,9 @@ fn recent_job_row(
         html.text(job.job_type),
       ]),
     ]),
-    admin_table.cell(status_column(), [recent_job_status_badge(job)]),
+    admin_table.cell(status_column(), [
+      admin_job_ui.status_badge(job.status, job.overdue),
+    ]),
     admin_table.cell(schedule_column(), [
       html.span([attribute.class("admin-table__value--primary")], [
         html.text(timestamp_helpers.relative_label(job.run_at, now)),
@@ -590,33 +600,6 @@ fn attempts_column() -> admin_table.Column {
 
 fn open_column() -> admin_table.Column {
   admin_table.action_column("Open")
-}
-
-fn recent_job_status_badge(job: job_dto.JobResponse) -> Element(Msg) {
-  case job.status, job.overdue {
-    "failed", _ ->
-      admin_ui.badge(recent_job_status_text(job), admin_ui.DangerTone)
-    "running", _ ->
-      admin_ui.badge(recent_job_status_text(job), admin_ui.WarningTone)
-    "pending", True ->
-      admin_ui.badge(recent_job_status_text(job), admin_ui.DangerTone)
-    "pending", False ->
-      admin_ui.badge(recent_job_status_text(job), admin_ui.InfoTone)
-    "done", _ ->
-      admin_ui.badge(recent_job_status_text(job), admin_ui.SuccessTone)
-    _, _ -> admin_ui.badge(recent_job_status_text(job), admin_ui.NeutralTone)
-  }
-}
-
-fn recent_job_status_text(job: job_dto.JobResponse) -> String {
-  case job.status, job.overdue {
-    "pending", True -> "Pending • overdue"
-    "pending", False -> "Pending"
-    "running", _ -> "Running"
-    "failed", _ -> "Failed"
-    "done", _ -> "Done"
-    value, _ -> value
-  }
 }
 
 fn update_editor_model(
@@ -732,64 +715,6 @@ fn status_badge_class(editor: PeriodicJobEditor) -> String {
   }
 }
 
-fn text_input(
-  label label: String,
-  help help: String,
-  value value: String,
-  input_type input_type: String,
-  extra_attributes extra_attributes: List(attribute.Attribute(Msg)),
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [
-      html.text(label),
-    ]),
-    html.input([
-      attribute.type_(input_type),
-      attribute.class("admin-page__input"),
-      attribute.value(value),
-      event.on_input(on_input),
-      ..extra_attributes
-    ]),
-    html.span([attribute.class("admin-page__field-help")], [
-      html.text(help),
-    ]),
-  ])
-}
-
-fn textarea_input(
-  label label: String,
-  help help: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label(
-    [
-      attribute.class(
-        "admin-page__field admin-periodic-jobs-page__payload-field",
-      ),
-    ],
-    [
-      html.span([attribute.class("admin-page__field-label")], [
-        html.text(label),
-      ]),
-      html.textarea(
-        [
-          attribute.class(
-            "admin-page__input admin-periodic-jobs-page__payload-input",
-          ),
-          attribute.rows(6),
-          event.on_input(on_input),
-        ],
-        value,
-      ),
-      html.span([attribute.class("admin-page__field-help")], [
-        html.text(help),
-      ]),
-    ],
-  )
-}
-
 fn editor_from_response(
   periodic_job: periodic_job_dto.PeriodicJobResponse,
 ) -> PeriodicJobEditor {
@@ -834,7 +759,7 @@ fn is_dirty(editor: PeriodicJobEditor) -> Bool {
 fn editor_to_request(
   editor: PeriodicJobEditor,
 ) -> Result(periodic_job_dto.UpdatePeriodicJobRequest, String) {
-  use interval_seconds <- result.try(parse_positive_int(
+  use interval_seconds <- result.try(admin_format.parse_positive_int(
     editor.draft.interval_seconds,
     "Interval seconds",
   ))
@@ -850,18 +775,6 @@ fn editor_to_request(
     enabled: editor.draft.enabled,
     next_run_at: next_run_at,
   ))
-}
-
-fn parse_positive_int(value: String, label: String) -> Result(Int, String) {
-  use parsed <- result.try(
-    int.parse(value)
-    |> result.map_error(fn(_) { label <> " must be a whole number." }),
-  )
-
-  case parsed > 0 {
-    True -> Ok(parsed)
-    False -> Error(label <> " must be greater than zero.")
-  }
 }
 
 fn parse_local_next_run_at(
@@ -886,24 +799,6 @@ fn optional_payload(value: String) -> option.Option(String) {
   case value == "" {
     True -> option.None
     False -> option.Some(value)
-  }
-}
-
-fn optional_timestamp(value: option.Option(timestamp.Timestamp)) -> String {
-  case value {
-    option.Some(timestamp) -> format_timestamp(timestamp)
-    option.None -> "None"
-  }
-}
-
-fn format_timestamp(value: timestamp.Timestamp) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
-}
-
-fn optional_text(value: option.Option(String)) -> String {
-  case value {
-    option.Some(text) -> text
-    option.None -> "None"
   }
 }
 

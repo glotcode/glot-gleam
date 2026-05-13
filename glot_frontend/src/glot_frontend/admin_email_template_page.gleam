@@ -1,9 +1,8 @@
 import gleam/list
 import gleam/option
 import gleam/string
-import gleam/time/calendar
-import gleam/time/timestamp
 import glot_core/admin/email_template_dto
+import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/loadable
@@ -54,13 +53,15 @@ pub fn init(name: String) -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case loadable.ensure_loaded(
-    model.template,
-    api.get_admin_email_template(
-      email_template_dto.GetEmailTemplateRequest(name: model.name),
-      TemplateLoaded,
-    ),
-  ) {
+  case
+    loadable.ensure_loaded(
+      model.template,
+      api.get_admin_email_template(
+        email_template_dto.GetEmailTemplateRequest(name: model.name),
+        TemplateLoaded,
+      ),
+    )
+  {
     #(template, next_effect) -> #(
       Model(..model, template: template),
       next_effect,
@@ -182,15 +183,14 @@ pub fn view(model: Model) -> Element(Msg) {
   admin_ui.page_with_panel_class(
     panel_class: "admin-job-page",
     title: "Email template detail",
-    intro:
-      "Template token validation runs in the backend on save, so the editor can stay simple while preserving long-term safety.",
+    intro: "Template token validation runs in the backend on save, so the editor can stay simple while preserving long-term safety.",
     actions: [
       admin_ui.secondary_button(
         [
           attribute.type_("button"),
           attribute.disabled(
             loadable.to_option(model.template) == option.None
-              || mutation.is_saving(model.save_state),
+            || mutation.is_saving(model.save_state),
           ),
           event.on_click(ResetClicked),
         ],
@@ -202,18 +202,18 @@ pub fn view(model: Model) -> Element(Msg) {
           attribute.type_("button"),
           attribute.disabled(
             loadable.to_option(model.template) == option.None
-              || mutation.is_saving(model.save_state),
+            || mutation.is_saving(model.save_state),
           ),
           event.on_click(SaveClicked),
         ],
         [html.text(save_button_label(model.save_state))],
       ),
     ],
-    content: [status_view(model), detail_view(model)],
+    content: [template_status(model), detail_view(model)],
   )
 }
 
-fn status_view(model: Model) -> Element(Msg) {
+fn template_status(model: Model) -> Element(Msg) {
   case model.template, model.save_state {
     loadable.LoadError(message), _ -> admin_ui.error_status(message)
     loadable.Loading, _ -> admin_ui.status("Loading email template...")
@@ -247,7 +247,7 @@ fn detail_view(model: Model) -> Element(Msg) {
           admin_ui.summary_card_with_class(
             "admin-page__policy admin-periodic-jobs-page__summary-card",
             "Updated at",
-            format_timestamp(template.updated_at),
+            admin_format.format_timestamp(template.updated_at),
           ),
         ]),
         admin_ui.section(
@@ -261,7 +261,7 @@ fn detail_view(model: Model) -> Element(Msg) {
             ),
             admin_ui.detail_item(
               "Updated at",
-              format_timestamp(template.updated_at),
+              admin_format.format_timestamp(template.updated_at),
             ),
           ]),
         ),
@@ -269,24 +269,31 @@ fn detail_view(model: Model) -> Element(Msg) {
           title: "Editor",
           copy: "Leave the HTML body empty to store no HTML variant for this email.",
           content: html.div([attribute.class("admin-snippets-page__filters")], [
-            text_input(
+            admin_ui.text_input(
               label: "Subject template",
               help: "Rendered subject line.",
               value: model.draft.subject_template,
+              placeholder: "",
               on_input: SubjectChanged,
             ),
-            textarea_input(
+            admin_ui.textarea_input_with_attrs(
               label: "Text body template",
               help: "Plain text body sent to all recipients.",
               value: model.draft.text_body_template,
               rows: 10,
+              field_class: "",
+              textarea_class: "admin-periodic-jobs-page__payload-input",
+              textarea_attributes: [],
               on_input: TextBodyChanged,
             ),
-            textarea_input(
+            admin_ui.textarea_input_with_attrs(
               label: "HTML body template",
               help: "Optional HTML body.",
               value: model.draft.html_body_template,
               rows: 12,
+              field_class: "",
+              textarea_class: "admin-periodic-jobs-page__payload-input",
+              textarea_attributes: [],
               on_input: HtmlBodyChanged,
             ),
           ]),
@@ -295,47 +302,6 @@ fn detail_view(model: Model) -> Element(Msg) {
     },
     fn(_) { admin_ui.empty_state("This email template could not be loaded.") },
   )
-}
-
-fn text_input(
-  label label: String,
-  help help: String,
-  value value: String,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.input([
-      attribute.class("admin-page__input"),
-      attribute.type_("text"),
-      attribute.value(value),
-      event.on_input(on_input),
-    ]),
-    html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
-  ])
-}
-
-fn textarea_input(
-  label label: String,
-  help help: String,
-  value value: String,
-  rows rows: Int,
-  on_input on_input: fn(String) -> Msg,
-) -> Element(Msg) {
-  html.label([attribute.class("admin-page__field")], [
-    html.span([attribute.class("admin-page__field-label")], [html.text(label)]),
-    html.textarea(
-      [
-        attribute.class(
-          "admin-page__input admin-periodic-jobs-page__payload-input",
-        ),
-        attribute.rows(rows),
-        event.on_input(on_input),
-      ],
-      value,
-    ),
-    html.span([attribute.class("admin-page__field-help")], [html.text(help)]),
-  ])
 }
 
 fn draft_from_template(
@@ -393,8 +359,4 @@ fn tokens_text(tokens: List(String)) -> String {
 
 fn empty_draft() -> Draft {
   Draft(subject_template: "", text_body_template: "", html_body_template: "")
-}
-
-fn format_timestamp(value) -> String {
-  timestamp.to_rfc3339(value, calendar.utc_offset)
 }

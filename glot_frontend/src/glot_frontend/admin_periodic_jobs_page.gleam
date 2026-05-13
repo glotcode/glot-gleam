@@ -15,7 +15,9 @@ import lustre/element.{type Element}
 import lustre/element/html
 
 pub type Model {
-  Model(periodic_jobs: loadable.Loadable(List(periodic_job_dto.PeriodicJobResponse)))
+  Model(
+    periodic_jobs: loadable.Loadable(List(periodic_job_dto.PeriodicJobResponse)),
+  )
 }
 
 pub type Msg {
@@ -27,12 +29,16 @@ pub fn init() -> #(Model, Effect(Msg)) {
 }
 
 pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
-  case loadable.ensure_loaded(
-    model.periodic_jobs,
-    api.get_admin_periodic_jobs(PeriodicJobsLoaded),
-  ) {
-    #(periodic_jobs, next_effect) ->
-      #(Model(periodic_jobs: periodic_jobs), next_effect)
+  case
+    loadable.ensure_loaded(
+      model.periodic_jobs,
+      api.get_admin_periodic_jobs(PeriodicJobsLoaded),
+    )
+  {
+    #(periodic_jobs, next_effect) -> #(
+      Model(periodic_jobs: periodic_jobs),
+      next_effect,
+    )
   }
 }
 
@@ -49,9 +55,9 @@ pub fn update(_model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(
-            periodic_jobs: loadable.LoadError("Could not load periodic jobs."),
-          ),
+          Model(periodic_jobs: loadable.LoadError(
+            "Could not load periodic jobs.",
+          )),
           effect.none(),
         )
       }
@@ -61,23 +67,22 @@ pub fn update(_model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 pub fn view(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
   admin_ui.page(
     title: "Periodic jobs",
-    intro:
-      "Review scheduler definitions, scan health quickly, and open a dedicated detail page when you need to edit one.",
+    intro: "Review scheduler definitions, scan health quickly, and open a dedicated detail page when you need to edit one.",
     content: [
       status_banner(model.periodic_jobs),
       summary_view(model),
       html.div([attribute.class("admin-page__group")], [
-          html.div([attribute.class("admin-page__group-header")], [
-            html.h3([attribute.class("admin-page__group-title")], [
-              html.text("Definitions"),
-            ]),
-            html.p([attribute.class("admin-page__group-copy")], [
-            html.text(
-                "This index stays compact on purpose. Open a periodic job to inspect its payload, timestamps, and editable scheduler settings.",
-              ),
-            ]),
+        html.div([attribute.class("admin-page__group-header")], [
+          html.h3([attribute.class("admin-page__group-title")], [
+            html.text("Definitions"),
           ]),
-          periodic_jobs_content(model, now),
+          html.p([attribute.class("admin-page__group-copy")], [
+            html.text(
+              "This index stays compact on purpose. Open a periodic job to inspect its payload, timestamps, and editable scheduler settings.",
+            ),
+          ]),
+        ]),
+        periodic_jobs_content(model, now),
       ]),
     ],
   )
@@ -181,16 +186,13 @@ fn periodic_job_row(
 fn status_banner(
   state: loadable.Loadable(List(periodic_job_dto.PeriodicJobResponse)),
 ) -> Element(Msg) {
-  loadable.fold(
-    state,
-    html.div([], []),
-    admin_ui.status("Loading periodic jobs..."),
-    fn(_) { html.div([], []) },
-    admin_ui.error_status,
-  )
+  admin_ui.loadable_status(state, "Loading periodic jobs...")
 }
 
-fn periodic_jobs_content(model: Model, now: timestamp.Timestamp) -> Element(Msg) {
+fn periodic_jobs_content(
+  model: Model,
+  now: timestamp.Timestamp,
+) -> Element(Msg) {
   loadable.fold(
     model.periodic_jobs,
     admin_ui.empty_state("No periodic jobs were returned."),
