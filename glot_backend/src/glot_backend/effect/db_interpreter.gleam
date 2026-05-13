@@ -8,6 +8,7 @@ import glot_backend/effect/error
 import glot_backend/effect/handlers
 import glot_backend/effect/job/job_interpreter
 import glot_backend/effect/job_log/job_log_interpreter
+import glot_backend/effect/job_type_policy/job_type_policy_interpreter
 import glot_backend/effect/page_log/page_log_interpreter
 import glot_backend/effect/pageview_log/pageview_log_interpreter
 import glot_backend/effect/periodic_job/periodic_job_interpreter
@@ -40,6 +41,8 @@ pub fn run(
       job_interpreter.run(effect, handlers, state, continue)
     program_types.JobLogEffect(effect) ->
       job_log_interpreter.run(effect, handlers, state, continue)
+    program_types.JobTypePolicyEffect(effect) ->
+      job_type_policy_interpreter.run(effect, handlers, state, continue)
     program_types.PageLogEffect(effect) ->
       page_log_interpreter.run(effect, handlers, state, continue)
     program_types.PageviewLogEffect(effect) ->

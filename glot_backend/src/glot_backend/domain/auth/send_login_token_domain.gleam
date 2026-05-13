@@ -4,6 +4,7 @@ import gleam/option
 import gleam/result
 import glot_backend/context
 import glot_backend/crypto_token
+import glot_backend/domain/job/job_type_policy_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
@@ -70,6 +71,9 @@ pub fn send_login_token(
       error.SendEmailError(error.InternalSendEmailError(message))
     }),
   ))
+  use send_email_policy <- program.and_then(
+    job_type_policy_domain.require_job_type_policy(job_model.SendEmailJob),
+  )
 
   let send_email_job =
     job_model.send_email_job(
@@ -77,6 +81,7 @@ pub fn send_login_token(
       option.Some(ctx.request_id),
       ctx.timestamp,
       login_email,
+      send_email_policy,
     )
 
   let login_token =

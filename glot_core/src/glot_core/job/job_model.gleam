@@ -62,6 +62,18 @@ pub type Status {
   Failed
 }
 
+pub type JobTypePolicy {
+  JobTypePolicy(
+    job_type: JobType,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
 pub type ListJobsFilter {
   ListJobsFilter(
     statuses: List(Status),
@@ -140,6 +152,8 @@ pub type Job {
     attempts: Int,
     max_attempts: Int,
     timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
     completed_at: Option(Timestamp),
@@ -163,8 +177,8 @@ fn new(
   job_type: JobType,
   now: Timestamp,
   payload: Option(String),
+  policy: JobTypePolicy,
 ) -> Job {
-  // TODO: we could make JobType a union type and deserialize the payload here
   Job(
     id: id,
     request_id: request_id,
@@ -173,8 +187,10 @@ fn new(
     payload: payload,
     status: Pending,
     attempts: 0,
-    max_attempts: 5,
-    timeout_seconds: 120,
+    max_attempts: policy.max_attempts,
+    timeout_seconds: policy.timeout_seconds,
+    base_backoff_seconds: policy.base_backoff_seconds,
+    max_backoff_seconds: policy.max_backoff_seconds,
     run_at: now,
     started_at: option.None,
     completed_at: option.None,
@@ -189,6 +205,7 @@ pub fn send_email_job(
   request_id: Option(Uuid),
   now: Timestamp,
   email: email_model.Email,
+  policy: JobTypePolicy,
 ) -> Job {
   new(
     id,
@@ -201,6 +218,7 @@ pub fn send_email_job(
       |> email_model.encode
       |> json.to_string,
     ),
+    policy,
   )
 }
 
@@ -211,6 +229,7 @@ pub fn delete_account_job(
   run_at: Timestamp,
   account_id: Uuid,
   email: email_address_model.EmailAddress,
+  policy: JobTypePolicy,
 ) -> Job {
   let payload =
     DeleteAccountJobPayload(account_id:, email:)
@@ -225,6 +244,7 @@ pub fn delete_account_job(
       DeleteAccountJob,
       now,
       option.Some(payload),
+      policy,
     ),
     run_at: run_at,
   )
@@ -254,8 +274,17 @@ pub fn periodic_job_execution(
   periodic_job_id: Uuid,
   job_type: JobType,
   payload: Option(String),
+  policy: JobTypePolicy,
 ) -> Job {
-  new(id, option.None, option.Some(periodic_job_id), job_type, now, payload)
+  new(
+    id,
+    option.None,
+    option.Some(periodic_job_id),
+    job_type,
+    now,
+    payload,
+    policy,
+  )
 }
 
 pub fn done(job: Job, now: Timestamp) -> Job {

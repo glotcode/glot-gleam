@@ -44,6 +44,7 @@ import glot_backend/effect/error
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
+import glot_backend/effect/job_type_policy/job_type_policy_algebra
 import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
@@ -705,7 +706,7 @@ pub fn update_snippet_rejects_too_long_file_content_test() {
 
 pub fn schedule_delete_account_sets_delete_job_id_test() {
   let delete_job_id = must_uuid("00000000-0000-0000-0000-000000000102")
-  let fixture =
+  let base_fixture =
     integration_fixture(
       next_uuids: [
         must_uuid("00000000-0000-0000-0000-000000000101"),
@@ -713,6 +714,24 @@ pub fn schedule_delete_account_sets_delete_job_id_test() {
       ],
       jobs: [],
       account_delete_job_id: option.None,
+    )
+  let delete_account_policy =
+    job_model.JobTypePolicy(
+      ..test_job_type_policy(job_model.DeleteAccountJob),
+      max_attempts: 9,
+      timeout_seconds: 777,
+    )
+  let fixture =
+    TestFixture(
+      ..base_fixture,
+      db: TestDb(
+        ..base_fixture.db,
+        job_type_policies: dict.insert(
+          base_fixture.db.job_type_policies,
+          job_model.job_type_to_string(job_model.DeleteAccountJob),
+          delete_account_policy,
+        ),
+      ),
     )
 
   let #(run_result, db) =
@@ -731,6 +750,8 @@ pub fn schedule_delete_account_sets_delete_job_id_test() {
 
   assert stored_job_id == delete_job_id
   assert created_job.job_type == job_model.DeleteAccountJob
+  assert created_job.max_attempts == 9
+  assert created_job.timeout_seconds == 777
 }
 
 pub fn schedule_delete_account_rejects_existing_pending_delete_job_test() {
@@ -742,6 +763,7 @@ pub fn schedule_delete_account_rejects_existing_pending_delete_job_test() {
       test_timestamp(),
       test_account_id(),
       test_email_address(),
+      test_job_type_policy(job_model.DeleteAccountJob),
     )
   let fixture =
     integration_fixture(
@@ -783,6 +805,7 @@ pub fn cancel_delete_account_clears_delete_job_id_and_removes_job_test() {
       test_timestamp(),
       test_account_id(),
       test_email_address(),
+      test_job_type_policy(job_model.DeleteAccountJob),
     )
   let fixture =
     integration_fixture(
@@ -808,6 +831,12 @@ pub fn cancel_delete_account_clears_delete_job_id_and_removes_job_test() {
 }
 
 pub fn delete_account_job_execution_removes_data_in_order_test() {
+  let send_email_policy =
+    job_model.JobTypePolicy(
+      ..test_job_type_policy(job_model.SendEmailJob),
+      max_attempts: 3,
+      timeout_seconds: 900,
+    )
   let scheduled_job =
     job_model.delete_account_job(
       must_uuid("00000000-0000-0000-0000-000000000402"),
@@ -816,13 +845,26 @@ pub fn delete_account_job_execution_removes_data_in_order_test() {
       test_timestamp(),
       test_account_id(),
       test_email_address(),
+      test_job_type_policy(job_model.DeleteAccountJob),
     )
   let running_job = job_model.start(scheduled_job, test_timestamp())
-  let fixture =
+  let base_fixture =
     integration_fixture(
       next_uuids: [must_uuid("00000000-0000-0000-0000-000000000403")],
       jobs: [running_job],
       account_delete_job_id: option.Some(running_job.id),
+    )
+  let fixture =
+    TestFixture(
+      ..base_fixture,
+      db: TestDb(
+        ..base_fixture.db,
+        job_type_policies: dict.insert(
+          base_fixture.db.job_type_policies,
+          job_model.job_type_to_string(job_model.SendEmailJob),
+          send_email_policy,
+        ),
+      ),
     )
 
   let #(run_result, db) =
@@ -849,6 +891,8 @@ pub fn delete_account_job_execution_removes_data_in_order_test() {
   assert completed_job.completed_at == option.Some(test_system_time())
   assert created_email_job.job_type == job_model.SendEmailJob
   assert created_email_job.status == job_model.Pending
+  assert created_email_job.max_attempts == 3
+  assert created_email_job.timeout_seconds == 900
   assert list.reverse(db.deletion_steps)
     == [
       "delete_sessions_by_account_id",
@@ -875,9 +919,20 @@ pub fn enqueue_next_due_periodic_job_creates_job_and_advances_schedule_test() {
       updated_at: test_timestamp(),
     )
   let ctx = context.Context(..test_context(), timestamp: test_timestamp())
+  let clean_api_log_policy =
+    job_model.JobTypePolicy(
+      ..test_job_type_policy(job_model.CleanApiLogJob),
+      max_attempts: 2,
+      timeout_seconds: 1800,
+    )
   let db =
     TestDb(
       ..empty_test_db(),
+      job_type_policies: dict.insert(
+        empty_test_db().job_type_policies,
+        job_model.job_type_to_string(job_model.CleanApiLogJob),
+        clean_api_log_policy,
+      ),
       periodic_jobs: dict.from_list([#(uuid_key(periodic_job_id), periodic_job)]),
       next_uuids: [enqueued_job_id],
     )
@@ -898,6 +953,8 @@ pub fn enqueue_next_due_periodic_job_creates_job_and_advances_schedule_test() {
   assert enqueued_job.periodic_job_id == option.Some(periodic_job_id)
   assert enqueued_job.job_type == job_model.CleanApiLogJob
   assert enqueued_job.status == job_model.Pending
+  assert enqueued_job.max_attempts == 2
+  assert enqueued_job.timeout_seconds == 1800
   assert updated_periodic_job.last_enqueued_at == option.Some(test_timestamp())
   assert updated_periodic_job.last_enqueue_error == option.None
   assert updated_periodic_job.next_run_at
@@ -950,6 +1007,8 @@ pub fn clean_jobs_deletes_only_done_jobs_before_cutoff_test() {
       attempts: 1,
       max_attempts: 5,
       timeout_seconds: 120,
+      base_backoff_seconds: 5,
+      max_backoff_seconds: 300,
       run_at: timestamp.from_unix_seconds_and_nanoseconds(1_650_000_000, 0),
       started_at: option.Some(timestamp.from_unix_seconds_and_nanoseconds(
         1_650_000_010,
@@ -1148,6 +1207,7 @@ type TestDb {
     session_ids_by_token: Dict(String, String),
     run_logs: Dict(String, run_log_model.RunLog),
     jobs: Dict(String, job_model.Job),
+    job_type_policies: Dict(String, job_model.JobTypePolicy),
     periodic_jobs: Dict(String, periodic_job_model.PeriodicJob),
     snippets: Dict(String, snippet_model.Snippet),
     user_actions: Dict(String, user_action.UserAction),
@@ -1220,6 +1280,7 @@ fn integration_fixture(
       ]),
       run_logs: dict.new(),
       jobs: dict.from_list(list.map(jobs, fn(job) { #(uuid_key(job.id), job) })),
+      job_type_policies: default_job_type_policies(),
       periodic_jobs: dict.new(),
       snippets: dict.from_list([#(uuid_key(snippet.id), snippet)]),
       user_actions: dict.new(),
@@ -1309,6 +1370,7 @@ fn empty_test_db() -> TestDb {
     session_ids_by_token: dict.new(),
     run_logs: dict.new(),
     jobs: dict.new(),
+    job_type_policies: default_job_type_policies(),
     periodic_jobs: dict.new(),
     snippets: dict.new(),
     user_actions: dict.new(),
@@ -1343,6 +1405,49 @@ fn default_email_templates() -> Dict(String, email_template.EmailTemplate) {
       ),
     ),
   ])
+}
+
+fn default_job_type_policies() -> Dict(String, job_model.JobTypePolicy) {
+  let created_at = test_system_time()
+
+  [
+    job_model.SendEmailJob,
+    job_model.DeleteAccountJob,
+    job_model.CleanApiLogJob,
+    job_model.CleanPageLogJob,
+    job_model.CleanPageviewLogJob,
+    job_model.CleanRunLogJob,
+    job_model.CleanJobLogJob,
+    job_model.CleanJobsJob,
+    job_model.CleanLoginTokensJob,
+    job_model.CleanUserActionsJob,
+    job_model.AggregateMetricsJob,
+  ]
+  |> list.map(fn(job_type) {
+    let policy =
+      job_model.JobTypePolicy(
+        job_type: job_type,
+        max_attempts: 5,
+        timeout_seconds: 120,
+        base_backoff_seconds: 5,
+        max_backoff_seconds: 300,
+        created_at: created_at,
+        updated_at: created_at,
+      )
+    #(job_model.job_type_to_string(job_type), policy)
+  })
+  |> dict.from_list
+}
+
+fn test_job_type_policy(
+  job_type: job_model.JobType,
+) -> job_model.JobTypePolicy {
+  let assert Ok(policy) =
+    dict.get(
+      default_job_type_policies(),
+      job_model.job_type_to_string(job_type),
+    )
+  policy
 }
 
 fn repeat_string(value: String, count: Int) -> String {
@@ -1612,6 +1717,8 @@ fn run_test_db_effect(
       run_test_job_effect(job_effect, ctx, db)
     program_types.JobLogEffect(job_log_effect) ->
       run_test_job_log_effect(job_log_effect, ctx, db)
+    program_types.JobTypePolicyEffect(job_type_policy_effect) ->
+      run_test_job_type_policy_effect(job_type_policy_effect, ctx, db)
     program_types.PageLogEffect(page_log_effect) ->
       run_test_page_log_effect(page_log_effect, ctx, db)
     program_types.PageviewLogEffect(pageview_log_effect) ->
@@ -1647,6 +1754,8 @@ fn run_test_tx_db_effect(
       run_test_job_tx_effect(job_effect, ctx, db)
     program_types.JobLogEffect(job_log_effect) ->
       run_test_job_log_tx_effect(job_log_effect, ctx, db)
+    program_types.JobTypePolicyEffect(job_type_policy_effect) ->
+      run_test_job_type_policy_tx_effect(job_type_policy_effect, ctx, db)
     program_types.PageLogEffect(page_log_effect) ->
       run_test_page_log_tx_effect(page_log_effect, ctx, db)
     program_types.PageviewLogEffect(pageview_log_effect) ->
@@ -1784,6 +1893,30 @@ fn run_test_page_log_effect(
   case effect {
     page_log_algebra.DeletePageLogBefore(before: _, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, db)
+  }
+}
+
+fn run_test_job_type_policy_effect(
+  effect: job_type_policy_algebra.JobTypePolicyEffect(program_types.Program(a)),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    job_type_policy_algebra.GetJobTypePolicyByJobType(job_type:, next:) ->
+      run_test_program(next(find_job_type_policy(db, job_type)), ctx, db)
+  }
+}
+
+fn run_test_job_type_policy_tx_effect(
+  effect: job_type_policy_algebra.JobTypePolicyEffect(
+    program_types.TransactionProgram(a),
+  ),
+  ctx: context.Context,
+  db: TestDb,
+) -> #(Result(a, error.Error), TestDb) {
+  case effect {
+    job_type_policy_algebra.GetJobTypePolicyByJobType(job_type:, next:) ->
+      run_test_tx_program(next(find_job_type_policy(db, job_type)), ctx, db)
   }
 }
 
@@ -2318,6 +2451,15 @@ fn pop_uuid(db: TestDb) -> #(uuid.Uuid, TestDb) {
 fn find_job(db: TestDb, id: uuid.Uuid) -> option.Option(job_model.Job) {
   db.jobs
   |> dict.get(uuid_key(id))
+  |> option.from_result()
+}
+
+fn find_job_type_policy(
+  db: TestDb,
+  job_type: job_model.JobType,
+) -> option.Option(job_model.JobTypePolicy) {
+  db.job_type_policies
+  |> dict.get(job_model.job_type_to_string(job_type))
   |> option.from_result()
 }
 

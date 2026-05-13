@@ -2,6 +2,7 @@ import gleam/json
 import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
+import glot_backend/domain/job/job_type_policy_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
@@ -48,6 +49,9 @@ pub fn schedule_delete_account(
 
   use _ <- program.and_then(require_no_pending_delete(ctx, session.user.account))
   use job_id <- program.and_then(basic_effect.uuid_v7())
+  use delete_account_policy <- program.and_then(
+    job_type_policy_domain.require_job_type_policy(job_model.DeleteAccountJob),
+  )
 
   let delete_job =
     job_model.delete_account_job(
@@ -57,6 +61,7 @@ pub fn schedule_delete_account(
       add_seconds(ctx.timestamp, delete_delay_seconds),
       session.user.account.identity.id,
       session.user.identity.email,
+      delete_account_policy,
     )
   let updated_account =
     account_model.set_delete_job_id(

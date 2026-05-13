@@ -13,6 +13,16 @@ CREATE TABLE IF NOT EXISTS periodic_jobs (
   updated_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS job_type_policies (
+  job_type TEXT PRIMARY KEY, -- Handler discriminator the policy applies to.
+  max_attempts INT NOT NULL, -- Retry limit for new jobs of this type.
+  timeout_seconds INT NOT NULL, -- Max run time in seconds for new jobs of this type.
+  base_backoff_seconds INT NOT NULL, -- Initial retry delay in seconds for new jobs of this type.
+  max_backoff_seconds INT NOT NULL, -- Maximum retry delay in seconds for new jobs of this type.
+  created_at TIMESTAMPTZ NOT NULL, -- Inserted at.
+  updated_at TIMESTAMPTZ NOT NULL
+);
+
 -- JOBS
 
 CREATE TABLE IF NOT EXISTS jobs (
@@ -25,6 +35,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   attempts INT NOT NULL DEFAULT 0, -- Attempts so far.
   max_attempts INT NOT NULL, -- Retry limit.
   timeout_seconds INT NOT NULL, -- Max run time in seconds.
+  base_backoff_seconds INT NOT NULL, -- Initial retry delay in seconds.
+  max_backoff_seconds INT NOT NULL, -- Maximum retry delay in seconds.
   run_at TIMESTAMPTZ NOT NULL, -- Eligible to run at.
   started_at TIMESTAMPTZ NULL, -- Started processing at.
   completed_at TIMESTAMPTZ NULL, -- Completed successfully at.
@@ -343,6 +355,108 @@ CREATE TABLE IF NOT EXISTS job_log (
 
 CREATE INDEX idx_job_log_created_at ON job_log(created_at);
 CREATE INDEX idx_job_log_job_id ON job_log(job_id);
+
+-- JOB TYPE POLICY SEEDS
+
+INSERT INTO job_type_policies (
+  job_type,
+  max_attempts,
+  timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
+  created_at,
+  updated_at
+)
+VALUES (
+  'send_email',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'delete_account',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'clean_api_log',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'clean_page_log',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'clean_pageview_log',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'clean_run_log',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'clean_job_log',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'clean_jobs',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'clean_login_tokens',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'clean_user_actions',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
+  'aggregate_metrics',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+)
+ON CONFLICT (job_type) DO NOTHING;
 
 -- PERIODIC JOB SEEDS
 

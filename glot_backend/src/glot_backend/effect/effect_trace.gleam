@@ -12,6 +12,7 @@ import glot_backend/effect/email_template/email_template_algebra
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
+import glot_backend/effect/job_type_policy/job_type_policy_algebra
 import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
@@ -30,6 +31,7 @@ pub type EffectName {
   EmailTemplateEffectName(email_template_algebra.EffectName)
   JobEffectName(job_algebra.EffectName)
   JobLogEffectName(job_log_algebra.EffectName)
+  JobTypePolicyEffectName(job_type_policy_algebra.EffectName)
   PageLogEffectName(page_log_algebra.EffectName)
   PageviewLogEffectName(pageview_log_algebra.EffectName)
   PeriodicJobEffectName(periodic_job_algebra.EffectName)
@@ -58,6 +60,8 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
       email_template_algebra.effect_name_to_string(name)
     JobEffectName(name) -> job_algebra.effect_name_to_string(name)
     JobLogEffectName(name) -> job_log_algebra.effect_name_to_string(name)
+    JobTypePolicyEffectName(name) ->
+      job_type_policy_algebra.effect_name_to_string(name)
     PageLogEffectName(name) -> page_log_algebra.effect_name_to_string(name)
     PageviewLogEffectName(name) ->
       pageview_log_algebra.effect_name_to_string(name)
@@ -87,6 +91,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     EmailTemplateEffectName(_) -> "email_template"
     JobEffectName(_) -> "job"
     JobLogEffectName(_) -> "job_log"
+    JobTypePolicyEffectName(_) -> "job_type_policy"
     PageLogEffectName(_) -> "page_log"
     PageviewLogEffectName(_) -> "pageview_log"
     PeriodicJobEffectName(_) -> "periodic_job"

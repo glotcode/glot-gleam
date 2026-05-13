@@ -26,6 +26,7 @@ import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/job_log/job_log_handlers
+import glot_backend/effect/job_type_policy/job_type_policy_handlers
 import glot_backend/effect/page_log/page_log_handlers
 import glot_backend/effect/pageview_log/pageview_log_handlers
 import glot_backend/effect/periodic_job/periodic_job_handlers
@@ -300,6 +301,9 @@ fn test_handlers() -> handlers.Handlers {
       delete_before: fn(_, _) { Ok(Nil) },
     ),
     job_log: job_log_handlers.JobLogHandlers(delete_before: fn(_) { Ok(Nil) }),
+    job_type_policy: job_type_policy_handlers.JobTypePolicyHandlers(
+      get_job_type_policy_by_job_type: fn(_) { Ok(option.None) },
+    ),
     page_log: page_log_handlers.PageLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     pageview_log: pageview_log_handlers.PageviewLogHandlers(
       delete_before: fn(_) { Ok(Nil) },

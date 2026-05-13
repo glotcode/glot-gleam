@@ -11,6 +11,7 @@ import glot_backend/effect/error
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
+import glot_backend/effect/job_type_policy/job_type_policy_algebra
 import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
@@ -51,6 +52,7 @@ pub type DbEffect(next) {
   EmailTemplateEffect(email_template_algebra.EmailTemplateEffect(next))
   JobEffect(job_algebra.JobEffect(next))
   JobLogEffect(job_log_algebra.JobLogEffect(next))
+  JobTypePolicyEffect(job_type_policy_algebra.JobTypePolicyEffect(next))
   PageLogEffect(page_log_algebra.PageLogEffect(next))
   PageviewLogEffect(pageview_log_algebra.PageviewLogEffect(next))
   PeriodicJobEffect(periodic_job_algebra.PeriodicJobEffect(next))

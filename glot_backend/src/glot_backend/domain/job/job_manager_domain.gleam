@@ -1,4 +1,3 @@
-import gleam/int
 import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
@@ -21,10 +20,6 @@ import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/transaction/transaction_program
 import glot_core/job/job_model
-
-const base_backoff_seconds = 5
-
-const max_backoff_seconds = 300
 
 pub fn claim_next_job(
   ctx: context.Context,
@@ -123,17 +118,25 @@ fn reschedule_job(
   let rescheduled_job =
     job_model.reschedule(
       j,
-      add_seconds(now, backoff_seconds(j.attempts)),
+      add_seconds(now, backoff_seconds(j)),
       option.Some(error.to_string(err)),
       now,
     )
   job_effect.update_job(rescheduled_job)
 }
 
-fn backoff_seconds(attempts: Int) -> Int {
-  let exponent = int.max(attempts - 1, 0)
+fn backoff_seconds(job: job_model.Job) -> Int {
+  let exponent = case job.attempts <= 1 {
+    True -> 0
+    False -> job.attempts - 1
+  }
   let multiplier = power_of_two(exponent)
-  int.min(base_backoff_seconds * multiplier, max_backoff_seconds)
+  let candidate = job.base_backoff_seconds * multiplier
+
+  case candidate < job.max_backoff_seconds {
+    True -> candidate
+    False -> job.max_backoff_seconds
+  }
 }
 
 fn power_of_two(exponent: Int) -> Int {

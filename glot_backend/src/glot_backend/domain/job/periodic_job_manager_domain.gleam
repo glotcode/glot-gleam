@@ -1,5 +1,6 @@
 import gleam/option
 import glot_backend/context
+import glot_backend/domain/job/job_type_policy_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/job/job_effect
@@ -23,8 +24,16 @@ pub fn enqueue_next_due_periodic_job(
     option.None -> program.succeed(False)
     option.Some(periodic_job) -> {
       use job_id <- program.and_then(basic_effect.uuid_v7())
+      use job_type_policy <- program.and_then(
+        job_type_policy_domain.require_job_type_policy(periodic_job.job_type),
+      )
       use _ <- program.and_then(
-        enqueue_next_due_periodic_job_tx(ctx, job_id, periodic_job)
+        enqueue_next_due_periodic_job_tx(
+          ctx,
+          job_id,
+          periodic_job,
+          job_type_policy,
+        )
         |> transaction_effect.run()
         |> program.attempt(fn(enqueue_error) {
           let failed_periodic_job =
@@ -48,6 +57,7 @@ fn enqueue_next_due_periodic_job_tx(
   ctx: context.Context,
   job_id: uuid.Uuid,
   periodic_job: periodic_job_model.PeriodicJob,
+  job_type_policy: job_model.JobTypePolicy,
 ) -> program_types.TransactionProgram(Nil) {
   let job =
     job_model.periodic_job_execution(
@@ -56,6 +66,7 @@ fn enqueue_next_due_periodic_job_tx(
       periodic_job.id,
       periodic_job.job_type,
       periodic_job.payload,
+      job_type_policy,
     )
   let updated_periodic_job =
     periodic_job_model.enqueued(periodic_job, ctx.timestamp)

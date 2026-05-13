@@ -9,6 +9,8 @@ SELECT
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
@@ -29,6 +31,8 @@ SELECT
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
@@ -54,6 +58,8 @@ SELECT
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
@@ -91,6 +97,8 @@ SELECT
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
@@ -202,13 +210,15 @@ INSERT INTO jobs (
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
   last_error,
   created_at,
   updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);
 
 -- name: InsertPeriodicJob :exec
 INSERT INTO periodic_jobs (
@@ -238,12 +248,14 @@ SET request_id = $2,
     attempts = $7,
     max_attempts = $8,
     timeout_seconds = $9,
-    run_at = $10,
-    started_at = $11,
-    completed_at = $12,
-    last_error = $13,
-    created_at = $14,
-    updated_at = $15
+    base_backoff_seconds = $10,
+    max_backoff_seconds = $11,
+    run_at = $12,
+    started_at = $13,
+    completed_at = $14,
+    last_error = $15,
+    created_at = $16,
+    updated_at = $17
 WHERE id = $1;
 
 -- name: UpdatePeriodicJob :exec

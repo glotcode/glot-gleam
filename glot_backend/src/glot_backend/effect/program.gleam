@@ -16,6 +16,7 @@ import glot_backend/effect/error
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
+import glot_backend/effect/job_type_policy/job_type_policy_algebra
 import glot_backend/effect/page_log/page_log_algebra
 import glot_backend/effect/pageview_log/pageview_log_algebra
 import glot_backend/effect/periodic_job/periodic_job_algebra
@@ -161,6 +162,8 @@ fn map_db_effect(
       program_types.JobEffect(job_algebra.map(effect, f))
     program_types.JobLogEffect(effect) ->
       program_types.JobLogEffect(job_log_algebra.map(effect, f))
+    program_types.JobTypePolicyEffect(effect) ->
+      program_types.JobTypePolicyEffect(job_type_policy_algebra.map(effect, f))
     program_types.PageLogEffect(effect) ->
       program_types.PageLogEffect(page_log_algebra.map(effect, f))
     program_types.PageviewLogEffect(effect) ->

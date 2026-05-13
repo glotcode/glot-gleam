@@ -10,6 +10,7 @@ import glot_backend/effect/email_template/email_template_handlers
 import glot_backend/effect/get_language_version/get_language_version_handlers
 import glot_backend/effect/job/job_handlers
 import glot_backend/effect/job_log/job_log_handlers
+import glot_backend/effect/job_type_policy/job_type_policy_handlers
 import glot_backend/effect/page_log/page_log_handlers
 import glot_backend/effect/pageview_log/pageview_log_handlers
 import glot_backend/effect/periodic_job/periodic_job_handlers
@@ -31,6 +32,7 @@ pub type Handlers {
     get_language_version: get_language_version_handlers.GetLanguageVersionHandlers,
     job: job_handlers.JobHandlers,
     job_log: job_log_handlers.JobLogHandlers,
+    job_type_policy: job_type_policy_handlers.JobTypePolicyHandlers,
     page_log: page_log_handlers.PageLogHandlers,
     pageview_log: pageview_log_handlers.PageviewLogHandlers,
     periodic_job: periodic_job_handlers.PeriodicJobHandlers,
@@ -55,6 +57,7 @@ pub fn new(db: pog.Connection) -> Handlers {
     get_language_version: get_language_version_handlers.new(),
     job: job_handlers.new(db),
     job_log: job_log_handlers.new(db),
+    job_type_policy: job_type_policy_handlers.new(db),
     page_log: page_log_handlers.new(db),
     pageview_log: pageview_log_handlers.new(db),
     periodic_job: periodic_job_handlers.new(db),

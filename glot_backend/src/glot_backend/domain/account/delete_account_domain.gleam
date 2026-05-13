@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/option
 import gleam/result
 import glot_backend/context
+import glot_backend/domain/job/job_type_policy_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/email_template/email_template_effect
@@ -34,6 +35,9 @@ pub fn delete_account(
       error.SendEmailError(error.InternalSendEmailError(message))
     }),
   ))
+  use send_email_policy <- program.and_then(
+    job_type_policy_domain.require_job_type_policy(job_model.SendEmailJob),
+  )
 
   let send_email_job =
     job_model.send_email_job(
@@ -41,6 +45,7 @@ pub fn delete_account(
       option.Some(ctx.request_id),
       ctx.timestamp,
       account_deleted_email,
+      send_email_policy,
     )
 
   transaction_effect.run_all([

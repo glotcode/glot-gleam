@@ -227,6 +227,54 @@ WHERE created_at < $1"
   #(sql, [dev.ParamTimestamp(created_at)])
 }
 
+pub type GetJobTypePolicyByJobType {
+  GetJobTypePolicyByJobType(
+    job_type: String,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn get_job_type_policy_by_job_type(job_type job_type: String) {
+  let sql =
+    "SELECT
+  job_type,
+  max_attempts,
+  timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
+  created_at,
+  updated_at
+FROM job_type_policies
+WHERE job_type = $1"
+  #(sql, [dev.ParamString(job_type)], get_job_type_policy_by_job_type_decoder())
+}
+
+pub fn get_job_type_policy_by_job_type_decoder() -> decode.Decoder(
+  GetJobTypePolicyByJobType,
+) {
+  use job_type <- decode.field(0, decode.string)
+  use max_attempts <- decode.field(1, decode.int)
+  use timeout_seconds <- decode.field(2, decode.int)
+  use base_backoff_seconds <- decode.field(3, decode.int)
+  use max_backoff_seconds <- decode.field(4, decode.int)
+  use created_at <- decode.field(5, dev.datetime_decoder())
+  use updated_at <- decode.field(6, dev.datetime_decoder())
+  decode.success(GetJobTypePolicyByJobType(
+    job_type:,
+    max_attempts:,
+    timeout_seconds:,
+    base_backoff_seconds:,
+    max_backoff_seconds:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
 pub type GetJobById {
   GetJobById(
     id: BitArray,
@@ -238,6 +286,8 @@ pub type GetJobById {
     attempts: Int,
     max_attempts: Int,
     timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
     completed_at: Option(Timestamp),
@@ -259,6 +309,8 @@ pub fn get_job_by_id(id id: BitArray) {
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
@@ -280,12 +332,14 @@ pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
   use attempts <- decode.field(6, decode.int)
   use max_attempts <- decode.field(7, decode.int)
   use timeout_seconds <- decode.field(8, decode.int)
-  use run_at <- decode.field(9, dev.datetime_decoder())
-  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(12, decode.optional(decode.string))
-  use created_at <- decode.field(13, dev.datetime_decoder())
-  use updated_at <- decode.field(14, dev.datetime_decoder())
+  use base_backoff_seconds <- decode.field(9, decode.int)
+  use max_backoff_seconds <- decode.field(10, decode.int)
+  use run_at <- decode.field(11, dev.datetime_decoder())
+  use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(13, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(14, decode.optional(decode.string))
+  use created_at <- decode.field(15, dev.datetime_decoder())
+  use updated_at <- decode.field(16, dev.datetime_decoder())
   decode.success(GetJobById(
     id:,
     request_id:,
@@ -296,6 +350,8 @@ pub fn get_job_by_id_decoder() -> decode.Decoder(GetJobById) {
     attempts:,
     max_attempts:,
     timeout_seconds:,
+    base_backoff_seconds:,
+    max_backoff_seconds:,
     run_at:,
     started_at:,
     completed_at:,
@@ -316,6 +372,8 @@ pub type GetNextJob {
     attempts: Int,
     max_attempts: Int,
     timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
     completed_at: Option(Timestamp),
@@ -337,6 +395,8 @@ pub fn get_next_job(pending_status pending_status: String, now now: Timestamp) {
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
@@ -367,12 +427,14 @@ pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
   use attempts <- decode.field(6, decode.int)
   use max_attempts <- decode.field(7, decode.int)
   use timeout_seconds <- decode.field(8, decode.int)
-  use run_at <- decode.field(9, dev.datetime_decoder())
-  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(12, decode.optional(decode.string))
-  use created_at <- decode.field(13, dev.datetime_decoder())
-  use updated_at <- decode.field(14, dev.datetime_decoder())
+  use base_backoff_seconds <- decode.field(9, decode.int)
+  use max_backoff_seconds <- decode.field(10, decode.int)
+  use run_at <- decode.field(11, dev.datetime_decoder())
+  use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(13, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(14, decode.optional(decode.string))
+  use created_at <- decode.field(15, dev.datetime_decoder())
+  use updated_at <- decode.field(16, dev.datetime_decoder())
   decode.success(GetNextJob(
     id:,
     request_id:,
@@ -383,6 +445,8 @@ pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
     attempts:,
     max_attempts:,
     timeout_seconds:,
+    base_backoff_seconds:,
+    max_backoff_seconds:,
     run_at:,
     started_at:,
     completed_at:,
@@ -403,6 +467,8 @@ pub type ListJobsAfter {
     attempts: Int,
     max_attempts: Int,
     timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
     completed_at: Option(Timestamp),
@@ -430,6 +496,8 @@ pub fn list_jobs_after(
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
@@ -480,12 +548,14 @@ pub fn list_jobs_after_decoder() -> decode.Decoder(ListJobsAfter) {
   use attempts <- decode.field(6, decode.int)
   use max_attempts <- decode.field(7, decode.int)
   use timeout_seconds <- decode.field(8, decode.int)
-  use run_at <- decode.field(9, dev.datetime_decoder())
-  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(12, decode.optional(decode.string))
-  use created_at <- decode.field(13, dev.datetime_decoder())
-  use updated_at <- decode.field(14, dev.datetime_decoder())
+  use base_backoff_seconds <- decode.field(9, decode.int)
+  use max_backoff_seconds <- decode.field(10, decode.int)
+  use run_at <- decode.field(11, dev.datetime_decoder())
+  use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(13, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(14, decode.optional(decode.string))
+  use created_at <- decode.field(15, dev.datetime_decoder())
+  use updated_at <- decode.field(16, dev.datetime_decoder())
   decode.success(ListJobsAfter(
     id:,
     request_id:,
@@ -496,6 +566,8 @@ pub fn list_jobs_after_decoder() -> decode.Decoder(ListJobsAfter) {
     attempts:,
     max_attempts:,
     timeout_seconds:,
+    base_backoff_seconds:,
+    max_backoff_seconds:,
     run_at:,
     started_at:,
     completed_at:,
@@ -516,6 +588,8 @@ pub type ListJobsBefore {
     attempts: Int,
     max_attempts: Int,
     timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
     run_at: Timestamp,
     started_at: Option(Timestamp),
     completed_at: Option(Timestamp),
@@ -543,6 +617,8 @@ pub fn list_jobs_before(
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
@@ -593,12 +669,14 @@ pub fn list_jobs_before_decoder() -> decode.Decoder(ListJobsBefore) {
   use attempts <- decode.field(6, decode.int)
   use max_attempts <- decode.field(7, decode.int)
   use timeout_seconds <- decode.field(8, decode.int)
-  use run_at <- decode.field(9, dev.datetime_decoder())
-  use started_at <- decode.field(10, decode.optional(dev.datetime_decoder()))
-  use completed_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
-  use last_error <- decode.field(12, decode.optional(decode.string))
-  use created_at <- decode.field(13, dev.datetime_decoder())
-  use updated_at <- decode.field(14, dev.datetime_decoder())
+  use base_backoff_seconds <- decode.field(9, decode.int)
+  use max_backoff_seconds <- decode.field(10, decode.int)
+  use run_at <- decode.field(11, dev.datetime_decoder())
+  use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
+  use completed_at <- decode.field(13, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(14, decode.optional(decode.string))
+  use created_at <- decode.field(15, dev.datetime_decoder())
+  use updated_at <- decode.field(16, dev.datetime_decoder())
   decode.success(ListJobsBefore(
     id:,
     request_id:,
@@ -609,6 +687,8 @@ pub fn list_jobs_before_decoder() -> decode.Decoder(ListJobsBefore) {
     attempts:,
     max_attempts:,
     timeout_seconds:,
+    base_backoff_seconds:,
+    max_backoff_seconds:,
     run_at:,
     started_at:,
     completed_at:,
@@ -887,6 +967,8 @@ pub fn insert_job(
   attempts attempts: Int,
   max_attempts max_attempts: Int,
   timeout_seconds timeout_seconds: Int,
+  base_backoff_seconds base_backoff_seconds: Int,
+  max_backoff_seconds max_backoff_seconds: Int,
   run_at run_at: Timestamp,
   started_at started_at: Option(Timestamp),
   completed_at completed_at: Option(Timestamp),
@@ -905,13 +987,15 @@ pub fn insert_job(
   attempts,
   max_attempts,
   timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
   run_at,
   started_at,
   completed_at,
   last_error,
   created_at,
   updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)"
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamNullable(option.map(request_id, fn(v) { dev.ParamBitArray(v) })),
@@ -924,6 +1008,8 @@ pub fn insert_job(
     dev.ParamInt(attempts),
     dev.ParamInt(max_attempts),
     dev.ParamInt(timeout_seconds),
+    dev.ParamInt(base_backoff_seconds),
+    dev.ParamInt(max_backoff_seconds),
     dev.ParamTimestamp(run_at),
     dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
     dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),
@@ -1019,6 +1105,8 @@ pub fn update_job(
   attempts attempts: Int,
   max_attempts max_attempts: Int,
   timeout_seconds timeout_seconds: Int,
+  base_backoff_seconds base_backoff_seconds: Int,
+  max_backoff_seconds max_backoff_seconds: Int,
   run_at run_at: Timestamp,
   started_at started_at: Option(Timestamp),
   completed_at completed_at: Option(Timestamp),
@@ -1036,12 +1124,14 @@ SET request_id = $2,
     attempts = $7,
     max_attempts = $8,
     timeout_seconds = $9,
-    run_at = $10,
-    started_at = $11,
-    completed_at = $12,
-    last_error = $13,
-    created_at = $14,
-    updated_at = $15
+    base_backoff_seconds = $10,
+    max_backoff_seconds = $11,
+    run_at = $12,
+    started_at = $13,
+    completed_at = $14,
+    last_error = $15,
+    created_at = $16,
+    updated_at = $17
 WHERE id = $1"
   #(sql, [
     dev.ParamBitArray(id),
@@ -1055,6 +1145,8 @@ WHERE id = $1"
     dev.ParamInt(attempts),
     dev.ParamInt(max_attempts),
     dev.ParamInt(timeout_seconds),
+    dev.ParamInt(base_backoff_seconds),
+    dev.ParamInt(max_backoff_seconds),
     dev.ParamTimestamp(run_at),
     dev.ParamNullable(option.map(started_at, fn(v) { dev.ParamTimestamp(v) })),
     dev.ParamNullable(option.map(completed_at, fn(v) { dev.ParamTimestamp(v) })),

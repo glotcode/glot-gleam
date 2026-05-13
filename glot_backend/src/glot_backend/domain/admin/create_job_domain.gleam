@@ -2,6 +2,7 @@ import gleam/dynamic
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
+import glot_backend/domain/job/job_type_policy_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
@@ -30,11 +31,15 @@ pub fn create_job(
     |> program.from_result(),
   )
   use job_id <- program.and_then(basic_effect.uuid_v7())
+  use job_type_policy <- program.and_then(
+    job_type_policy_domain.require_job_type_policy(job_type),
+  )
 
   let job =
     new_job(
       request: request,
       job_type: job_type,
+      job_type_policy: job_type_policy,
       job_id: job_id,
       request_id: ctx.request_id,
       now: ctx.timestamp,
@@ -76,6 +81,7 @@ fn validate_request(
 fn new_job(
   request request: job_dto.CreateJobRequest,
   job_type job_type: job_model.JobType,
+  job_type_policy job_type_policy: job_model.JobTypePolicy,
   job_id job_id: Uuid,
   request_id request_id: Uuid,
   now now: Timestamp,
@@ -90,6 +96,8 @@ fn new_job(
     attempts: 0,
     max_attempts: request.max_attempts,
     timeout_seconds: request.timeout_seconds,
+    base_backoff_seconds: job_type_policy.base_backoff_seconds,
+    max_backoff_seconds: job_type_policy.max_backoff_seconds,
     run_at: request.run_at,
     started_at: option.None,
     completed_at: option.None,

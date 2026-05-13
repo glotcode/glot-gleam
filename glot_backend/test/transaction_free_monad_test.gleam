@@ -171,6 +171,7 @@ fn run_db_effect(
 ) -> #(Result(a, error.Error), TestState) {
   case effect {
     program_types.JobEffect(job_effect) -> run_job_effect(job_effect, state)
+    program_types.JobTypePolicyEffect(_) -> unsupported_db_effect(state)
     _ -> unsupported_db_effect(state)
   }
 }
@@ -181,6 +182,7 @@ fn run_tx_db_effect(
 ) -> #(Result(a, error.Error), TestState) {
   case effect {
     program_types.JobEffect(job_effect) -> run_job_tx_effect(job_effect, state)
+    program_types.JobTypePolicyEffect(_) -> unsupported_db_effect(state)
     _ -> unsupported_db_effect(state)
   }
 }
@@ -256,6 +258,8 @@ fn test_job(id: uuid.Uuid) -> job_model.Job {
     attempts: 0,
     max_attempts: 5,
     timeout_seconds: 120,
+    base_backoff_seconds: 5,
+    max_backoff_seconds: 300,
     run_at: now,
     started_at: option.None,
     completed_at: option.None,
