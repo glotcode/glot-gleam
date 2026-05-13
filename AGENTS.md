@@ -23,6 +23,7 @@ Repository instructions for future agent sessions.
 ## Generated Files
 
 - `glot_backend/src/glot_backend/sql.gleam` is generated. Do not hand-edit it unless the task explicitly requires a temporary/manual fix.
+- `./run_parrot.sh` is the script used to generate `glot_backend/src/glot_backend/sql.gleam`.
 - Prefer changing the SQL source files or generation inputs, then regenerating `sql.gleam`.
 
 ## Database
