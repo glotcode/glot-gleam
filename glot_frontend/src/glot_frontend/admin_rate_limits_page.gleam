@@ -895,6 +895,8 @@ fn action_label(action: api_action.ApiAction) -> String {
     api_action.GetAdminJobLogAction -> "Get job log"
     api_action.GetAdminRateLimitPoliciesAction -> "Get admin rate limits"
     api_action.UpsertAdminRateLimitPolicyAction -> "Save admin rate limits"
+    api_action.GetAdminJobTypePoliciesAction -> "Get job type policies"
+    api_action.UpsertAdminJobTypePolicyAction -> "Save job type policy"
     api_action.GetAdminDockerRunConfigAction -> "Get docker run config"
     api_action.UpsertAdminDockerRunConfigAction -> "Save docker run config"
   }

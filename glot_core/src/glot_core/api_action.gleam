@@ -50,6 +50,8 @@ pub type ApiAction {
   GetAdminJobLogAction
   GetAdminRateLimitPoliciesAction
   UpsertAdminRateLimitPolicyAction
+  GetAdminJobTypePoliciesAction
+  UpsertAdminJobTypePolicyAction
   GetAdminDockerRunConfigAction
   UpsertAdminDockerRunConfigAction
 }
@@ -103,6 +105,8 @@ pub fn list() -> List(ApiAction) {
     GetAdminJobLogAction,
     GetAdminRateLimitPoliciesAction,
     UpsertAdminRateLimitPolicyAction,
+    GetAdminJobTypePoliciesAction,
+    UpsertAdminJobTypePolicyAction,
     GetAdminDockerRunConfigAction,
     UpsertAdminDockerRunConfigAction,
   ]
@@ -169,6 +173,8 @@ pub fn to_string(action: ApiAction) -> String {
     GetAdminJobLogAction -> "get_admin_job_log"
     GetAdminRateLimitPoliciesAction -> "get_admin_rate_limit_policies"
     UpsertAdminRateLimitPolicyAction -> "upsert_admin_rate_limit_policy"
+    GetAdminJobTypePoliciesAction -> "get_admin_job_type_policies"
+    UpsertAdminJobTypePolicyAction -> "upsert_admin_job_type_policy"
     GetAdminDockerRunConfigAction -> "get_admin_docker_run_config"
     UpsertAdminDockerRunConfigAction -> "upsert_admin_docker_run_config"
   }
@@ -225,6 +231,9 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
       option.Some(GetAdminRateLimitPoliciesAction)
     "upsert_admin_rate_limit_policy" ->
       option.Some(UpsertAdminRateLimitPolicyAction)
+    "get_admin_job_type_policies" -> option.Some(GetAdminJobTypePoliciesAction)
+    "upsert_admin_job_type_policy" ->
+      option.Some(UpsertAdminJobTypePolicyAction)
     "get_admin_docker_run_config" -> option.Some(GetAdminDockerRunConfigAction)
     "upsert_admin_docker_run_config" ->
       option.Some(UpsertAdminDockerRunConfigAction)

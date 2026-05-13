@@ -227,6 +227,52 @@ WHERE created_at < $1"
   #(sql, [dev.ParamTimestamp(created_at)])
 }
 
+pub type ListJobTypePolicies {
+  ListJobTypePolicies(
+    job_type: String,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn list_job_type_policies() {
+  let sql =
+    "SELECT
+  job_type,
+  max_attempts,
+  timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
+  created_at,
+  updated_at
+FROM job_type_policies
+ORDER BY job_type ASC"
+  #(sql, [], list_job_type_policies_decoder())
+}
+
+pub fn list_job_type_policies_decoder() -> decode.Decoder(ListJobTypePolicies) {
+  use job_type <- decode.field(0, decode.string)
+  use max_attempts <- decode.field(1, decode.int)
+  use timeout_seconds <- decode.field(2, decode.int)
+  use base_backoff_seconds <- decode.field(3, decode.int)
+  use max_backoff_seconds <- decode.field(4, decode.int)
+  use created_at <- decode.field(5, dev.datetime_decoder())
+  use updated_at <- decode.field(6, dev.datetime_decoder())
+  decode.success(ListJobTypePolicies(
+    job_type:,
+    max_attempts:,
+    timeout_seconds:,
+    base_backoff_seconds:,
+    max_backoff_seconds:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
 pub type GetJobTypePolicyByJobType {
   GetJobTypePolicyByJobType(
     job_type: String,
@@ -273,6 +319,41 @@ pub fn get_job_type_policy_by_job_type_decoder() -> decode.Decoder(
     created_at:,
     updated_at:,
   ))
+}
+
+pub fn upsert_job_type_policy(
+  job_type job_type: String,
+  max_attempts max_attempts: Int,
+  timeout_seconds timeout_seconds: Int,
+  base_backoff_seconds base_backoff_seconds: Int,
+  max_backoff_seconds max_backoff_seconds: Int,
+  created_at created_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO job_type_policies (
+  job_type,
+  max_attempts,
+  timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
+  created_at,
+  updated_at
+)
+VALUES ($1, $2, $3, $4, $5, $6, $6)
+ON CONFLICT (job_type) DO UPDATE
+SET max_attempts = EXCLUDED.max_attempts,
+    timeout_seconds = EXCLUDED.timeout_seconds,
+    base_backoff_seconds = EXCLUDED.base_backoff_seconds,
+    max_backoff_seconds = EXCLUDED.max_backoff_seconds,
+    updated_at = EXCLUDED.updated_at"
+  #(sql, [
+    dev.ParamString(job_type),
+    dev.ParamInt(max_attempts),
+    dev.ParamInt(timeout_seconds),
+    dev.ParamInt(base_backoff_seconds),
+    dev.ParamInt(max_backoff_seconds),
+    dev.ParamTimestamp(created_at),
+  ])
 }
 
 pub type GetJobById {

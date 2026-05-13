@@ -13,6 +13,35 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
+    job_type_policy_algebra.ListJobTypePolicies(next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.job_type_policy.list_job_type_policies()
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.JobTypePolicyEffectName(
+                job_type_policy_algebra.ListJobTypePoliciesEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.JobTypePolicyEffectName(
+              job_type_policy_algebra.ListJobTypePoliciesEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     job_type_policy_algebra.GetJobTypePolicyByJobType(job_type:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
@@ -38,6 +67,35 @@ pub fn run(
               job_type_policy_algebra.GetJobTypePolicyByJobTypeEffectName,
             ),
             effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    job_type_policy_algebra.UpsertJobTypePolicy(policy:, now:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.job_type_policy.upsert_job_type_policy(policy, now)
+      case result {
+        Ok(_) ->
+          continue(
+            next(Nil),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.JobTypePolicyEffectName(
+                job_type_policy_algebra.UpsertJobTypePolicyEffectName,
+              ),
+              effect_trace.DbWriteEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.CommandError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.JobTypePolicyEffectName(
+              job_type_policy_algebra.UpsertJobTypePolicyEffectName,
+            ),
+            effect_trace.DbWriteEffectCategory,
             started_at,
           ),
         )

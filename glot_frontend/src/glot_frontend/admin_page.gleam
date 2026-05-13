@@ -77,6 +77,11 @@ pub fn view(_model: Model) -> Element(Msg) {
             description: "Inspect the execution queue and iterate on the admin jobs workflow.",
             target: route.AdminJobs,
           ),
+          link_card(
+            title: "Job type policies",
+            description: "Set retry, timeout, and backoff defaults that new jobs inherit when they are enqueued.",
+            target: route.AdminJobTypePolicies,
+          ),
         ]),
       ]),
       html.div([attribute.class("admin-page__group")], [

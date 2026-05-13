@@ -19,6 +19,7 @@ Repository instructions for future agent sessions.
 - In value positions, constructors and module functions should still be referenced through the module namespace, e.g. `api_action.LoginAction`, `api_action.to_string(action)`, or `user_action.UserAction(...)`.
 - If a file needs both type annotations and module-qualified values from the same module, prefer keeping the `.{type ...}` import and also use the module namespace if Gleam requires it for value references.
 - Avoid destructuring nested structures in patterns unless it is clearly simpler. Prefer simple bindings and read nested fields directly where that improves readability. Avoid introducing `as c`-style whole-value aliases unless they actually make the code clearer.
+- When logic has several sequential steps or guards, prefer flattening it with small helpers and `use`-style early exits instead of nesting `case` expressions.
 
 ## Generated Files
 

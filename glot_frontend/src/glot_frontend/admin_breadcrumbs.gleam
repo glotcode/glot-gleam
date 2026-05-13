@@ -29,7 +29,8 @@ pub fn is_admin_route(current_route: route.Route) -> Bool {
     | route.AdminJobLogs
     | route.AdminJobLog(_)
     | route.AdminConfig
-    | route.AdminRateLimits -> True
+    | route.AdminRateLimits
+    | route.AdminJobTypePolicies -> True
     _ -> False
   }
 }
@@ -60,6 +61,10 @@ fn breadcrumbs(current_route: route.Route) -> List(Crumb) {
     route.AdminRateLimits -> [
       link("Admin", route.Admin),
       current("Rate limits"),
+    ]
+    route.AdminJobTypePolicies -> [
+      link("Admin", route.Admin),
+      current("Job type policies"),
     ]
     route.AdminPeriodicJobs -> [
       link("Admin", route.Admin),

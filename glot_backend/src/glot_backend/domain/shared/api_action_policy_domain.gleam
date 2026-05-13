@@ -472,6 +472,20 @@ fn action_policy(action: ApiAction) -> ApiActionPolicy {
           account_model.ReadOnly,
         ]),
       )
+    api_action.GetAdminJobTypePoliciesAction ->
+      admin_action_policy(
+        AllowedAccountStates([
+          account_model.Active,
+          account_model.ReadOnly,
+        ]),
+      )
+    api_action.UpsertAdminJobTypePolicyAction ->
+      admin_action_policy(
+        AllowedAccountStates([
+          account_model.Active,
+          account_model.ReadOnly,
+        ]),
+      )
     api_action.GetAdminDockerRunConfigAction ->
       admin_action_policy(
         AllowedAccountStates([

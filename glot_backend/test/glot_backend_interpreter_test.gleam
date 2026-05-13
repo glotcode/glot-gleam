@@ -302,7 +302,9 @@ fn test_handlers() -> handlers.Handlers {
     ),
     job_log: job_log_handlers.JobLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     job_type_policy: job_type_policy_handlers.JobTypePolicyHandlers(
+      list_job_type_policies: fn() { Ok([]) },
       get_job_type_policy_by_job_type: fn(_) { Ok(option.None) },
+      upsert_job_type_policy: fn(_, _) { Ok(Nil) },
     ),
     page_log: page_log_handlers.PageLogHandlers(delete_before: fn(_) { Ok(Nil) }),
     pageview_log: pageview_log_handlers.PageviewLogHandlers(

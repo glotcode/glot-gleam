@@ -1902,8 +1902,14 @@ fn run_test_job_type_policy_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    job_type_policy_algebra.ListJobTypePolicies(next:) ->
+      run_test_program(next(list_job_type_policies(db)), ctx, db)
     job_type_policy_algebra.GetJobTypePolicyByJobType(job_type:, next:) ->
       run_test_program(next(find_job_type_policy(db, job_type)), ctx, db)
+    job_type_policy_algebra.UpsertJobTypePolicy(policy:, next:, ..) -> {
+      let next_db = upsert_test_job_type_policy(db, policy)
+      run_test_program(next(Nil), ctx, next_db)
+    }
   }
 }
 
@@ -1915,8 +1921,14 @@ fn run_test_job_type_policy_tx_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
+    job_type_policy_algebra.ListJobTypePolicies(next:) ->
+      run_test_tx_program(next(list_job_type_policies(db)), ctx, db)
     job_type_policy_algebra.GetJobTypePolicyByJobType(job_type:, next:) ->
       run_test_tx_program(next(find_job_type_policy(db, job_type)), ctx, db)
+    job_type_policy_algebra.UpsertJobTypePolicy(policy:, next:, ..) -> {
+      let next_db = upsert_test_job_type_policy(db, policy)
+      run_test_tx_program(next(Nil), ctx, next_db)
+    }
   }
 }
 
@@ -2461,6 +2473,32 @@ fn find_job_type_policy(
   db.job_type_policies
   |> dict.get(job_model.job_type_to_string(job_type))
   |> option.from_result()
+}
+
+fn list_job_type_policies(db: TestDb) -> List(job_model.JobTypePolicy) {
+  db.job_type_policies
+  |> dict.to_list
+  |> list.map(fn(entry) { entry.1 })
+  |> list.sort(fn(a, b) {
+    string.compare(
+      job_model.job_type_to_string(a.job_type),
+      job_model.job_type_to_string(b.job_type),
+    )
+  })
+}
+
+fn upsert_test_job_type_policy(
+  db: TestDb,
+  policy: job_model.JobTypePolicy,
+) -> TestDb {
+  TestDb(
+    ..db,
+    job_type_policies: dict.insert(
+      db.job_type_policies,
+      job_model.job_type_to_string(policy.job_type),
+      policy,
+    ),
+  )
 }
 
 fn find_next_periodic_job(

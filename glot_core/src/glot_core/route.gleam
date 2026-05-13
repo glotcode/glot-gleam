@@ -27,6 +27,7 @@ pub type Route {
   AdminJobLog(id: uuid.Uuid)
   AdminConfig
   AdminRateLimits
+  AdminJobTypePolicies
   AccountSnippets(after: option.Option(String), before: option.Option(String))
   Snippets(
     after: option.Option(String),
@@ -86,6 +87,7 @@ pub fn from_uri(uri: Uri) -> Route {
       }
     ["admin", "config"] -> AdminConfig
     ["admin", "rate-limits"] -> AdminRateLimits
+    ["admin", "job-type-policies"] -> AdminJobTypePolicies
     ["account", "snippets"] -> {
       let #(after, before, _) = snippet_query_params(uri)
       AccountSnippets(after:, before:)
@@ -124,6 +126,7 @@ pub fn to_string(route: Route) -> String {
     AdminJobLog(id) -> "/admin/logs/job-logs/" <> uuid.to_string(id)
     AdminConfig -> "/admin/config"
     AdminRateLimits -> "/admin/rate-limits"
+    AdminJobTypePolicies -> "/admin/job-type-policies"
     AccountSnippets(after:, before:) -> {
       let query = snippet_query_string(after, before, option.None)
       case query {
@@ -168,6 +171,7 @@ pub fn name(route: Route) -> String {
     AdminJobLog(_) -> "admin_job_log"
     AdminConfig -> "admin_config"
     AdminRateLimits -> "admin_rate_limits"
+    AdminJobTypePolicies -> "admin_job_type_policies"
     AccountSnippets(_, _) -> "account_snippets"
     Snippets(_, _, _) -> "snippets"
     NewSnippet(_) -> "new_snippet"

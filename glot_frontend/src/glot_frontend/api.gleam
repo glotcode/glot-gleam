@@ -14,6 +14,7 @@ import glot_core/admin/docker_run_config_dto
 import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
+import glot_core/admin/job_type_policy_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/admin/run_log_dto
@@ -317,6 +318,20 @@ pub fn get_admin_auth_config(
   )
 }
 
+pub fn get_admin_job_type_policies(
+  to_msg: fn(ApiResponse(job_type_policy_dto.ListJobTypePoliciesResponse)) ->
+    msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.GetAdminJobTypePoliciesAction, Nil)
+
+  send_api_request(
+    req,
+    fn(_) { json.null() },
+    job_type_policy_dto.list_response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn get_admin_debug_config(
   to_msg: fn(ApiResponse(debug_config_dto.DebugConfigResponse)) -> msg,
 ) -> effect.Effect(msg) {
@@ -340,6 +355,20 @@ pub fn upsert_admin_debug_config(
     req,
     debug_config_dto.encode_request,
     debug_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_job_type_policy(
+  request: job_type_policy_dto.UpsertJobTypePolicyRequest,
+  to_msg: fn(ApiResponse(job_type_policy_dto.JobTypePolicyResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = ApiRequest(api_action.UpsertAdminJobTypePolicyAction, request)
+
+  send_api_request(
+    req,
+    job_type_policy_dto.encode_request,
+    job_type_policy_dto.policy_response_decoder(),
     to_msg,
   )
 }
