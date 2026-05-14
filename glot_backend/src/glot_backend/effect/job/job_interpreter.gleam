@@ -88,6 +88,35 @@ pub fn run(
         )
       }
     }
+    job_algebra.GetExpiredRunningJob(now:, running_status:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.job.get_expired_running_job(now, running_status)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.JobEffectName(
+                job_algebra.GetExpiredRunningJobEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.JobEffectName(
+              job_algebra.GetExpiredRunningJobEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     job_algebra.GetJobById(id:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.job.get_job_by_id(id)

@@ -43,6 +43,32 @@ pub fn claim_next_job(
   })
 }
 
+pub fn recover_next_expired_job(
+  ctx: context.Context,
+) -> program_types.Program(option.Option(job_model.Job)) {
+  transaction_effect.run({
+    use maybe_job <- transaction_program.and_then(
+      job_effect.get_expired_running_job_tx(ctx.timestamp, job_model.Running),
+    )
+
+    case maybe_job {
+      option.None -> transaction_program.succeed(option.None)
+      option.Some(expired_job) -> {
+        let recovered_job =
+          job_model.timed_out(
+            expired_job,
+            add_seconds(ctx.timestamp, backoff_seconds(expired_job)),
+            ctx.timestamp,
+          )
+        use _ <- transaction_program.and_then(job_effect.update_job_tx(
+          recovered_job,
+        ))
+        transaction_program.succeed(option.Some(recovered_job))
+      }
+    }
+  })
+}
+
 pub fn process_job(
   ctx: context.Context,
   job: job_model.Job,

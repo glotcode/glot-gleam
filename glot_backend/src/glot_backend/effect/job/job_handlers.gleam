@@ -20,6 +20,8 @@ pub type JobHandlers {
       Result(job_model.Summary, error.DbQueryError),
     get_next_job: fn(Timestamp, job_model.Status) ->
       Result(option.Option(job_model.Job), error.DbQueryError),
+    get_expired_running_job: fn(Timestamp, job_model.Status) ->
+      Result(option.Option(job_model.Job), error.DbQueryError),
     get_job_by_id: fn(uuid.Uuid) ->
       Result(option.Option(job_model.Job), error.DbQueryError),
     create_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
@@ -36,6 +38,9 @@ pub fn new(db: pog.Connection) -> JobHandlers {
     summarize_jobs: fn(filter, now) { summarize_jobs(db, filter, now) },
     get_next_job: fn(now, pending_status) {
       get_next_job(db, now, pending_status)
+    },
+    get_expired_running_job: fn(now, running_status) {
+      get_expired_running_job(db, now, running_status)
     },
     get_job_by_id: fn(id) { get_job_by_id(db, id) },
     create_job: fn(job) { create_job(db, job) },
@@ -161,6 +166,30 @@ pub fn get_next_job(
   }
 }
 
+pub fn get_expired_running_job(
+  db: pog.Connection,
+  now: Timestamp,
+  running_status: job_model.Status,
+) -> Result(option.Option(job_model.Job), error.DbQueryError) {
+  use returned <- result.try(
+    db_helpers.query(
+      db,
+      sql.get_expired_running_job(
+        running_status: job_model.status_to_string(running_status),
+        now: option.Some(now),
+      ),
+      fn(err) { error.DbQueryError(string.inspect(err)) },
+    ),
+  )
+
+  case returned.rows {
+    [] -> Ok(option.None)
+    [row] ->
+      get_job_from_expired_running_job_row(row) |> result.map(option.Some)
+    _ -> Error(error.DbQueryError("Expected at most one expired job row"))
+  }
+}
+
 pub fn get_job_by_id(
   db: pog.Connection,
   id: uuid.Uuid,
@@ -276,6 +305,32 @@ pub fn delete_before(
 
 fn get_job_from_next_job_row(
   row: sql.GetNextJob,
+) -> Result(job_model.Job, error.DbQueryError) {
+  get_job(
+    row.id,
+    row.request_id,
+    row.periodic_job_id,
+    row.job_type,
+    row.payload,
+    row.status,
+    row.attempts,
+    row.max_attempts,
+    row.timeout_seconds,
+    row.base_backoff_seconds,
+    row.max_backoff_seconds,
+    row.run_at,
+    row.started_at,
+    row.lease_expires_at,
+    row.completed_at,
+    row.timed_out_at,
+    row.last_error,
+    row.created_at,
+    row.updated_at,
+  )
+}
+
+fn get_job_from_expired_running_job_row(
+  row: sql.GetExpiredRunningJob,
 ) -> Result(job_model.Job, error.DbQueryError) {
   get_job(
     row.id,

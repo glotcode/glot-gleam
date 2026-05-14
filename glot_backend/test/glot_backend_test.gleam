@@ -902,6 +902,52 @@ pub fn delete_account_job_execution_removes_data_in_order_test() {
     ]
 }
 
+pub fn recover_next_expired_job_reschedules_running_job_test() {
+  let scheduled_job =
+    job_model.delete_account_job(
+      must_uuid("00000000-0000-0000-0000-000000000411"),
+      option.Some(test_request_id()),
+      test_timestamp(),
+      test_timestamp(),
+      test_account_id(),
+      test_email_address(),
+      test_job_type_policy(job_model.DeleteAccountJob),
+    )
+  let expired_job =
+    job_model.start(
+      scheduled_job,
+      timestamp.from_unix_seconds_and_nanoseconds(1_699_999_000, 0),
+    )
+  let ctx =
+    context.Context(
+      ..test_context(),
+      timestamp: timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0),
+    )
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [expired_job],
+      account_delete_job_id: option.Some(expired_job.id),
+    )
+
+  let #(run_result, db) =
+    run_test_program(
+      job_manager_domain.recover_next_expired_job(ctx),
+      ctx,
+      fixture.db,
+    )
+
+  let assert Ok(option.Some(recovered_job)) = run_result
+  let assert Ok(stored_job) = dict.get(db.jobs, uuid_key(expired_job.id))
+
+  assert recovered_job.status == job_model.Pending
+  assert recovered_job.started_at == option.None
+  assert recovered_job.lease_expires_at == option.None
+  assert recovered_job.timed_out_at == option.Some(ctx.timestamp)
+  assert recovered_job.last_error == option.Some("timeout_exceeded")
+  assert stored_job == recovered_job
+}
+
 pub fn enqueue_next_due_periodic_job_creates_job_and_advances_schedule_test() {
   let periodic_job_id = must_uuid("00000000-0000-0000-0000-000000000801")
   let enqueued_job_id = must_uuid("00000000-0000-0000-0000-000000000802")
@@ -2241,6 +2287,8 @@ fn run_test_job_effect(
       let _ = pending_status
       run_test_program(next(option.None), ctx, db)
     }
+    job_algebra.GetExpiredRunningJob(now:, running_status:, next:) ->
+      run_test_program(next(find_expired_job(db, now, running_status)), ctx, db)
     job_algebra.GetJobById(id:, next:) ->
       run_test_program(next(find_job(db, id)), ctx, db)
     job_algebra.CreateJob(job, next) ->
@@ -2301,6 +2349,12 @@ fn run_test_job_tx_effect(
       let _ = pending_status
       run_test_tx_program(next(option.None), ctx, db)
     }
+    job_algebra.GetExpiredRunningJob(now:, running_status:, next:) ->
+      run_test_tx_program(
+        next(find_expired_job(db, now, running_status)),
+        ctx,
+        db,
+      )
     job_algebra.GetJobById(id:, next:) ->
       run_test_tx_program(next(find_job(db, id)), ctx, db)
     job_algebra.CreateJob(job, next) ->
@@ -2465,6 +2519,64 @@ fn pop_uuid(db: TestDb) -> #(uuid.Uuid, TestDb) {
 fn find_job(db: TestDb, id: uuid.Uuid) -> option.Option(job_model.Job) {
   db.jobs
   |> dict.get(uuid_key(id))
+  |> option.from_result()
+}
+
+fn find_expired_job(
+  db: TestDb,
+  now: timestamp.Timestamp,
+  status: job_model.Status,
+) -> option.Option(job_model.Job) {
+  db.jobs
+  |> dict.to_list
+  |> list.map(fn(entry) {
+    let #(_, job) = entry
+    job
+  })
+  |> list.filter(fn(job) {
+    job.status == status
+    && case job.lease_expires_at {
+      option.Some(lease_expires_at) ->
+        timestamp_helpers.to_microseconds(lease_expires_at)
+        <= timestamp_helpers.to_microseconds(now)
+      option.None -> False
+    }
+  })
+  |> list.sort(fn(a, b) {
+    case a.lease_expires_at, b.lease_expires_at {
+      option.Some(a_lease), option.Some(b_lease) ->
+        case
+          timestamp_helpers.to_microseconds(a_lease)
+          < timestamp_helpers.to_microseconds(b_lease)
+        {
+          True -> order.Lt
+          False ->
+            case
+              timestamp_helpers.to_microseconds(a_lease)
+              > timestamp_helpers.to_microseconds(b_lease)
+            {
+              True -> order.Gt
+              False ->
+                case
+                  timestamp_helpers.to_microseconds(a.created_at)
+                  < timestamp_helpers.to_microseconds(b.created_at)
+                {
+                  True -> order.Lt
+                  False ->
+                    case
+                      timestamp_helpers.to_microseconds(a.created_at)
+                      > timestamp_helpers.to_microseconds(b.created_at)
+                    {
+                      True -> order.Gt
+                      False -> order.Eq
+                    }
+                }
+            }
+        }
+      _, _ -> order.Eq
+    }
+  })
+  |> list.first
   |> option.from_result()
 }
 

@@ -294,6 +294,9 @@ fn test_handlers() -> handlers.Handlers {
       get_next_job: fn(_: timestamp.Timestamp, _: job_model.Status) {
         Ok(option.None)
       },
+      get_expired_running_job: fn(_: timestamp.Timestamp, _: job_model.Status) {
+        Ok(option.None)
+      },
       get_job_by_id: fn(_) { Ok(option.None) },
       create_job: fn(_) { Ok(Nil) },
       update_job: fn(_) { Ok(Nil) },

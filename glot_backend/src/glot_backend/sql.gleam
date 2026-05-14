@@ -559,6 +559,118 @@ pub fn get_next_job_decoder() -> decode.Decoder(GetNextJob) {
   ))
 }
 
+pub type GetExpiredRunningJob {
+  GetExpiredRunningJob(
+    id: BitArray,
+    request_id: Option(BitArray),
+    periodic_job_id: Option(BitArray),
+    job_type: String,
+    payload: Option(String),
+    status: String,
+    attempts: Int,
+    max_attempts: Int,
+    timeout_seconds: Int,
+    base_backoff_seconds: Int,
+    max_backoff_seconds: Int,
+    run_at: Timestamp,
+    started_at: Option(Timestamp),
+    lease_expires_at: Option(Timestamp),
+    completed_at: Option(Timestamp),
+    timed_out_at: Option(Timestamp),
+    last_error: Option(String),
+    created_at: Timestamp,
+    updated_at: Timestamp,
+  )
+}
+
+pub fn get_expired_running_job(
+  running_status running_status: String,
+  now now: Option(Timestamp),
+) {
+  let sql =
+    "SELECT
+  id,
+  request_id,
+  periodic_job_id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
+  run_at,
+  started_at,
+  lease_expires_at,
+  completed_at,
+  timed_out_at,
+  last_error,
+  created_at,
+  updated_at
+FROM jobs
+WHERE jobs.status = $1
+  AND lease_expires_at IS NOT NULL
+  AND lease_expires_at <= $2
+ORDER BY lease_expires_at ASC, created_at ASC
+LIMIT 1
+FOR UPDATE SKIP LOCKED"
+  #(
+    sql,
+    [
+      dev.ParamString(running_status),
+      dev.ParamNullable(option.map(now, fn(v) { dev.ParamTimestamp(v) })),
+    ],
+    get_expired_running_job_decoder(),
+  )
+}
+
+pub fn get_expired_running_job_decoder() -> decode.Decoder(GetExpiredRunningJob) {
+  use id <- decode.field(0, decode.bit_array)
+  use request_id <- decode.field(1, decode.optional(decode.bit_array))
+  use periodic_job_id <- decode.field(2, decode.optional(decode.bit_array))
+  use job_type <- decode.field(3, decode.string)
+  use payload <- decode.field(4, decode.optional(decode.string))
+  use status <- decode.field(5, decode.string)
+  use attempts <- decode.field(6, decode.int)
+  use max_attempts <- decode.field(7, decode.int)
+  use timeout_seconds <- decode.field(8, decode.int)
+  use base_backoff_seconds <- decode.field(9, decode.int)
+  use max_backoff_seconds <- decode.field(10, decode.int)
+  use run_at <- decode.field(11, dev.datetime_decoder())
+  use started_at <- decode.field(12, decode.optional(dev.datetime_decoder()))
+  use lease_expires_at <- decode.field(
+    13,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use completed_at <- decode.field(14, decode.optional(dev.datetime_decoder()))
+  use timed_out_at <- decode.field(15, decode.optional(dev.datetime_decoder()))
+  use last_error <- decode.field(16, decode.optional(decode.string))
+  use created_at <- decode.field(17, dev.datetime_decoder())
+  use updated_at <- decode.field(18, dev.datetime_decoder())
+  decode.success(GetExpiredRunningJob(
+    id:,
+    request_id:,
+    periodic_job_id:,
+    job_type:,
+    payload:,
+    status:,
+    attempts:,
+    max_attempts:,
+    timeout_seconds:,
+    base_backoff_seconds:,
+    max_backoff_seconds:,
+    run_at:,
+    started_at:,
+    lease_expires_at:,
+    completed_at:,
+    timed_out_at:,
+    last_error:,
+    created_at:,
+    updated_at:,
+  ))
+}
+
 pub type ListJobsAfter {
   ListJobsAfter(
     id: BitArray,

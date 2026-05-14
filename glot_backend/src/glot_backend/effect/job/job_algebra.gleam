@@ -21,6 +21,11 @@ pub type JobEffect(next) {
     pending_status: job_model.Status,
     next: fn(Option(job_model.Job)) -> next,
   )
+  GetExpiredRunningJob(
+    now: Timestamp,
+    running_status: job_model.Status,
+    next: fn(Option(job_model.Job)) -> next,
+  )
   GetJobById(id: Uuid, next: fn(Option(job_model.Job)) -> next)
   CreateJob(job_model.Job, next: fn(Result(Nil, error.DbCommandError)) -> next)
   UpdateJob(job_model.Job, next: fn(Result(Nil, error.DbCommandError)) -> next)
@@ -44,6 +49,12 @@ pub fn map(effect: JobEffect(a), f: fn(a) -> b) -> JobEffect(b) {
       GetNextJob(now: now, pending_status: pending_status, next: fn(value) {
         f(next(value))
       })
+    GetExpiredRunningJob(now:, running_status:, next:) ->
+      GetExpiredRunningJob(
+        now: now,
+        running_status: running_status,
+        next: fn(value) { f(next(value)) },
+      )
     GetJobById(id:, next:) ->
       GetJobById(id: id, next: fn(value) { f(next(value)) })
     CreateJob(job, next) -> CreateJob(job, next: fn(value) { f(next(value)) })
@@ -60,6 +71,7 @@ pub type EffectName {
   ListJobsEffectName
   SummarizeJobsEffectName
   GetNextJobEffectName
+  GetExpiredRunningJobEffectName
   GetJobByIdEffectName
   CreateJobEffectName
   UpdateJobEffectName
@@ -72,6 +84,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     ListJobsEffectName -> "list_jobs"
     SummarizeJobsEffectName -> "summarize_jobs"
     GetNextJobEffectName -> "get_next_job"
+    GetExpiredRunningJobEffectName -> "get_expired_running_job"
     GetJobByIdEffectName -> "get_job_by_id"
     CreateJobEffectName -> "create_job"
     UpdateJobEffectName -> "update_job"

@@ -51,6 +51,35 @@ ORDER BY run_at ASC, created_at ASC
 LIMIT 1
 FOR UPDATE SKIP LOCKED;
 
+-- name: GetExpiredRunningJob :one
+SELECT
+  id,
+  request_id,
+  periodic_job_id,
+  job_type,
+  payload,
+  status,
+  attempts,
+  max_attempts,
+  timeout_seconds,
+  base_backoff_seconds,
+  max_backoff_seconds,
+  run_at,
+  started_at,
+  lease_expires_at,
+  completed_at,
+  timed_out_at,
+  last_error,
+  created_at,
+  updated_at
+FROM jobs
+WHERE jobs.status = @running_status
+  AND lease_expires_at IS NOT NULL
+  AND lease_expires_at <= @now
+ORDER BY lease_expires_at ASC, created_at ASC
+LIMIT 1
+FOR UPDATE SKIP LOCKED;
+
 -- name: ListJobsAfter :many
 SELECT
   id,

@@ -20,6 +20,19 @@ pub fn get_next_job(
   )
 }
 
+pub fn get_expired_running_job(
+  now: Timestamp,
+  running_status: job_model.Status,
+) -> program_types.Program(option.Option(job_model.Job)) {
+  program_types.Impure(
+    program_types.DbEffect(get_expired_running_job_effect(
+      now,
+      running_status,
+      program_types.Pure,
+    )),
+  )
+}
+
 pub fn list_jobs(
   filter filter: job_model.ListJobsFilter,
   pagination pagination: CursorPagination,
@@ -101,6 +114,17 @@ pub fn get_next_job_tx(
   ))
 }
 
+pub fn get_expired_running_job_tx(
+  now: Timestamp,
+  running_status: job_model.Status,
+) -> program_types.TransactionProgram(option.Option(job_model.Job)) {
+  program_types.TxImpure(get_expired_running_job_effect(
+    now,
+    running_status,
+    program_types.TxPure,
+  ))
+}
+
 pub fn create_job_tx(
   job j: job_model.Job,
 ) -> program_types.TransactionProgram(Nil) {
@@ -147,6 +171,18 @@ fn get_next_job_effect(
   program_types.JobEffect(job_algebra.GetNextJob(
     now:,
     pending_status:,
+    next: next,
+  ))
+}
+
+fn get_expired_running_job_effect(
+  now: Timestamp,
+  running_status: job_model.Status,
+  next: fn(option.Option(job_model.Job)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.JobEffect(job_algebra.GetExpiredRunningJob(
+    now: now,
+    running_status: running_status,
     next: next,
   ))
 }

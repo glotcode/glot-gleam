@@ -175,14 +175,39 @@ fn run_once(state: State) -> #(State, Option(Int)) {
 
       case periodic_result {
         Ok(True) -> #(state, option.Some(0))
-        Ok(False) -> claim_and_process_job(state, effect_runtime, ctx)
+        Ok(False) -> recover_or_claim_job(state, effect_runtime, ctx)
         Error(err) -> {
           wisp.log_error(
             "Failed to enqueue periodic job: " <> string.inspect(err),
           )
-          claim_and_process_job(state, effect_runtime, ctx)
+          recover_or_claim_job(state, effect_runtime, ctx)
         }
       }
+    }
+  }
+}
+
+fn recover_or_claim_job(
+  state: State,
+  effect_runtime: runtime.Runtime,
+  ctx: context.Context,
+) -> #(State, Option(Int)) {
+  let #(recovery_result, _) =
+    job_manager_domain.recover_next_expired_job(ctx)
+    |> interpreter.run(effect_runtime, ctx)
+
+  case recovery_result {
+    Ok(option.Some(recovered_job)) -> {
+      insert_job_log(
+        state.db,
+        prepare_recovered_timeout_log_entry(ctx, recovered_job),
+      )
+      #(state, option.Some(0))
+    }
+    Ok(option.None) -> claim_and_process_job(state, effect_runtime, ctx)
+    Error(err) -> {
+      wisp.log_error("Failed to recover expired job: " <> string.inspect(err))
+      claim_and_process_job(state, effect_runtime, ctx)
     }
   }
 }
@@ -312,6 +337,13 @@ fn prepare_timeout_log_entry(
     ),
     created_at: basic_handlers.system_time(),
   )
+}
+
+fn prepare_recovered_timeout_log_entry(
+  ctx: context.Context,
+  job: job_model.Job,
+) -> JobLogEntry {
+  JobLogEntry(..prepare_timeout_log_entry(ctx, job), created_at: ctx.timestamp)
 }
 
 fn prepare_log_entry(
