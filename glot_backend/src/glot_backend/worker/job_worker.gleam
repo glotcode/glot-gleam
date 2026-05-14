@@ -1,4 +1,3 @@
-import exception
 import gleam/erlang/process
 import gleam/json
 import gleam/option.{type Option}
@@ -34,6 +33,17 @@ const idle_poll_ms = 1000
 
 pub type Message {
   Tick
+  AttemptCompleted(pid: process.Pid, log_entry: JobLogEntry)
+  AttemptTimedOut(pid: process.Pid)
+}
+
+type ActiveAttempt {
+  ActiveAttempt(
+    pid: process.Pid,
+    timer: process.Timer,
+    job: job_model.Job,
+    ctx: context.Context,
+  )
 }
 
 type State {
@@ -48,6 +58,7 @@ type State {
     language_version_cache_subject: process.Subject(
       language_version_cache_worker.Message,
     ),
+    active_attempt: Option(ActiveAttempt),
   )
 }
 
@@ -73,6 +84,7 @@ pub fn start(
         server_mode_subject: server_mode_subject,
         app_config_cache_subject: app_config_cache_subject,
         language_version_cache_subject: language_version_cache_subject,
+        active_attempt: option.None,
       )
     let _ = process.send(subject, Tick)
     let initialised = actor.initialised(initial_state)
@@ -111,43 +123,66 @@ fn handle_message(
   message: Message,
 ) -> actor.Next(State, Message) {
   case message {
-    Tick -> {
+    Tick ->
       case server_mode.get_mode(state.server_mode_subject) {
         server_mode.Maintenance -> actor.continue(state)
         server_mode.ShuttingDown -> actor.continue(state)
         server_mode.Running -> {
-          let delay = case run_once(state) {
-            job_model.NoJobs -> idle_poll_ms
-            job_model.JobProcessed -> 0
-          }
-
-          let _ = process.send_after(state.subject, delay, Tick)
-          actor.continue(state)
+          let #(next_state, maybe_delay) = run_once(state)
+          schedule_next_tick(next_state.subject, maybe_delay)
+          actor.continue(next_state)
         }
       }
+    AttemptCompleted(pid, log_entry) -> {
+      let next_state = finish_attempt(state, pid, log_entry)
+      actor.continue(next_state)
+    }
+    AttemptTimedOut(pid) -> {
+      let next_state = timeout_attempt(state, pid)
+      actor.continue(next_state)
     }
   }
 }
 
-fn run_once(state: State) -> job_model.Outcome {
-  let effect_runtime =
-    runtime.new(
-      state.db,
-      state.app_config_cache_subject,
-      state.language_version_cache_subject,
-    )
-  let ctx = context_from_state(state, option.None)
+fn schedule_next_tick(
+  subject: process.Subject(Message),
+  maybe_delay: Option(Int),
+) -> Nil {
+  case maybe_delay {
+    option.Some(delay) -> {
+      let _ = process.send_after(subject, delay, Tick)
+      Nil
+    }
+    option.None -> Nil
+  }
+}
 
-  let #(periodic_result, _) =
-    periodic_job_manager_domain.enqueue_next_due_periodic_job(ctx)
-    |> interpreter.run(effect_runtime, ctx)
+fn run_once(state: State) -> #(State, Option(Int)) {
+  case state.active_attempt {
+    option.Some(_) -> #(state, option.None)
+    option.None -> {
+      let effect_runtime =
+        runtime.new(
+          state.db,
+          state.app_config_cache_subject,
+          state.language_version_cache_subject,
+        )
+      let ctx = context_from_state(state, option.None)
 
-  case periodic_result {
-    Ok(True) -> job_model.JobProcessed
-    Ok(False) -> claim_and_process_job(state, effect_runtime, ctx)
-    Error(err) -> {
-      wisp.log_error("Failed to enqueue periodic job: " <> string.inspect(err))
-      claim_and_process_job(state, effect_runtime, ctx)
+      let #(periodic_result, _) =
+        periodic_job_manager_domain.enqueue_next_due_periodic_job(ctx)
+        |> interpreter.run(effect_runtime, ctx)
+
+      case periodic_result {
+        Ok(True) -> #(state, option.Some(0))
+        Ok(False) -> claim_and_process_job(state, effect_runtime, ctx)
+        Error(err) -> {
+          wisp.log_error(
+            "Failed to enqueue periodic job: " <> string.inspect(err),
+          )
+          claim_and_process_job(state, effect_runtime, ctx)
+        }
+      }
     }
   }
 }
@@ -156,47 +191,127 @@ fn claim_and_process_job(
   state: State,
   effect_runtime: runtime.Runtime,
   ctx: context.Context,
-) -> job_model.Outcome {
+) -> #(State, Option(Int)) {
   let #(result, _) =
     job_manager_domain.claim_next_job(ctx)
     |> interpreter.run(effect_runtime, ctx)
 
   case result {
-    Ok(maybe_job) -> {
+    Ok(maybe_job) ->
       case maybe_job {
-        option.Some(job) -> {
-          process_job(state, job)
-          job_model.JobProcessed
-        }
-        option.None -> job_model.NoJobs
+        option.Some(job) -> #(start_attempt(state, job), option.None)
+        option.None -> #(state, option.Some(idle_poll_ms))
       }
-    }
     Error(err) -> {
       wisp.log_error("Failed to claim job: " <> string.inspect(err))
-      job_model.NoJobs
+      #(state, option.Some(idle_poll_ms))
     }
   }
 }
 
-fn process_job(state: State, job: job_model.Job) -> Nil {
-  job_tracker.job_started(state.job_tracker_subject)
-  use <- exception.defer(fn() {
-    job_tracker.job_finished(state.job_tracker_subject)
-  })
-
-  let effect_runtime =
-    runtime.new(
-      state.db,
-      state.app_config_cache_subject,
-      state.language_version_cache_subject,
-    )
+fn start_attempt(state: State, job: job_model.Job) -> State {
   let ctx = context_from_state(state, job.request_id)
-  let #(result, program_state) =
-    job_manager_domain.process_job(ctx, job)
-    |> interpreter.run(effect_runtime, ctx)
+  let subject = state.subject
+  let db = state.db
+  let app_config_cache_subject = state.app_config_cache_subject
+  let language_version_cache_subject = state.language_version_cache_subject
+  job_tracker.job_started(state.job_tracker_subject)
 
-  let log_entry = prepare_log_entry(ctx, program_state, job, result)
-  insert_job_log(state.db, log_entry)
+  let pid =
+    process.spawn_unlinked(fn() {
+      let effect_runtime =
+        runtime.new(
+          db,
+          app_config_cache_subject,
+          language_version_cache_subject,
+        )
+      let #(result, program_state) =
+        job_manager_domain.process_job(ctx, job)
+        |> interpreter.run(effect_runtime, ctx)
+
+      process.send(
+        subject,
+        AttemptCompleted(
+          process.self(),
+          prepare_log_entry(ctx, program_state, job, result),
+        ),
+      )
+    })
+
+  let timeout_timer =
+    process.send_after(
+      subject,
+      job.timeout_seconds * 1000,
+      AttemptTimedOut(pid),
+    )
+
+  State(
+    ..state,
+    active_attempt: option.Some(ActiveAttempt(pid, timeout_timer, job, ctx)),
+  )
+}
+
+fn finish_attempt(
+  state: State,
+  pid: process.Pid,
+  log_entry: JobLogEntry,
+) -> State {
+  case state.active_attempt {
+    option.Some(active) if active.pid == pid -> {
+      let _ = process.cancel_timer(active.timer)
+      job_tracker.job_finished(state.job_tracker_subject)
+      insert_job_log(state.db, log_entry)
+      let _ = process.send(state.subject, Tick)
+      State(..state, active_attempt: option.None)
+    }
+    _ -> state
+  }
+}
+
+fn timeout_attempt(state: State, pid: process.Pid) -> State {
+  case state.active_attempt {
+    option.Some(active) if active.pid == pid -> {
+      process.kill(active.pid)
+      let effect_runtime =
+        runtime.new(
+          state.db,
+          state.app_config_cache_subject,
+          state.language_version_cache_subject,
+        )
+      let #(result, _) =
+        job_manager_domain.timeout_job(active.ctx, active.job)
+        |> interpreter.run(effect_runtime, active.ctx)
+
+      case result {
+        Ok(_) -> Nil
+        Error(err) ->
+          wisp.log_error("Failed to time out job: " <> string.inspect(err))
+      }
+
+      let timeout_log_entry = prepare_timeout_log_entry(active.ctx, active.job)
+
+      job_tracker.job_finished(state.job_tracker_subject)
+      insert_job_log(state.db, timeout_log_entry)
+      let _ = process.send(state.subject, Tick)
+      State(..state, active_attempt: option.None)
+    }
+    _ -> state
+  }
+}
+
+fn prepare_timeout_log_entry(
+  ctx: context.Context,
+  job: job_model.Job,
+) -> JobLogEntry {
+  JobLogEntry(
+    ..prepare_log_entry(
+      ctx,
+      program_state.new_state(),
+      job,
+      Error(error.ValidationError("timeout_exceeded")),
+    ),
+    created_at: basic_handlers.system_time(),
+  )
 }
 
 fn prepare_log_entry(

@@ -57,6 +57,16 @@ pub fn process_job(
   complete_job(job)
 }
 
+pub fn timeout_job(
+  _ctx: context.Context,
+  job: job_model.Job,
+) -> program_types.Program(Nil) {
+  use now <- program.and_then(basic_effect.system_time())
+  let timed_out_job =
+    job_model.timed_out(job, add_seconds(now, backoff_seconds(job)), now)
+  job_effect.update_job(timed_out_job)
+}
+
 fn delegate_job(
   ctx: context.Context,
   job: job_model.Job,
