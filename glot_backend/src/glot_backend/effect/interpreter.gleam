@@ -68,9 +68,15 @@ fn run_effect(
     program_types.EmailEffect(effect) ->
       email_interpreter.run(effect, ctx, runtime.handlers, state, continue)
     program_types.DockerRunEffect(effect) ->
-      docker_run_interpreter.run(effect, runtime, state, continue)
+      docker_run_interpreter.run(effect, runtime, ctx, state, continue)
     program_types.GetLanguageVersionEffect(effect) ->
-      get_language_version_interpreter.run(effect, runtime, state, continue)
+      get_language_version_interpreter.run(
+        effect,
+        runtime,
+        ctx,
+        state,
+        continue,
+      )
     program_types.DbEffect(effect) ->
       db_interpreter.run(effect, ctx, runtime.handlers, state, continue)
     program_types.TransactionEffect(effect) ->

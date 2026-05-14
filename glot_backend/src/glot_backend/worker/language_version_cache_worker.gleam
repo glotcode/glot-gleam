@@ -25,6 +25,8 @@ const refresh_step_delay_ms = 1000
 
 const refresh_step_jitter_ms = 500
 
+const default_timeout_ms = 60_000
+
 pub type Message {
   GetLanguageVersion(
     language: language_module.Language,
@@ -315,7 +317,11 @@ fn fetch_language_version(
   |> result.try(fn(config) {
     case dynamic_config.docker_run_config(config) {
       option.Some(docker_run) ->
-        docker_run_handlers.run_code(docker_run, run_request(language))
+        docker_run_handlers.run_code(
+          docker_run,
+          run_request(language),
+          default_timeout_ms,
+        )
       option.None ->
         Error(error.InternalRunRequestError("Missing docker_run app_config"))
     }

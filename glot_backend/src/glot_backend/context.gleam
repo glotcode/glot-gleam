@@ -4,6 +4,7 @@ import gleam/option.{type Option}
 import gleam/regexp
 import gleam/result
 import gleam/time/timestamp.{type Timestamp}
+import glot_backend/erlang
 import youid/uuid.{type Uuid}
 
 pub type Context {
@@ -13,9 +14,25 @@ pub type Context {
     request_id: Uuid,
     // started_at is not a timestamp. Used for duration measurement
     started_at: Int,
+    deadline_at_monotonic_ns: Option(Int),
     timestamp: Timestamp,
     client_info: ClientInfo,
   )
+}
+
+pub fn remaining_timeout_ms(ctx: Context) -> Option(Int) {
+  case ctx.deadline_at_monotonic_ns {
+    option.Some(deadline_at_ns) -> {
+      let remaining_ns = deadline_at_ns - erlang.perf_counter_ns()
+      let remaining_ms = remaining_ns / 1_000_000
+
+      case remaining_ms > 0 {
+        True -> option.Some(remaining_ms)
+        False -> option.Some(1)
+      }
+    }
+    option.None -> option.None
+  }
 }
 
 pub type Config {

@@ -167,7 +167,7 @@ fn run_once(state: State) -> #(State, Option(Int)) {
           state.app_config_cache_subject,
           state.language_version_cache_subject,
         )
-      let ctx = context_from_state(state, option.None)
+      let ctx = context_from_state(state, option.None, option.None)
 
       let #(periodic_result, _) =
         periodic_job_manager_domain.enqueue_next_due_periodic_job(ctx)
@@ -235,7 +235,8 @@ fn claim_and_process_job(
 }
 
 fn start_attempt(state: State, job: job_model.Job) -> State {
-  let ctx = context_from_state(state, job.request_id)
+  let ctx =
+    context_from_state(state, job.request_id, option.Some(job.timeout_seconds))
   let subject = state.subject
   let db = state.db
   let app_config_cache_subject = state.app_config_cache_subject
@@ -379,15 +380,20 @@ fn prepare_log_entry(
 fn context_from_state(
   state: State,
   request_id: option.Option(Uuid),
+  timeout_seconds: option.Option(Int),
 ) -> context.Context {
   let now = basic_handlers.system_time()
+  let started_at = erlang.perf_counter_ns()
 
   context.Context(
     config: state.config,
     regexes: state.regexes,
     request_id: request_id
       |> option.lazy_unwrap(fn() { basic_handlers.uuid_v7(now) }),
-    started_at: erlang.perf_counter_ns(),
+    started_at: started_at,
+    deadline_at_monotonic_ns: option.map(timeout_seconds, fn(seconds) {
+      started_at + { seconds * 1_000_000_000 }
+    }),
     timestamp: now,
     client_info: context.empty_client_info(),
   )

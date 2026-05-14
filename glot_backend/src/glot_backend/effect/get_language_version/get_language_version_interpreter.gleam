@@ -1,5 +1,6 @@
 import gleam/option
 import gleam/result
+import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -13,11 +14,14 @@ import glot_backend/worker/language_version_cache_worker
 import glot_core/language
 import glot_core/run
 
+const default_timeout_ms = 60_000
+
 pub fn run(
   effect: get_language_version_algebra.GetLanguageVersionEffect(
     program_types.Program(a),
   ),
   runtime: runtime.Runtime,
+  ctx: context.Context,
   state: program_state.State,
   continue: fn(program_types.Program(a), program_state.State) ->
     #(b, program_state.State),
@@ -36,6 +40,10 @@ pub fn run(
                 runtime.handlers.docker_run.run_code(
                   docker_run,
                   run_request(language),
+                  option.unwrap(
+                    context.remaining_timeout_ms(ctx),
+                    default_timeout_ms,
+                  ),
                 )
               option.None ->
                 Error(error.InternalRunRequestError(

@@ -38,6 +38,7 @@ pub fn post_json(
   url url: String,
   headers headers: dict.Dict(String, String),
   body body: json.Json,
+  timeout_ms timeout_ms: Int,
   decoder decoder: decode.Decoder(a),
 ) -> Result(a, HttpError) {
   use initial_req <- result.try(url_to_request(url))
@@ -54,7 +55,7 @@ pub fn post_json(
 
   let http_config =
     httpc.configure()
-    |> httpc.timeout(60_000)
+    |> httpc.timeout(timeout_ms)
 
   use res <- result.try(
     httpc.dispatch(http_config, req) |> result.map_error(map_http_error),

@@ -1,5 +1,6 @@
 import gleam/option
 import gleam/result
+import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/effect_trace
@@ -10,9 +11,12 @@ import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/worker/app_config_cache_worker
 
+const default_timeout_ms = 60_000
+
 pub fn run(
   effect: docker_run_algebra.DockerRunEffect(program_types.Program(a)),
   runtime: runtime.Runtime,
+  ctx: context.Context,
   state: program_state.State,
   continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
@@ -25,7 +29,14 @@ pub fn run(
         |> result.try(fn(config) {
           case dynamic_config.docker_run_config(config) {
             option.Some(docker_run) ->
-              runtime.handlers.docker_run.run_code(docker_run, request)
+              runtime.handlers.docker_run.run_code(
+                docker_run,
+                request,
+                option.unwrap(
+                  context.remaining_timeout_ms(ctx),
+                  default_timeout_ms,
+                ),
+              )
             option.None ->
               Error(error.InternalRunRequestError(
                 "Missing docker_run app_config",

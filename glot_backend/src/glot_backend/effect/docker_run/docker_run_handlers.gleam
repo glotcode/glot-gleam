@@ -10,7 +10,7 @@ import glot_core/run
 
 pub type DockerRunHandlers {
   DockerRunHandlers(
-    run_code: fn(dynamic_config.DockerRunConfig, run.RunRequest) ->
+    run_code: fn(dynamic_config.DockerRunConfig, run.RunRequest, Int) ->
       Result(run.RunResult, error.RunRequestError),
   )
 }
@@ -22,11 +22,13 @@ pub fn new() -> DockerRunHandlers {
 pub fn run_code(
   cfg: dynamic_config.DockerRunConfig,
   request: run.RunRequest,
+  timeout_ms: Int,
 ) -> Result(run.RunResult, error.RunRequestError) {
   http_client.post_json(
     url: cfg.base_url <> "/run",
     body: run.encode_run_request(request),
     headers: dict.from_list([#("X-Access-Token", cfg.access_token)]),
+    timeout_ms: timeout_ms,
     decoder: run.run_result_decoder(),
   )
   |> result.map_error(map_run_http_error)

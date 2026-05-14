@@ -85,6 +85,7 @@ pub fn main() {
             config: cfg,
             request_id: uuid.v7(),
             started_at: erlang.perf_counter_ns(),
+            deadline_at_monotonic_ns: option.None,
             timestamp: timestamp.system_time(),
             regexes: regexes,
             client_info: get_client_info(req, conn.body),

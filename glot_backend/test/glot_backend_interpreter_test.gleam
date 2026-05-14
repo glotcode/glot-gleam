@@ -354,7 +354,7 @@ fn test_handlers() -> handlers.Handlers {
       create_snippet: fn(_) { Ok(Nil) },
       update_snippet: fn(_) { Ok(Nil) },
     ),
-    docker_run: docker_run_handlers.DockerRunHandlers(run_code: fn(_, _) {
+    docker_run: docker_run_handlers.DockerRunHandlers(run_code: fn(_, _, _) {
       Error(error.InternalRunRequestError("unused in test"))
     }),
     user_action: user_action_handlers.UserActionHandlers(
@@ -393,6 +393,7 @@ fn test_context() -> context.Context {
     regexes: context.Regexes(is_email: is_email),
     request_id: uuid.nil,
     started_at: 0,
+    deadline_at_monotonic_ns: option.None,
     timestamp: timestamp.system_time(),
     client_info: context.ClientInfo(
       session_token: option.None,
