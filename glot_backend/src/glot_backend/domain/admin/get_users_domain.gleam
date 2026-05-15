@@ -28,7 +28,7 @@ pub fn get_users(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.GetAdminUsersAction,
+    action: api_action.admin(api_action.GetAdminUsersAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use users <- program.and_then(auth_effect.list_users(

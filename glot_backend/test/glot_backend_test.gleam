@@ -508,7 +508,7 @@ pub fn send_login_token_for_suspended_user_returns_account_state_error_test() {
   assert run_result
     == Error(
       error.AccountStateError(error.ForbiddenAccountState(
-        action: api_action.SendLoginTokenAction,
+        action: api_action.public(api_action.SendLoginTokenAction),
         account_state: account_model.Suspended,
       )),
     )
@@ -558,7 +558,7 @@ pub fn login_for_suspended_user_returns_account_state_error_test() {
   assert run_result
     == Error(
       error.AccountStateError(error.ForbiddenAccountState(
-        action: api_action.LoginAction,
+        action: api_action.public(api_action.LoginAction),
         account_state: account_model.Suspended,
       )),
     )
@@ -1159,7 +1159,7 @@ pub fn clean_user_actions_deletes_only_old_rows_test() {
     user_action.UserAction(
       id: must_uuid("00000000-0000-0000-0000-000000000b01"),
       request_id: test_request_id(),
-      action: api_action.LoginAction,
+      action: api_action.public(api_action.LoginAction),
       ip: option.Some("127.0.0.1"),
       user_id: option.None,
       created_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),

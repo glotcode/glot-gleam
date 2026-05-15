@@ -3,7 +3,7 @@ import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/error
 import glot_backend/effect/program_types
-import glot_core/api_action.{type ApiAction}
+import glot_core/api_action.{type PublicAction}
 
 pub fn get_dynamic_config_result() -> program_types.Program(
   Result(dynamic_config.DynamicConfig, error.DbQueryError),
@@ -91,7 +91,7 @@ pub fn upsert_cleanup_config(
 }
 
 pub fn upsert_rate_limit_policy(
-  action: ApiAction,
+  action: PublicAction,
   policy: dynamic_config.RateLimitPolicy,
   updated_at: Timestamp,
 ) -> program_types.Program(dynamic_config.DynamicConfig) {

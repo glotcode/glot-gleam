@@ -18,7 +18,7 @@ pub fn get_periodic_job(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.GetAdminPeriodicJobAction,
+    action: api_action.admin(api_action.GetAdminPeriodicJobAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use periodic_job <- program.and_then(

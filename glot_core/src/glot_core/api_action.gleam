@@ -1,8 +1,9 @@
 import gleam/dynamic/decode
 import gleam/json
+import gleam/list
 import gleam/option
 
-pub type ApiAction {
+pub type PublicAction {
   TrackPageviewAction
   RunAction
   GetLanguageVersionAction
@@ -20,6 +21,9 @@ pub type ApiAction {
   DeleteSnippetAction
   SendLoginTokenAction
   LoginAction
+}
+
+pub type AdminAction {
   GetAdminDebugConfigAction
   UpsertAdminDebugConfigAction
   GetAdminAuthConfigAction
@@ -56,7 +60,27 @@ pub type ApiAction {
   UpsertAdminDockerRunConfigAction
 }
 
+pub type ApiAction {
+  PublicAction(PublicAction)
+  AdminAction(AdminAction)
+}
+
+pub fn public(action: PublicAction) -> ApiAction {
+  PublicAction(action)
+}
+
+pub fn admin(action: AdminAction) -> ApiAction {
+  AdminAction(action)
+}
+
 pub fn list() -> List(ApiAction) {
+  list.append(
+    list.map(list_public(), public),
+    list.map(list_admin(), admin),
+  )
+}
+
+pub fn list_public() -> List(PublicAction) {
   [
     TrackPageviewAction,
     RunAction,
@@ -75,6 +99,11 @@ pub fn list() -> List(ApiAction) {
     DeleteSnippetAction,
     SendLoginTokenAction,
     LoginAction,
+  ]
+}
+
+pub fn list_admin() -> List(AdminAction) {
+  [
     GetAdminDebugConfigAction,
     UpsertAdminDebugConfigAction,
     GetAdminAuthConfigAction,
@@ -116,7 +145,24 @@ pub fn decoder() -> decode.Decoder(ApiAction) {
   use action <- decode.then(decode.string)
   case from_string(action) {
     option.Some(action) -> decode.success(action)
-    option.None -> decode.failure(RunAction, "ApiAction")
+    option.None -> decode.failure(public(RunAction), "ApiAction")
+  }
+}
+
+pub fn public_decoder() -> decode.Decoder(PublicAction) {
+  use action <- decode.then(decode.string)
+  case from_public_string(action) {
+    option.Some(action) -> decode.success(action)
+    option.None -> decode.failure(RunAction, "PublicAction")
+  }
+}
+
+pub fn admin_decoder() -> decode.Decoder(AdminAction) {
+  use action <- decode.then(decode.string)
+  case from_admin_string(action) {
+    option.Some(action) -> decode.success(action)
+    option.None ->
+      decode.failure(GetAdminRateLimitPoliciesAction, "AdminAction")
   }
 }
 
@@ -124,7 +170,22 @@ pub fn encode(action: ApiAction) -> json.Json {
   action |> to_string |> json.string
 }
 
+pub fn encode_public(action: PublicAction) -> json.Json {
+  action |> public_to_string |> json.string
+}
+
+pub fn encode_admin(action: AdminAction) -> json.Json {
+  action |> admin_to_string |> json.string
+}
+
 pub fn to_string(action: ApiAction) -> String {
+  case action {
+    PublicAction(action) -> public_to_string(action)
+    AdminAction(action) -> admin_to_string(action)
+  }
+}
+
+pub fn public_to_string(action: PublicAction) -> String {
   case action {
     TrackPageviewAction -> "track_pageview"
     RunAction -> "run"
@@ -143,6 +204,11 @@ pub fn to_string(action: ApiAction) -> String {
     DeleteSnippetAction -> "delete_snippet"
     SendLoginTokenAction -> "send_login_token"
     LoginAction -> "login"
+  }
+}
+
+pub fn admin_to_string(action: AdminAction) -> String {
+  case action {
     GetAdminDebugConfigAction -> "get_admin_debug_config"
     UpsertAdminDebugConfigAction -> "upsert_admin_debug_config"
     GetAdminAuthConfigAction -> "get_admin_auth_config"
@@ -181,6 +247,15 @@ pub fn to_string(action: ApiAction) -> String {
 }
 
 pub fn from_string(action: String) -> option.Option(ApiAction) {
+  case from_public_string(action) {
+    option.Some(action) -> option.Some(public(action))
+    option.None ->
+      from_admin_string(action)
+      |> option.map(admin)
+  }
+}
+
+pub fn from_public_string(action: String) -> option.Option(PublicAction) {
   case action {
     "track_pageview" -> option.Some(TrackPageviewAction)
     "run" -> option.Some(RunAction)
@@ -199,6 +274,12 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     "delete_snippet" -> option.Some(DeleteSnippetAction)
     "send_login_token" -> option.Some(SendLoginTokenAction)
     "login" -> option.Some(LoginAction)
+    _ -> option.None
+  }
+}
+
+pub fn from_admin_string(action: String) -> option.Option(AdminAction) {
+  case action {
     "get_admin_debug_config" -> option.Some(GetAdminDebugConfigAction)
     "upsert_admin_debug_config" -> option.Some(UpsertAdminDebugConfigAction)
     "get_admin_auth_config" -> option.Some(GetAdminAuthConfigAction)

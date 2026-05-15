@@ -17,7 +17,7 @@ pub fn get_email_templates(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.GetAdminEmailTemplatesAction,
+    action: api_action.admin(api_action.GetAdminEmailTemplatesAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use templates <- program.and_then(

@@ -590,7 +590,7 @@ pub fn update_helper(
             ..model,
             run_state: RequestError(
               "Could not complete "
-              <> api_action.to_string(api_action.RunAction)
+              <> api_action.to_string(api_action.public(api_action.RunAction))
               <> ".",
             ),
           ),

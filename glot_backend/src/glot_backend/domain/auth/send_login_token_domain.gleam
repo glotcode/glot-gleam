@@ -35,7 +35,7 @@ pub fn send_login_token(
   ))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.SendLoginTokenAction,
+    action: api_action.public(api_action.SendLoginTokenAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 

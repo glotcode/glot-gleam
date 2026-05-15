@@ -207,7 +207,7 @@ pub fn run(
       let result =
         runtime.handlers.app_config.upsert_entry(
           "rate_limit",
-          api_action.to_string(action),
+          api_action.public_to_string(action),
           dynamic_config.encode_rate_limit_policy(policy) |> json.to_string(),
           updated_at,
         )

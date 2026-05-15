@@ -20,7 +20,7 @@ pub fn upsert_job_type_policy(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.UpsertAdminJobTypePolicyAction,
+    action: api_action.admin(api_action.UpsertAdminJobTypePolicyAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use policy <- program.and_then(policy_from_request(request, ctx.timestamp))

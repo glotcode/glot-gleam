@@ -1,7 +1,7 @@
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/dynamic_config
 import glot_backend/effect/error
-import glot_core/api_action.{type ApiAction}
+import glot_core/api_action.{type PublicAction}
 
 pub type AppConfigEffect(next) {
   GetDynamicConfig(
@@ -23,7 +23,7 @@ pub type AppConfigEffect(next) {
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
   )
   UpsertRateLimitPolicy(
-    action: ApiAction,
+    action: PublicAction,
     policy: dynamic_config.RateLimitPolicy,
     updated_at: Timestamp,
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,

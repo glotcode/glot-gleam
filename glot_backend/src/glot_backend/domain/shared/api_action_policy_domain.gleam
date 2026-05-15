@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option.{type Option}
 import glot_backend/context
 import glot_backend/domain/shared/rate_limit_domain
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -63,12 +64,16 @@ pub fn enforce(
     |> program.from_result(),
   )
 
-  rate_limit_domain.enforce(
-    ctx: ctx,
-    user_id: actor_user_id(actor),
-    account_tier: actor_account_tier(actor),
-    action: action,
-  )
+  case action {
+    api_action.PublicAction(action) ->
+      rate_limit_domain.enforce(
+        ctx: ctx,
+        user_id: actor_user_id(actor),
+        account_tier: actor_account_tier(actor),
+        action: action,
+      )
+    api_action.AdminAction(_) -> create_user_action(ctx, actor, action)
+  }
 }
 
 pub fn actor_from_user(
@@ -186,6 +191,36 @@ fn forbidden_account_state_error(
 
 fn action_policy(action: ApiAction) -> ApiActionPolicy {
   case action {
+    api_action.PublicAction(action) -> public_policy(action)
+    api_action.AdminAction(action) -> admin_policy(action)
+  }
+}
+
+fn create_user_action(
+  ctx: context.Context,
+  actor: ActionActor,
+  action: ApiAction,
+) -> program_types.Program(user_action.UserAction) {
+  use id <- program.and_then(basic_effect.uuid_v7())
+  program.succeed(user_action.UserAction(
+    id: id,
+    request_id: ctx.request_id,
+    action: action,
+    ip: actor_ip(actor, ctx),
+    user_id: actor_user_id(actor),
+    created_at: ctx.timestamp,
+  ))
+}
+
+fn actor_ip(actor: ActionActor, ctx: context.Context) -> Option(String) {
+  case actor {
+    Anonymous -> ctx.client_info.ip
+    KnownUser(_, _, _, _) -> ctx.client_info.ip
+  }
+}
+
+fn public_policy(action: api_action.PublicAction) -> ApiActionPolicy {
+  case action {
     api_action.TrackPageviewAction ->
       public_action_policy(NoAccountStateRequirement)
     api_action.GetLanguageVersionAction ->
@@ -262,245 +297,16 @@ fn action_policy(action: ApiAction) -> ApiActionPolicy {
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
     api_action.RunAction ->
       public_action_policy(AllowedAccountStates([account_model.Active]))
-    api_action.GetAdminDebugConfigAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpsertAdminDebugConfigAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminAuthConfigAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpsertAdminAuthConfigAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminCleanupConfigAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpsertAdminCleanupConfigAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminPeriodicJobsAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminPeriodicJobAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpdateAdminPeriodicJobAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminJobsAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminJobAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.CreateAdminJobAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminEmailTemplatesAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminEmailTemplateAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpdateAdminEmailTemplateAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminSnippetsAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminSnippetAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.DeleteAdminSnippetAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminUsersAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminUserAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpdateAdminUserAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.DeleteAdminAccountAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminApiLogsAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminApiLogAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminRunLogsAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminRunLogAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminJobLogsAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminJobLogAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminRateLimitPoliciesAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpsertAdminRateLimitPolicyAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminJobTypePoliciesAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpsertAdminJobTypePolicyAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.GetAdminDockerRunConfigAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
-    api_action.UpsertAdminDockerRunConfigAction ->
-      admin_action_policy(
-        AllowedAccountStates([
-          account_model.Active,
-          account_model.ReadOnly,
-        ]),
-      )
   }
+}
+
+fn admin_policy(_action: api_action.AdminAction) -> ApiActionPolicy {
+  admin_action_policy(
+    AllowedAccountStates([
+      account_model.Active,
+      account_model.ReadOnly,
+    ]),
+  )
 }
 
 fn public_action_policy(

@@ -48,7 +48,7 @@ pub fn list_public_snippets(
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.ListPublicSnippetsAction,
+    action: api_action.public(api_action.ListPublicSnippetsAction),
     actor: actor,
   ))
 

@@ -17,7 +17,7 @@ pub fn get_rate_limit_policies(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.GetAdminRateLimitPoliciesAction,
+    action: api_action.admin(api_action.GetAdminRateLimitPoliciesAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use config <- program.and_then(app_config_effect.get_dynamic_config())
@@ -36,7 +36,7 @@ pub fn get_rate_limit_policies(
 }
 
 fn rate_limit_policy_response(
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
   policy: dynamic_config.RateLimitPolicy,
 ) -> rate_limit_config_dto.RateLimitPolicyResponse {
   rate_limit_config_dto.RateLimitPolicyResponse(

@@ -18,7 +18,7 @@ pub fn get_job_log(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.GetAdminJobLogAction,
+    action: api_action.admin(api_action.GetAdminJobLogAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use log <- program.and_then(

@@ -49,7 +49,7 @@ pub fn login(
   ))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.LoginAction,
+    action: api_action.public(api_action.LoginAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 

@@ -11,14 +11,14 @@ pub type RateLimitPoliciesResponse {
 
 pub type RateLimitPolicyResponse {
   RateLimitPolicyResponse(
-    action: api_action.ApiAction,
+    action: api_action.PublicAction,
     rules: List(RateLimitRule),
   )
 }
 
 pub type UpsertRateLimitPolicyRequest {
   UpsertRateLimitPolicyRequest(
-    action: api_action.ApiAction,
+    action: api_action.PublicAction,
     rules: List(RateLimitRule),
   )
 }
@@ -41,7 +41,7 @@ pub fn response_decoder() -> decode.Decoder(RateLimitPoliciesResponse) {
 }
 
 pub fn policy_response_decoder() -> decode.Decoder(RateLimitPolicyResponse) {
-  use action <- decode.field("action", api_action.decoder())
+  use action <- decode.field("action", api_action.public_decoder())
   use rules <- decode.field("rules", decode.list(rule_decoder()))
   decode.success(RateLimitPolicyResponse(action:, rules:))
 }
@@ -54,13 +54,13 @@ pub fn encode_response(response: RateLimitPoliciesResponse) -> json.Json {
 
 pub fn encode_policy_response(response: RateLimitPolicyResponse) -> json.Json {
   json.object([
-    #("action", api_action.encode(response.action)),
+    #("action", api_action.encode_public(response.action)),
     #("rules", json.array(response.rules, encode_rule)),
   ])
 }
 
 pub fn decoder() -> decode.Decoder(UpsertRateLimitPolicyRequest) {
-  use action <- decode.field("action", api_action.decoder())
+  use action <- decode.field("action", api_action.public_decoder())
   use rules <- decode.field("rules", decode.list(rule_decoder()))
   decode.success(UpsertRateLimitPolicyRequest(action:, rules:))
 }
@@ -71,7 +71,7 @@ pub fn rules_decoder() -> decode.Decoder(List(RateLimitRule)) {
 
 pub fn encode_request(request: UpsertRateLimitPolicyRequest) -> json.Json {
   json.object([
-    #("action", api_action.encode(request.action)),
+    #("action", api_action.encode_public(request.action)),
     #("rules", encode_rules(request.rules)),
   ])
 }

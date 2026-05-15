@@ -39,7 +39,7 @@ pub fn get_snippet(
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.GetSnippetAction,
+    action: api_action.public(api_action.GetSnippetAction),
     actor: actor,
   ))
 

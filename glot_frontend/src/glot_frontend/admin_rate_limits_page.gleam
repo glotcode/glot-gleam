@@ -29,7 +29,7 @@ pub type Model {
 
 pub type PolicyEditor {
   PolicyEditor(
-    action: api_action.ApiAction,
+    action: api_action.PublicAction,
     saved_tabs: PolicyTabs,
     draft_tabs: PolicyTabs,
     state: mutation.MutationState,
@@ -45,7 +45,7 @@ pub type LimitFields {
 }
 
 pub type ActiveEditor {
-  ActiveEditor(action: api_action.ApiAction, tab: EditorTab)
+  ActiveEditor(action: api_action.PublicAction, tab: EditorTab)
 }
 
 pub type EditorTab {
@@ -58,14 +58,14 @@ pub type Msg {
   PoliciesLoaded(
     api.ApiResponse(rate_limit_config_dto.RateLimitPoliciesResponse),
   )
-  EditClicked(api_action.ApiAction)
+  EditClicked(api_action.PublicAction)
   EditDialogClosed
-  TabSelected(api_action.ApiAction, EditorTab)
-  FieldChanged(api_action.ApiAction, EditorTab, rate_limit.TimeUnit, String)
+  TabSelected(api_action.PublicAction, EditorTab)
+  FieldChanged(api_action.PublicAction, EditorTab, rate_limit.TimeUnit, String)
   CancelClicked
-  SaveClicked(api_action.ApiAction)
+  SaveClicked(api_action.PublicAction)
   SaveFinished(
-    api_action.ApiAction,
+    api_action.PublicAction,
     api.ApiResponse(rate_limit_config_dto.RateLimitPolicyResponse),
   )
 }
@@ -388,7 +388,7 @@ fn edit_dialog(model: Model) -> Element(Msg) {
 
 fn edit_dialog_form(
   policy: PolicyEditor,
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
   active_tab: EditorTab,
 ) -> Element(Msg) {
   let active_fields = tab_fields(policy.draft_tabs, active_tab)
@@ -454,7 +454,7 @@ fn edit_dialog_form(
 }
 
 fn tab_buttons(
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
   active_tab: EditorTab,
 ) -> Element(Msg) {
   html.div([attribute.class("admin-page__tab-row")], [
@@ -465,7 +465,7 @@ fn tab_buttons(
 }
 
 fn tab_button(
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
   tab: EditorTab,
   active_tab: EditorTab,
   label: String,
@@ -486,7 +486,7 @@ fn tab_button(
 }
 
 fn unit_input(
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
   tab: EditorTab,
   unit: rate_limit.TimeUnit,
   label: String,
@@ -530,11 +530,11 @@ fn load_policies() -> Effect(Msg) {
 fn ordered_policy_editors(
   policies: List(rate_limit_config_dto.RateLimitPolicyResponse),
 ) -> List(PolicyEditor) {
-  build_policies(api_action.list(), policies)
+  build_policies(api_action.list_public(), policies)
 }
 
 fn build_policies(
-  actions: List(api_action.ApiAction),
+  actions: List(api_action.PublicAction),
   responses: List(rate_limit_config_dto.RateLimitPolicyResponse),
 ) -> List(PolicyEditor) {
   case actions {
@@ -550,7 +550,7 @@ fn build_policies(
 }
 
 fn policy_editor_from_response(
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
   response: option.Option(rate_limit_config_dto.RateLimitPolicyResponse),
 ) -> PolicyEditor {
   case response {
@@ -819,7 +819,7 @@ fn modal_status(policy: PolicyEditor) -> Element(Msg) {
 
 fn find_policy(
   policies: List(PolicyEditor),
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
 ) -> option.Option(PolicyEditor) {
   list.find(policies, fn(policy) { policy.action == action })
   |> option.from_result()
@@ -827,7 +827,7 @@ fn find_policy(
 
 fn find_policy_response(
   responses: List(rate_limit_config_dto.RateLimitPolicyResponse),
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
 ) -> option.Option(rate_limit_config_dto.RateLimitPolicyResponse) {
   list.find(responses, fn(response) { response.action == action })
   |> option.from_result()
@@ -835,7 +835,7 @@ fn find_policy_response(
 
 fn update_policy(
   policies: List(PolicyEditor),
-  action: api_action.ApiAction,
+  action: api_action.PublicAction,
   update: fn(PolicyEditor) -> PolicyEditor,
 ) -> List(PolicyEditor) {
   list.map(policies, fn(policy) {
@@ -846,7 +846,7 @@ fn update_policy(
   })
 }
 
-fn action_label(action: api_action.ApiAction) -> String {
+fn action_label(action: api_action.PublicAction) -> String {
   case action {
     api_action.TrackPageviewAction -> "Track pageview"
     api_action.RunAction -> "Run code"
@@ -865,39 +865,5 @@ fn action_label(action: api_action.ApiAction) -> String {
     api_action.DeleteSnippetAction -> "Delete snippet"
     api_action.SendLoginTokenAction -> "Send login token"
     api_action.LoginAction -> "Login"
-    api_action.GetAdminDebugConfigAction -> "Get debug config"
-    api_action.UpsertAdminDebugConfigAction -> "Save debug config"
-    api_action.GetAdminAuthConfigAction -> "Get auth config"
-    api_action.UpsertAdminAuthConfigAction -> "Save auth config"
-    api_action.GetAdminCleanupConfigAction -> "Get cleanup config"
-    api_action.UpsertAdminCleanupConfigAction -> "Save cleanup config"
-    api_action.GetAdminPeriodicJobsAction -> "Get periodic jobs"
-    api_action.GetAdminPeriodicJobAction -> "Get periodic job"
-    api_action.UpdateAdminPeriodicJobAction -> "Save periodic job"
-    api_action.GetAdminJobsAction -> "Get admin jobs"
-    api_action.GetAdminJobAction -> "Get admin job"
-    api_action.CreateAdminJobAction -> "Create admin job"
-    api_action.GetAdminEmailTemplatesAction -> "Get email templates"
-    api_action.GetAdminEmailTemplateAction -> "Get email template"
-    api_action.UpdateAdminEmailTemplateAction -> "Save email template"
-    api_action.GetAdminSnippetsAction -> "Get admin snippets"
-    api_action.GetAdminSnippetAction -> "Get admin snippet"
-    api_action.DeleteAdminSnippetAction -> "Delete admin snippet"
-    api_action.GetAdminUsersAction -> "Get admin users"
-    api_action.GetAdminUserAction -> "Get admin user"
-    api_action.UpdateAdminUserAction -> "Update admin user"
-    api_action.DeleteAdminAccountAction -> "Delete admin account"
-    api_action.GetAdminApiLogsAction -> "Get API logs"
-    api_action.GetAdminApiLogAction -> "Get API log"
-    api_action.GetAdminRunLogsAction -> "Get run logs"
-    api_action.GetAdminRunLogAction -> "Get run log"
-    api_action.GetAdminJobLogsAction -> "Get job logs"
-    api_action.GetAdminJobLogAction -> "Get job log"
-    api_action.GetAdminRateLimitPoliciesAction -> "Get admin rate limits"
-    api_action.UpsertAdminRateLimitPolicyAction -> "Save admin rate limits"
-    api_action.GetAdminJobTypePoliciesAction -> "Get job type policies"
-    api_action.UpsertAdminJobTypePolicyAction -> "Save job type policy"
-    api_action.GetAdminDockerRunConfigAction -> "Get docker run config"
-    api_action.UpsertAdminDockerRunConfigAction -> "Save docker run config"
   }
 }

@@ -35,7 +35,7 @@ pub fn get_session(
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.GetSessionAction,
+    action: api_action.public(api_action.GetSessionAction),
     actor: actor,
   ))
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
