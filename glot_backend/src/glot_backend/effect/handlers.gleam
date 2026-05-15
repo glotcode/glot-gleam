@@ -18,7 +18,7 @@ import glot_backend/effect/run_log/run_log_handlers
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
-import pog
+import glot_backend/helpers/db_helpers
 
 pub type Handlers {
   Handlers(
@@ -45,7 +45,7 @@ pub type Handlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> Handlers {
+pub fn new(db: db_helpers.Db) -> Handlers {
   Handlers(
     app_config: app_config_handlers.new(db),
     admin_log: admin_log_handlers.new(db),

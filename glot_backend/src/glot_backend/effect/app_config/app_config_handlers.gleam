@@ -6,7 +6,6 @@ import glot_backend/app_config
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
-import pog
 
 pub type AppConfigHandlers {
   AppConfigHandlers(
@@ -17,7 +16,7 @@ pub type AppConfigHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> AppConfigHandlers {
+pub fn new(db: db_helpers.Db) -> AppConfigHandlers {
   AppConfigHandlers(
     list_entries: fn() { list_entries(db) },
     upsert_entry: fn(namespace, key, value, updated_at) {
@@ -27,7 +26,7 @@ pub fn new(db: pog.Connection) -> AppConfigHandlers {
 }
 
 pub fn list_entries(
-  db: pog.Connection,
+  db: db_helpers.Db,
 ) -> Result(List(app_config.AppConfigEntry), error.DbQueryError) {
   db_helpers.query(db, sql.list_app_config(), fn(err) {
     error.DbQueryError(string.inspect(err))
@@ -48,7 +47,7 @@ fn entries_from_rows(
 }
 
 pub fn upsert_entry(
-  db: pog.Connection,
+  db: db_helpers.Db,
   namespace: String,
   key: String,
   value: String,

@@ -7,7 +7,6 @@ import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/job/job_model
-import pog
 
 pub type JobTypePolicyHandlers {
   JobTypePolicyHandlers(
@@ -20,7 +19,7 @@ pub type JobTypePolicyHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> JobTypePolicyHandlers {
+pub fn new(db: db_helpers.Db) -> JobTypePolicyHandlers {
   JobTypePolicyHandlers(
     list_job_type_policies: fn() { list_job_type_policies(db) },
     get_job_type_policy_by_job_type: fn(job_type) {
@@ -33,7 +32,7 @@ pub fn new(db: pog.Connection) -> JobTypePolicyHandlers {
 }
 
 pub fn list_job_type_policies(
-  db: pog.Connection,
+  db: db_helpers.Db,
 ) -> Result(List(job_model.JobTypePolicy), error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(db, sql.list_job_type_policies(), fn(err) {
@@ -47,7 +46,7 @@ pub fn list_job_type_policies(
 }
 
 pub fn get_job_type_policy_by_job_type(
-  db: pog.Connection,
+  db: db_helpers.Db,
   job_type: job_model.JobType,
 ) -> Result(option.Option(job_model.JobTypePolicy), error.DbQueryError) {
   use returned <- result.try(
@@ -68,7 +67,7 @@ pub fn get_job_type_policy_by_job_type(
 }
 
 pub fn upsert_job_type_policy(
-  db: pog.Connection,
+  db: db_helpers.Db,
   policy: job_model.JobTypePolicy,
   now: Timestamp,
 ) -> Result(Nil, error.DbCommandError) {

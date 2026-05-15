@@ -1,8 +1,34 @@
 import gleam/dynamic/decode
 import gleam/list
+import gleam/option
 import gleam/result
 import parrot/dev
 import pog
+
+pub const default_timeout_ms = 10_000
+
+pub opaque type Db {
+  Db(connection: pog.Connection, timeout_ms: Int)
+}
+
+pub fn new(connection: pog.Connection) -> Db {
+  Db(connection:, timeout_ms: default_timeout_ms)
+}
+
+pub fn override_timeout(db: Db, timeout_ms: option.Option(Int)) -> Db {
+  case timeout_ms {
+    option.Some(timeout_ms) -> Db(..db, timeout_ms: timeout_ms)
+    option.None -> db
+  }
+}
+
+pub fn timeout_ms(db: Db) -> Int {
+  db.timeout_ms
+}
+
+pub fn connection(db: Db) -> pog.Connection {
+  db.connection
+}
 
 pub fn parrot_to_pog(param: dev.Param) -> pog.Value {
   case param {
@@ -24,7 +50,7 @@ pub type ExecuteParams =
   #(String, List(dev.Param))
 
 pub fn execute(
-  db: pog.Connection,
+  db: Db,
   query: ExecuteParams,
   to_error: fn(pog.QueryError) -> e,
 ) -> Result(pog.Returned(Nil), e) {
@@ -32,8 +58,9 @@ pub fn execute(
   let pog_params = list.map(params, parrot_to_pog)
 
   pog.query(sql)
+  |> apply_timeout(db)
   |> add_params(pog_params)
-  |> pog.execute(db)
+  |> pog.execute(db.connection)
   |> result.map_error(to_error)
 }
 
@@ -41,7 +68,7 @@ pub type QueryParams(a) =
   #(String, List(dev.Param), decode.Decoder(a))
 
 pub fn query(
-  db: pog.Connection,
+  db: Db,
   query: QueryParams(a),
   to_error: fn(pog.QueryError) -> e,
 ) -> Result(pog.Returned(a), e) {
@@ -49,10 +76,15 @@ pub fn query(
   let pog_params = list.map(params, parrot_to_pog)
 
   pog.query(sql)
+  |> apply_timeout(db)
   |> add_params(pog_params)
   |> pog.returning(decoder)
-  |> pog.execute(db)
+  |> pog.execute(db.connection)
   |> result.map_error(to_error)
+}
+
+fn apply_timeout(query: pog.Query(a), db: Db) -> pog.Query(a) {
+  pog.timeout(query, db.timeout_ms)
 }
 
 fn add_params(q: pog.Query(Nil), params: List(pog.Value)) -> pog.Query(Nil) {

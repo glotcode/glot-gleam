@@ -446,7 +446,10 @@ fn insert_job_log(db: pog.Connection, entry: JobLogEntry) -> Nil {
         |> option.map(effect_trace.encode_effect_measurements)
         |> option.map(json.to_string),
     )
-  let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
+  let res =
+    db_helpers.execute(db_helpers.new(db), query, fn(err) {
+      string.inspect(err)
+    })
 
   case res {
     Ok(_) -> Nil

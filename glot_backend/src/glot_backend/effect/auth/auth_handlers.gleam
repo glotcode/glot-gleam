@@ -14,7 +14,6 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/uuid_helpers
 import glot_core/pagination_model
-import pog
 import youid/uuid
 
 pub type AuthHandlers {
@@ -55,7 +54,7 @@ pub type AuthHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> AuthHandlers {
+pub fn new(db: db_helpers.Db) -> AuthHandlers {
   AuthHandlers(
     get_user_by_email: fn(is_email, email) {
       get_user_by_email(db, is_email, email)
@@ -92,7 +91,7 @@ pub fn new(db: pog.Connection) -> AuthHandlers {
 }
 
 pub fn get_user_by_email(
-  db: pog.Connection,
+  db: db_helpers.Db,
   is_email: regexp.Regexp,
   user_email: email_address_model.EmailAddress,
 ) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
@@ -105,7 +104,7 @@ pub fn get_user_by_email(
 }
 
 pub fn get_user_by_id(
-  db: pog.Connection,
+  db: db_helpers.Db,
   is_email: regexp.Regexp,
   id: uuid.Uuid,
 ) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
@@ -116,7 +115,7 @@ pub fn get_user_by_id(
 }
 
 pub fn list_users(
-  db: pog.Connection,
+  db: db_helpers.Db,
   is_email: regexp.Regexp,
   pagination: pagination_model.CursorPagination,
   filters: auth_algebra.UserListFilters,
@@ -193,7 +192,7 @@ pub fn list_users(
 }
 
 pub fn list_login_tokens_by_email(
-  db: pog.Connection,
+  db: db_helpers.Db,
   email: email_address_model.EmailAddress,
   limit: Int,
 ) -> Result(List(login_token_model.LoginToken), error.DbQueryError) {
@@ -206,7 +205,7 @@ pub fn list_login_tokens_by_email(
 }
 
 pub fn get_session_by_token(
-  db: pog.Connection,
+  db: db_helpers.Db,
   is_email: regexp.Regexp,
   token: String,
 ) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
@@ -217,7 +216,7 @@ pub fn get_session_by_token(
 }
 
 pub fn create_user(
-  db: pog.Connection,
+  db: db_helpers.Db,
   user: user_model.User,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -240,7 +239,7 @@ pub fn create_user(
 }
 
 pub fn create_account(
-  db: pog.Connection,
+  db: db_helpers.Db,
   account: account_model.Account,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -264,7 +263,7 @@ pub fn create_account(
 }
 
 pub fn update_account(
-  db: pog.Connection,
+  db: db_helpers.Db,
   account: account_model.Account,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -288,7 +287,7 @@ pub fn update_account(
 }
 
 pub fn update_user(
-  db: pog.Connection,
+  db: db_helpers.Db,
   user: user_model.User,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -311,7 +310,7 @@ pub fn update_user(
 }
 
 pub fn create_login_token(
-  db: pog.Connection,
+  db: db_helpers.Db,
   login_token: login_token_model.LoginToken,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -331,7 +330,7 @@ pub fn create_login_token(
 }
 
 pub fn create_session(
-  db: pog.Connection,
+  db: db_helpers.Db,
   session: session_model.Session,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -352,7 +351,7 @@ pub fn create_session(
 }
 
 pub fn delete_session(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: uuid.Uuid,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -362,7 +361,7 @@ pub fn delete_session(
 }
 
 pub fn delete_sessions_by_account_id(
-  db: pog.Connection,
+  db: db_helpers.Db,
   account_id: uuid.Uuid,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -376,7 +375,7 @@ pub fn delete_sessions_by_account_id(
 }
 
 pub fn delete_users_by_account_id(
-  db: pog.Connection,
+  db: db_helpers.Db,
   account_id: uuid.Uuid,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -390,7 +389,7 @@ pub fn delete_users_by_account_id(
 }
 
 pub fn delete_account(
-  db: pog.Connection,
+  db: db_helpers.Db,
   account_id: uuid.Uuid,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -404,7 +403,7 @@ pub fn delete_account(
 }
 
 pub fn update_login_token(
-  db: pog.Connection,
+  db: db_helpers.Db,
   login_token: login_token_model.LoginToken,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -424,7 +423,7 @@ pub fn update_login_token(
 }
 
 pub fn delete_login_tokens_before(
-  db: pog.Connection,
+  db: db_helpers.Db,
   before: Timestamp,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }

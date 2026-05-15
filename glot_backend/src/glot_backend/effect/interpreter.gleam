@@ -60,26 +60,35 @@ fn run_effect(
   continue: fn(program_types.Program(a), program_state.State) ->
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
+  let effect_runtime =
+    runtime.with_timeout(runtime, context.remaining_timeout_ms(ctx))
+
   case effect {
     program_types.AppConfigEffect(effect) ->
-      app_config_interpreter.run(effect, runtime, state, continue)
+      app_config_interpreter.run(effect, effect_runtime, state, continue)
     program_types.BasicEffect(effect) ->
-      basic_interpreter.run(effect, ctx, runtime, state, continue)
+      basic_interpreter.run(effect, ctx, effect_runtime, state, continue)
     program_types.EmailEffect(effect) ->
-      email_interpreter.run(effect, ctx, runtime.handlers, state, continue)
+      email_interpreter.run(
+        effect,
+        ctx,
+        effect_runtime.handlers,
+        state,
+        continue,
+      )
     program_types.DockerRunEffect(effect) ->
-      docker_run_interpreter.run(effect, runtime, ctx, state, continue)
+      docker_run_interpreter.run(effect, effect_runtime, ctx, state, continue)
     program_types.GetLanguageVersionEffect(effect) ->
       get_language_version_interpreter.run(
         effect,
-        runtime,
+        effect_runtime,
         ctx,
         state,
         continue,
       )
     program_types.DbEffect(effect) ->
-      db_interpreter.run(effect, ctx, runtime.handlers, state, continue)
+      db_interpreter.run(effect, ctx, effect_runtime.handlers, state, continue)
     program_types.TransactionEffect(effect) ->
-      transaction_interpreter.run(effect, runtime, ctx, state, continue)
+      transaction_interpreter.run(effect, effect_runtime, ctx, state, continue)
   }
 }

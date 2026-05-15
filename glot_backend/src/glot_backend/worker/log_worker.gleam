@@ -323,7 +323,10 @@ fn insert_api_logs(
           |> json.to_string,
         )
 
-      let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
+      let res =
+        db_helpers.execute(db_helpers.new(db), query, fn(err) {
+          string.inspect(err)
+        })
 
       case res {
         Ok(_) -> Ok(Nil)
@@ -346,7 +349,10 @@ fn insert_page_logs(
           |> json.to_string,
         )
 
-      let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
+      let res =
+        db_helpers.execute(db_helpers.new(db), query, fn(err) {
+          string.inspect(err)
+        })
 
       case res {
         Ok(_) -> Ok(Nil)
@@ -369,7 +375,10 @@ fn insert_pageview_logs(
           |> json.to_string,
         )
 
-      let res = db_helpers.execute(db, query, fn(err) { string.inspect(err) })
+      let res =
+        db_helpers.execute(db_helpers.new(db), query, fn(err) {
+          string.inspect(err)
+        })
 
       case res {
         Ok(_) -> Ok(Nil)

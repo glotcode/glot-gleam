@@ -1,4 +1,5 @@
 import gleam/list
+import gleam/option
 import gleam/result
 import gleam/string
 import glot_backend/context
@@ -12,6 +13,7 @@ import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/transaction/transaction_program_interpreter
 import glot_backend/erlang
+import glot_backend/helpers/db_helpers
 import pog
 
 pub fn run(
@@ -56,10 +58,15 @@ fn run_in_transaction(
   Result(program_types.Program(a), error.DbTransactionError),
   program_state.State,
 ) {
-  transaction_handlers.run(runtime.handlers.transaction, fn(tx) {
+  let timeout_ms =
+    context.remaining_timeout_ms(ctx)
+    |> option.unwrap(db_helpers.default_timeout_ms)
+
+  transaction_handlers.run(runtime.handlers.transaction, timeout_ms, fn(tx_db) {
     let transaction_runtime =
       runtime.from_parts(
-        handlers.new(tx),
+        option.Some(db_helpers.connection(tx_db)),
+        handlers.new(tx_db),
         runtime.app_config_cache_subject,
         runtime.language_version_cache_subject,
       )
@@ -89,6 +96,10 @@ fn collapse_transaction_result(
     Ok(#(value, state)) -> #(Ok(value), state)
     Error(transaction_handlers.MissingConnection) -> #(
       Error(error.DbTransactionError("Missing transaction db")),
+      program_state.new_state(),
+    )
+    Error(transaction_handlers.StatementTimeoutSetupError(query_error)) -> #(
+      Error(error.DbTransactionError(string.inspect(query_error))),
       program_state.new_state(),
     )
     Error(transaction_handlers.TransactionError(pog.TransactionRolledBack(#(

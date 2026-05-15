@@ -4,7 +4,6 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
-import pog
 
 pub type PageviewLogHandlers {
   PageviewLogHandlers(
@@ -12,12 +11,12 @@ pub type PageviewLogHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> PageviewLogHandlers {
+pub fn new(db: db_helpers.Db) -> PageviewLogHandlers {
   PageviewLogHandlers(delete_before: fn(before) { delete_before(db, before) })
 }
 
 pub fn delete_before(
-  db: pog.Connection,
+  db: db_helpers.Db,
   before: Timestamp,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }

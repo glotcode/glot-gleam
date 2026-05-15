@@ -5,7 +5,6 @@ import gleam/time/calendar
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
-import pog
 
 pub type AnalyticsHandlers {
   AnalyticsHandlers(
@@ -28,7 +27,7 @@ pub type AnalyticsHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> AnalyticsHandlers {
+pub fn new(db: db_helpers.Db) -> AnalyticsHandlers {
   AnalyticsHandlers(
     get_max_completed_metrics_day: fn() { get_max_completed_metrics_day(db) },
     get_first_metrics_source_day: fn(before) {
@@ -54,7 +53,7 @@ pub fn new(db: pog.Connection) -> AnalyticsHandlers {
 }
 
 pub fn get_max_completed_metrics_day(
-  db: pog.Connection,
+  db: db_helpers.Db,
 ) -> Result(option.Option(calendar.Date), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
   use returned <- result.try(db_helpers.query(
@@ -71,7 +70,7 @@ pub fn get_max_completed_metrics_day(
 }
 
 pub fn get_first_metrics_source_day(
-  db: pog.Connection,
+  db: db_helpers.Db,
   before: calendar.Date,
 ) -> Result(option.Option(calendar.Date), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
@@ -89,49 +88,49 @@ pub fn get_first_metrics_source_day(
 }
 
 pub fn insert_metrics_pageview_day(
-  db: pog.Connection,
+  db: db_helpers.Db,
   day: calendar.Date,
 ) -> Result(Nil, error.DbCommandError) {
   execute_rollup(db, sql.insert_metrics_pageview_day(day))
 }
 
 pub fn insert_metrics_product_event_day(
-  db: pog.Connection,
+  db: db_helpers.Db,
   day: calendar.Date,
 ) -> Result(Nil, error.DbCommandError) {
   execute_rollup(db, sql.insert_metrics_product_event_day(day))
 }
 
 pub fn insert_metrics_run_day(
-  db: pog.Connection,
+  db: db_helpers.Db,
   day: calendar.Date,
 ) -> Result(Nil, error.DbCommandError) {
   execute_rollup(db, sql.insert_metrics_run_day(day))
 }
 
 pub fn insert_metrics_reliability_page_day(
-  db: pog.Connection,
+  db: db_helpers.Db,
   day: calendar.Date,
 ) -> Result(Nil, error.DbCommandError) {
   execute_rollup(db, sql.insert_metrics_reliability_page_day(day))
 }
 
 pub fn insert_metrics_reliability_api_day(
-  db: pog.Connection,
+  db: db_helpers.Db,
   day: calendar.Date,
 ) -> Result(Nil, error.DbCommandError) {
   execute_rollup(db, sql.insert_metrics_reliability_api_day(day))
 }
 
 pub fn insert_metrics_completed_day(
-  db: pog.Connection,
+  db: db_helpers.Db,
   day: calendar.Date,
 ) -> Result(Nil, error.DbCommandError) {
   execute_rollup(db, sql.insert_metrics_completed_day(day))
 }
 
 fn execute_rollup(
-  db: pog.Connection,
+  db: db_helpers.Db,
   query: db_helpers.ExecuteParams,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }

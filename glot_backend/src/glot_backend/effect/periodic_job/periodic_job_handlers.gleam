@@ -9,7 +9,6 @@ import glot_backend/sql
 import glot_core/helpers/uuid_helpers
 import glot_core/job/job_model
 import glot_core/periodic_job/periodic_job_model
-import pog
 import youid/uuid
 
 pub type PeriodicJobHandlers {
@@ -27,7 +26,7 @@ pub type PeriodicJobHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> PeriodicJobHandlers {
+pub fn new(db: db_helpers.Db) -> PeriodicJobHandlers {
   PeriodicJobHandlers(
     list_periodic_jobs: fn() { list_periodic_jobs(db) },
     get_next_periodic_job: fn(now) { get_next_periodic_job(db, now) },
@@ -42,7 +41,7 @@ pub fn new(db: pog.Connection) -> PeriodicJobHandlers {
 }
 
 pub fn list_periodic_jobs(
-  db: pog.Connection,
+  db: db_helpers.Db,
 ) -> Result(List(periodic_job_model.PeriodicJob), error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(db, sql.list_periodic_jobs(), fn(err) {
@@ -56,7 +55,7 @@ pub fn list_periodic_jobs(
 }
 
 pub fn get_next_periodic_job(
-  db: pog.Connection,
+  db: db_helpers.Db,
   now: Timestamp,
 ) -> Result(option.Option(periodic_job_model.PeriodicJob), error.DbQueryError) {
   use returned <- result.try(
@@ -73,7 +72,7 @@ pub fn get_next_periodic_job(
 }
 
 pub fn get_periodic_job_by_id(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: uuid.Uuid,
 ) -> Result(option.Option(periodic_job_model.PeriodicJob), error.DbQueryError) {
   use returned <- result.try(
@@ -92,7 +91,7 @@ pub fn get_periodic_job_by_id(
 }
 
 pub fn create_periodic_job(
-  db: pog.Connection,
+  db: db_helpers.Db,
   periodic_job: periodic_job_model.PeriodicJob,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -117,7 +116,7 @@ pub fn create_periodic_job(
 }
 
 pub fn update_periodic_job(
-  db: pog.Connection,
+  db: db_helpers.Db,
   periodic_job: periodic_job_model.PeriodicJob,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }

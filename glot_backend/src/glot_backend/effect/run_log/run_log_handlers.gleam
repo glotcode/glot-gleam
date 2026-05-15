@@ -7,7 +7,6 @@ import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/language
 import glot_core/run_log_model
-import pog
 import youid/uuid
 
 pub type RunLogHandlers {
@@ -18,7 +17,7 @@ pub type RunLogHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> RunLogHandlers {
+pub fn new(db: db_helpers.Db) -> RunLogHandlers {
   RunLogHandlers(
     create_run_log: fn(run_log) { create_run_log(db, run_log) },
     delete_before: fn(before) { delete_before(db, before) },
@@ -26,7 +25,7 @@ pub fn new(db: pog.Connection) -> RunLogHandlers {
 }
 
 pub fn create_run_log(
-  db: pog.Connection,
+  db: db_helpers.Db,
   run_log: run_log_model.RunLog,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -50,7 +49,7 @@ pub fn create_run_log(
 }
 
 pub fn delete_before(
-  db: pog.Connection,
+  db: db_helpers.Db,
   before: Timestamp,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }

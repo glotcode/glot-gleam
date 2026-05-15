@@ -9,7 +9,6 @@ import glot_backend/sql
 import glot_core/api_action
 import glot_core/rate_limit
 import glot_core/user_action
-import pog
 import youid/uuid
 
 pub type UserActionHandlers {
@@ -22,7 +21,7 @@ pub type UserActionHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> UserActionHandlers {
+pub fn new(db: db_helpers.Db) -> UserActionHandlers {
   UserActionHandlers(
     count_user_actions: fn(filter) { count_user_actions(db, filter) },
     create_user_action: fn(user_action) { create_user_action(db, user_action) },
@@ -31,7 +30,7 @@ pub fn new(db: pog.Connection) -> UserActionHandlers {
 }
 
 pub fn count_user_actions(
-  db: pog.Connection,
+  db: db_helpers.Db,
   filter: user_action.UserActionFilter,
 ) -> Result(List(rate_limit.WindowCount), error.DbQueryError) {
   case filter.count_by {
@@ -63,7 +62,7 @@ pub fn count_user_actions(
 }
 
 pub fn create_user_action(
-  db: pog.Connection,
+  db: db_helpers.Db,
   user_action: user_action.UserAction,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -84,7 +83,7 @@ pub fn create_user_action(
 }
 
 pub fn delete_before(
-  db: pog.Connection,
+  db: db_helpers.Db,
   before: Timestamp,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }

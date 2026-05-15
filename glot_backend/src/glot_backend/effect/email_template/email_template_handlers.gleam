@@ -6,7 +6,6 @@ import glot_backend/effect/error
 import glot_backend/email_template
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
-import pog
 
 pub type EmailTemplateHandlers {
   EmailTemplateHandlers(
@@ -19,7 +18,7 @@ pub type EmailTemplateHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> EmailTemplateHandlers {
+pub fn new(db: db_helpers.Db) -> EmailTemplateHandlers {
   EmailTemplateHandlers(
     list_email_templates: fn() { list_email_templates(db) },
     get_email_template_by_name: fn(name) {
@@ -30,7 +29,7 @@ pub fn new(db: pog.Connection) -> EmailTemplateHandlers {
 }
 
 pub fn list_email_templates(
-  db: pog.Connection,
+  db: db_helpers.Db,
 ) -> Result(List(email_template.EmailTemplate), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
   use returned <- result.try(db_helpers.query(
@@ -46,7 +45,7 @@ pub fn list_email_templates(
 }
 
 pub fn get_email_template_by_name(
-  db: pog.Connection,
+  db: db_helpers.Db,
   name: email_template.EmailTemplateName,
 ) -> Result(option.Option(email_template.EmailTemplate), error.DbQueryError) {
   let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
@@ -67,7 +66,7 @@ pub fn get_email_template_by_name(
 }
 
 pub fn update_email_template(
-  db: pog.Connection,
+  db: db_helpers.Db,
   template: email_template.EmailTemplate,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }

@@ -15,7 +15,6 @@ import glot_core/pagination_model.{type CursorPagination}
 import glot_core/snippet/snippet_model.{
   type HydratedSnippet, type ListSnippetsFilter, type Snippet,
 }
-import pog
 import youid/uuid
 
 pub type SnippetHandlers {
@@ -38,7 +37,7 @@ pub type SnippetHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> SnippetHandlers {
+pub fn new(db: db_helpers.Db) -> SnippetHandlers {
   SnippetHandlers(
     get_snippet_by_id: fn(id) { get_snippet_by_id(db, id) },
     get_snippet_by_slug: fn(slug) { get_snippet_by_slug(db, slug) },
@@ -59,7 +58,7 @@ pub fn new(db: pog.Connection) -> SnippetHandlers {
 }
 
 pub fn get_snippet_by_id(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: BitArray,
 ) -> Result(option.Option(HydratedSnippet), error.DbQueryError) {
   use returned <- result.try(
@@ -76,7 +75,7 @@ pub fn get_snippet_by_id(
 }
 
 pub fn get_snippet_by_slug(
-  db: pog.Connection,
+  db: db_helpers.Db,
   slug: String,
 ) -> Result(option.Option(HydratedSnippet), error.DbQueryError) {
   use returned <- result.try(
@@ -93,7 +92,7 @@ pub fn get_snippet_by_slug(
 }
 
 pub fn get_admin_snippet_by_slug(
-  db: pog.Connection,
+  db: db_helpers.Db,
   slug: String,
 ) -> Result(option.Option(HydratedSnippet), error.DbQueryError) {
   use returned <- result.try(
@@ -110,7 +109,7 @@ pub fn get_admin_snippet_by_slug(
 }
 
 pub fn list_snippets(
-  db: pog.Connection,
+  db: db_helpers.Db,
   filter: ListSnippetsFilter,
   pagination: CursorPagination,
 ) -> Result(List(HydratedSnippet), error.DbQueryError) {
@@ -180,7 +179,7 @@ pub fn list_snippets(
 }
 
 pub fn list_admin_snippets(
-  db: pog.Connection,
+  db: db_helpers.Db,
   username: option.Option(String),
   pagination: CursorPagination,
 ) -> Result(List(HydratedSnippet), error.DbQueryError) {
@@ -224,7 +223,7 @@ pub fn list_admin_snippets(
 }
 
 pub fn create_snippet(
-  db: pog.Connection,
+  db: db_helpers.Db,
   snippet: Snippet,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -256,7 +255,7 @@ pub fn create_snippet(
 }
 
 pub fn delete_snippet(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: BitArray,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -266,7 +265,7 @@ pub fn delete_snippet(
 }
 
 pub fn delete_snippets_by_account_id(
-  db: pog.Connection,
+  db: db_helpers.Db,
   account_id: uuid.Uuid,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -670,7 +669,7 @@ fn snippet_from_row(
 }
 
 pub fn update_snippet(
-  db: pog.Connection,
+  db: db_helpers.Db,
   snippet: Snippet,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }

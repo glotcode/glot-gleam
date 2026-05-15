@@ -5,6 +5,7 @@ import gleam/otp/actor
 import gleam/otp/supervision
 import gleam/result
 import gleam/string
+import glot_backend/helpers/db_helpers
 import glot_backend/server_mode
 import pog
 import wisp
@@ -101,6 +102,7 @@ fn continue_monitoring(state: State) -> actor.Next(State, Message) {
 
 fn health_check(db: pog.Connection) -> Result(Nil, pog.QueryError) {
   pog.query("SELECT 1")
+  |> pog.timeout(db_helpers.default_timeout_ms)
   |> pog.returning(ping_decoder())
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })

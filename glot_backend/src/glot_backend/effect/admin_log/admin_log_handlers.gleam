@@ -16,7 +16,6 @@ import glot_core/job_log_model
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/run_log_model
-import pog
 import youid/uuid
 
 pub type AdminLogHandlers {
@@ -36,7 +35,7 @@ pub type AdminLogHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> AdminLogHandlers {
+pub fn new(db: db_helpers.Db) -> AdminLogHandlers {
   AdminLogHandlers(
     list_api_logs: fn(request) { list_api_logs(db, request) },
     get_api_log: fn(id) { get_api_log(db, id) },
@@ -48,7 +47,7 @@ pub fn new(db: pog.Connection) -> AdminLogHandlers {
 }
 
 pub fn list_api_logs(
-  db: pog.Connection,
+  db: db_helpers.Db,
   request: api_log_dto.ListApiLogsRequest,
 ) -> Result(List(api_log_model.ApiLogSummary), error.DbQueryError) {
   let has_errors_only = case request.error_filter {
@@ -115,7 +114,7 @@ pub fn list_api_logs(
 }
 
 pub fn get_api_log(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: uuid.Uuid,
 ) -> Result(option.Option(api_log_model.ApiLogDetail), error.DbQueryError) {
   use returned <- result.try(
@@ -134,7 +133,7 @@ pub fn get_api_log(
 }
 
 pub fn list_run_logs(
-  db: pog.Connection,
+  db: db_helpers.Db,
   request: run_log_dto.ListRunLogsRequest,
 ) -> Result(List(run_log_model.RunLog), error.DbQueryError) {
   let maybe_outcome = case request.outcome_filter {
@@ -223,7 +222,7 @@ pub fn list_run_logs(
 }
 
 pub fn get_run_log(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: uuid.Uuid,
 ) -> Result(option.Option(run_log_model.RunLog), error.DbQueryError) {
   use returned <- result.try(
@@ -242,7 +241,7 @@ pub fn get_run_log(
 }
 
 pub fn list_job_logs(
-  db: pog.Connection,
+  db: db_helpers.Db,
   request: job_log_dto.ListJobLogsRequest,
 ) -> Result(List(job_log_model.JobLog), error.DbQueryError) {
   let has_errors_only = case request.error_filter {
@@ -313,7 +312,7 @@ pub fn list_job_logs(
 }
 
 pub fn get_job_log(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: uuid.Uuid,
 ) -> Result(option.Option(job_log_model.JobLog), error.DbQueryError) {
   use returned <- result.try(

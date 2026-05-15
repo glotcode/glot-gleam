@@ -14,11 +14,13 @@ pub fn run_with_state(
   let continue = fn(next_effect, next_state) {
     run_with_state(next_effect, runtime, ctx, next_state)
   }
+  let effect_runtime =
+    runtime.with_timeout(runtime, context.remaining_timeout_ms(ctx))
 
   case effect {
     program_types.TxPure(value) -> #(Ok(value), state)
     program_types.TxFail(error) -> #(Error(error), state)
     program_types.TxImpure(effect) ->
-      db_interpreter.run(effect, ctx, runtime.handlers, state, continue)
+      db_interpreter.run(effect, ctx, effect_runtime.handlers, state, continue)
   }
 }

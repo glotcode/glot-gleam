@@ -9,6 +9,7 @@ import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_handlers
 import glot_backend/effect/error
 import glot_backend/erlang
+import glot_backend/helpers/db_helpers
 import glot_backend/server_mode
 import pog
 import wisp
@@ -75,7 +76,7 @@ pub fn start(
     server_mode_subject,
     FetchHandlers(
       fetch_config: fn() {
-        app_config_handlers.new(db).list_entries()
+        app_config_handlers.new(db_helpers.new(db)).list_entries()
         |> result.try(fn(entries) {
           dynamic_config.from_entries(entries)
           |> result.map_error(error.DbQueryError)

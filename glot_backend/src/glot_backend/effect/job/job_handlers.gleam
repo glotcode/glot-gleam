@@ -9,7 +9,6 @@ import glot_backend/sql
 import glot_core/helpers/uuid_helpers
 import glot_core/job/job_model
 import glot_core/pagination_model
-import pog
 import youid/uuid
 
 pub type JobHandlers {
@@ -32,7 +31,7 @@ pub type JobHandlers {
   )
 }
 
-pub fn new(db: pog.Connection) -> JobHandlers {
+pub fn new(db: db_helpers.Db) -> JobHandlers {
   JobHandlers(
     list_jobs: fn(filter, pagination) { list_jobs(db, filter, pagination) },
     summarize_jobs: fn(filter, now) { summarize_jobs(db, filter, now) },
@@ -51,7 +50,7 @@ pub fn new(db: pog.Connection) -> JobHandlers {
 }
 
 pub fn list_jobs(
-  db: pog.Connection,
+  db: db_helpers.Db,
   filter: job_model.ListJobsFilter,
   pagination: pagination_model.CursorPagination,
 ) -> Result(List(job_model.Job), error.DbQueryError) {
@@ -112,7 +111,7 @@ pub fn list_jobs(
 }
 
 pub fn summarize_jobs(
-  db: pog.Connection,
+  db: db_helpers.Db,
   filter: job_model.ListJobsFilter,
   now: Timestamp,
 ) -> Result(job_model.Summary, error.DbQueryError) {
@@ -147,7 +146,7 @@ pub fn summarize_jobs(
 }
 
 pub fn get_next_job(
-  db: pog.Connection,
+  db: db_helpers.Db,
   now: Timestamp,
   pending_status: job_model.Status,
 ) -> Result(option.Option(job_model.Job), error.DbQueryError) {
@@ -167,7 +166,7 @@ pub fn get_next_job(
 }
 
 pub fn get_expired_running_job(
-  db: pog.Connection,
+  db: db_helpers.Db,
   now: Timestamp,
   running_status: job_model.Status,
 ) -> Result(option.Option(job_model.Job), error.DbQueryError) {
@@ -191,7 +190,7 @@ pub fn get_expired_running_job(
 }
 
 pub fn get_job_by_id(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: uuid.Uuid,
 ) -> Result(option.Option(job_model.Job), error.DbQueryError) {
   use returned <- result.try(
@@ -208,7 +207,7 @@ pub fn get_job_by_id(
 }
 
 pub fn create_job(
-  db: pog.Connection,
+  db: db_helpers.Db,
   j: job_model.Job,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -242,7 +241,7 @@ pub fn create_job(
 }
 
 pub fn update_job(
-  db: pog.Connection,
+  db: db_helpers.Db,
   j: job_model.Job,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -276,7 +275,7 @@ pub fn update_job(
 }
 
 pub fn delete_job(
-  db: pog.Connection,
+  db: db_helpers.Db,
   id: uuid.Uuid,
 ) -> Result(Nil, error.DbCommandError) {
   let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
@@ -286,7 +285,7 @@ pub fn delete_job(
 }
 
 pub fn delete_before(
-  db: pog.Connection,
+  db: db_helpers.Db,
   before: Timestamp,
   statuses: List(job_model.Status),
 ) -> Result(Nil, error.DbCommandError) {
