@@ -6,7 +6,7 @@ import glot_backend/dynamic_config
 import glot_backend/effect/error
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker
-import glot_core/api_action
+import glot_core/public_action
 import glot_core/auth/account_model
 import glot_core/rate_limit
 
@@ -291,7 +291,7 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
     )),
     rate_limit_policies: dict.from_list([
       #(
-        api_action.RunAction,
+        public_action.RunAction,
         dynamic_config.RateLimitPolicy(rules: [
           dynamic_config.RateLimitRule(
             match: dynamic_config.AnonymousMatch,
@@ -339,7 +339,7 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
     )),
     rate_limit_policies: dict.from_list([
       #(
-        api_action.RunAction,
+        public_action.RunAction,
         dynamic_config.RateLimitPolicy(rules: [
           dynamic_config.RateLimitRule(
             match: dynamic_config.AuthenticatedMatch(account_tiers: option.None),

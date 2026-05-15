@@ -10,7 +10,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/worker/app_config_cache_worker
-import glot_core/api_action
+import glot_core/public_action
 
 pub fn run(
   effect: app_config_algebra.AppConfigEffect(program_types.Program(a)),
@@ -207,7 +207,7 @@ pub fn run(
       let result =
         runtime.handlers.app_config.upsert_entry(
           "rate_limit",
-          api_action.public_to_string(action),
+          public_action.to_string(action),
           dynamic_config.encode_rate_limit_policy(policy) |> json.to_string(),
           updated_at,
         )

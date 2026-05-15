@@ -9,6 +9,7 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/public_action
 
 pub fn logout(ctx: context.Context) -> program_types.Program(Nil) {
   use session <- program.and_then(session_domain.require_session(ctx))
@@ -24,7 +25,7 @@ pub fn logout(ctx: context.Context) -> program_types.Program(Nil) {
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.public(api_action.LogoutAction),
+    action: api_action.public(public_action.LogoutAction),
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,
       account_state: session.user.account.identity.account_state,

@@ -7,6 +7,7 @@ import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/api_action
+import glot_core/public_action
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/page/editor as editor_ssr
@@ -590,7 +591,7 @@ pub fn update_helper(
             ..model,
             run_state: RequestError(
               "Could not complete "
-              <> api_action.to_string(api_action.public(api_action.RunAction))
+              <> api_action.to_string(api_action.public(public_action.RunAction))
               <> ".",
             ),
           ),

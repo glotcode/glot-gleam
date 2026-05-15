@@ -6,7 +6,8 @@ import gleam/option
 import gleam/result
 import gleam/string
 import glot_backend/app_config
-import glot_core/api_action
+import glot_core/admin_action
+import glot_core/public_action
 import glot_core/auth/account_model
 import glot_core/rate_limit
 
@@ -16,7 +17,7 @@ pub type DynamicConfig {
     auth: AuthConfig,
     cleanup: CleanupConfig,
     docker_run: option.Option(DockerRunConfig),
-    rate_limit_policies: dict.Dict(api_action.PublicAction, RateLimitPolicy),
+    rate_limit_policies: dict.Dict(public_action.PublicAction, RateLimitPolicy),
   )
 }
 
@@ -90,7 +91,7 @@ pub fn from_entries(
 
 pub fn lookup_rate_limit_policy(
   config: DynamicConfig,
-  action: api_action.PublicAction,
+  action: public_action.PublicAction,
 ) -> option.Option(RateLimitPolicy) {
   dict.get(config.rate_limit_policies, action)
   |> option.from_result()
@@ -134,7 +135,7 @@ pub fn select_rate_limits(
 
 pub fn list_rate_limit_policies(
   config: DynamicConfig,
-) -> List(#(api_action.PublicAction, RateLimitPolicy)) {
+) -> List(#(public_action.PublicAction, RateLimitPolicy)) {
   dict.to_list(config.rate_limit_policies)
 }
 
@@ -295,7 +296,7 @@ fn decode_rate_limit_policy_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
-  case api_action.from_public_string(entry.key) {
+  case public_action.from_string(entry.key) {
     option.Some(action) -> {
       use policy <- result.try(decode_json_entry(
         "rate_limit",
@@ -314,7 +315,7 @@ fn decode_rate_limit_policy_entry(
       )
     }
     option.None ->
-      case api_action.from_admin_string(entry.key) {
+      case admin_action.from_string(entry.key) {
         option.Some(_) -> Ok(config)
         option.None ->
           Error("Invalid rate limit action in app_config key: " <> entry.key)

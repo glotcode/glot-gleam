@@ -13,6 +13,7 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/public_action
 import glot_core/language
 import glot_core/run
 import glot_core/run_log_model
@@ -43,7 +44,7 @@ pub fn run(
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.public(api_action.RunAction),
+    action: api_action.public(public_action.RunAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 

@@ -1,7 +1,7 @@
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/dynamic_config
 import glot_backend/effect/error
-import glot_core/api_action.{type PublicAction}
+import glot_core/public_action.{type PublicAction}
 
 pub type AppConfigEffect(next) {
   GetDynamicConfig(

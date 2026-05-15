@@ -58,6 +58,7 @@ import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action
+import glot_core/public_action
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
@@ -294,7 +295,7 @@ pub fn upsert_rate_limit_policy_allows_admin_role_test() {
   let fixture = admin_integration_fixture()
   let request =
     rate_limit_config_dto.UpsertRateLimitPolicyRequest(
-      action: api_action.RunAction,
+      action: public_action.RunAction,
       rules: [
         rate_limit_config_dto.RateLimitRule(
           match: rate_limit_config_dto.AuthenticatedMatch(account_tiers: [
@@ -319,7 +320,7 @@ pub fn upsert_rate_limit_policy_allows_admin_role_test() {
 
   assert run_result
     == Ok(rate_limit_config_dto.RateLimitPolicyResponse(
-      action: api_action.RunAction,
+      action: public_action.RunAction,
       rules: request.rules,
     ))
   assert updated_db.user_action_count == 1
@@ -508,7 +509,7 @@ pub fn send_login_token_for_suspended_user_returns_account_state_error_test() {
   assert run_result
     == Error(
       error.AccountStateError(error.ForbiddenAccountState(
-        action: api_action.public(api_action.SendLoginTokenAction),
+        action: api_action.public(public_action.SendLoginTokenAction),
         account_state: account_model.Suspended,
       )),
     )
@@ -558,7 +559,7 @@ pub fn login_for_suspended_user_returns_account_state_error_test() {
   assert run_result
     == Error(
       error.AccountStateError(error.ForbiddenAccountState(
-        action: api_action.public(api_action.LoginAction),
+        action: api_action.public(public_action.LoginAction),
         account_state: account_model.Suspended,
       )),
     )
@@ -1159,7 +1160,7 @@ pub fn clean_user_actions_deletes_only_old_rows_test() {
     user_action.UserAction(
       id: must_uuid("00000000-0000-0000-0000-000000000b01"),
       request_id: test_request_id(),
-      action: api_action.public(api_action.LoginAction),
+      action: api_action.public(public_action.LoginAction),
       ip: option.Some("127.0.0.1"),
       user_id: option.None,
       created_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),

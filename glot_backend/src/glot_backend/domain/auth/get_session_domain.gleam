@@ -8,6 +8,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/public_action
 import glot_core/auth/session_dto
 
 pub fn get_session(
@@ -35,7 +36,7 @@ pub fn get_session(
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.public(api_action.GetSessionAction),
+    action: api_action.public(public_action.GetSessionAction),
     actor: actor,
   ))
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))

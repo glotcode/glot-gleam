@@ -10,6 +10,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/periodic_job_dto
 import glot_core/api_action
+import glot_core/admin_action
 import glot_core/periodic_job/periodic_job_model
 
 pub fn update_periodic_job(
@@ -19,7 +20,7 @@ pub fn update_periodic_job(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.admin(api_action.UpdateAdminPeriodicJobAction),
+    action: api_action.admin(admin_action.UpdateAdminPeriodicJobAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use _ <- program.and_then(validate_request(request))

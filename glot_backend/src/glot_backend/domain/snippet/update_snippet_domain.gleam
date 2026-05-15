@@ -13,6 +13,7 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/public_action
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_core/snippet/snippet_spam
@@ -35,7 +36,7 @@ pub fn update_snippet(
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.public(api_action.UpdateSnippetAction),
+    action: api_action.public(public_action.UpdateSnippetAction),
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,
       account_state: session.user.account.identity.account_state,

@@ -1,6 +1,5 @@
 import gleam/dynamic/decode
 import gleam/json
-import gleam/list
 import gleam/option
 
 pub type EffectTraceResponse {

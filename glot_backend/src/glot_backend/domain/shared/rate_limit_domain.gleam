@@ -10,7 +10,8 @@ import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
-import glot_core/api_action.{type PublicAction}
+import glot_core/api_action
+import glot_core/public_action.{type PublicAction}
 import glot_core/auth/account_model.{type AccountTier}
 import glot_core/rate_limit
 import glot_core/user_action
@@ -32,7 +33,7 @@ pub fn enforce(
       log.singleton(
         log.object("rate_limit", [
           log.string("message", "No rate limits configured for this action"),
-          log.string("action", api_action.public_to_string(action)),
+          log.string("action", public_action.to_string(action)),
         ]),
       ),
     ),

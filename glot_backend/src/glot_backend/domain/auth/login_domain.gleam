@@ -17,6 +17,7 @@ import glot_backend/effect/transaction/transaction_program
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
 import glot_core/api_action
+import glot_core/public_action
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_model
@@ -49,7 +50,7 @@ pub fn login(
   ))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.public(api_action.LoginAction),
+    action: api_action.public(public_action.LoginAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 

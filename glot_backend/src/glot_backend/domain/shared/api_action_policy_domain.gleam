@@ -6,7 +6,9 @@ import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
-import glot_core/api_action.{type ApiAction}
+import glot_core/api_action
+import glot_core/admin_action
+import glot_core/public_action
 import glot_core/auth/account_model.{type AccountState, type AccountTier}
 import glot_core/auth/user_model
 import glot_core/user_action
@@ -47,7 +49,7 @@ type ApiActionPolicy {
 
 pub fn enforce(
   ctx ctx: context.Context,
-  action action: ApiAction,
+  action action: api_action.ApiAction,
   actor actor: ActionActor,
 ) -> program_types.Program(user_action.UserAction) {
   let policy = action_policy(action)
@@ -121,7 +123,7 @@ fn enforce_authorization(
 }
 
 fn enforce_account_state(
-  action: ApiAction,
+  action: api_action.ApiAction,
   policy: AccountStatePolicy,
   actor: ActionActor,
 ) -> Result(Nil, error.Error) {
@@ -169,7 +171,7 @@ fn actor_role(actor: ActionActor) -> Option(user_model.UserRole) {
 }
 
 fn require_allowed_account_state(
-  action: ApiAction,
+  action: api_action.ApiAction,
   account_state: AccountState,
   allowed_account_states: List(AccountState),
 ) -> Result(Nil, error.Error) {
@@ -180,7 +182,7 @@ fn require_allowed_account_state(
 }
 
 fn forbidden_account_state_error(
-  action: ApiAction,
+  action: api_action.ApiAction,
   account_state: AccountState,
 ) -> error.Error {
   error.AccountStateError(error.ForbiddenAccountState(
@@ -189,7 +191,7 @@ fn forbidden_account_state_error(
   ))
 }
 
-fn action_policy(action: ApiAction) -> ApiActionPolicy {
+fn action_policy(action: api_action.ApiAction) -> ApiActionPolicy {
   case action {
     api_action.PublicAction(action) -> public_policy(action)
     api_action.AdminAction(action) -> admin_policy(action)
@@ -199,7 +201,7 @@ fn action_policy(action: ApiAction) -> ApiActionPolicy {
 fn create_user_action(
   ctx: context.Context,
   actor: ActionActor,
-  action: ApiAction,
+  action: api_action.ApiAction,
 ) -> program_types.Program(user_action.UserAction) {
   use id <- program.and_then(basic_effect.uuid_v7())
   program.succeed(user_action.UserAction(
@@ -219,27 +221,27 @@ fn actor_ip(actor: ActionActor, ctx: context.Context) -> Option(String) {
   }
 }
 
-fn public_policy(action: api_action.PublicAction) -> ApiActionPolicy {
+fn public_policy(action: public_action.PublicAction) -> ApiActionPolicy {
   case action {
-    api_action.TrackPageviewAction ->
+    public_action.TrackPageviewAction ->
       public_action_policy(NoAccountStateRequirement)
-    api_action.GetLanguageVersionAction ->
+    public_action.GetLanguageVersionAction ->
       public_action_policy(NoAccountStateRequirement)
-    api_action.SendLoginTokenAction ->
+    public_action.SendLoginTokenAction ->
       public_action_policy(
         AllowedAccountStates([
           account_model.Active,
           account_model.ReadOnly,
         ]),
       )
-    api_action.LoginAction ->
+    public_action.LoginAction ->
       public_action_policy(
         AllowedAccountStates([
           account_model.Active,
           account_model.ReadOnly,
         ]),
       )
-    api_action.GetSessionAction ->
+    public_action.GetSessionAction ->
       public_action_policy(
         AllowedAccountStates([
           account_model.Active,
@@ -247,7 +249,7 @@ fn public_policy(action: api_action.PublicAction) -> ApiActionPolicy {
           account_model.Suspended,
         ]),
       )
-    api_action.LogoutAction ->
+    public_action.LogoutAction ->
       authenticated_action_policy(
         AllowedAccountStates([
           account_model.Active,
@@ -255,52 +257,52 @@ fn public_policy(action: api_action.PublicAction) -> ApiActionPolicy {
           account_model.Suspended,
         ]),
       )
-    api_action.GetAccountAction ->
+    public_action.GetAccountAction ->
       authenticated_action_policy(
         AllowedAccountStates([
           account_model.Active,
           account_model.ReadOnly,
         ]),
       )
-    api_action.UpdateAccountAction ->
+    public_action.UpdateAccountAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
-    api_action.ScheduleDeleteAccountAction ->
+    public_action.ScheduleDeleteAccountAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
-    api_action.CancelDeleteAccountAction ->
+    public_action.CancelDeleteAccountAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
-    api_action.GetSnippetAction ->
+    public_action.GetSnippetAction ->
       public_action_policy(
         AllowedAccountStates([
           account_model.Active,
           account_model.ReadOnly,
         ]),
       )
-    api_action.ListPublicSnippetsAction ->
+    public_action.ListPublicSnippetsAction ->
       public_action_policy(
         AllowedAccountStates([
           account_model.Active,
           account_model.ReadOnly,
         ]),
       )
-    api_action.ListSessionSnippetsAction ->
+    public_action.ListSessionSnippetsAction ->
       authenticated_action_policy(
         AllowedAccountStates([
           account_model.Active,
           account_model.ReadOnly,
         ]),
       )
-    api_action.CreateSnippetAction ->
+    public_action.CreateSnippetAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
-    api_action.UpdateSnippetAction ->
+    public_action.UpdateSnippetAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
-    api_action.DeleteSnippetAction ->
+    public_action.DeleteSnippetAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
-    api_action.RunAction ->
+    public_action.RunAction ->
       public_action_policy(AllowedAccountStates([account_model.Active]))
   }
 }
 
-fn admin_policy(_action: api_action.AdminAction) -> ApiActionPolicy {
+fn admin_policy(_action: admin_action.AdminAction) -> ApiActionPolicy {
   admin_action_policy(
     AllowedAccountStates([
       account_model.Active,

@@ -18,6 +18,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_backend/email_template
 import glot_backend/log
 import glot_core/api_action
+import glot_core/public_action
 import glot_core/auth/login_token_dto
 import glot_core/auth/login_token_model
 import glot_core/job/job_model
@@ -35,7 +36,7 @@ pub fn send_login_token(
   ))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.public(api_action.SendLoginTokenAction),
+    action: api_action.public(public_action.SendLoginTokenAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 

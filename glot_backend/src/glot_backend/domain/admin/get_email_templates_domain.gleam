@@ -10,6 +10,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_backend/email_template
 import glot_core/admin/email_template_dto
 import glot_core/api_action
+import glot_core/admin_action
 
 pub fn get_email_templates(
   ctx: context.Context,
@@ -17,7 +18,7 @@ pub fn get_email_templates(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.admin(api_action.GetAdminEmailTemplatesAction),
+    action: api_action.admin(admin_action.GetAdminEmailTemplatesAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use templates <- program.and_then(

@@ -10,6 +10,7 @@ import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_core/api_action
+import glot_core/admin_action
 import glot_core/snippet/snippet_dto
 
 pub fn delete_snippet(
@@ -19,7 +20,7 @@ pub fn delete_snippet(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.admin(api_action.DeleteAdminSnippetAction),
+    action: api_action.admin(admin_action.DeleteAdminSnippetAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use snippet <- program.and_then(

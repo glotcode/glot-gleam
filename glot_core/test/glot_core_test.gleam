@@ -1,11 +1,14 @@
 import gleam/option
 import gleam/time/timestamp
 import gleeunit
+import glot_core/admin_action
+import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/auth/user_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/pagination_model
+import glot_core/public_action
 import glot_core/snippet/snippet_model
 
 pub fn main() -> Nil {
@@ -31,6 +34,48 @@ pub fn account_tier_round_trips_free_plus_test() {
     == "free_plus"
   assert account_model.account_tier_from_string("free_plus")
     == option.Some(account_model.FreePlusTier)
+}
+
+pub fn public_action_from_string_round_trips_test() {
+  public_action.list()
+  |> assert_action_round_trips(
+    public_action.to_string,
+    public_action.from_string,
+  )
+}
+
+pub fn public_action_from_string_rejects_admin_and_unknown_values_test() {
+  assert public_action.from_string("get_admin_debug_config") == option.None
+  assert public_action.from_string("not_a_real_action") == option.None
+}
+
+pub fn admin_action_from_string_round_trips_test() {
+  admin_action.list()
+  |> assert_action_round_trips(
+    admin_action.to_string,
+    admin_action.from_string,
+  )
+}
+
+pub fn admin_action_from_string_rejects_public_and_unknown_values_test() {
+  assert admin_action.from_string("run") == option.None
+  assert admin_action.from_string("not_a_real_action") == option.None
+}
+
+pub fn api_action_from_string_round_trips_test() {
+  api_action.list()
+  |> assert_action_round_trips(api_action.to_string, api_action.from_string)
+}
+
+pub fn api_action_from_string_wraps_public_and_admin_actions_test() {
+  assert api_action.from_string("run")
+    == option.Some(api_action.public(public_action.RunAction))
+  assert api_action.from_string("get_admin_debug_config")
+    == option.Some(api_action.admin(admin_action.GetAdminDebugConfigAction))
+}
+
+pub fn api_action_from_string_rejects_unknown_values_test() {
+  assert api_action.from_string("not_a_real_action") == option.None
 }
 
 pub fn validate_username_accepts_valid_values_test() {
@@ -270,6 +315,20 @@ fn repeat_string(value: String, count: Int) -> String {
   case count <= 0 {
     True -> ""
     False -> value <> repeat_string(value, count - 1)
+  }
+}
+
+fn assert_action_round_trips(
+  actions: List(a),
+  to_string: fn(a) -> String,
+  from_string: fn(String) -> option.Option(a),
+) -> Nil {
+  case actions {
+    [] -> Nil
+    [first, ..rest] -> {
+      assert from_string(to_string(first)) == option.Some(first)
+      assert_action_round_trips(rest, to_string, from_string)
+    }
   }
 }
 

@@ -11,6 +11,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/job_type_policy_dto
 import glot_core/api_action
+import glot_core/admin_action
 import glot_core/job/job_model
 
 pub fn upsert_job_type_policy(
@@ -20,7 +21,7 @@ pub fn upsert_job_type_policy(
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.admin(api_action.UpsertAdminJobTypePolicyAction),
+    action: api_action.admin(admin_action.UpsertAdminJobTypePolicyAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
   use policy <- program.and_then(policy_from_request(request, ctx.timestamp))
