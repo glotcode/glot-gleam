@@ -102,7 +102,7 @@ fn continue_monitoring(state: State) -> actor.Next(State, Message) {
 
 fn health_check(db: pog.Connection) -> Result(Nil, pog.QueryError) {
   pog.query("SELECT 1")
-  |> pog.timeout(db_helpers.default_timeout_ms)
+  |> pog.timeout(db_helpers.default_query_timeout_ms())
   |> pog.returning(ping_decoder())
   |> pog.execute(db)
   |> result.map(fn(_) { Nil })

@@ -16,6 +16,7 @@ import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
 import glot_backend/erlang
+import glot_backend/helpers/db_helpers
 import glot_backend/helpers/response_helpers
 import glot_backend/job_tracker
 import glot_backend/page
@@ -386,4 +387,8 @@ fn postgres_config(
   |> pog.user(cfg.postgres.user)
   |> pog.password(option.Some(cfg.postgres.pass))
   |> pog.pool_size(cfg.postgres.pool_size)
+  |> pog.connection_parameter(
+    "statement_timeout",
+    db_helpers.statement_timeout_parameter(),
+  )
 }

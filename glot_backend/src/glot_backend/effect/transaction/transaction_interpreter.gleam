@@ -60,7 +60,7 @@ fn run_in_transaction(
 ) {
   let timeout_ms =
     context.remaining_timeout_ms(ctx)
-    |> option.unwrap(db_helpers.default_timeout_ms)
+    |> option.unwrap(db_helpers.default_statement_timeout_ms)
 
   transaction_handlers.run(runtime.handlers.transaction, timeout_ms, fn(tx_db) {
     let transaction_runtime =

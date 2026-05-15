@@ -1,23 +1,27 @@
 import gleam/dynamic/decode
+import gleam/int
 import gleam/list
 import gleam/option
 import gleam/result
 import parrot/dev
 import pog
 
-pub const default_timeout_ms = 10_000
+pub const default_statement_timeout_ms = 10_000
+
+const timeout_grace_ms = 1_000
 
 pub opaque type Db {
   Db(connection: pog.Connection, timeout_ms: Int)
 }
 
 pub fn new(connection: pog.Connection) -> Db {
-  Db(connection:, timeout_ms: default_timeout_ms)
+  Db(connection:, timeout_ms: default_query_timeout_ms())
 }
 
 pub fn override_timeout(db: Db, timeout_ms: option.Option(Int)) -> Db {
   case timeout_ms {
-    option.Some(timeout_ms) -> Db(..db, timeout_ms: timeout_ms)
+    option.Some(timeout_ms) ->
+      Db(..db, timeout_ms: query_timeout_ms(timeout_ms))
     option.None -> db
   }
 }
@@ -28,6 +32,18 @@ pub fn timeout_ms(db: Db) -> Int {
 
 pub fn connection(db: Db) -> pog.Connection {
   db.connection
+}
+
+pub fn query_timeout_ms(statement_timeout_ms: Int) -> Int {
+  statement_timeout_ms + timeout_grace_ms
+}
+
+pub fn default_query_timeout_ms() -> Int {
+  query_timeout_ms(default_statement_timeout_ms)
+}
+
+pub fn statement_timeout_parameter() -> String {
+  int.to_string(default_statement_timeout_ms) <> "ms"
 }
 
 pub fn parrot_to_pog(param: dev.Param) -> pog.Value {
