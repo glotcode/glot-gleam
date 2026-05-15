@@ -5,6 +5,8 @@ import gleam/option
 pub type AdminAction {
   GetAdminDebugConfigAction
   UpsertAdminDebugConfigAction
+  GetAdminAvailabilityConfigAction
+  UpsertAdminAvailabilityConfigAction
   GetAdminAuthConfigAction
   UpsertAdminAuthConfigAction
   GetAdminCleanupConfigAction
@@ -43,6 +45,8 @@ pub fn list() -> List(AdminAction) {
   [
     GetAdminDebugConfigAction,
     UpsertAdminDebugConfigAction,
+    GetAdminAvailabilityConfigAction,
+    UpsertAdminAvailabilityConfigAction,
     GetAdminAuthConfigAction,
     UpsertAdminAuthConfigAction,
     GetAdminCleanupConfigAction,
@@ -95,6 +99,8 @@ pub fn to_string(action: AdminAction) -> String {
   case action {
     GetAdminDebugConfigAction -> "get_admin_debug_config"
     UpsertAdminDebugConfigAction -> "upsert_admin_debug_config"
+    GetAdminAvailabilityConfigAction -> "get_admin_availability_config"
+    UpsertAdminAvailabilityConfigAction -> "upsert_admin_availability_config"
     GetAdminAuthConfigAction -> "get_admin_auth_config"
     UpsertAdminAuthConfigAction -> "upsert_admin_auth_config"
     GetAdminCleanupConfigAction -> "get_admin_cleanup_config"
@@ -134,6 +140,10 @@ pub fn from_string(action: String) -> option.Option(AdminAction) {
   case action {
     "get_admin_debug_config" -> option.Some(GetAdminDebugConfigAction)
     "upsert_admin_debug_config" -> option.Some(UpsertAdminDebugConfigAction)
+    "get_admin_availability_config" ->
+      option.Some(GetAdminAvailabilityConfigAction)
+    "upsert_admin_availability_config" ->
+      option.Some(UpsertAdminAvailabilityConfigAction)
     "get_admin_auth_config" -> option.Some(GetAdminAuthConfigAction)
     "upsert_admin_auth_config" -> option.Some(UpsertAdminAuthConfigAction)
     "get_admin_cleanup_config" -> option.Some(GetAdminCleanupConfigAction)

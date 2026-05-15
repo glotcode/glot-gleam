@@ -50,6 +50,26 @@ pub fn upsert_debug_config(
   )
 }
 
+pub fn upsert_availability_config(
+  config: dynamic_config.AvailabilityConfig,
+  updated_at: Timestamp,
+) -> program_types.Program(dynamic_config.DynamicConfig) {
+  program_types.Impure(
+    program_types.AppConfigEffect(
+      app_config_algebra.UpsertAvailabilityConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(result) {
+          case result {
+            Ok(config) -> program_types.Pure(config)
+            Error(err) -> program_types.Fail(err)
+          }
+        },
+      ),
+    ),
+  )
+}
+
 pub fn upsert_auth_config(
   config: dynamic_config.AuthConfig,
   updated_at: Timestamp,

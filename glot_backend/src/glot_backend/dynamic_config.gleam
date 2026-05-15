@@ -6,6 +6,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import glot_backend/app_config
+import glot_core/availability_mode as availability_mode
 import glot_core/admin_action
 import glot_core/public_action
 import glot_core/auth/account_model
@@ -14,6 +15,7 @@ import glot_core/rate_limit
 pub type DynamicConfig {
   DynamicConfig(
     debug: DebugConfig,
+    availability: AvailabilityConfig,
     auth: AuthConfig,
     cleanup: CleanupConfig,
     docker_run: option.Option(DockerRunConfig),
@@ -23,6 +25,14 @@ pub type DynamicConfig {
 
 pub type DebugConfig {
   DebugConfig(enabled: Bool)
+}
+
+pub type AvailabilityConfig {
+  AvailabilityConfig(
+    mode: availability_mode.AvailabilityMode,
+    message: String,
+    retry_after_seconds: option.Option(Int),
+  )
 }
 
 pub type AuthConfig {
@@ -73,6 +83,7 @@ pub type RateLimitActor {
 pub fn empty() -> DynamicConfig {
   DynamicConfig(
     debug: default_debug_config(),
+    availability: default_availability_config(),
     auth: default_auth_config(),
     cleanup: default_cleanup_config(),
     docker_run: option.None,
@@ -109,6 +120,10 @@ pub fn auth_config(config: DynamicConfig) -> AuthConfig {
 
 pub fn debug_config(config: DynamicConfig) -> DebugConfig {
   config.debug
+}
+
+pub fn availability_config(config: DynamicConfig) -> AvailabilityConfig {
+  config.availability
 }
 
 pub fn select_rate_limits(
@@ -151,6 +166,7 @@ fn apply_entry(
 ) -> Result(DynamicConfig, String) {
   case entry.namespace {
     "debug" -> decode_debug_config_entry(config, entry)
+    "availability" -> decode_availability_config_entry(config, entry)
     "auth" -> decode_auth_config_entry(config, entry)
     "cleanup" -> decode_cleanup_config_entry(config, entry)
     "docker_run" -> decode_docker_run_entry(config, entry)
@@ -171,6 +187,44 @@ fn decode_debug_config_entry(
   }
 
   Ok(DynamicConfig(..config, debug: debug))
+}
+
+fn decode_availability_config_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  case entry.key {
+    "mode" -> {
+      use value <- result.try(decode_string_entry("availability", entry))
+      case availability_mode.from_string(value) {
+        option.Some(mode) ->
+          Ok(DynamicConfig(
+            ..config,
+            availability: AvailabilityConfig(..config.availability, mode: mode),
+          ))
+        option.None ->
+          Error("Failed to decode availability app_config for mode: " <> value)
+      }
+    }
+    "message" -> {
+      use value <- result.try(decode_string_entry("availability", entry))
+      Ok(DynamicConfig(
+        ..config,
+        availability: AvailabilityConfig(..config.availability, message: value),
+      ))
+    }
+    "retry_after_seconds" -> {
+      use value <- result.try(decode_optional_int_entry("availability", entry))
+      Ok(DynamicConfig(
+        ..config,
+        availability: AvailabilityConfig(
+          ..config.availability,
+          retry_after_seconds: value,
+        ),
+      ))
+    }
+    _ -> Ok(config)
+  }
 }
 
 fn decode_auth_config_entry(
@@ -206,6 +260,14 @@ fn default_auth_config() -> AuthConfig {
 
 fn default_debug_config() -> DebugConfig {
   DebugConfig(enabled: False)
+}
+
+fn default_availability_config() -> AvailabilityConfig {
+  AvailabilityConfig(
+    mode: availability_mode.NormalMode,
+    message: "glot.io is temporarily unavailable right now.",
+    retry_after_seconds: option.None,
+  )
 }
 
 fn default_cleanup_config() -> CleanupConfig {
@@ -255,6 +317,21 @@ fn decode_int_entry(
   entry: app_config.AppConfigEntry,
 ) -> Result(Int, String) {
   json.parse(entry.value, decode.int)
+  |> result.map_error(fn(err) {
+    "Failed to decode "
+    <> namespace
+    <> " app_config for "
+    <> entry.key
+    <> ": "
+    <> string.inspect(err)
+  })
+}
+
+fn decode_optional_int_entry(
+  namespace: String,
+  entry: app_config.AppConfigEntry,
+) -> Result(option.Option(Int), String) {
+  json.parse(entry.value, decode.optional(decode.int))
   |> result.map_error(fn(err) {
     "Failed to decode "
     <> namespace

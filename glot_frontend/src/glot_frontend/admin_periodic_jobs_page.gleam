@@ -176,7 +176,7 @@ fn periodic_job_row(
     ]),
     admin_table.cell(action_column(), [
       admin_ui.secondary_link(
-        [route.href(route.AdminPeriodicJob(periodic_job.id))],
+        [route.href(route.Admin(route.AdminPeriodicJob(periodic_job.id)))],
         "Open",
       ),
     ]),

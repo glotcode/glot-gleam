@@ -2,6 +2,7 @@ import gleam/json
 import gleam/option
 import gleam/result
 import glot_backend/dynamic_config
+import glot_core/availability_mode
 import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -62,6 +63,53 @@ pub fn run(
           state,
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertDebugConfigEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    app_config_algebra.UpsertAvailabilityConfig(
+      config: config,
+      updated_at: updated_at,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        runtime.handlers.app_config.upsert_entry(
+          "availability",
+          "mode",
+          config.mode |> availability_mode.encode |> json.to_string(),
+          updated_at,
+        )
+        |> result.map_error(error.CommandError)
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "availability",
+            "message",
+            json.string(config.message) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "availability",
+            "retry_after_seconds",
+            json.nullable(config.retry_after_seconds, json.int)
+            |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) { refresh_dynamic_config(runtime) })
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.UpsertAvailabilityConfigEffectName,
           ),
           effect_trace.DbWriteEffectCategory,
           started_at,

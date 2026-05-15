@@ -5,6 +5,7 @@ import gleam/list
 import gleam/option
 import gleam/regexp
 import gleam/result
+import glot_core/admin/availability_config_dto
 import glot_core/admin/account_dto as admin_account_dto
 import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto
@@ -50,6 +51,16 @@ pub type ApiResponse(a) {
   ApiSuccess(data: a)
   ApiFailure(error: ApiError)
   HttpFailure(rsvp.Error(String))
+}
+
+pub fn error_message(error: ApiError) -> String {
+  case error.code {
+    "read_only_mode_enabled" ->
+      error.message <> " Changes are temporarily disabled."
+    "maintenance_mode_enabled" ->
+      error.message <> " Most public actions are temporarily unavailable."
+    _ -> error.message
+  }
 }
 
 pub fn send_login_token(
@@ -350,6 +361,20 @@ pub fn get_admin_debug_config(
   )
 }
 
+pub fn get_admin_availability_config(
+  to_msg: fn(ApiResponse(availability_config_dto.AvailabilityConfigResponse)) ->
+    msg,
+) -> effect.Effect(msg) {
+  let req = AdminApiRequest(admin_action.GetAdminAvailabilityConfigAction, Nil)
+
+  send_admin_api_request(
+    req,
+    fn(_) { json.null() },
+    availability_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn upsert_admin_debug_config(
   request: debug_config_dto.UpsertDebugConfigRequest,
   to_msg: fn(ApiResponse(debug_config_dto.DebugConfigResponse)) -> msg,
@@ -360,6 +385,22 @@ pub fn upsert_admin_debug_config(
     req,
     debug_config_dto.encode_request,
     debug_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_availability_config(
+  request: availability_config_dto.UpsertAvailabilityConfigRequest,
+  to_msg: fn(ApiResponse(availability_config_dto.AvailabilityConfigResponse)) ->
+    msg,
+) -> effect.Effect(msg) {
+  let req =
+    AdminApiRequest(admin_action.UpsertAdminAvailabilityConfigAction, request)
+
+  send_admin_api_request(
+    req,
+    availability_config_dto.encode_request,
+    availability_config_dto.response_decoder(),
     to_msg,
   )
 }

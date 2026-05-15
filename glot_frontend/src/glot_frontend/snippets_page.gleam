@@ -50,7 +50,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, state: snippets.Error(error.message)),
+          Model(..model, state: snippets.Error(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(

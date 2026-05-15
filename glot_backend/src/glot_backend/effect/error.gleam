@@ -1,3 +1,4 @@
+import gleam/option
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
@@ -50,6 +51,14 @@ pub type AuthorizationError {
   AdminRequiredError
 }
 
+pub type AvailabilityBlockedError {
+  AvailabilityBlockedError(
+    code: String,
+    message: String,
+    retry_after_seconds: option.Option(Int),
+  )
+}
+
 pub type AccountStateError {
   ForbiddenAccountState(
     action: api_action_model.ApiAction,
@@ -74,6 +83,7 @@ pub type Error {
   SessionError(SessionError)
   ClientInfoError(ClientInfoError)
   AuthorizationError(AuthorizationError)
+  AvailabilityError(AvailabilityBlockedError)
   AccountStateError(AccountStateError)
 }
 
@@ -110,6 +120,8 @@ pub fn to_string(err: Error) -> String {
     AuthorizationError(NotOwnerError) -> "authorization_error:not_owner"
     AuthorizationError(AdminRequiredError) ->
       "authorization_error:admin_required"
+    AvailabilityError(AvailabilityBlockedError(code: code, ..)) ->
+      "availability:" <> code
     AccountStateError(ForbiddenAccountState(action, account_state)) ->
       "account_state_error:"
       <> api_action_model.to_string(action)

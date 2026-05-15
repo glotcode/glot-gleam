@@ -11,7 +11,7 @@ pub fn title() -> String {
 pub fn view() -> Element(Nil) {
   site_chrome.view(
     top_bar_model: top_bar.empty_model(),
-    footer_account_route: route.Account,
+    footer_account_route: route.Account(route.AccountHome),
     content: home.view(),
   )
 }

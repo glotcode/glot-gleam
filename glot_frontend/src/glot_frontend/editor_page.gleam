@@ -253,7 +253,8 @@ pub fn update(
         api.ApiSuccess(response) ->
           existing_model_from_response(response, settings)
 
-        api.ApiFailure(error) -> #(LoadError(error.message), effect.none())
+        api.ApiFailure(error) ->
+          #(LoadError(api.error_message(error)), effect.none())
 
         api.HttpFailure(_) -> #(
           LoadError("Could not load snippet."),
@@ -582,7 +583,7 @@ pub fn update_helper(
         )
 
         api.ApiFailure(error) -> #(
-          RealModel(..model, run_state: RequestError(error.message)),
+          RealModel(..model, run_state: RequestError(api.error_message(error))),
           effect.none(),
         )
 
@@ -657,7 +658,7 @@ pub fn update_helper(
             CreateSnippet -> {
               let navigate =
                 modem.push(
-                  route.to_string(route.Snippet(response.slug)),
+                  route.to_string(route.Public(route.Snippet(response.slug))),
                   option.None,
                   option.None,
                 )
@@ -667,7 +668,7 @@ pub fn update_helper(
         }
 
         api.ApiFailure(error) -> #(
-          RealModel(..model, save_state: SaveError(error.message)),
+          RealModel(..model, save_state: SaveError(api.error_message(error))),
           effect.none(),
         )
 
@@ -1210,7 +1211,7 @@ fn save_dialog_children(
         html.text("You need to log in before you can save snippets. "),
         html.a(
           [
-            route.href(route.Login),
+            route.href(route.Public(route.Login)),
             attribute.class("editor-page__dialog-link"),
           ],
           [html.text("Go to login")],
@@ -1458,7 +1459,7 @@ fn snippet_info_row(label: String, value: String) -> Element(Msg) {
 fn snippet_url(model: RealModel) -> String {
   case model.slug {
     option.Some(slug) ->
-      "https://glot.io" <> route.to_string(route.Snippet(slug))
+      "https://glot.io" <> route.to_string(route.Public(route.Snippet(slug)))
     option.None -> ""
   }
 }

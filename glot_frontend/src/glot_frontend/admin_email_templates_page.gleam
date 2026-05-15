@@ -112,7 +112,7 @@ fn template_row(
     ]),
     admin_table.cell(open_column(), [
       admin_ui.secondary_link(
-        [route.href(route.AdminEmailTemplate(template.name))],
+        [route.href(route.Admin(route.AdminEmailTemplate(template.name)))],
         "Open",
       ),
     ]),

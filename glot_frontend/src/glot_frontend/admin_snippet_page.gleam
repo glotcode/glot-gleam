@@ -172,7 +172,7 @@ pub fn view(model: Model) -> Element(Msg) {
       intro: "",
       actions: [
         admin_ui.secondary_link(
-          [route.href(route.Snippet(model.slug))],
+          [route.href(route.Public(route.Snippet(model.slug)))],
           "Open public snippet",
         ),
         html.button(
@@ -406,6 +406,6 @@ fn empty_text(value: String) -> String {
 }
 
 fn navigate_to_snippets() -> Effect(Msg) {
-  let #(path, query) = route.path_and_query(route.AdminSnippets)
+  let #(path, query) = route.path_and_query(route.Admin(route.AdminSnippets))
   modem.push(path, query, option.None)
 }

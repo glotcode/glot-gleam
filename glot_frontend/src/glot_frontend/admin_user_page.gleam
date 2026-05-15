@@ -708,6 +708,6 @@ fn account_state_text(account_state: account_model.AccountState) -> String {
 }
 
 fn navigate_to_users() -> Effect(Msg) {
-  let #(path, query) = route.path_and_query(route.AdminUsers)
+  let #(path, query) = route.path_and_query(route.Admin(route.AdminUsers))
   modem.push(path, query, option.None)
 }

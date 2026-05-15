@@ -27,6 +27,7 @@ import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_job_log_domain
 import glot_backend/domain/admin/get_job_logs_domain
 import glot_backend/domain/admin/get_job_type_policies_domain
+import glot_backend/domain/admin/get_availability_config_domain
 import glot_backend/domain/admin/get_jobs_domain
 import glot_backend/domain/admin/get_periodic_job_domain
 import glot_backend/domain/admin/get_periodic_jobs_domain
@@ -45,6 +46,7 @@ import glot_backend/domain/admin/upsert_cleanup_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_job_type_policy_domain
+import glot_backend/domain/admin/upsert_availability_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
@@ -59,6 +61,7 @@ import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/domain/snippet/list_public_snippets_domain
 import glot_backend/domain/snippet/list_session_snippets_domain
 import glot_backend/domain/snippet/update_snippet_domain
+import glot_backend/domain/shared/availability_policy_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -81,6 +84,7 @@ import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/job_type_policy_dto
+import glot_core/admin/availability_config_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/admin/run_log_dto
@@ -137,6 +141,9 @@ fn handle_api_request(
   ctx: context.Context,
   api_request: ApiRequest,
 ) -> program_types.Program(ApiResult) {
+  use _ <- program.and_then(availability_policy_domain.enforce_api_action(
+    api_request.action,
+  ))
   case api_request.action {
     api_action.PublicAction(action) ->
       handle_public_api_request(ctx, action, api_request.data)
@@ -260,6 +267,16 @@ fn handle_admin_api_request(
     admin_action.GetAdminDebugConfigAction ->
       get_debug_config_domain.get_debug_config(ctx)
       |> program.map(DebugConfigResponse)
+    admin_action.GetAdminAvailabilityConfigAction ->
+      get_availability_config_domain.get_availability_config(ctx)
+      |> program.map(AvailabilityConfigResponse)
+    admin_action.UpsertAdminAvailabilityConfigAction -> {
+      use request <- program.and_then(
+        upsert_availability_config_domain.request_from_dynamic(data),
+      )
+      upsert_availability_config_domain.upsert_availability_config(ctx, request)
+      |> program.map(AvailabilityConfigResponse)
+    }
     admin_action.UpsertAdminDebugConfigAction -> {
       use request <- program.and_then(
         upsert_debug_config_domain.request_from_dynamic(data),
@@ -486,6 +503,7 @@ type ApiResult {
   SnippetResponse(snippet_dto.SnippetResponse)
   SnippetsResponse(snippet_dto.ListSnippetsResponse)
   DebugConfigResponse(debug_config_dto.DebugConfigResponse)
+  AvailabilityConfigResponse(availability_config_dto.AvailabilityConfigResponse)
   AuthConfigResponse(auth_config_dto.AuthConfigResponse)
   CleanupConfigResponse(cleanup_config_dto.CleanupConfigResponse)
   AdminPeriodicJobsResponse(periodic_job_dto.ListPeriodicJobsResponse)
@@ -538,6 +556,8 @@ fn api_result_to_response(
       success_response(snippet_dto.encode_list_response(response))
     DebugConfigResponse(response) ->
       success_response(debug_config_dto.encode_response(response))
+    AvailabilityConfigResponse(response) ->
+      success_response(availability_config_dto.encode_response(response))
     AuthConfigResponse(response) ->
       success_response(auth_config_dto.encode_response(response))
     CleanupConfigResponse(response) ->
@@ -831,6 +851,16 @@ fn error_to_response(error: error.Error) -> wisp.Response {
           error_response(status, code, message)
         }
       }
+    error.AvailabilityError(availability_error) -> {
+      let response = error_response(status, code, message)
+      let response = case availability_error.retry_after_seconds {
+        option.Some(seconds) ->
+          wisp.set_header(response, "Retry-After", int.to_string(seconds))
+        option.None -> response
+      }
+      wisp.log_error("Availability error: " <> availability_error.code)
+      response
+    }
     error.AccountStateError(account_state_error) ->
       case account_state_error {
         error.ForbiddenAccountState(
@@ -976,6 +1006,11 @@ pub fn api_error_details(error: error.Error) -> #(Int, String, String) {
           "Admin access required",
         )
       }
+    error.AvailabilityError(availability_error) -> #(
+      503,
+      availability_error.code,
+      availability_error.message,
+    )
     error.AccountStateError(_) -> #(
       403,
       "account_state_forbidden",

@@ -518,7 +518,7 @@ fn job_log_row(
   admin_table.row([
     admin_table.linked_primary_cell(
       log_id_column(),
-      [route.href(route.AdminJobLog(log.id))],
+      [route.href(route.Admin(route.AdminJobLog(log.id)))],
       string_helpers.truncate_stem_middle(uuid.to_string(log.id), 18),
       option.None,
     ),
@@ -532,7 +532,9 @@ fn job_log_row(
       duration_label.duration_in_ms_label(log.duration_ns),
     ),
     admin_table.cell(error_column(), [admin_ui.error_badge(log.has_error)]),
-    admin_table.open_link_cell([route.href(route.AdminJobLog(log.id))]),
+    admin_table.open_link_cell([route.href(route.Admin(route.AdminJobLog(
+      log.id,
+    )))]),
   ])
 }
 
@@ -607,7 +609,7 @@ fn periodic_job_detail_item(value: option.Option(uuid.Uuid)) -> Element(Msg) {
       linked_detail_item(
         "Periodic job ID",
         uuid.to_string(id),
-        route.AdminPeriodicJob(id),
+        route.Admin(route.AdminPeriodicJob(id)),
       )
     option.None -> admin_ui.detail_item("Periodic job ID", "None")
   }
@@ -738,7 +740,10 @@ fn create_job_status(state: CreateJobState) -> Element(Msg) {
     CreateJobSaved(job) ->
       html.p([attribute.class("admin-page__status")], [
         html.text("Created new job successfully. "),
-        html.a([route.href(route.AdminJob(job.id))], [html.text("Open new job")]),
+        html.a(
+          [route.href(route.Admin(route.AdminJob(job.id)))],
+          [html.text("Open new job")],
+        ),
         html.text("."),
       ])
   }
@@ -752,7 +757,11 @@ fn create_job_submit_text(state: CreateJobState) -> String {
 }
 
 fn navigate_to_job(job_id: uuid.Uuid) -> Effect(Msg) {
-  modem.push(route.to_string(route.AdminJob(job_id)), option.None, option.None)
+  modem.push(
+    route.to_string(route.Admin(route.AdminJob(job_id))),
+    option.None,
+    option.None,
+  )
 }
 
 fn empty_logs_page() -> pagination_model.CursorPage(job_log_dto.JobLogResponse) {

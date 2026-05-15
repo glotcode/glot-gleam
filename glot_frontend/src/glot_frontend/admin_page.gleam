@@ -41,17 +41,17 @@ pub fn view(_model: Model) -> Element(Msg) {
           link_card(
             title: "App config",
             description: "Manage docker run settings and future runtime configuration sections.",
-            target: route.AdminConfig,
+            target: route.Admin(route.AdminConfig),
           ),
           link_card(
             title: "Rate limits",
             description: "Review and update API rate limit policies.",
-            target: route.AdminRateLimits,
+            target: route.Admin(route.AdminRateLimits),
           ),
           link_card(
             title: "Email templates",
             description: "Review stored transactional email templates and edit their subject and body content.",
-            target: route.AdminEmailTemplates,
+            target: route.Admin(route.AdminEmailTemplates),
           ),
         ]),
       ]),
@@ -70,17 +70,17 @@ pub fn view(_model: Model) -> Element(Msg) {
           link_card(
             title: "Periodic jobs",
             description: "Edit scheduler definitions that drive recurring cleanup and infrastructure jobs.",
-            target: route.AdminPeriodicJobs,
+            target: route.Admin(route.AdminPeriodicJobs),
           ),
           link_card(
             title: "Jobs",
             description: "Inspect the execution queue and iterate on the admin jobs workflow.",
-            target: route.AdminJobs,
+            target: route.Admin(route.AdminJobs),
           ),
           link_card(
             title: "Job type policies",
             description: "Set retry, timeout, and backoff defaults that new jobs inherit when they are enqueued.",
-            target: route.AdminJobTypePolicies,
+            target: route.Admin(route.AdminJobTypePolicies),
           ),
         ]),
       ]),
@@ -99,12 +99,12 @@ pub fn view(_model: Model) -> Element(Msg) {
           link_card(
             title: "Users",
             description: "List accounts, inspect user state, and edit roles or account access.",
-            target: route.AdminUsers,
+            target: route.Admin(route.AdminUsers),
           ),
           link_card(
             title: "Snippets",
             description: "Review saved user snippets and inspect their stored files in a read-only admin view.",
-            target: route.AdminSnippets,
+            target: route.Admin(route.AdminSnippets),
           ),
         ]),
       ]),
@@ -123,17 +123,17 @@ pub fn view(_model: Model) -> Element(Msg) {
           link_card(
             title: "API logs",
             description: "Review retained API request logging by request ID.",
-            target: route.AdminApiLogs,
+            target: route.Admin(route.AdminApiLogs),
           ),
           link_card(
             title: "Run logs",
             description: "Inspect retained execution outcomes with request, session, user, and language filters.",
-            target: route.AdminRunLogs,
+            target: route.Admin(route.AdminRunLogs),
           ),
           link_card(
             title: "Job logs",
             description: "Scan operational job log output separately from the primary jobs queue view.",
-            target: route.AdminJobLogs,
+            target: route.Admin(route.AdminJobLogs),
           ),
         ]),
       ]),

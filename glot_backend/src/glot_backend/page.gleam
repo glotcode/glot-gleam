@@ -1,12 +1,16 @@
 import gleam/erlang/process
+import gleam/int
+import gleam/list
 import gleam/http/request
 import gleam/option
 import gleam/string
 import glot_backend/context
+import glot_backend/domain/shared/availability_policy_domain
 import glot_backend/editor_page
 import glot_backend/effect/basic/basic_handlers
-import glot_backend/effect/error
+import glot_backend/effect/effect_trace
 import glot_backend/effect/interpreter
+import glot_backend/effect/error
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
 import glot_backend/effect/total_program
@@ -24,6 +28,7 @@ import glot_backend/worker/log_worker
 import glot_core/route
 import lustre/attribute
 import lustre/element
+import lustre/element/html
 import pog
 import wisp
 
@@ -87,9 +92,27 @@ fn handle_page_request(
 ) -> page_response.PageResponse {
   let runtime =
     runtime.new(db, app_config_cache_subject, language_version_cache_subject)
+  let #(page_decision, availability_state) =
+    availability_policy_domain.evaluate_page_route(page_request.route)
+    |> interpreter.run(runtime, ctx)
 
+  case page_decision {
+    Ok(availability_policy_domain.AllowPage) ->
+      handle_page_request_with_runtime(runtime, ctx, page_request)
+      |> prepend_effects(availability_state.effect_measurements)
+    Ok(availability_policy_domain.UnavailablePage(message, retry_after_seconds)) ->
+      unavailable_page_response(availability_state, message, retry_after_seconds)
+    Error(err) -> internal_page_error("availability page", err, availability_state)
+  }
+}
+
+fn handle_page_request_with_runtime(
+  runtime: runtime.Runtime,
+  ctx: context.Context,
+  page_request: PageRequest,
+) -> page_response.PageResponse {
   case page_request.route {
-    route.Home -> {
+    route.Public(route.Home) -> {
       let state = empty_page_state()
       page_response.PageResponse(
         response: wisp.html_response(
@@ -110,30 +133,37 @@ fn handle_page_request(
         error: option.None,
       )
     }
-    route.Login -> spa_page("glot.io - login")
-    route.Account -> spa_page("glot.io - account")
-    route.Admin -> spa_page("glot.io - admin")
-    route.AdminApiLogs -> spa_page("glot.io - api logs")
-    route.AdminApiLog(_) -> spa_page("glot.io - api log")
-    route.AdminRunLogs -> spa_page("glot.io - run logs")
-    route.AdminRunLog(_) -> spa_page("glot.io - run log")
-    route.AdminPeriodicJobs -> spa_page("glot.io - periodic jobs")
-    route.AdminPeriodicJob(_) -> spa_page("glot.io - periodic job")
-    route.AdminUsers -> spa_page("glot.io - admin users")
-    route.AdminUser(_) -> spa_page("glot.io - admin user")
-    route.AdminJobs -> spa_page("glot.io - admin jobs")
-    route.AdminJob(_) -> spa_page("glot.io - admin job")
-    route.AdminEmailTemplates -> spa_page("glot.io - email templates")
-    route.AdminEmailTemplate(_) -> spa_page("glot.io - email template")
-    route.AdminSnippets -> spa_page("glot.io - admin snippets")
-    route.AdminSnippet(_) -> spa_page("glot.io - admin snippet")
-    route.AdminJobLogs -> spa_page("glot.io - job logs")
-    route.AdminJobLog(_) -> spa_page("glot.io - job log")
-    route.AdminConfig -> spa_page("glot.io - admin config")
-    route.AdminRateLimits -> spa_page("glot.io - admin rate limits")
-    route.AdminJobTypePolicies -> spa_page("glot.io - admin job type policies")
-    route.AccountSnippets(_, _) -> spa_page("glot.io - account snippets")
-    route.Snippets(after:, before:, username:) ->
+    route.Public(route.Login) -> spa_page("glot.io - login")
+    route.Account(route.AccountHome) -> spa_page("glot.io - account")
+    route.Account(route.AccountSnippets(_, _)) ->
+      spa_page("glot.io - account snippets")
+    route.Admin(route.AdminHome) -> spa_page("glot.io - admin")
+    route.Admin(route.AdminApiLogs) -> spa_page("glot.io - api logs")
+    route.Admin(route.AdminApiLog(_)) -> spa_page("glot.io - api log")
+    route.Admin(route.AdminRunLogs) -> spa_page("glot.io - run logs")
+    route.Admin(route.AdminRunLog(_)) -> spa_page("glot.io - run log")
+    route.Admin(route.AdminPeriodicJobs) ->
+      spa_page("glot.io - periodic jobs")
+    route.Admin(route.AdminPeriodicJob(_)) ->
+      spa_page("glot.io - periodic job")
+    route.Admin(route.AdminUsers) -> spa_page("glot.io - admin users")
+    route.Admin(route.AdminUser(_)) -> spa_page("glot.io - admin user")
+    route.Admin(route.AdminJobs) -> spa_page("glot.io - admin jobs")
+    route.Admin(route.AdminJob(_)) -> spa_page("glot.io - admin job")
+    route.Admin(route.AdminEmailTemplates) ->
+      spa_page("glot.io - email templates")
+    route.Admin(route.AdminEmailTemplate(_)) ->
+      spa_page("glot.io - email template")
+    route.Admin(route.AdminSnippets) -> spa_page("glot.io - admin snippets")
+    route.Admin(route.AdminSnippet(_)) -> spa_page("glot.io - admin snippet")
+    route.Admin(route.AdminJobLogs) -> spa_page("glot.io - job logs")
+    route.Admin(route.AdminJobLog(_)) -> spa_page("glot.io - job log")
+    route.Admin(route.AdminConfig) -> spa_page("glot.io - admin config")
+    route.Admin(route.AdminRateLimits) ->
+      spa_page("glot.io - admin rate limits")
+    route.Admin(route.AdminJobTypePolicies) ->
+      spa_page("glot.io - admin job type policies")
+    route.Public(route.Snippets(after:, before:, username:)) ->
       run_page_program(
         "snippets page",
         snippets_page_domain.load_view_model(ctx, after, before, username),
@@ -144,7 +174,7 @@ fn handle_page_request(
         snippets_page.app_attributes,
         snippets_page.render,
       )
-    route.NewSnippet(language_slug) ->
+    route.Public(route.NewSnippet(language_slug)) ->
       run_page_program(
         "new snippet page",
         editor_page_domain.load_new_view_model(language_slug),
@@ -155,7 +185,7 @@ fn handle_page_request(
         editor_page.app_attributes,
         editor_page.render,
       )
-    route.Snippet(slug) ->
+    route.Public(route.Snippet(slug)) ->
       run_page_program(
         "snippet page",
         editor_page_domain.load_existing_view_model(ctx, slug),
@@ -179,6 +209,96 @@ fn handle_page_request(
         error: option.None,
       )
     }
+  }
+}
+
+fn unavailable_page_response(
+  state: program_state.State,
+  message: String,
+  retry_after_seconds: option.Option(Int),
+) -> page_response.PageResponse {
+  let response =
+    wisp.html_response(
+      page_layout.document(
+        title: "glot.io - unavailable",
+        head_children: [],
+        app_attributes: [],
+        app_children: [
+          html.main([attribute.class("app-shell app-shell--narrow")], [
+            html.section([attribute.class("app-panel")], [
+              html.p([attribute.class("login-page__status")], [
+                html.text("Availability mode"),
+              ]),
+              html.h1([attribute.class("login-page__title")], [
+                html.text("Temporarily unavailable"),
+              ]),
+              html.p([attribute.class("login-page__status")], [html.text(message)]),
+              availability_retry_after_view(retry_after_seconds),
+              html.div([attribute.class("admin-page__actions")], [
+                html.a(
+                  [
+                    attribute.class("admin-page__button admin-page__button--secondary"),
+                    route.href(route.Public(route.Login)),
+                  ],
+                  [html.text("Login")],
+                ),
+                html.a(
+                  [
+                    attribute.class("admin-page__button admin-page__button--secondary"),
+                    route.href(route.Admin(route.AdminHome)),
+                  ],
+                  [html.text("Admin")],
+                ),
+              ]),
+            ]),
+          ]),
+        ],
+      ),
+      503,
+    )
+  let response = case retry_after_seconds {
+    option.Some(seconds) ->
+      wisp.set_header(response, "Retry-After", int.to_string(seconds))
+    option.None -> response
+  }
+
+  page_response.PageResponse(
+    response: response,
+    status_code: 503,
+    render_mode: "unavailable",
+    effects: state.effect_measurements,
+    info: state.info_fields,
+    warnings: state.warning_fields,
+    debug: state.debug_fields,
+    error: option.None,
+  )
+}
+
+fn availability_retry_after_view(
+  retry_after_seconds: option.Option(Int),
+) -> element.Element(Nil) {
+  case retry_after_seconds {
+    option.Some(seconds) ->
+      html.p([attribute.class("login-page__status")], [
+        html.text(
+          "Please try again in about " <> retry_after_text(seconds) <> ".",
+        ),
+      ])
+    option.None ->
+      html.p([attribute.class("login-page__status")], [
+        html.text("Please try again shortly."),
+      ])
+  }
+}
+
+fn retry_after_text(seconds: Int) -> String {
+  case seconds >= 3600 {
+    True -> int.to_string(seconds / 3600) <> " hour(s)"
+    False ->
+      case seconds >= 60 {
+        True -> int.to_string(seconds / 60) <> " minute(s)"
+        False -> int.to_string(seconds) <> " second(s)"
+      }
   }
 }
 
@@ -317,5 +437,15 @@ fn prepare_log_entry(
     debug: page_response.debug,
     error: page_response.error,
     effects: page_response.effects,
+  )
+}
+
+fn prepend_effects(
+  page_response: page_response.PageResponse,
+  effects: List(effect_trace.EffectMeasurement),
+) -> page_response.PageResponse {
+  page_response.PageResponse(
+    ..page_response,
+    effects: list.append(effects, page_response.effects),
   )
 }

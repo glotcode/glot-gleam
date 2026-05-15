@@ -152,7 +152,7 @@ pub fn default_quick_action_sections(
       title: "Navigation",
       actions: navigation_actions(
         navigation_state: CanManageAccount,
-        current_route: route.Home,
+        current_route: route.Public(route.Home),
         query: "",
         on_navigate:,
       ),
@@ -167,7 +167,7 @@ pub fn default_quick_action_sections(
 pub fn empty_model() -> ViewModel(Nil) {
   ViewModel(
     current_user_label: "Account",
-    account_route: route.Account,
+    account_route: route.Account(route.AccountHome),
     search_query: "",
     selected_index: 0,
     open_msg: Nil,
@@ -190,19 +190,23 @@ pub fn navigation_actions(
       label: "Home",
       description: "Go to the front page.",
       shortcut: [],
-      target_route: option.Some(route.Home),
-      msg: on_navigate(route.Home),
+      target_route: option.Some(route.Public(route.Home)),
+      msg: on_navigate(route.Public(route.Home)),
     ),
     Action(
       label: "Public snippets",
       description: "Browse public code snippets.",
       shortcut: [],
-      target_route: option.Some(route.Snippets(
+      target_route: option.Some(route.Public(route.Snippets(
         option.None,
         option.None,
         option.None,
-      )),
-      msg: on_navigate(route.Snippets(option.None, option.None, option.None)),
+      ))),
+      msg: on_navigate(route.Public(route.Snippets(
+        option.None,
+        option.None,
+        option.None,
+      ))),
     ),
   ]
 
@@ -213,18 +217,21 @@ pub fn navigation_actions(
           label: "My snippets",
           description: "Manage snippets in your account.",
           shortcut: [],
-          target_route: option.Some(route.AccountSnippets(
+          target_route: option.Some(route.Account(route.AccountSnippets(
             option.None,
             option.None,
-          )),
-          msg: on_navigate(route.AccountSnippets(option.None, option.None)),
+          ))),
+          msg: on_navigate(route.Account(route.AccountSnippets(
+            option.None,
+            option.None,
+          ))),
         ),
         Action(
           label: "Account",
           description: "Open your account settings.",
           shortcut: [],
-          target_route: option.Some(route.Account),
-          msg: on_navigate(route.Account),
+          target_route: option.Some(route.Account(route.AccountHome)),
+          msg: on_navigate(route.Account(route.AccountHome)),
         ),
       ])
 
@@ -234,25 +241,28 @@ pub fn navigation_actions(
           label: "My snippets",
           description: "Manage snippets in your account.",
           shortcut: [],
-          target_route: option.Some(route.AccountSnippets(
+          target_route: option.Some(route.Account(route.AccountSnippets(
             option.None,
             option.None,
-          )),
-          msg: on_navigate(route.AccountSnippets(option.None, option.None)),
+          ))),
+          msg: on_navigate(route.Account(route.AccountSnippets(
+            option.None,
+            option.None,
+          ))),
         ),
         Action(
           label: "Account",
           description: "Open your account settings.",
           shortcut: [],
-          target_route: option.Some(route.Account),
-          msg: on_navigate(route.Account),
+          target_route: option.Some(route.Account(route.AccountHome)),
+          msg: on_navigate(route.Account(route.AccountHome)),
         ),
         Action(
           label: "Admin",
           description: "Open admin tools and configuration.",
           shortcut: [],
-          target_route: option.Some(route.Admin),
-          msg: on_navigate(route.Admin),
+          target_route: option.Some(route.Admin(route.AdminHome)),
+          msg: on_navigate(route.Admin(route.AdminHome)),
         ),
       ])
 
@@ -264,8 +274,8 @@ pub fn navigation_actions(
               label: "Login",
               description: "Sign in to save and manage snippets.",
               shortcut: [],
-              target_route: option.Some(route.Login),
-              msg: on_navigate(route.Login),
+              target_route: option.Some(route.Public(route.Login)),
+              msg: on_navigate(route.Public(route.Login)),
             ),
           ])
         False ->
@@ -274,15 +284,15 @@ pub fn navigation_actions(
               label: "Login",
               description: "Sign in to save and manage snippets.",
               shortcut: [],
-              target_route: option.Some(route.Login),
-              msg: on_navigate(route.Login),
+              target_route: option.Some(route.Public(route.Login)),
+              msg: on_navigate(route.Public(route.Login)),
             ),
             Action(
               label: "Register",
               description: "Create an account or sign in with email.",
               shortcut: [],
-              target_route: option.Some(route.Login),
-              msg: on_navigate(route.Login),
+              target_route: option.Some(route.Public(route.Login)),
+              msg: on_navigate(route.Public(route.Login)),
             ),
           ])
       }
@@ -316,8 +326,10 @@ pub fn language_actions(
       label: name,
       description: "Create a new " <> name <> " snippet.",
       shortcut: [],
-      target_route: option.Some(route.NewSnippet(language.to_string(lang))),
-      msg: on_navigate(route.NewSnippet(language.to_string(lang))),
+      target_route: option.Some(route.Public(route.NewSnippet(
+        language.to_string(lang),
+      ))),
+      msg: on_navigate(route.Public(route.NewSnippet(language.to_string(lang)))),
     )
   })
 }

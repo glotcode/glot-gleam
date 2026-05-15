@@ -1,6 +1,8 @@
 import gleam/int
 import gleam/option
 import gleam/result
+import glot_core/admin/availability_config_dto
+import glot_core/availability_mode
 import glot_core/admin/auth_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
@@ -19,10 +21,12 @@ pub type Model {
   Model(
     status: Status,
     debug: DebugSection,
+    availability: AvailabilitySection,
     auth: AuthSection,
     cleanup: CleanupSection,
     docker_run: DockerRunSection,
     debug_loaded: Bool,
+    availability_loaded: Bool,
     auth_loaded: Bool,
     cleanup_loaded: Bool,
     docker_run_loaded: Bool,
@@ -56,8 +60,24 @@ pub type DebugSection {
   )
 }
 
+pub type AvailabilitySection {
+  AvailabilitySection(
+    saved: AvailabilityFields,
+    draft: AvailabilityFields,
+    state: mutation.MutationState,
+  )
+}
+
 pub type DebugFields {
   DebugFields(enabled: Bool)
+}
+
+pub type AvailabilityFields {
+  AvailabilityFields(
+    mode: availability_mode.AvailabilityMode,
+    message: String,
+    retry_after_seconds: String,
+  )
 }
 
 pub type AuthSection {
@@ -103,6 +123,17 @@ pub type Msg {
   DebugResetClicked
   DebugSaveClicked
   DebugSaveFinished(api.ApiResponse(debug_config_dto.DebugConfigResponse))
+  AvailabilityLoaded(
+    api.ApiResponse(availability_config_dto.AvailabilityConfigResponse),
+  )
+  AvailabilityModeSelected(availability_mode.AvailabilityMode)
+  AvailabilityMessageChanged(String)
+  AvailabilityRetryAfterSecondsChanged(String)
+  AvailabilityResetClicked
+  AvailabilitySaveClicked
+  AvailabilitySaveFinished(
+    api.ApiResponse(availability_config_dto.AvailabilityConfigResponse),
+  )
   AuthLoaded(api.ApiResponse(auth_config_dto.AuthConfigResponse))
   AuthLoginTokenMaxAgeChanged(String)
   AuthSessionTokenMaxAgeChanged(String)
@@ -139,10 +170,12 @@ pub fn init() -> #(Model, Effect(Msg)) {
     Model(
       status: NotLoaded,
       debug: empty_debug_section(),
+      availability: empty_availability_section(),
       auth: empty_auth_section(),
       cleanup: empty_cleanup_section(),
       docker_run: empty_docker_run_section(),
       debug_loaded: False,
+      availability_loaded: False,
       auth_loaded: False,
       cleanup_loaded: False,
       docker_run_loaded: False,
@@ -157,6 +190,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
       Model(..model, status: Loading),
       effect.batch([
         load_debug_config(),
+        load_availability_config(),
         load_auth_config(),
         load_cleanup_config(),
         load_docker_run_config(),
@@ -264,6 +298,149 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             debug: DebugSection(
               ..model.debug,
               state: mutation.SaveError("Could not save debug config."),
+            ),
+          ),
+          effect.none(),
+        )
+      }
+
+    AvailabilityLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = availability_fields_from_response(response)
+          let next_model =
+            Model(
+              ..model,
+              availability: AvailabilitySection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
+              availability_loaded: True,
+            )
+
+          #(
+            Model(..next_model, status: loaded_status(next_model)),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(..model, status: LoadError(error.message)),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(..model, status: LoadError("Could not load availability config.")),
+          effect.none(),
+        )
+      }
+
+    AvailabilityModeSelected(mode) -> #(
+      Model(
+        ..model,
+        availability: AvailabilitySection(
+          ..model.availability,
+          draft: AvailabilityFields(..model.availability.draft, mode: mode),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    AvailabilityMessageChanged(value) -> #(
+      Model(
+        ..model,
+        availability: AvailabilitySection(
+          ..model.availability,
+          draft: AvailabilityFields(..model.availability.draft, message: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    AvailabilityRetryAfterSecondsChanged(value) -> #(
+      Model(
+        ..model,
+        availability: AvailabilitySection(
+          ..model.availability,
+          draft: AvailabilityFields(
+            ..model.availability.draft,
+            retry_after_seconds: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    AvailabilityResetClicked -> #(
+      Model(
+        ..model,
+        availability: AvailabilitySection(
+          ..model.availability,
+          draft: model.availability.saved,
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    AvailabilitySaveClicked ->
+      case validate_availability_fields(model.availability.draft) {
+        Error(message) -> #(
+          Model(
+            ..model,
+            availability: AvailabilitySection(
+              ..model.availability,
+              state: mutation.SaveError(message),
+            ),
+          ),
+          effect.none(),
+        )
+        Ok(request) -> #(
+          Model(
+            ..model,
+            availability: AvailabilitySection(
+              ..model.availability,
+              state: mutation.Saving,
+            ),
+          ),
+          api.upsert_admin_availability_config(request, AvailabilitySaveFinished),
+        )
+      }
+
+    AvailabilitySaveFinished(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = availability_fields_from_response(response)
+          #(
+            Model(
+              ..model,
+              availability: AvailabilitySection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Saved,
+              ),
+            ),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            availability: AvailabilitySection(
+              ..model.availability,
+              state: mutation.SaveError(error.message),
+            ),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            availability: AvailabilitySection(
+              ..model.availability,
+              state: mutation.SaveError("Could not save availability config."),
             ),
           ),
           effect.none(),
@@ -777,6 +954,7 @@ pub fn view(model: Model) -> Element(Msg) {
     html.div([attribute.class("admin-page__group")], [
       html.div([attribute.class("admin-page__section-grid")], [
         debug_section_view(model.debug, model.status),
+        availability_section_view(model.availability, model.status),
         auth_section_view(model.auth, model.status),
         cleanup_section_view(model.cleanup, model.status),
         docker_run_section_view(model.docker_run, model.status),
@@ -953,6 +1131,96 @@ fn debug_section_view(section: DebugSection, status: Status) -> Element(Msg) {
       reset_msg: DebugResetClicked,
       save_msg: DebugSaveClicked,
     ),
+  )
+}
+
+fn availability_section_view(
+  section: AvailabilitySection,
+  status: Status,
+) -> Element(Msg) {
+  let dirty = is_dirty_availability(section)
+
+  config_section(
+    title: "Availability",
+    subtitle: "Controls whether the app is normal, read-only, or unavailable to non-admin traffic.",
+    badge: section_badge(section.state, dirty, option.None),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      html.div([attribute.class("admin-page__field")], [
+        html.span([attribute.class("admin-page__field-label")], [
+          html.text("Mode"),
+        ]),
+        html.div([attribute.class("admin-page__actions")], [
+          availability_mode_button(
+            "Normal",
+            availability_mode.NormalMode,
+            section,
+            status,
+          ),
+          availability_mode_button(
+            "Read only",
+            availability_mode.ReadOnlyMode,
+            section,
+            status,
+          ),
+          availability_mode_button(
+            "Maintenance",
+            availability_mode.MaintenanceMode,
+            section,
+            status,
+          ),
+        ]),
+        html.span([attribute.class("admin-page__field-help")], [
+          html.text(
+            "Admin routes and admin actions remain available. Read-only blocks writes. Maintenance blocks most public traffic.",
+          ),
+        ]),
+      ]),
+      admin_ui.textarea_input(
+        label: "Message",
+        help: "Shown in 503 responses for unavailable pages and APIs.",
+        value: section.draft.message,
+        rows: 3,
+        on_input: AvailabilityMessageChanged,
+      ),
+      admin_ui.text_input(
+        label: "Retry-After seconds",
+        help: "Optional integer. Leave blank to omit the Retry-After header.",
+        value: section.draft.retry_after_seconds,
+        placeholder: "300",
+        on_input: AvailabilityRetryAfterSecondsChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(section.state, option.None),
+      reset_msg: AvailabilityResetClicked,
+      save_msg: AvailabilitySaveClicked,
+    ),
+  )
+}
+
+fn availability_mode_button(
+  label: String,
+  mode: availability_mode.AvailabilityMode,
+  section: AvailabilitySection,
+  status: Status,
+) -> Element(Msg) {
+  let is_selected = section.draft.mode == mode
+  let class_name = case is_selected {
+    True -> admin_ui.primary_button_class()
+    False -> admin_ui.secondary_button_class()
+  }
+
+  html.button(
+    [
+      attribute.type_("button"),
+      attribute.class(class_name),
+      attribute.disabled(status != Ready || mutation.is_saving(section.state)),
+      event.on_click(AvailabilityModeSelected(mode)),
+    ],
+    [html.text(label)],
   )
 }
 
@@ -1156,6 +1424,10 @@ fn load_debug_config() -> Effect(Msg) {
   api.get_admin_debug_config(DebugLoaded)
 }
 
+fn load_availability_config() -> Effect(Msg) {
+  api.get_admin_availability_config(AvailabilityLoaded)
+}
+
 fn load_auth_config() -> Effect(Msg) {
   api.get_admin_auth_config(AuthLoaded)
 }
@@ -1182,6 +1454,17 @@ fn debug_fields_from_response(
   response: debug_config_dto.DebugConfigResponse,
 ) -> DebugFields {
   DebugFields(enabled: response.enabled)
+}
+
+fn availability_fields_from_response(
+  response: availability_config_dto.AvailabilityConfigResponse,
+) -> AvailabilityFields {
+  AvailabilityFields(
+    mode: response.mode,
+    message: response.message,
+    retry_after_seconds: option.map(response.retry_after_seconds, int.to_string)
+      |> option.unwrap(""),
+  )
 }
 
 fn cleanup_fields_from_response(
@@ -1234,6 +1517,36 @@ fn is_dirty(section: DockerRunSection) -> Bool {
 
 fn is_dirty_debug(section: DebugSection) -> Bool {
   section.saved != section.draft
+}
+
+fn is_dirty_availability(section: AvailabilitySection) -> Bool {
+  section.saved != section.draft
+}
+
+fn validate_availability_fields(
+  fields: AvailabilityFields,
+) -> Result(availability_config_dto.UpsertAvailabilityConfigRequest, String) {
+  let retry_after_seconds = case fields.retry_after_seconds {
+    "" -> Ok(option.None)
+    value ->
+      admin_format.parse_positive_int_with_error(
+        value,
+        "Retry-After seconds must be a positive integer.",
+      )
+      |> result.map(option.Some)
+  }
+
+  use retry_after_seconds <- result.try(retry_after_seconds)
+
+  case fields.message {
+    "" -> Error("Availability message must not be empty.")
+    _ ->
+      Ok(availability_config_dto.UpsertAvailabilityConfigRequest(
+        mode: fields.mode,
+        message: fields.message,
+        retry_after_seconds: retry_after_seconds,
+      ))
+  }
 }
 
 fn is_dirty_auth(section: AuthSection) -> Bool {
@@ -1347,8 +1660,21 @@ fn empty_debug_section() -> DebugSection {
   DebugSection(saved: fields, draft: fields, state: mutation.Idle)
 }
 
+fn empty_availability_section() -> AvailabilitySection {
+  let fields = empty_availability_fields()
+  AvailabilitySection(saved: fields, draft: fields, state: mutation.Idle)
+}
+
 fn empty_debug_fields() -> DebugFields {
   DebugFields(enabled: False)
+}
+
+fn empty_availability_fields() -> AvailabilityFields {
+  AvailabilityFields(
+    mode: availability_mode.NormalMode,
+    message: "glot.io is temporarily unavailable right now.",
+    retry_after_seconds: "",
+  )
 }
 
 fn empty_auth_fields() -> AuthFields {
@@ -1389,6 +1715,7 @@ fn empty_docker_run_fields() -> DockerRunFields {
 fn loaded_status(model: Model) -> Status {
   case
     model.debug_loaded
+    && model.availability_loaded
     && model.auth_loaded
     && model.cleanup_loaded
     && model.docker_run_loaded

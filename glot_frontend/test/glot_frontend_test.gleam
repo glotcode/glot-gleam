@@ -31,22 +31,23 @@ pub fn truncate_stem_middle_handles_tiny_lengths_test() {
 }
 
 pub fn snippets_route_to_string_includes_username_query_test() {
-  assert route.to_string(route.Snippets(
+  assert route.to_string(route.Public(route.Snippets(
       after: option.Some("after-1"),
       before: option.None,
       username: option.Some("alice"),
-    ))
+    )))
     == "/snippets?after=after-1&username=alice"
 }
 
 pub fn admin_rate_limits_route_to_string_test() {
-  assert route.to_string(route.AdminRateLimits) == "/admin/rate-limits"
+  assert route.to_string(route.Admin(route.AdminRateLimits))
+    == "/admin/rate-limits"
 }
 
 pub fn admin_route_to_string_test() {
-  assert route.to_string(route.Admin) == "/admin"
+  assert route.to_string(route.Admin(route.AdminHome)) == "/admin"
 }
 
 pub fn admin_config_route_to_string_test() {
-  assert route.to_string(route.AdminConfig) == "/admin/config"
+  assert route.to_string(route.Admin(route.AdminConfig)) == "/admin/config"
 }

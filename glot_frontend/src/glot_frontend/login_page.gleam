@@ -149,7 +149,11 @@ pub fn update(
 
         api.ApiFailure(error), _ -> {
           #(
-            Model(..model, step: EnterEmail, status: Error(error.message)),
+            Model(
+              ..model,
+              step: EnterEmail,
+              status: Error(api.error_message(error)),
+            ),
             effect.none(),
             app_event.NoAppEvent,
           )
@@ -174,14 +178,18 @@ pub fn update(
         api.ApiSuccess(_) -> {
           #(
             Model(..model, status: Info("You are now logged in.")),
-            modem.replace(route.to_string(route.Home), option.None, option.None),
+            modem.replace(
+              route.to_string(route.Public(route.Home)),
+              option.None,
+              option.None,
+            ),
             app_event.RefreshSession,
           )
         }
 
         api.ApiFailure(error) -> {
           #(
-            Model(..model, status: Error(error.message)),
+            Model(..model, status: Error(api.error_message(error))),
             effect.none(),
             app_event.NoAppEvent,
           )

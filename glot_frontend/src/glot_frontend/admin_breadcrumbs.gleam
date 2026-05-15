@@ -10,29 +10,7 @@ type Crumb {
 }
 
 pub fn is_admin_route(current_route: route.Route) -> Bool {
-  case current_route {
-    route.Admin
-    | route.AdminApiLogs
-    | route.AdminApiLog(_)
-    | route.AdminRunLogs
-    | route.AdminRunLog(_)
-    | route.AdminPeriodicJobs
-    | route.AdminPeriodicJob(_)
-    | route.AdminUsers
-    | route.AdminUser(_)
-    | route.AdminJobs
-    | route.AdminJob(_)
-    | route.AdminEmailTemplates
-    | route.AdminEmailTemplate(_)
-    | route.AdminSnippets
-    | route.AdminSnippet(_)
-    | route.AdminJobLogs
-    | route.AdminJobLog(_)
-    | route.AdminConfig
-    | route.AdminRateLimits
-    | route.AdminJobTypePolicies -> True
-    _ -> False
-  }
+  route.is_admin_route(current_route)
 }
 
 pub fn wrap(
@@ -53,98 +31,98 @@ pub fn wrap(
 
 fn breadcrumbs(current_route: route.Route) -> List(Crumb) {
   case current_route {
-    route.Admin -> [current("Admin")]
-    route.AdminConfig -> [
-      link("Admin", route.Admin),
+    route.Admin(route.AdminHome) -> [current("Admin")]
+    route.Admin(route.AdminConfig) -> [
+      link("Admin", route.Admin(route.AdminHome)),
       current("App config"),
     ]
-    route.AdminRateLimits -> [
-      link("Admin", route.Admin),
+    route.Admin(route.AdminRateLimits) -> [
+      link("Admin", route.Admin(route.AdminHome)),
       current("Rate limits"),
     ]
-    route.AdminJobTypePolicies -> [
-      link("Admin", route.Admin),
+    route.Admin(route.AdminJobTypePolicies) -> [
+      link("Admin", route.Admin(route.AdminHome)),
       current("Job type policies"),
     ]
-    route.AdminPeriodicJobs -> [
-      link("Admin", route.Admin),
+    route.Admin(route.AdminPeriodicJobs) -> [
+      link("Admin", route.Admin(route.AdminHome)),
       current("Periodic jobs"),
     ]
-    route.AdminPeriodicJob(_) -> [
-      link("Admin", route.Admin),
-      link("Periodic jobs", route.AdminPeriodicJobs),
+    route.Admin(route.AdminPeriodicJob(_)) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Periodic jobs", route.Admin(route.AdminPeriodicJobs)),
       current("Periodic job detail"),
     ]
-    route.AdminUsers -> [
-      link("Admin", route.Admin),
+    route.Admin(route.AdminUsers) -> [
+      link("Admin", route.Admin(route.AdminHome)),
       current("Users"),
     ]
-    route.AdminUser(_) -> [
-      link("Admin", route.Admin),
-      link("Users", route.AdminUsers),
+    route.Admin(route.AdminUser(_)) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Users", route.Admin(route.AdminUsers)),
       current("User detail"),
     ]
-    route.AdminJobs -> [
-      link("Admin", route.Admin),
+    route.Admin(route.AdminJobs) -> [
+      link("Admin", route.Admin(route.AdminHome)),
       current("Jobs"),
     ]
-    route.AdminJob(_) -> [
-      link("Admin", route.Admin),
-      link("Jobs", route.AdminJobs),
+    route.Admin(route.AdminJob(_)) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Jobs", route.Admin(route.AdminJobs)),
       current("Job detail"),
     ]
-    route.AdminEmailTemplates -> [
-      link("Admin", route.Admin),
+    route.Admin(route.AdminEmailTemplates) -> [
+      link("Admin", route.Admin(route.AdminHome)),
       current("Email templates"),
     ]
-    route.AdminEmailTemplate(_) -> [
-      link("Admin", route.Admin),
-      link("Email templates", route.AdminEmailTemplates),
+    route.Admin(route.AdminEmailTemplate(_)) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Email templates", route.Admin(route.AdminEmailTemplates)),
       current("Email template detail"),
     ]
-    route.AdminSnippets -> [
-      link("Admin", route.Admin),
+    route.Admin(route.AdminSnippets) -> [
+      link("Admin", route.Admin(route.AdminHome)),
       current("Snippets"),
     ]
-    route.AdminSnippet(_) -> [
-      link("Admin", route.Admin),
-      link("Snippets", route.AdminSnippets),
+    route.Admin(route.AdminSnippet(_)) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Snippets", route.Admin(route.AdminSnippets)),
       current("Snippet detail"),
     ]
-    route.AdminApiLogs -> [
-      link("Admin", route.Admin),
-      link("Logs", route.Admin),
+    route.Admin(route.AdminApiLogs) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Logs", route.Admin(route.AdminHome)),
       current("API logs"),
     ]
-    route.AdminApiLog(_) -> [
-      link("Admin", route.Admin),
-      link("Logs", route.Admin),
-      link("API logs", route.AdminApiLogs),
+    route.Admin(route.AdminApiLog(_)) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Logs", route.Admin(route.AdminHome)),
+      link("API logs", route.Admin(route.AdminApiLogs)),
       current("API log detail"),
     ]
-    route.AdminRunLogs -> [
-      link("Admin", route.Admin),
-      link("Logs", route.Admin),
+    route.Admin(route.AdminRunLogs) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Logs", route.Admin(route.AdminHome)),
       current("Run logs"),
     ]
-    route.AdminRunLog(_) -> [
-      link("Admin", route.Admin),
-      link("Logs", route.Admin),
-      link("Run logs", route.AdminRunLogs),
+    route.Admin(route.AdminRunLog(_)) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Logs", route.Admin(route.AdminHome)),
+      link("Run logs", route.Admin(route.AdminRunLogs)),
       current("Run log detail"),
     ]
-    route.AdminJobLogs -> [
-      link("Admin", route.Admin),
-      link("Logs", route.Admin),
+    route.Admin(route.AdminJobLogs) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Logs", route.Admin(route.AdminHome)),
       current("Job logs"),
     ]
-    route.AdminJobLog(_) -> [
-      link("Admin", route.Admin),
-      link("Logs", route.Admin),
-      link("Job logs", route.AdminJobLogs),
+    route.Admin(route.AdminJobLog(_)) -> [
+      link("Admin", route.Admin(route.AdminHome)),
+      link("Logs", route.Admin(route.AdminHome)),
+      link("Job logs", route.Admin(route.AdminJobLogs)),
       current("Job log detail"),
     ]
-    _ -> []
+    route.Public(_) | route.Account(_) | route.NotFound(_) -> []
   }
 }
 

@@ -385,7 +385,7 @@ fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
   admin_table.row([
     admin_table.linked_primary_cell(
       log_id_column(),
-      [route.href(route.AdminRunLog(log.id))],
+      [route.href(route.Admin(route.AdminRunLog(log.id)))],
       string_helpers.truncate_stem_middle(uuid.to_string(log.id), 18),
       option.None,
     ),
@@ -399,7 +399,9 @@ fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
       duration_column(),
       optional_duration(log.duration_ns),
     ),
-    admin_table.open_link_cell([route.href(route.AdminRunLog(log.id))]),
+    admin_table.open_link_cell([route.href(route.Admin(route.AdminRunLog(
+      log.id,
+    )))]),
   ])
 }
 

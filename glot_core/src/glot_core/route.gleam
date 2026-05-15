@@ -5,10 +5,31 @@ import lustre/attribute.{type Attribute}
 import youid/uuid
 
 pub type Route {
+  Public(public_route: PublicRoute)
+  Account(account_route: AccountRoute)
+  Admin(admin_route: AdminRoute)
+  NotFound(uri: Uri)
+}
+
+pub type PublicRoute {
   Home
   Login
-  Account
-  Admin
+  Snippets(
+    after: option.Option(String),
+    before: option.Option(String),
+    username: option.Option(String),
+  )
+  NewSnippet(language: String)
+  Snippet(slug: String)
+}
+
+pub type AccountRoute {
+  AccountHome
+  AccountSnippets(after: option.Option(String), before: option.Option(String))
+}
+
+pub type AdminRoute {
+  AdminHome
   AdminApiLogs
   AdminApiLog(id: uuid.Uuid)
   AdminRunLogs
@@ -28,86 +49,153 @@ pub type Route {
   AdminConfig
   AdminRateLimits
   AdminJobTypePolicies
-  AccountSnippets(after: option.Option(String), before: option.Option(String))
-  Snippets(
-    after: option.Option(String),
-    before: option.Option(String),
-    username: option.Option(String),
-  )
-  NewSnippet(language: String)
-  Snippet(slug: String)
-  NotFound(uri: Uri)
 }
 
 pub fn from_uri(uri: Uri) -> Route {
   case uri.path_segments(uri.path) {
-    [] | [""] -> Home
-    ["login"] -> Login
-    ["account"] -> Account
-    ["admin"] -> Admin
-    ["admin", "logs", "api"] -> AdminApiLogs
+    [] | [""] -> Public(Home)
+    ["login"] -> Public(Login)
+    ["account"] -> Account(AccountHome)
+    ["admin"] -> Admin(AdminHome)
+    ["admin", "logs", "api"] -> Admin(AdminApiLogs)
     ["admin", "logs", "api", id] ->
       case uuid.from_string(id) {
-        Ok(id) -> AdminApiLog(id)
+        Ok(id) -> Admin(AdminApiLog(id))
         Error(_) -> NotFound(uri:)
       }
-    ["admin", "logs", "runs"] -> AdminRunLogs
+    ["admin", "logs", "runs"] -> Admin(AdminRunLogs)
     ["admin", "logs", "runs", id] ->
       case uuid.from_string(id) {
-        Ok(id) -> AdminRunLog(id)
+        Ok(id) -> Admin(AdminRunLog(id))
         Error(_) -> NotFound(uri:)
       }
-    ["admin", "periodic-jobs"] -> AdminPeriodicJobs
+    ["admin", "periodic-jobs"] -> Admin(AdminPeriodicJobs)
     ["admin", "periodic-jobs", job_id] ->
       case uuid.from_string(job_id) {
-        Ok(id) -> AdminPeriodicJob(id)
+        Ok(id) -> Admin(AdminPeriodicJob(id))
         Error(_) -> NotFound(uri:)
       }
-    ["admin", "users"] -> AdminUsers
+    ["admin", "users"] -> Admin(AdminUsers)
     ["admin", "users", user_id] ->
       case uuid.from_string(user_id) {
-        Ok(id) -> AdminUser(id)
+        Ok(id) -> Admin(AdminUser(id))
         Error(_) -> NotFound(uri:)
       }
-    ["admin", "jobs"] -> AdminJobs
+    ["admin", "jobs"] -> Admin(AdminJobs)
     ["admin", "jobs", job_id] ->
       case uuid.from_string(job_id) {
-        Ok(id) -> AdminJob(id)
+        Ok(id) -> Admin(AdminJob(id))
         Error(_) -> NotFound(uri:)
       }
-    ["admin", "email-templates"] -> AdminEmailTemplates
-    ["admin", "email-templates", name] -> AdminEmailTemplate(name: name)
-    ["admin", "snippets"] -> AdminSnippets
-    ["admin", "snippets", slug] -> AdminSnippet(slug: slug)
-    ["admin", "logs", "job-logs"] -> AdminJobLogs
+    ["admin", "email-templates"] -> Admin(AdminEmailTemplates)
+    ["admin", "email-templates", name] -> Admin(AdminEmailTemplate(name: name))
+    ["admin", "snippets"] -> Admin(AdminSnippets)
+    ["admin", "snippets", slug] -> Admin(AdminSnippet(slug: slug))
+    ["admin", "logs", "job-logs"] -> Admin(AdminJobLogs)
     ["admin", "logs", "job-logs", id] ->
       case uuid.from_string(id) {
-        Ok(id) -> AdminJobLog(id)
+        Ok(id) -> Admin(AdminJobLog(id))
         Error(_) -> NotFound(uri:)
       }
-    ["admin", "config"] -> AdminConfig
-    ["admin", "rate-limits"] -> AdminRateLimits
-    ["admin", "job-type-policies"] -> AdminJobTypePolicies
+    ["admin", "config"] -> Admin(AdminConfig)
+    ["admin", "rate-limits"] -> Admin(AdminRateLimits)
+    ["admin", "job-type-policies"] -> Admin(AdminJobTypePolicies)
     ["account", "snippets"] -> {
       let #(after, before, _) = snippet_query_params(uri)
-      AccountSnippets(after:, before:)
+      Account(AccountSnippets(after:, before:))
     }
     ["snippets"] -> {
       let #(after, before, username) = snippet_query_params(uri)
-      Snippets(after:, before:, username:)
+      Public(Snippets(after:, before:, username:))
     }
-    ["new", language] -> NewSnippet(language: language)
-    ["snippets", slug] -> Snippet(slug: slug)
+    ["new", language] -> Public(NewSnippet(language: language))
+    ["snippets", slug] -> Public(Snippet(slug: slug))
     _ -> NotFound(uri:)
   }
 }
 
 pub fn to_string(route: Route) -> String {
   case route {
+    Public(public_route) -> public_route_to_string(public_route)
+    Account(account_route) -> account_route_to_string(account_route)
+    Admin(admin_route) -> admin_route_to_string(admin_route)
+    NotFound(_) -> ""
+  }
+}
+
+pub fn name(route: Route) -> String {
+  case route {
+    Public(public_route) -> public_route_name(public_route)
+    Account(account_route) -> account_route_name(account_route)
+    Admin(admin_route) -> admin_route_name(admin_route)
+    NotFound(_) -> "not_found"
+  }
+}
+
+pub fn href(route: Route) -> Attribute(msg) {
+  attribute.href(to_string(route))
+}
+
+pub fn path_and_query(route: Route) -> #(String, option.Option(String)) {
+  case route {
+    Public(Snippets(after:, before:, username:)) -> #(
+      "/snippets",
+      snippet_query_string(after, before, username),
+    )
+    Account(AccountSnippets(after:, before:)) -> #(
+      "/account/snippets",
+      snippet_query_string(after, before, option.None),
+    )
+    _ -> #(to_string(route), option.None)
+  }
+}
+
+pub fn is_admin_route(route: Route) -> Bool {
+  case route {
+    Admin(_) -> True
+    Public(_) | Account(_) | NotFound(_) -> False
+  }
+}
+
+pub fn is_account_route(route: Route) -> Bool {
+  case route {
+    Account(_) -> True
+    Public(_) | Admin(_) | NotFound(_) -> False
+  }
+}
+
+fn public_route_to_string(route: PublicRoute) -> String {
+  case route {
     Home -> "/"
     Login -> "/login"
-    Account -> "/account"
-    Admin -> "/admin"
+    Snippets(after:, before:, username:) -> {
+      let query = snippet_query_string(after, before, username)
+      case query {
+        option.Some(query) -> "/snippets?" <> query
+        option.None -> "/snippets"
+      }
+    }
+    NewSnippet(language) -> "/new/" <> language
+    Snippet(slug) -> "/snippets/" <> slug
+  }
+}
+
+fn account_route_to_string(route: AccountRoute) -> String {
+  case route {
+    AccountHome -> "/account"
+    AccountSnippets(after:, before:) -> {
+      let query = snippet_query_string(after, before, option.None)
+      case query {
+        option.Some(query) -> "/account/snippets?" <> query
+        option.None -> "/account/snippets"
+      }
+    }
+  }
+}
+
+fn admin_route_to_string(route: AdminRoute) -> String {
+  case route {
+    AdminHome -> "/admin"
     AdminApiLogs -> "/admin/logs/api"
     AdminApiLog(id) -> "/admin/logs/api/" <> uuid.to_string(id)
     AdminRunLogs -> "/admin/logs/runs"
@@ -127,32 +215,29 @@ pub fn to_string(route: Route) -> String {
     AdminConfig -> "/admin/config"
     AdminRateLimits -> "/admin/rate-limits"
     AdminJobTypePolicies -> "/admin/job-type-policies"
-    AccountSnippets(after:, before:) -> {
-      let query = snippet_query_string(after, before, option.None)
-      case query {
-        option.Some(query) -> "/account/snippets?" <> query
-        option.None -> "/account/snippets"
-      }
-    }
-    Snippets(after:, before:, username:) -> {
-      let query = snippet_query_string(after, before, username)
-      case query {
-        option.Some(query) -> "/snippets?" <> query
-        option.None -> "/snippets"
-      }
-    }
-    NewSnippet(language) -> "/new/" <> language
-    Snippet(slug) -> "/snippets/" <> slug
-    NotFound(_) -> ""
   }
 }
 
-pub fn name(route: Route) -> String {
+fn public_route_name(route: PublicRoute) -> String {
   case route {
     Home -> "home"
     Login -> "login"
-    Account -> "account"
-    Admin -> "admin"
+    Snippets(_, _, _) -> "snippets"
+    NewSnippet(_) -> "new_snippet"
+    Snippet(_) -> "snippet"
+  }
+}
+
+fn account_route_name(route: AccountRoute) -> String {
+  case route {
+    AccountHome -> "account"
+    AccountSnippets(_, _) -> "account_snippets"
+  }
+}
+
+fn admin_route_name(route: AdminRoute) -> String {
+  case route {
+    AdminHome -> "admin"
     AdminApiLogs -> "admin_api_logs"
     AdminApiLog(_) -> "admin_api_log"
     AdminRunLogs -> "admin_run_logs"
@@ -172,29 +257,6 @@ pub fn name(route: Route) -> String {
     AdminConfig -> "admin_config"
     AdminRateLimits -> "admin_rate_limits"
     AdminJobTypePolicies -> "admin_job_type_policies"
-    AccountSnippets(_, _) -> "account_snippets"
-    Snippets(_, _, _) -> "snippets"
-    NewSnippet(_) -> "new_snippet"
-    Snippet(_) -> "snippet"
-    NotFound(_) -> "not_found"
-  }
-}
-
-pub fn href(route: Route) -> Attribute(msg) {
-  attribute.href(to_string(route))
-}
-
-pub fn path_and_query(route: Route) -> #(String, option.Option(String)) {
-  case route {
-    AccountSnippets(after:, before:) -> #(
-      "/account/snippets",
-      snippet_query_string(after, before, option.None),
-    )
-    Snippets(after:, before:, username:) -> #(
-      "/snippets",
-      snippet_query_string(after, before, username),
-    )
-    _ -> #(to_string(route), option.None)
   }
 }
 

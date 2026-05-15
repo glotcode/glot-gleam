@@ -84,7 +84,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            state: Error(error.message),
+            state: Error(api.error_message(error)),
             pending_delete: option.None,
           ),
           effect.none(),
@@ -159,7 +159,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            state: Error(error.message),
+            state: Error(api.error_message(error)),
             pending_delete: option.None,
           ),
           effect.none(),
@@ -332,13 +332,13 @@ fn snippet_row(
       snippet_cell_link(
         "snippets-table__cell snippets-table__cell--language",
         "Language",
-        route.Snippet(snippet.slug),
+        route.Public(route.Snippet(snippet.slug)),
         language.name(snippet.data.language),
       ),
       snippet_cell_link(
         "snippets-table__cell snippets-table__cell--title",
         "Title",
-        route.Snippet(snippet.slug),
+        route.Public(route.Snippet(snippet.slug)),
         snippet.data.title,
       ),
       html.span([attribute.class("snippets-table__cell")], [
@@ -352,7 +352,7 @@ fn snippet_row(
       snippet_cell_link(
         "snippets-table__cell",
         "Updated",
-        route.Snippet(snippet.slug),
+        route.Public(route.Snippet(snippet.slug)),
         timestamp_helpers.relative_label(snippet.updated_at, now),
       ),
       html.div(
@@ -365,7 +365,7 @@ fn snippet_row(
             html.a(
               [
                 attribute.class("snippets-table__action-link"),
-                route.href(route.Snippet(snippet.slug)),
+                route.href(route.Public(route.Snippet(snippet.slug))),
               ],
               [html.text("Edit")],
             ),
@@ -477,7 +477,7 @@ fn navigate_to(
   before: option.Option(String),
 ) -> Effect(Msg) {
   let #(path, query) =
-    route.path_and_query(route.AccountSnippets(after:, before:))
+    route.path_and_query(route.Account(route.AccountSnippets(after:, before:)))
   modem.push(path, query, option.None)
 }
 

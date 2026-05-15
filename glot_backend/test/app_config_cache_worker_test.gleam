@@ -6,6 +6,7 @@ import glot_backend/dynamic_config
 import glot_backend/effect/error
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker
+import glot_core/availability_mode
 import glot_core/public_action
 import glot_core/auth/account_model
 import glot_core/rate_limit
@@ -270,6 +271,11 @@ fn expect_result(
 fn test_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
     debug: dynamic_config.DebugConfig(enabled: False),
+    availability: dynamic_config.AvailabilityConfig(
+      mode: availability_mode.NormalMode,
+      message: "glot.io is temporarily unavailable right now.",
+      retry_after_seconds: option.None,
+    ),
     auth: dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,
@@ -318,6 +324,11 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
 fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
     debug: dynamic_config.DebugConfig(enabled: True),
+    availability: dynamic_config.AvailabilityConfig(
+      mode: availability_mode.MaintenanceMode,
+      message: "Maintenance is in progress.",
+      retry_after_seconds: option.Some(300),
+    ),
     auth: dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,

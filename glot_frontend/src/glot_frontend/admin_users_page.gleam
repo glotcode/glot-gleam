@@ -314,7 +314,9 @@ fn user_row(
       joined_column(),
       timestamp_helpers.relative_label(user.created_at, now),
     ),
-    admin_table.open_link_cell([route.href(route.AdminUser(user.id))]),
+    admin_table.open_link_cell([route.href(route.Admin(route.AdminUser(
+      user.id,
+    )))]),
   ])
 }
 

@@ -145,11 +145,11 @@ fn encode_state(state: State) -> json.Json {
 fn previous_page_route(model: ViewModel) -> option.Option(route.Route) {
   case pagination_model.previous_cursor(model.page) {
     option.Some(previous_cursor) ->
-      option.Some(route.Snippets(
+      option.Some(route.Public(route.Snippets(
         after: option.None,
         before: option.Some(pagination_model.to_string(previous_cursor)),
         username: model.username,
-      ))
+      )))
     option.None -> option.None
   }
 }
@@ -157,11 +157,11 @@ fn previous_page_route(model: ViewModel) -> option.Option(route.Route) {
 fn next_page_route(model: ViewModel) -> option.Option(route.Route) {
   case pagination_model.next_cursor(model.page) {
     option.Some(next_cursor) ->
-      option.Some(route.Snippets(
+      option.Some(route.Public(route.Snippets(
         after: option.Some(pagination_model.to_string(next_cursor)),
         before: option.None,
         username: model.username,
-      ))
+      )))
     option.None -> option.None
   }
 }
@@ -198,11 +198,11 @@ fn active_filter_view(username: option.Option(String)) -> Element(msg) {
         html.a(
           [
             attribute.class("snippets-page__filter-clear"),
-            route.href(route.Snippets(
+            route.href(route.Public(route.Snippets(
               after: option.None,
               before: option.None,
               username: option.None,
-            )),
+            ))),
           ],
           [html.text("Clear")],
         ),
@@ -244,31 +244,31 @@ fn snippet_row(
     snippet_cell_link(
       "snippets-table__cell snippets-table__cell--language",
       "Language",
-      route.Snippet(snippet.slug),
+      route.Public(route.Snippet(snippet.slug)),
       language.name(snippet.data.language),
     ),
     snippet_cell_link(
       "snippets-table__cell snippets-table__cell--title",
       "Title",
-      route.Snippet(snippet.slug),
+      route.Public(route.Snippet(snippet.slug)),
       snippet.data.title,
     ),
     snippet_cell_link(
       "snippets-table__cell",
       "Created",
-      route.Snippet(snippet.slug),
+      route.Public(route.Snippet(snippet.slug)),
       timestamp_helpers.relative_label(snippet.created_at, now),
     ),
-    html.a(
-      [
-        attribute.class("snippets-table__cell snippets-table__username"),
-        attribute.attribute("aria-label", "Filter by user"),
-        route.href(route.Snippets(
+        html.a(
+          [
+            attribute.class("snippets-table__cell snippets-table__username"),
+            attribute.attribute("aria-label", "Filter by user"),
+            route.href(route.Public(route.Snippets(
           after: option.None,
           before: option.None,
           username: option.Some(snippet.user.username),
-        )),
-      ],
+            ))),
+          ],
       [
         html.span([attribute.class("snippets-table__cell-label")], [
           html.text("Username"),

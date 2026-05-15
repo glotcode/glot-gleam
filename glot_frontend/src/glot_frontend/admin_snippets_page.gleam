@@ -260,7 +260,7 @@ fn snippet_row(
     ),
     admin_table.action_link_cell(
       open_column(),
-      [route.href(route.AdminSnippet(snippet.slug))],
+      [route.href(route.Admin(route.AdminSnippet(snippet.slug)))],
       "Details",
     ),
   ])

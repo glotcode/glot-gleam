@@ -97,7 +97,7 @@ fn language_card(lang: Language) -> Element(msg) {
   html.a(
     [
       attribute.class("home-language"),
-      route.href(route.NewSnippet(language.to_string(lang))),
+      route.href(route.Public(route.NewSnippet(language.to_string(lang)))),
     ],
     [
       html.span([attribute.class("home-language__logo")], [

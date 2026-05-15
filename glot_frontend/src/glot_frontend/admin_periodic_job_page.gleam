@@ -567,7 +567,10 @@ fn recent_job_row(
       ]),
     ]),
     admin_table.cell(open_column(), [
-      admin_ui.secondary_link([route.href(route.AdminJob(job.id))], "Open"),
+      admin_ui.secondary_link(
+        [route.href(route.Admin(route.AdminJob(job.id)))],
+        "Open",
+      ),
     ]),
   ])
 }

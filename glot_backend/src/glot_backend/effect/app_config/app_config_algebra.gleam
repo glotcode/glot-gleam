@@ -12,6 +12,11 @@ pub type AppConfigEffect(next) {
     updated_at: Timestamp,
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
   )
+  UpsertAvailabilityConfig(
+    config: dynamic_config.AvailabilityConfig,
+    updated_at: Timestamp,
+    next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
+  )
   UpsertAuthConfig(
     config: dynamic_config.AuthConfig,
     updated_at: Timestamp,
@@ -43,6 +48,12 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
       UpsertDebugConfig(config: config, updated_at: updated_at, next: fn(value) {
         f(next(value))
       })
+    UpsertAvailabilityConfig(config:, updated_at:, next:) ->
+      UpsertAvailabilityConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(value) { f(next(value)) },
+      )
     UpsertAuthConfig(config:, updated_at:, next:) ->
       UpsertAuthConfig(config: config, updated_at: updated_at, next: fn(value) {
         f(next(value))
@@ -72,6 +83,7 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
 pub type EffectName {
   GetDynamicConfigEffectName
   UpsertDebugConfigEffectName
+  UpsertAvailabilityConfigEffectName
   UpsertAuthConfigEffectName
   UpsertCleanupConfigEffectName
   UpsertRateLimitPolicyEffectName
@@ -82,6 +94,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
   case name {
     GetDynamicConfigEffectName -> "get_dynamic_config"
     UpsertDebugConfigEffectName -> "upsert_debug_config"
+    UpsertAvailabilityConfigEffectName -> "upsert_availability_config"
     UpsertAuthConfigEffectName -> "upsert_auth_config"
     UpsertCleanupConfigEffectName -> "upsert_cleanup_config"
     UpsertRateLimitPolicyEffectName -> "upsert_rate_limit_policy"

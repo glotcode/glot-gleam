@@ -79,7 +79,7 @@ pub fn update(
         }
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, status: LoadError(api.error_message(error))),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -148,7 +148,7 @@ pub fn update(
         )
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: DeleteError(error.message)),
+          Model(..model, status: DeleteError(api.error_message(error))),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -178,7 +178,7 @@ pub fn update(
         )
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: DeleteError(error.message)),
+          Model(..model, status: DeleteError(api.error_message(error))),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -208,7 +208,7 @@ pub fn update(
         }
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: UsernameError(error.message)),
+          Model(..model, status: UsernameError(api.error_message(error))),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -224,12 +224,16 @@ pub fn update(
       case result {
         api.ApiSuccess(_) -> #(
           Model(..model, status: Idle),
-          modem.replace(route.to_string(route.Home), option.None, option.None),
+          modem.replace(
+            route.to_string(route.Public(route.Home)),
+            option.None,
+            option.None,
+          ),
           app_event.RefreshSession,
         )
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: LogoutError(error.message)),
+          Model(..model, status: LogoutError(api.error_message(error))),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -273,7 +277,10 @@ fn content(model: Model, now: Timestamp) -> Element(Msg) {
           ],
         ),
         html.a(
-          [route.href(route.Login), attribute.class("account-page__link")],
+          [
+            route.href(route.Public(route.Login)),
+            attribute.class("account-page__link"),
+          ],
           [
             html.text("Go to login"),
           ],
@@ -377,10 +384,10 @@ fn snippets_section() -> Element(Msg) {
     ]),
     html.a(
       [
-        route.href(route.AccountSnippets(
+        route.href(route.Account(route.AccountSnippets(
           after: option.None,
           before: option.None,
-        )),
+        ))),
         attribute.class("account-page__link"),
       ],
       [

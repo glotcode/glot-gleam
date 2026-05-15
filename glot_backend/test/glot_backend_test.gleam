@@ -11,10 +11,12 @@ import glot_backend/context
 import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/admin/get_auth_config_domain
+import glot_backend/domain/admin/get_availability_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
+import glot_backend/domain/admin/upsert_availability_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
@@ -53,10 +55,12 @@ import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 import glot_backend/email_template
+import glot_core/admin/availability_config_dto
 import glot_core/admin/auth_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
+import glot_core/availability_mode
 import glot_core/api_action
 import glot_core/public_action
 import glot_core/auth/account_model
@@ -277,6 +281,24 @@ pub fn get_debug_config_requires_admin_role_test() {
   assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
 }
 
+pub fn get_availability_config_requires_admin_role_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+
+  let #(run_result, _) =
+    run_test_program(
+      get_availability_config_domain.get_availability_config(fixture.ctx),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
+}
+
 pub fn upsert_debug_config_allows_admin_role_test() {
   let fixture = admin_integration_fixture()
   let request = debug_config_dto.UpsertDebugConfigRequest(enabled: True)
@@ -289,6 +311,33 @@ pub fn upsert_debug_config_allows_admin_role_test() {
     )
 
   assert run_result == Ok(debug_config_dto.DebugConfigResponse(enabled: True))
+}
+
+pub fn upsert_availability_config_allows_admin_role_test() {
+  let fixture = admin_integration_fixture()
+  let request =
+    availability_config_dto.UpsertAvailabilityConfigRequest(
+      mode: availability_mode.MaintenanceMode,
+      message: "Maintenance is in progress.",
+      retry_after_seconds: option.Some(300),
+    )
+
+  let #(run_result, _) =
+    run_test_program(
+      upsert_availability_config_domain.upsert_availability_config(
+        fixture.ctx,
+        request,
+      ),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result
+    == Ok(availability_config_dto.AvailabilityConfigResponse(
+      mode: availability_mode.MaintenanceMode,
+      message: "Maintenance is in progress.",
+      retry_after_seconds: option.Some(300),
+    ))
 }
 
 pub fn upsert_rate_limit_policy_allows_admin_role_test() {
@@ -1635,6 +1684,30 @@ fn run_test_app_config_effect(
         next(
           Ok(dynamic_config.DynamicConfig(
             debug: config,
+            availability: test_availability_config(),
+            auth: dynamic_config.AuthConfig(
+              login_token_max_age: 900,
+              session_token_max_age: 86_400,
+              session_cookie_max_age: 86_400,
+            ),
+            cleanup: test_cleanup_config(),
+            docker_run: option.None,
+            rate_limit_policies: dict.new(),
+          )),
+        ),
+        ctx,
+        db,
+      )
+    app_config_algebra.UpsertAvailabilityConfig(
+      config: config,
+      updated_at: _,
+      next: next,
+    ) ->
+      run_test_program(
+        next(
+          Ok(dynamic_config.DynamicConfig(
+            debug: dynamic_config.DebugConfig(enabled: False),
+            availability: config,
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
@@ -1657,6 +1730,7 @@ fn run_test_app_config_effect(
         next(
           Ok(dynamic_config.DynamicConfig(
             debug: dynamic_config.DebugConfig(enabled: False),
+            availability: test_availability_config(),
             auth: config,
             cleanup: test_cleanup_config(),
             docker_run: option.None,
@@ -1675,6 +1749,7 @@ fn run_test_app_config_effect(
         next(
           Ok(dynamic_config.DynamicConfig(
             debug: dynamic_config.DebugConfig(enabled: False),
+            availability: test_availability_config(),
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
@@ -1703,6 +1778,7 @@ fn run_test_app_config_effect(
         next(
           Ok(dynamic_config.DynamicConfig(
             debug: dynamic_config.DebugConfig(enabled: False),
+            availability: test_availability_config(),
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
@@ -1722,6 +1798,7 @@ fn run_test_app_config_effect(
 fn test_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
     debug: dynamic_config.DebugConfig(enabled: False),
+    availability: test_availability_config(),
     auth: dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,
@@ -1730,6 +1807,14 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
     cleanup: test_cleanup_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),
+  )
+}
+
+fn test_availability_config() -> dynamic_config.AvailabilityConfig {
+  dynamic_config.AvailabilityConfig(
+    mode: availability_mode.NormalMode,
+    message: "glot.io is temporarily unavailable right now.",
+    retry_after_seconds: option.None,
   )
 }
 

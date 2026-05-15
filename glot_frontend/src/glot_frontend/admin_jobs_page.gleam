@@ -353,7 +353,10 @@ fn job_row(job: job_dto.JobResponse, now: Timestamp) -> Element(Msg) {
     ]),
     admin_table.cell(notes_column(), [admin_table.value(note_text(job))]),
     admin_table.cell(action_column(), [
-      admin_ui.secondary_link([route.href(route.AdminJob(job.id))], "Open"),
+      admin_ui.secondary_link(
+        [route.href(route.Admin(route.AdminJob(job.id)))],
+        "Open",
+      ),
     ]),
   ])
 }

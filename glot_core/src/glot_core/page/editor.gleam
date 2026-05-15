@@ -131,7 +131,7 @@ pub fn decoder() -> decode.Decoder(ViewModel) {
 pub fn render(view_model: ViewModel) -> lustre_element.Element(Nil) {
   site_chrome.view(
     top_bar_model: top_bar.empty_model(),
-    footer_account_route: route.Account,
+    footer_account_route: route.Account(route.AccountHome),
     content: content(view_model),
   )
 }
@@ -419,12 +419,14 @@ fn canonical_url(view_model: ViewModel) -> String {
   "https://glot.io"
   <> case view_model {
     UnsupportedLanguage(language_slug) ->
-      route.to_string(route.NewSnippet(language_slug))
+      route.to_string(route.Public(route.NewSnippet(language_slug)))
     LoadError(_) -> "/snippets"
     NewSnippet(model) ->
-      route.to_string(route.NewSnippet(language.to_string(model.language)))
+      route.to_string(route.Public(route.NewSnippet(
+        language.to_string(model.language),
+      )))
     ExistingSnippet(EditorModel(slug: option.Some(slug), ..)) ->
-      route.to_string(route.Snippet(slug))
+      route.to_string(route.Public(route.Snippet(slug)))
     ExistingSnippet(_) -> "/snippets"
   }
 }

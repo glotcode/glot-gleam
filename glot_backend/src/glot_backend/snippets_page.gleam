@@ -24,7 +24,7 @@ pub fn app_attributes(
 pub fn render(view_model: snippets.ViewModel) -> Element(Nil) {
   site_chrome.view(
     top_bar_model: top_bar.empty_model(),
-    footer_account_route: route.Account,
+    footer_account_route: route.Account(route.AccountHome),
     content: snippets.view(view_model),
   )
 }
