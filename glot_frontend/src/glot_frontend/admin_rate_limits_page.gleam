@@ -4,8 +4,8 @@ import gleam/list
 import gleam/option
 import gleam/result
 import glot_core/admin/rate_limit_config_dto
-import glot_core/public_action
 import glot_core/auth/account_model
+import glot_core/public_action
 import glot_core/rate_limit
 import glot_frontend/admin_ui
 import glot_frontend/api
@@ -61,7 +61,12 @@ pub type Msg {
   EditClicked(public_action.PublicAction)
   EditDialogClosed
   TabSelected(public_action.PublicAction, EditorTab)
-  FieldChanged(public_action.PublicAction, EditorTab, rate_limit.TimeUnit, String)
+  FieldChanged(
+    public_action.PublicAction,
+    EditorTab,
+    rate_limit.TimeUnit,
+    String,
+  )
   CancelClicked
   SaveClicked(public_action.PublicAction)
   SaveFinished(

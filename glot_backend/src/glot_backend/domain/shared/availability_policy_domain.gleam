@@ -63,7 +63,10 @@ fn api_action_error(
 ) -> option.Option(error.AvailabilityBlockedError) {
   let surface = api_surface(action)
 
-  case availability.mode, api_surface_allowed_in_mode(availability.mode, surface) {
+  case
+    availability.mode,
+    api_surface_allowed_in_mode(availability.mode, surface)
+  {
     availability_mode.NormalMode, _ -> option.None
     _, True -> option.None
     availability_mode.ReadOnlyMode, False ->
@@ -97,8 +100,10 @@ fn api_surface(action: api_action.ApiAction) -> ApiSurface {
     api_action.PublicAction(public_action.RunAction) -> PublicReadApiSurface
     api_action.PublicAction(public_action.GetLanguageVersionAction) ->
       PublicReadApiSurface
-    api_action.PublicAction(public_action.GetAccountAction) -> PublicReadApiSurface
-    api_action.PublicAction(public_action.GetSnippetAction) -> PublicReadApiSurface
+    api_action.PublicAction(public_action.GetAccountAction) ->
+      PublicReadApiSurface
+    api_action.PublicAction(public_action.GetSnippetAction) ->
+      PublicReadApiSurface
     api_action.PublicAction(public_action.ListPublicSnippetsAction) ->
       PublicReadApiSurface
     api_action.PublicAction(public_action.ListSessionSnippetsAction) ->

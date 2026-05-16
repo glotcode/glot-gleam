@@ -1,7 +1,7 @@
-import gleam/option
 import gleam/dynamic/decode
 import gleam/int
 import gleam/json
+import gleam/option
 import gleam/string
 import glot_core/api_action as api_action_model
 import glot_core/auth/account_model as account_state_model

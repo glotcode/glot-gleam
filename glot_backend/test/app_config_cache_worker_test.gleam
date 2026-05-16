@@ -6,9 +6,9 @@ import glot_backend/dynamic_config
 import glot_backend/effect/error
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker
+import glot_core/auth/account_model
 import glot_core/availability_mode
 import glot_core/public_action
-import glot_core/auth/account_model
 import glot_core/rate_limit
 
 pub fn main() -> Nil {

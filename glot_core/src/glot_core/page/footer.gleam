@@ -14,11 +14,11 @@ pub fn view(account_route account_route: route.Route) -> Element(msg) {
       [
         html.a([route.href(route.Public(route.Home))], [html.text("Home")]),
         html.a(
-          [route.href(route.Public(route.Snippets(
-            option.None,
-            option.None,
-            option.None,
-          )))],
+          [
+            route.href(
+              route.Public(route.Snippets(option.None, option.None, option.None)),
+            ),
+          ],
           [html.text("Public snippets")],
         ),
         html.a([route.href(account_route)], [html.text("Account")]),

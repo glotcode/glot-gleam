@@ -98,9 +98,7 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     },
     delete_account: fn(account_id) { delete_account(db, account_id) },
     create_session: fn(session) { create_session(db, session) },
-    update_session: fn(session) {
-      update_session(db, session)
-    },
+    update_session: fn(session) { update_session(db, session) },
     delete_session: fn(id) { delete_session(db, id) },
     create_login_token: fn(login_token) { create_login_token(db, login_token) },
     update_login_token: fn(login_token) { update_login_token(db, login_token) },
@@ -239,13 +237,9 @@ pub fn get_session_by_token_for_update(
   db: db_helpers.Db,
   token: String,
 ) -> Result(option.Option(session_model.Session), error.DbQueryError) {
-  db_helpers.query(
-    db,
-    sql.get_session_by_token_for_update(token),
-    fn(err) {
-      error.DbQueryError(string.inspect(err))
-    },
-  )
+  db_helpers.query(db, sql.get_session_by_token_for_update(token), fn(err) {
+    error.DbQueryError(string.inspect(err))
+  })
   |> result.try(fn(returned) { session_identity_from_rows(returned.rows) })
 }
 
@@ -254,10 +248,14 @@ pub fn get_session_by_previous_token(
   is_email: regexp.Regexp,
   token: String,
 ) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
-  db_helpers.query(db, sql.get_session_by_previous_token(option.Some(token)), fn(err) {
-    error.DbQueryError(string.inspect(err))
+  db_helpers.query(
+    db,
+    sql.get_session_by_previous_token(option.Some(token)),
+    fn(err) { error.DbQueryError(string.inspect(err)) },
+  )
+  |> result.try(fn(returned) {
+    session_from_previous_rows(is_email, returned.rows)
   })
-  |> result.try(fn(returned) { session_from_previous_rows(is_email, returned.rows) })
 }
 
 pub fn get_session_by_previous_token_for_update(
@@ -269,7 +267,9 @@ pub fn get_session_by_previous_token_for_update(
     sql.get_session_by_previous_token_for_update(option.Some(token)),
     fn(err) { error.DbQueryError(string.inspect(err)) },
   )
-  |> result.try(fn(returned) { session_identity_from_previous_rows(returned.rows) })
+  |> result.try(fn(returned) {
+    session_identity_from_previous_rows(returned.rows)
+  })
 }
 
 pub fn create_user(
@@ -803,7 +803,8 @@ fn session_identity_from_previous_rows(
 ) -> Result(option.Option(session_model.Session), error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
-    [first] -> session_identity_from_previous_row(first) |> result.map(option.Some)
+    [first] ->
+      session_identity_from_previous_row(first) |> result.map(option.Some)
     _ -> Error(error.DbQueryError("Expected at most one session row"))
   }
 }

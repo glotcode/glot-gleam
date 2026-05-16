@@ -1,12 +1,12 @@
 import gleam/int
 import gleam/option
 import gleam/result
-import glot_core/admin/availability_config_dto
-import glot_core/availability_mode
 import glot_core/admin/auth_config_dto
+import glot_core/admin/availability_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/availability_mode
 import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
@@ -335,7 +335,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load availability config.")),
+          Model(
+            ..model,
+            status: LoadError("Could not load availability config."),
+          ),
           effect.none(),
         )
       }
@@ -411,7 +414,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               state: mutation.Saving,
             ),
           ),
-          api.upsert_admin_availability_config(request, AvailabilitySaveFinished),
+          api.upsert_admin_availability_config(
+            request,
+            AvailabilitySaveFinished,
+          ),
         )
       }
 
@@ -1683,8 +1689,7 @@ fn validate_auth_fields(
     session_token_max_age: session_token_max_age,
     session_cookie_max_age: session_cookie_max_age,
     session_refresh_interval_seconds: session_refresh_interval_seconds,
-    session_previous_token_grace_seconds:
-      session_previous_token_grace_seconds,
+    session_previous_token_grace_seconds: session_previous_token_grace_seconds,
     session_heartbeat_interval_seconds: session_heartbeat_interval_seconds,
   ))
 }

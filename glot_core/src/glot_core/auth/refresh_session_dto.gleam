@@ -7,10 +7,7 @@ pub type RefreshSessionResponse {
 
 pub fn encode(response: RefreshSessionResponse) -> json.Json {
   json.object([
-    #(
-      "nextHeartbeatInSeconds",
-      json.int(response.next_heartbeat_in_seconds),
-    ),
+    #("nextHeartbeatInSeconds", json.int(response.next_heartbeat_in_seconds)),
   ])
 }
 

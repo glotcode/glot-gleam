@@ -8,8 +8,8 @@ import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/auth_config_dto
-import glot_core/api_action
 import glot_core/admin_action
+import glot_core/api_action
 
 pub fn get_auth_config(
   ctx: context.Context,
@@ -30,9 +30,7 @@ pub fn get_auth_config(
     session_token_max_age: auth_config.session_token_max_age,
     session_cookie_max_age: auth_config.session_cookie_max_age,
     session_refresh_interval_seconds: auth_config.session_refresh_interval_seconds,
-    session_previous_token_grace_seconds:
-      auth_config.session_previous_token_grace_seconds,
-    session_heartbeat_interval_seconds:
-      auth_config.session_heartbeat_interval_seconds,
+    session_previous_token_grace_seconds: auth_config.session_previous_token_grace_seconds,
+    session_heartbeat_interval_seconds: auth_config.session_heartbeat_interval_seconds,
   ))
 }

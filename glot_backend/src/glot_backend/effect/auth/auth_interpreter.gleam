@@ -122,7 +122,8 @@ pub fn run(
     }
     auth_algebra.GetSessionByToken(token:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.get_session_by_token(ctx.regexes.is_email, token)
+      let result =
+        handlers.auth.get_session_by_token(ctx.regexes.is_email, token)
       case result {
         Ok(value) ->
           continue(

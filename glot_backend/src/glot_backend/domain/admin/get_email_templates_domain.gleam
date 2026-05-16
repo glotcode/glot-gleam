@@ -9,8 +9,8 @@ import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/email_template
 import glot_core/admin/email_template_dto
-import glot_core/api_action
 import glot_core/admin_action
+import glot_core/api_action
 
 pub fn get_email_templates(
   ctx: context.Context,

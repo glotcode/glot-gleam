@@ -532,9 +532,9 @@ fn job_log_row(
       duration_label.duration_in_ms_label(log.duration_ns),
     ),
     admin_table.cell(error_column(), [admin_ui.error_badge(log.has_error)]),
-    admin_table.open_link_cell([route.href(route.Admin(route.AdminJobLog(
-      log.id,
-    )))]),
+    admin_table.open_link_cell([
+      route.href(route.Admin(route.AdminJobLog(log.id))),
+    ]),
   ])
 }
 
@@ -740,10 +740,9 @@ fn create_job_status(state: CreateJobState) -> Element(Msg) {
     CreateJobSaved(job) ->
       html.p([attribute.class("admin-page__status")], [
         html.text("Created new job successfully. "),
-        html.a(
-          [route.href(route.Admin(route.AdminJob(job.id)))],
-          [html.text("Open new job")],
-        ),
+        html.a([route.href(route.Admin(route.AdminJob(job.id)))], [
+          html.text("Open new job"),
+        ]),
         html.text("."),
       ])
   }

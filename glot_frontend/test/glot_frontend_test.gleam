@@ -31,11 +31,13 @@ pub fn truncate_stem_middle_handles_tiny_lengths_test() {
 }
 
 pub fn snippets_route_to_string_includes_username_query_test() {
-  assert route.to_string(route.Public(route.Snippets(
-      after: option.Some("after-1"),
-      before: option.None,
-      username: option.Some("alice"),
-    )))
+  assert route.to_string(
+      route.Public(route.Snippets(
+        after: option.Some("after-1"),
+        before: option.None,
+        username: option.Some("alice"),
+      )),
+    )
     == "/snippets?after=after-1&username=alice"
 }
 

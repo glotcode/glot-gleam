@@ -1,3 +1,6 @@
+import gleam/int
+import gleam/option
+import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/crypto_token
 import glot_backend/domain/shared/api_action_policy_domain
@@ -13,13 +16,10 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/transaction/transaction_program
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
-import gleam/int
-import gleam/option
-import gleam/time/timestamp
 import glot_core/api_action
-import glot_core/public_action
 import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_model
+import glot_core/public_action
 import glot_core/user_action
 
 pub type RefreshSessionResult {
@@ -99,24 +99,25 @@ fn refresh_session_tx(
     get_session_by_client_token_for_update(token, ctx.timestamp),
   )
 
-  let next_session =
-    case should_rotate_session(
+  let next_session = case
+    should_rotate_session(
       session,
       ctx.timestamp,
       auth_config.session_refresh_interval_seconds,
-    ) {
-      True ->
-        session
-        |> session_model.rotate_token(
-          session_token,
+    )
+  {
+    True ->
+      session
+      |> session_model.rotate_token(
+        session_token,
+        ctx.timestamp,
+        add_seconds(
           ctx.timestamp,
-          add_seconds(
-            ctx.timestamp,
-            auth_config.session_previous_token_grace_seconds,
-          ),
-        )
-      False -> session
-    }
+          auth_config.session_previous_token_grace_seconds,
+        ),
+      )
+    False -> session
+  }
 
   use _ <- transaction_program.and_then(auth_effect.update_session_tx(
     next_session,
@@ -151,9 +152,10 @@ fn get_session_by_client_token_for_update(
         ),
       )
       transaction_program.and_then(
-        transaction_program.from_result(
-          session_domain.validate_previous_token(previous_session, now),
-        ),
+        transaction_program.from_result(session_domain.validate_previous_token(
+          previous_session,
+          now,
+        )),
         fn(_) { transaction_program.succeed(previous_session) },
       )
     }
@@ -165,10 +167,14 @@ fn should_rotate_session(
   now: timestamp.Timestamp,
   session_refresh_interval_seconds: Int,
 ) -> Bool {
-  elapsed_seconds(session.token_updated_at, now) >= session_refresh_interval_seconds
+  elapsed_seconds(session.token_updated_at, now)
+  >= session_refresh_interval_seconds
 }
 
-fn add_seconds(ts: timestamp.Timestamp, seconds_to_add: Int) -> timestamp.Timestamp {
+fn add_seconds(
+  ts: timestamp.Timestamp,
+  seconds_to_add: Int,
+) -> timestamp.Timestamp {
   let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
   timestamp.from_unix_seconds_and_nanoseconds(seconds + seconds_to_add, nanos)
 }

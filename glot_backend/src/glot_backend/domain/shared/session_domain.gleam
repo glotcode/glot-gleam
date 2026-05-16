@@ -75,10 +75,12 @@ fn result_from_previous_token(
   maybe_session: Option(session_model.HydratedSession),
   now: timestamp.Timestamp,
 ) -> Result(session_model.HydratedSession, error.Error) {
-  case option.to_result(
-    maybe_session,
-    error.SessionError(error.SessionNotFoundError),
-  ) {
+  case
+    option.to_result(
+      maybe_session,
+      error.SessionError(error.SessionNotFoundError),
+    )
+  {
     Ok(session) ->
       case validate_previous_token(session.identity, now) {
         Ok(_) -> Ok(session)

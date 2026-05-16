@@ -1,7 +1,7 @@
 import gleam/erlang/process
+import gleam/http/request
 import gleam/int
 import gleam/list
-import gleam/http/request
 import gleam/option
 import gleam/string
 import glot_backend/context
@@ -9,8 +9,8 @@ import glot_backend/domain/shared/availability_policy_domain
 import glot_backend/editor_page
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
-import glot_backend/effect/interpreter
 import glot_backend/effect/error
+import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
 import glot_backend/effect/total_program
@@ -101,8 +101,13 @@ fn handle_page_request(
       handle_page_request_with_runtime(runtime, ctx, page_request)
       |> prepend_effects(availability_state.effect_measurements)
     Ok(availability_policy_domain.UnavailablePage(message, retry_after_seconds)) ->
-      unavailable_page_response(availability_state, message, retry_after_seconds)
-    Error(err) -> internal_page_error("availability page", err, availability_state)
+      unavailable_page_response(
+        availability_state,
+        message,
+        retry_after_seconds,
+      )
+    Error(err) ->
+      internal_page_error("availability page", err, availability_state)
   }
 }
 
@@ -142,10 +147,8 @@ fn handle_page_request_with_runtime(
     route.Admin(route.AdminApiLog(_)) -> spa_page("glot.io - api log")
     route.Admin(route.AdminRunLogs) -> spa_page("glot.io - run logs")
     route.Admin(route.AdminRunLog(_)) -> spa_page("glot.io - run log")
-    route.Admin(route.AdminPeriodicJobs) ->
-      spa_page("glot.io - periodic jobs")
-    route.Admin(route.AdminPeriodicJob(_)) ->
-      spa_page("glot.io - periodic job")
+    route.Admin(route.AdminPeriodicJobs) -> spa_page("glot.io - periodic jobs")
+    route.Admin(route.AdminPeriodicJob(_)) -> spa_page("glot.io - periodic job")
     route.Admin(route.AdminUsers) -> spa_page("glot.io - admin users")
     route.Admin(route.AdminUser(_)) -> spa_page("glot.io - admin user")
     route.Admin(route.AdminJobs) -> spa_page("glot.io - admin jobs")
@@ -232,19 +235,25 @@ fn unavailable_page_response(
               html.h1([attribute.class("login-page__title")], [
                 html.text("Temporarily unavailable"),
               ]),
-              html.p([attribute.class("login-page__status")], [html.text(message)]),
+              html.p([attribute.class("login-page__status")], [
+                html.text(message),
+              ]),
               availability_retry_after_view(retry_after_seconds),
               html.div([attribute.class("admin-page__actions")], [
                 html.a(
                   [
-                    attribute.class("admin-page__button admin-page__button--secondary"),
+                    attribute.class(
+                      "admin-page__button admin-page__button--secondary",
+                    ),
                     route.href(route.Public(route.Login)),
                   ],
                   [html.text("Login")],
                 ),
                 html.a(
                   [
-                    attribute.class("admin-page__button admin-page__button--secondary"),
+                    attribute.class(
+                      "admin-page__button admin-page__button--secondary",
+                    ),
                     route.href(route.Admin(route.AdminHome)),
                   ],
                   [html.text("Admin")],

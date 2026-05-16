@@ -56,27 +56,27 @@ import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 import glot_backend/email_template
-import glot_core/admin/availability_config_dto
 import glot_core/admin/auth_config_dto
+import glot_core/admin/availability_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/rate_limit_config_dto
-import glot_core/availability_mode
 import glot_core/api_action
-import glot_core/public_action
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
-import glot_core/auth/refresh_session_dto
 import glot_core/auth/login_token_dto
 import glot_core/auth/login_token_model
+import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_model
 import glot_core/auth/user_model
+import glot_core/availability_mode
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/job/job_model
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/periodic_job/periodic_job_model
+import glot_core/public_action
 import glot_core/rate_limit
 import glot_core/run
 import glot_core/run_log_model
@@ -128,8 +128,7 @@ pub fn refresh_session_rotates_token_with_previous_token_grace_test() {
   let assert Ok(session) = dict.get(db.sessions, uuid_key(test_session_id()))
   assert session.token == "random"
   assert session.previous_token == option.Some("session-token")
-  assert session.previous_token_valid_until
-    == option.Some(add_seconds(now, 60))
+  assert session.previous_token_valid_until == option.Some(add_seconds(now, 60))
   assert session.token_updated_at == now
 
   let current_lookup = find_hydrated_session(db, "random", now)
@@ -2299,13 +2298,29 @@ fn run_test_auth_effect(
         db,
       )
     auth_algebra.GetSessionByToken(token:, next:) ->
-      run_test_program(next(find_hydrated_session(db, token, ctx.timestamp)), ctx, db)
+      run_test_program(
+        next(find_hydrated_session(db, token, ctx.timestamp)),
+        ctx,
+        db,
+      )
     auth_algebra.GetSessionByTokenForUpdate(token:, next:) ->
-      run_test_program(next(find_session_by_token(db, token, ctx.timestamp)), ctx, db)
+      run_test_program(
+        next(find_session_by_token(db, token, ctx.timestamp)),
+        ctx,
+        db,
+      )
     auth_algebra.GetSessionByPreviousToken(token:, next:) ->
-      run_test_program(next(find_hydrated_session(db, token, ctx.timestamp)), ctx, db)
+      run_test_program(
+        next(find_hydrated_session(db, token, ctx.timestamp)),
+        ctx,
+        db,
+      )
     auth_algebra.GetSessionByPreviousTokenForUpdate(token:, next:) ->
-      run_test_program(next(find_session_by_token(db, token, ctx.timestamp)), ctx, db)
+      run_test_program(
+        next(find_session_by_token(db, token, ctx.timestamp)),
+        ctx,
+        db,
+      )
     auth_algebra.CreateUser(user: user, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, insert_user(db, user))
     auth_algebra.CreateAccount(account: account, next: next) ->
@@ -2331,11 +2346,7 @@ fn run_test_auth_effect(
     auth_algebra.CreateSession(session: session, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, insert_session(db, session))
     auth_algebra.UpdateSession(session: session, next: next) ->
-      run_test_program(
-        next(Ok(Nil)),
-        ctx,
-        update_session(db, session),
-      )
+      run_test_program(next(Ok(Nil)), ctx, update_session(db, session))
     auth_algebra.DeleteSession(id: id, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, delete_session_by_id(db, id))
     auth_algebra.CreateLoginToken(login_token:, next:) -> {
@@ -2371,13 +2382,29 @@ fn run_test_auth_tx_effect(
         db,
       )
     auth_algebra.GetSessionByToken(token:, next:) ->
-      run_test_tx_program(next(find_hydrated_session(db, token, ctx.timestamp)), ctx, db)
+      run_test_tx_program(
+        next(find_hydrated_session(db, token, ctx.timestamp)),
+        ctx,
+        db,
+      )
     auth_algebra.GetSessionByTokenForUpdate(token:, next:) ->
-      run_test_tx_program(next(find_session_by_token(db, token, ctx.timestamp)), ctx, db)
+      run_test_tx_program(
+        next(find_session_by_token(db, token, ctx.timestamp)),
+        ctx,
+        db,
+      )
     auth_algebra.GetSessionByPreviousToken(token:, next:) ->
-      run_test_tx_program(next(find_hydrated_session(db, token, ctx.timestamp)), ctx, db)
+      run_test_tx_program(
+        next(find_hydrated_session(db, token, ctx.timestamp)),
+        ctx,
+        db,
+      )
     auth_algebra.GetSessionByPreviousTokenForUpdate(token:, next:) ->
-      run_test_tx_program(next(find_session_by_token(db, token, ctx.timestamp)), ctx, db)
+      run_test_tx_program(
+        next(find_session_by_token(db, token, ctx.timestamp)),
+        ctx,
+        db,
+      )
     auth_algebra.CreateUser(user: user, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, insert_user(db, user))
     auth_algebra.CreateAccount(account: account, next: next) ->
@@ -2407,11 +2434,7 @@ fn run_test_auth_tx_effect(
     auth_algebra.CreateSession(session: session, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, insert_session(db, session))
     auth_algebra.UpdateSession(session: session, next: next) ->
-      run_test_tx_program(
-        next(Ok(Nil)),
-        ctx,
-        update_session(db, session),
-      )
+      run_test_tx_program(next(Ok(Nil)), ctx, update_session(db, session))
     auth_algebra.DeleteSession(id: id, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, delete_session_by_id(db, id))
     auth_algebra.CreateLoginToken(login_token:, next:) -> {
@@ -3159,10 +3182,7 @@ fn insert_session(db: TestDb, session: session_model.Session) -> TestDb {
   )
 }
 
-fn update_session(
-  db: TestDb,
-  session: session_model.Session,
-) -> TestDb {
+fn update_session(db: TestDb, session: session_model.Session) -> TestDb {
   let session_key = uuid_key(session.id)
   case dict.get(db.sessions, session_key) {
     Ok(previous_session) -> {
@@ -3456,7 +3476,10 @@ fn test_system_time() -> timestamp.Timestamp {
   timestamp.from_unix_seconds_and_nanoseconds(1_700_000_005, 0)
 }
 
-fn add_seconds(ts: timestamp.Timestamp, seconds_to_add: Int) -> timestamp.Timestamp {
+fn add_seconds(
+  ts: timestamp.Timestamp,
+  seconds_to_add: Int,
+) -> timestamp.Timestamp {
   let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
   timestamp.from_unix_seconds_and_nanoseconds(seconds + seconds_to_add, nanos)
 }

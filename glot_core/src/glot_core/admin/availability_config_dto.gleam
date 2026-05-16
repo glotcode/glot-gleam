@@ -1,7 +1,7 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option
-import glot_core/availability_mode as availability_mode
+import glot_core/availability_mode
 
 pub type AvailabilityConfigResponse {
   AvailabilityConfigResponse(

@@ -384,10 +384,12 @@ fn snippets_section() -> Element(Msg) {
     ]),
     html.a(
       [
-        route.href(route.Account(route.AccountSnippets(
-          after: option.None,
-          before: option.None,
-        ))),
+        route.href(
+          route.Account(route.AccountSnippets(
+            after: option.None,
+            before: option.None,
+          )),
+        ),
         attribute.class("account-page__link"),
       ],
       [

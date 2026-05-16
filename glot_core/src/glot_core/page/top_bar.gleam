@@ -197,16 +197,12 @@ pub fn navigation_actions(
       label: "Public snippets",
       description: "Browse public code snippets.",
       shortcut: [],
-      target_route: option.Some(route.Public(route.Snippets(
-        option.None,
-        option.None,
-        option.None,
-      ))),
-      msg: on_navigate(route.Public(route.Snippets(
-        option.None,
-        option.None,
-        option.None,
-      ))),
+      target_route: option.Some(
+        route.Public(route.Snippets(option.None, option.None, option.None)),
+      ),
+      msg: on_navigate(
+        route.Public(route.Snippets(option.None, option.None, option.None)),
+      ),
     ),
   ]
 
@@ -217,14 +213,12 @@ pub fn navigation_actions(
           label: "My snippets",
           description: "Manage snippets in your account.",
           shortcut: [],
-          target_route: option.Some(route.Account(route.AccountSnippets(
-            option.None,
-            option.None,
-          ))),
-          msg: on_navigate(route.Account(route.AccountSnippets(
-            option.None,
-            option.None,
-          ))),
+          target_route: option.Some(
+            route.Account(route.AccountSnippets(option.None, option.None)),
+          ),
+          msg: on_navigate(
+            route.Account(route.AccountSnippets(option.None, option.None)),
+          ),
         ),
         Action(
           label: "Account",
@@ -241,14 +235,12 @@ pub fn navigation_actions(
           label: "My snippets",
           description: "Manage snippets in your account.",
           shortcut: [],
-          target_route: option.Some(route.Account(route.AccountSnippets(
-            option.None,
-            option.None,
-          ))),
-          msg: on_navigate(route.Account(route.AccountSnippets(
-            option.None,
-            option.None,
-          ))),
+          target_route: option.Some(
+            route.Account(route.AccountSnippets(option.None, option.None)),
+          ),
+          msg: on_navigate(
+            route.Account(route.AccountSnippets(option.None, option.None)),
+          ),
         ),
         Action(
           label: "Account",
@@ -326,9 +318,9 @@ pub fn language_actions(
       label: name,
       description: "Create a new " <> name <> " snippet.",
       shortcut: [],
-      target_route: option.Some(route.Public(route.NewSnippet(
-        language.to_string(lang),
-      ))),
+      target_route: option.Some(
+        route.Public(route.NewSnippet(language.to_string(lang))),
+      ),
       msg: on_navigate(route.Public(route.NewSnippet(language.to_string(lang)))),
     )
   })

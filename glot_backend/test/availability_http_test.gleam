@@ -33,10 +33,12 @@ pub fn api_returns_503_with_retry_after_in_read_only_mode_test() {
   let db = pog.named_connection(process.new_name("availability_http_db"))
   let request =
     simulate.request(http.Post, "/api/mux")
-    |> simulate.json_body(json.object([
-      #("action", json.string("create_snippet")),
-      #("data", json.object([])),
-    ]))
+    |> simulate.json_body(
+      json.object([
+        #("action", json.string("create_snippet")),
+        #("data", json.object([])),
+      ]),
+    )
 
   let response =
     api.handle_request(
@@ -53,7 +55,10 @@ pub fn api_returns_503_with_retry_after_in_read_only_mode_test() {
 
   let body = simulate.read_body(response)
   assert string.contains(body, "\"code\":\"read_only_mode_enabled\"")
-  assert string.contains(body, "\"message\":\"Scheduled platform maintenance.\"")
+  assert string.contains(
+    body,
+    "\"message\":\"Scheduled platform maintenance.\"",
+  )
 }
 
 pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
@@ -94,14 +99,15 @@ fn start_app_config_worker(
   let server_mode_subject = process.named_subject(server_mode_name)
 
   let worker_name = process.new_name("availability_http_app_config_worker")
-  let assert Ok(_) = app_config_cache_worker.start_with_handlers(
-    worker_name,
-    server_mode_subject,
-    app_config_cache_worker.FetchHandlers(
-      fetch_config: fn() { Ok(test_dynamic_config(availability)) },
-      now_ns: fn() { 0 },
-    ),
-  )
+  let assert Ok(_) =
+    app_config_cache_worker.start_with_handlers(
+      worker_name,
+      server_mode_subject,
+      app_config_cache_worker.FetchHandlers(
+        fetch_config: fn() { Ok(test_dynamic_config(availability)) },
+        now_ns: fn() { 0 },
+      ),
+    )
 
   process.named_subject(worker_name)
 }

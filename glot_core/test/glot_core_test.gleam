@@ -51,10 +51,7 @@ pub fn public_action_from_string_rejects_admin_and_unknown_values_test() {
 
 pub fn admin_action_from_string_round_trips_test() {
   admin_action.list()
-  |> assert_action_round_trips(
-    admin_action.to_string,
-    admin_action.from_string,
-  )
+  |> assert_action_round_trips(admin_action.to_string, admin_action.from_string)
 }
 
 pub fn admin_action_from_string_rejects_public_and_unknown_values_test() {

@@ -399,9 +399,9 @@ fn log_row(log: run_log_dto.RunLogResponse, now: Timestamp) -> Element(Msg) {
       duration_column(),
       optional_duration(log.duration_ns),
     ),
-    admin_table.open_link_cell([route.href(route.Admin(route.AdminRunLog(
-      log.id,
-    )))]),
+    admin_table.open_link_cell([
+      route.href(route.Admin(route.AdminRunLog(log.id))),
+    ]),
   ])
 }
 

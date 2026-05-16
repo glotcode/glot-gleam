@@ -121,25 +121,17 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
         f(next(value))
       })
     GetSessionByToken(token:, next:) ->
-      GetSessionByToken(
-        token: token,
-        next: fn(value) { f(next(value)) },
-      )
+      GetSessionByToken(token: token, next: fn(value) { f(next(value)) })
     GetSessionByTokenForUpdate(token:, next:) ->
-      GetSessionByTokenForUpdate(
-        token: token,
-        next: fn(value) { f(next(value)) },
-      )
+      GetSessionByTokenForUpdate(token: token, next: fn(value) {
+        f(next(value))
+      })
     GetSessionByPreviousToken(token:, next:) ->
-      GetSessionByPreviousToken(
-        token: token,
-        next: fn(value) { f(next(value)) },
-      )
+      GetSessionByPreviousToken(token: token, next: fn(value) { f(next(value)) })
     GetSessionByPreviousTokenForUpdate(token:, next:) ->
-      GetSessionByPreviousTokenForUpdate(
-        token: token,
-        next: fn(value) { f(next(value)) },
-      )
+      GetSessionByPreviousTokenForUpdate(token: token, next: fn(value) {
+        f(next(value))
+      })
     CreateUser(user: user, next: next) ->
       CreateUser(user: user, next: fn(value) { f(next(value)) })
     CreateAccount(account: account, next: next) ->
@@ -161,10 +153,7 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
     CreateSession(session: session, next: next) ->
       CreateSession(session: session, next: fn(value) { f(next(value)) })
     UpdateSession(session:, next:) ->
-      UpdateSession(
-        session: session,
-        next: fn(value) { f(next(value)) },
-      )
+      UpdateSession(session: session, next: fn(value) { f(next(value)) })
     DeleteSession(id: id, next: next) ->
       DeleteSession(id: id, next: fn(value) { f(next(value)) })
     CreateLoginToken(login_token: login_token, next: next) ->

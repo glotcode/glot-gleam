@@ -2,7 +2,6 @@ import gleam/json
 import gleam/option
 import gleam/result
 import glot_backend/dynamic_config
-import glot_core/availability_mode
 import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -11,6 +10,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/worker/app_config_cache_worker
+import glot_core/availability_mode
 import glot_core/public_action
 
 pub fn run(
@@ -97,7 +97,7 @@ pub fn run(
             "availability",
             "retry_after_seconds",
             json.nullable(config.retry_after_seconds, json.int)
-            |> json.to_string(),
+              |> json.to_string(),
             updated_at,
           )
           |> result.map_error(error.CommandError)
@@ -148,7 +148,8 @@ pub fn run(
           runtime.handlers.app_config.upsert_entry(
             "auth",
             "session_refresh_interval_seconds",
-            json.int(config.session_refresh_interval_seconds) |> json.to_string(),
+            json.int(config.session_refresh_interval_seconds)
+              |> json.to_string(),
             updated_at,
           )
           |> result.map_error(error.CommandError)
@@ -158,7 +159,7 @@ pub fn run(
             "auth",
             "session_previous_token_grace_seconds",
             json.int(config.session_previous_token_grace_seconds)
-            |> json.to_string(),
+              |> json.to_string(),
             updated_at,
           )
           |> result.map_error(error.CommandError)
@@ -168,7 +169,7 @@ pub fn run(
             "auth",
             "session_heartbeat_interval_seconds",
             json.int(config.session_heartbeat_interval_seconds)
-            |> json.to_string(),
+              |> json.to_string(),
             updated_at,
           )
           |> result.map_error(error.CommandError)

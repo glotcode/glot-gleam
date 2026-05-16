@@ -4,8 +4,8 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
-import glot_core/helpers/timestamp_helpers
 import glot_core/auth/user_model
+import glot_core/helpers/timestamp_helpers
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/pageview_dto
@@ -128,7 +128,9 @@ fn init_page(
   }
 }
 
-fn init_public_page(public_route: route.PublicRoute) -> #(PageModel, Effect(Msg)) {
+fn init_public_page(
+  public_route: route.PublicRoute,
+) -> #(PageModel, Effect(Msg)) {
   case public_route {
     route.Home -> {
       let #(m, eff) = home_page.init()
@@ -539,28 +541,29 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.page_model {
     ClockTicked(now), _ -> {
       let should_start_heartbeat =
-        should_refresh_session(Model(
-          ..model,
-          now: now,
-          page_visible: page_visibility.document_is_visible(),
-        ))
-      let next_model =
-        case should_start_heartbeat {
-          True ->
-            Model(
-              ..model,
-              now: now,
-              page_visible: page_visibility.document_is_visible(),
-              heartbeat_in_flight: True,
-              last_heartbeat_at: option.Some(now),
-            )
-          False ->
-            Model(
-              ..model,
-              now: now,
-              page_visible: page_visibility.document_is_visible(),
-            )
-        }
+        should_refresh_session(
+          Model(
+            ..model,
+            now: now,
+            page_visible: page_visibility.document_is_visible(),
+          ),
+        )
+      let next_model = case should_start_heartbeat {
+        True ->
+          Model(
+            ..model,
+            now: now,
+            page_visible: page_visibility.document_is_visible(),
+            heartbeat_in_flight: True,
+            last_heartbeat_at: option.Some(now),
+          )
+        False ->
+          Model(
+            ..model,
+            now: now,
+            page_visible: page_visibility.document_is_visible(),
+          )
+      }
       #(
         next_model,
         effect.batch([
@@ -577,11 +580,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(_) | api.HttpFailure(_) -> SessionError
       }
 
-      let next_model = Model(
-        ..model,
-        session: session,
-        heartbeat_in_flight: False,
-      )
+      let next_model =
+        Model(..model, session: session, heartbeat_in_flight: False)
 
       case route.is_admin_route(model.route) {
         True ->

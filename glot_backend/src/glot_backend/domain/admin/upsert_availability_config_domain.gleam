@@ -41,6 +41,8 @@ pub fn upsert_availability_config(
 
 pub fn request_from_dynamic(
   data: dynamic.Dynamic,
-) -> program_types.Program(availability_config_dto.UpsertAvailabilityConfigRequest) {
+) -> program_types.Program(
+  availability_config_dto.UpsertAvailabilityConfigRequest,
+) {
   program.decode_dynamic(data, availability_config_dto.decoder())
 }

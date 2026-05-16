@@ -280,9 +280,9 @@ fn log_row(
       duration_label.duration_in_ms_label(log.duration_ns),
     ),
     admin_table.cell(error_column(), [admin_ui.error_badge(log.has_error)]),
-    admin_table.open_link_cell([route.href(route.Admin(route.AdminApiLog(
-      log.id,
-    )))]),
+    admin_table.open_link_cell([
+      route.href(route.Admin(route.AdminApiLog(log.id))),
+    ]),
   ])
 }
 

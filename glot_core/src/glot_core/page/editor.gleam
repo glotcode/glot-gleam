@@ -422,9 +422,9 @@ fn canonical_url(view_model: ViewModel) -> String {
       route.to_string(route.Public(route.NewSnippet(language_slug)))
     LoadError(_) -> "/snippets"
     NewSnippet(model) ->
-      route.to_string(route.Public(route.NewSnippet(
-        language.to_string(model.language),
-      )))
+      route.to_string(
+        route.Public(route.NewSnippet(language.to_string(model.language))),
+      )
     ExistingSnippet(EditorModel(slug: option.Some(slug), ..)) ->
       route.to_string(route.Public(route.Snippet(slug)))
     ExistingSnippet(_) -> "/snippets"

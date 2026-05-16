@@ -5,10 +5,10 @@ import gleam/list
 import gleam/option
 import gleam/regexp
 import gleam/result
-import glot_core/admin/availability_config_dto
 import glot_core/admin/account_dto as admin_account_dto
 import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto
+import glot_core/admin/availability_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
@@ -22,7 +22,6 @@ import glot_core/admin/run_log_dto
 import glot_core/admin/snippet_dto as admin_snippet_dto
 import glot_core/admin/user_dto
 import glot_core/admin_action
-import glot_core/public_action
 import glot_core/auth/account_dto
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
@@ -31,6 +30,7 @@ import glot_core/auth/session_dto
 import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/pageview_dto
 import glot_core/pagination_model
+import glot_core/public_action
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import lustre/effect
@@ -423,7 +423,8 @@ pub fn upsert_admin_job_type_policy(
   request: job_type_policy_dto.UpsertJobTypePolicyRequest,
   to_msg: fn(ApiResponse(job_type_policy_dto.JobTypePolicyResponse)) -> msg,
 ) -> effect.Effect(msg) {
-  let req = AdminApiRequest(admin_action.UpsertAdminJobTypePolicyAction, request)
+  let req =
+    AdminApiRequest(admin_action.UpsertAdminJobTypePolicyAction, request)
 
   send_admin_api_request(
     req,
@@ -574,7 +575,8 @@ pub fn update_admin_email_template(
   request: email_template_dto.UpdateEmailTemplateRequest,
   to_msg: fn(ApiResponse(email_template_dto.UpdateEmailTemplateResponse)) -> msg,
 ) -> effect.Effect(msg) {
-  let req = AdminApiRequest(admin_action.UpdateAdminEmailTemplateAction, request)
+  let req =
+    AdminApiRequest(admin_action.UpdateAdminEmailTemplateAction, request)
 
   send_admin_api_request(
     req,
@@ -774,7 +776,8 @@ pub fn upsert_admin_cleanup_config(
   request: cleanup_config_dto.UpsertCleanupConfigRequest,
   to_msg: fn(ApiResponse(cleanup_config_dto.CleanupConfigResponse)) -> msg,
 ) -> effect.Effect(msg) {
-  let req = AdminApiRequest(admin_action.UpsertAdminCleanupConfigAction, request)
+  let req =
+    AdminApiRequest(admin_action.UpsertAdminCleanupConfigAction, request)
 
   send_admin_api_request(
     req,
@@ -788,7 +791,8 @@ pub fn upsert_admin_rate_limit_policy(
   request: rate_limit_config_dto.UpsertRateLimitPolicyRequest,
   to_msg: fn(ApiResponse(rate_limit_config_dto.RateLimitPolicyResponse)) -> msg,
 ) -> effect.Effect(msg) {
-  let req = AdminApiRequest(admin_action.UpsertAdminRateLimitPolicyAction, request)
+  let req =
+    AdminApiRequest(admin_action.UpsertAdminRateLimitPolicyAction, request)
 
   send_admin_api_request(
     req,
@@ -815,7 +819,8 @@ pub fn upsert_admin_docker_run_config(
   request: docker_run_config_dto.UpsertDockerRunConfigRequest,
   to_msg: fn(ApiResponse(docker_run_config_dto.DockerRunConfigResponse)) -> msg,
 ) -> effect.Effect(msg) {
-  let req = AdminApiRequest(admin_action.UpsertAdminDockerRunConfigAction, request)
+  let req =
+    AdminApiRequest(admin_action.UpsertAdminDockerRunConfigAction, request)
 
   send_admin_api_request(
     req,

@@ -18,6 +18,7 @@ import glot_backend/domain/admin/delete_snippet_domain as admin_delete_snippet_d
 import glot_backend/domain/admin/get_api_log_domain
 import glot_backend/domain/admin/get_api_logs_domain
 import glot_backend/domain/admin/get_auth_config_domain
+import glot_backend/domain/admin/get_availability_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
@@ -27,7 +28,6 @@ import glot_backend/domain/admin/get_job_domain
 import glot_backend/domain/admin/get_job_log_domain
 import glot_backend/domain/admin/get_job_logs_domain
 import glot_backend/domain/admin/get_job_type_policies_domain
-import glot_backend/domain/admin/get_availability_config_domain
 import glot_backend/domain/admin/get_jobs_domain
 import glot_backend/domain/admin/get_periodic_job_domain
 import glot_backend/domain/admin/get_periodic_jobs_domain
@@ -42,27 +42,27 @@ import glot_backend/domain/admin/update_email_template_domain
 import glot_backend/domain/admin/update_periodic_job_domain
 import glot_backend/domain/admin/update_user_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
+import glot_backend/domain/admin/upsert_availability_config_domain
 import glot_backend/domain/admin/upsert_cleanup_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_job_type_policy_domain
-import glot_backend/domain/admin/upsert_availability_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
-import glot_backend/domain/auth/refresh_session_domain
 import glot_backend/domain/auth/logout_domain
+import glot_backend/domain/auth/refresh_session_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/navigation/track_pageview_domain
 import glot_backend/domain/run_code/get_language_version_domain
 import glot_backend/domain/run_code/run_domain
+import glot_backend/domain/shared/availability_policy_domain
 import glot_backend/domain/snippet/create_snippet_domain
 import glot_backend/domain/snippet/delete_snippet_domain
 import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/domain/snippet/list_public_snippets_domain
 import glot_backend/domain/snippet/list_session_snippets_domain
 import glot_backend/domain/snippet/update_snippet_domain
-import glot_backend/domain/shared/availability_policy_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -78,6 +78,7 @@ import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto
+import glot_core/admin/availability_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
@@ -85,19 +86,18 @@ import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/job_type_policy_dto
-import glot_core/admin/availability_config_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/admin/run_log_dto
 import glot_core/admin/snippet_dto as admin_snippet_dto
 import glot_core/admin/user_dto
-import glot_core/api_action
 import glot_core/admin_action
-import glot_core/public_action
+import glot_core/api_action
 import glot_core/auth/account_dto
 import glot_core/auth/account_model
 import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
+import glot_core/public_action
 import glot_core/run
 import glot_core/snippet/snippet_dto
 import pog
@@ -256,7 +256,10 @@ fn handle_public_api_request(
       |> program.map(fn(_) { NoContentResponse })
     }
     public_action.LoginAction -> {
-      use request <- program.and_then(login_domain.request_from_dynamic(ctx, data))
+      use request <- program.and_then(login_domain.request_from_dynamic(
+        ctx,
+        data,
+      ))
       login_domain.login(ctx, request)
       |> program.map(LoginResponse)
     }
@@ -337,7 +340,9 @@ fn handle_admin_api_request(
       |> program.map(AdminJobResponse)
     }
     admin_action.CreateAdminJobAction -> {
-      use request <- program.and_then(create_job_domain.request_from_dynamic(data))
+      use request <- program.and_then(create_job_domain.request_from_dynamic(
+        data,
+      ))
       create_job_domain.create_job(ctx, request)
       |> program.map(AdminJobResponse)
     }
@@ -359,7 +364,9 @@ fn handle_admin_api_request(
       |> program.map(AdminUpdatedEmailTemplateResponse)
     }
     admin_action.GetAdminSnippetsAction -> {
-      use request <- program.and_then(get_snippets_domain.request_from_dynamic(data))
+      use request <- program.and_then(get_snippets_domain.request_from_dynamic(
+        data,
+      ))
       get_snippets_domain.get_snippets(ctx, request)
       |> program.map(AdminSnippetsResponse)
     }
@@ -378,7 +385,9 @@ fn handle_admin_api_request(
       |> program.map(fn(_) { NoContentResponse })
     }
     admin_action.GetAdminUsersAction -> {
-      use request <- program.and_then(get_users_domain.request_from_dynamic(data))
+      use request <- program.and_then(get_users_domain.request_from_dynamic(
+        data,
+      ))
       get_users_domain.get_users(ctx, request)
       |> program.map(AdminUsersResponse)
     }
@@ -388,7 +397,9 @@ fn handle_admin_api_request(
       |> program.map(AdminUserDetailResponse)
     }
     admin_action.UpdateAdminUserAction -> {
-      use request <- program.and_then(update_user_domain.request_from_dynamic(data))
+      use request <- program.and_then(update_user_domain.request_from_dynamic(
+        data,
+      ))
       update_user_domain.update_user(ctx, request)
       |> program.map(AdminUserResponse)
     }
@@ -400,32 +411,44 @@ fn handle_admin_api_request(
       |> program.map(fn(_) { NoContentResponse })
     }
     admin_action.GetAdminApiLogsAction -> {
-      use request <- program.and_then(get_api_logs_domain.request_from_dynamic(data))
+      use request <- program.and_then(get_api_logs_domain.request_from_dynamic(
+        data,
+      ))
       get_api_logs_domain.get_api_logs(ctx, request)
       |> program.map(AdminApiLogsResponse)
     }
     admin_action.GetAdminApiLogAction -> {
-      use request <- program.and_then(get_api_log_domain.request_from_dynamic(data))
+      use request <- program.and_then(get_api_log_domain.request_from_dynamic(
+        data,
+      ))
       get_api_log_domain.get_api_log(ctx, request)
       |> program.map(AdminApiLogResponse)
     }
     admin_action.GetAdminRunLogsAction -> {
-      use request <- program.and_then(get_run_logs_domain.request_from_dynamic(data))
+      use request <- program.and_then(get_run_logs_domain.request_from_dynamic(
+        data,
+      ))
       get_run_logs_domain.get_run_logs(ctx, request)
       |> program.map(AdminRunLogsResponse)
     }
     admin_action.GetAdminRunLogAction -> {
-      use request <- program.and_then(get_run_log_domain.request_from_dynamic(data))
+      use request <- program.and_then(get_run_log_domain.request_from_dynamic(
+        data,
+      ))
       get_run_log_domain.get_run_log(ctx, request)
       |> program.map(AdminRunLogResponse)
     }
     admin_action.GetAdminJobLogsAction -> {
-      use request <- program.and_then(get_job_logs_domain.request_from_dynamic(data))
+      use request <- program.and_then(get_job_logs_domain.request_from_dynamic(
+        data,
+      ))
       get_job_logs_domain.get_job_logs(ctx, request)
       |> program.map(AdminJobLogsResponse)
     }
     admin_action.GetAdminJobLogAction -> {
-      use request <- program.and_then(get_job_log_domain.request_from_dynamic(data))
+      use request <- program.and_then(get_job_log_domain.request_from_dynamic(
+        data,
+      ))
       get_job_log_domain.get_job_log(ctx, request)
       |> program.map(AdminJobLogResponse)
     }

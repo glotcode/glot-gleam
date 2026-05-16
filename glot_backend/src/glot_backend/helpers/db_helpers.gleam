@@ -8,7 +8,7 @@ import pog
 
 pub const default_statement_timeout_ms = 10_000
 
-const timeout_grace_ms = 1_000
+const timeout_grace_ms = 1000
 
 pub opaque type Db {
   Db(connection: pog.Connection, timeout_ms: Int)

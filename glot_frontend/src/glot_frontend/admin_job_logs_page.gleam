@@ -319,9 +319,9 @@ fn log_row(log: job_log_dto.JobLogResponse, now: Timestamp) -> Element(Msg) {
       duration_label.duration_in_ms_label(log.duration_ns),
     ),
     admin_table.cell(error_column(), [admin_ui.error_badge(log.has_error)]),
-    admin_table.open_link_cell([route.href(route.Admin(route.AdminJobLog(
-      log.id,
-    )))]),
+    admin_table.open_link_cell([
+      route.href(route.Admin(route.AdminJobLog(log.id))),
+    ]),
   ])
 }
 

@@ -7,13 +7,13 @@ import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/api_action
-import glot_core/public_action
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/page/editor as editor_ssr
 import glot_core/page/editor_layout
 import glot_core/page/icons
 import glot_core/page/top_bar
+import glot_core/public_action
 import glot_core/route
 import glot_core/run
 import glot_core/snippet/snippet_dto
@@ -253,8 +253,10 @@ pub fn update(
         api.ApiSuccess(response) ->
           existing_model_from_response(response, settings)
 
-        api.ApiFailure(error) ->
-          #(LoadError(api.error_message(error)), effect.none())
+        api.ApiFailure(error) -> #(
+          LoadError(api.error_message(error)),
+          effect.none(),
+        )
 
         api.HttpFailure(_) -> #(
           LoadError("Could not load snippet."),

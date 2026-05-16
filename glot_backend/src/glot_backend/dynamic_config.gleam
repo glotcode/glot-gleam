@@ -6,10 +6,10 @@ import gleam/option
 import gleam/result
 import gleam/string
 import glot_backend/app_config
-import glot_core/availability_mode as availability_mode
 import glot_core/admin_action
-import glot_core/public_action
 import glot_core/auth/account_model
+import glot_core/availability_mode
+import glot_core/public_action
 import glot_core/rate_limit
 
 pub type DynamicConfig {
@@ -201,30 +201,42 @@ fn decode_availability_config_entry(
       use value <- result.try(decode_string_entry("availability", entry))
       case availability_mode.from_string(value) {
         option.Some(mode) ->
-          Ok(DynamicConfig(
-            ..config,
-            availability: AvailabilityConfig(..config.availability, mode: mode),
-          ))
+          Ok(
+            DynamicConfig(
+              ..config,
+              availability: AvailabilityConfig(
+                ..config.availability,
+                mode: mode,
+              ),
+            ),
+          )
         option.None ->
           Error("Failed to decode availability app_config for mode: " <> value)
       }
     }
     "message" -> {
       use value <- result.try(decode_string_entry("availability", entry))
-      Ok(DynamicConfig(
-        ..config,
-        availability: AvailabilityConfig(..config.availability, message: value),
-      ))
+      Ok(
+        DynamicConfig(
+          ..config,
+          availability: AvailabilityConfig(
+            ..config.availability,
+            message: value,
+          ),
+        ),
+      )
     }
     "retry_after_seconds" -> {
       use value <- result.try(decode_optional_int_entry("availability", entry))
-      Ok(DynamicConfig(
-        ..config,
-        availability: AvailabilityConfig(
-          ..config.availability,
-          retry_after_seconds: value,
+      Ok(
+        DynamicConfig(
+          ..config,
+          availability: AvailabilityConfig(
+            ..config.availability,
+            retry_after_seconds: value,
+          ),
         ),
-      ))
+      )
     }
     _ -> Ok(config)
   }
