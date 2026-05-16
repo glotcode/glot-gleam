@@ -93,6 +93,9 @@ pub type AuthFields {
     login_token_max_age: String,
     session_token_max_age: String,
     session_cookie_max_age: String,
+    session_refresh_interval_seconds: String,
+    session_previous_token_grace_seconds: String,
+    session_heartbeat_interval_seconds: String,
   )
 }
 
@@ -138,6 +141,9 @@ pub type Msg {
   AuthLoginTokenMaxAgeChanged(String)
   AuthSessionTokenMaxAgeChanged(String)
   AuthSessionCookieMaxAgeChanged(String)
+  AuthSessionRefreshIntervalSecondsChanged(String)
+  AuthSessionPreviousTokenGraceSecondsChanged(String)
+  AuthSessionHeartbeatIntervalSecondsChanged(String)
   AuthResetClicked
   AuthSaveClicked
   AuthSaveFinished(api.ApiResponse(auth_config_dto.AuthConfigResponse))
@@ -507,6 +513,51 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         auth: AuthSection(
           ..model.auth,
           draft: AuthFields(..model.auth.draft, session_cookie_max_age: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    AuthSessionRefreshIntervalSecondsChanged(value) -> #(
+      Model(
+        ..model,
+        auth: AuthSection(
+          ..model.auth,
+          draft: AuthFields(
+            ..model.auth.draft,
+            session_refresh_interval_seconds: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    AuthSessionPreviousTokenGraceSecondsChanged(value) -> #(
+      Model(
+        ..model,
+        auth: AuthSection(
+          ..model.auth,
+          draft: AuthFields(
+            ..model.auth.draft,
+            session_previous_token_grace_seconds: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    AuthSessionHeartbeatIntervalSecondsChanged(value) -> #(
+      Model(
+        ..model,
+        auth: AuthSection(
+          ..model.auth,
+          draft: AuthFields(
+            ..model.auth.draft,
+            session_heartbeat_interval_seconds: value,
+          ),
           state: mutation.Idle,
         ),
       ),
@@ -992,6 +1043,27 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
         placeholder: "",
         on_input: AuthSessionCookieMaxAgeChanged,
       ),
+      admin_ui.text_input(
+        label: "Session refresh interval",
+        help: "Minimum seconds between server-side session token rotations.",
+        value: section.draft.session_refresh_interval_seconds,
+        placeholder: "",
+        on_input: AuthSessionRefreshIntervalSecondsChanged,
+      ),
+      admin_ui.text_input(
+        label: "Previous token grace",
+        help: "Seconds to accept the previous session token after rotation.",
+        value: section.draft.session_previous_token_grace_seconds,
+        placeholder: "",
+        on_input: AuthSessionPreviousTokenGraceSecondsChanged,
+      ),
+      admin_ui.text_input(
+        label: "Heartbeat interval",
+        help: "Seconds the frontend should wait before sending the next heartbeat.",
+        value: section.draft.session_heartbeat_interval_seconds,
+        placeholder: "",
+        on_input: AuthSessionHeartbeatIntervalSecondsChanged,
+      ),
     ]),
     footer: section_footer(
       status: status,
@@ -1447,6 +1519,15 @@ fn auth_fields_from_response(
     login_token_max_age: int.to_string(response.login_token_max_age),
     session_token_max_age: int.to_string(response.session_token_max_age),
     session_cookie_max_age: int.to_string(response.session_cookie_max_age),
+    session_refresh_interval_seconds: int.to_string(
+      response.session_refresh_interval_seconds,
+    ),
+    session_previous_token_grace_seconds: int.to_string(
+      response.session_previous_token_grace_seconds,
+    ),
+    session_heartbeat_interval_seconds: int.to_string(
+      response.session_heartbeat_interval_seconds,
+    ),
   )
 }
 
@@ -1578,11 +1659,33 @@ fn validate_auth_fields(
       "Session cookie max age must be a positive integer.",
     ),
   )
+  use session_refresh_interval_seconds <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.session_refresh_interval_seconds,
+      "Session refresh interval must be a positive integer.",
+    ),
+  )
+  use session_previous_token_grace_seconds <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.session_previous_token_grace_seconds,
+      "Previous token grace must be a positive integer.",
+    ),
+  )
+  use session_heartbeat_interval_seconds <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.session_heartbeat_interval_seconds,
+      "Heartbeat interval must be a positive integer.",
+    ),
+  )
 
   Ok(auth_config_dto.UpsertAuthConfigRequest(
     login_token_max_age: login_token_max_age,
     session_token_max_age: session_token_max_age,
     session_cookie_max_age: session_cookie_max_age,
+    session_refresh_interval_seconds: session_refresh_interval_seconds,
+    session_previous_token_grace_seconds:
+      session_previous_token_grace_seconds,
+    session_heartbeat_interval_seconds: session_heartbeat_interval_seconds,
   ))
 }
 
@@ -1682,6 +1785,9 @@ fn empty_auth_fields() -> AuthFields {
     login_token_max_age: "",
     session_token_max_age: "",
     session_cookie_max_age: "",
+    session_refresh_interval_seconds: "",
+    session_previous_token_grace_seconds: "",
+    session_heartbeat_interval_seconds: "",
   )
 }
 

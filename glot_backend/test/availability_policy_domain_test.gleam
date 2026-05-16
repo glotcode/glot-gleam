@@ -171,6 +171,9 @@ fn run_app_config_effect(
           login_token_max_age: 900,
           session_token_max_age: 86_400,
           session_cookie_max_age: 86_400,
+          session_refresh_interval_seconds: 300,
+          session_previous_token_grace_seconds: 60,
+          session_heartbeat_interval_seconds: 60,
         ),
         cleanup: dynamic_config.CleanupConfig(
           api_log_retention_days: 30,

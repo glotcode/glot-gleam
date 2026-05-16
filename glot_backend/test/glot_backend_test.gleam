@@ -66,6 +66,7 @@ import glot_core/api_action
 import glot_core/public_action
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
+import glot_core/auth/refresh_session_dto
 import glot_core/auth/login_token_dto
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
@@ -119,6 +120,9 @@ pub fn refresh_session_rotates_token_with_previous_token_grace_test() {
     == Ok(refresh_session_domain.RefreshSessionResult(
       session_token: "random",
       session_cookie_max_age: 86_400,
+      response: refresh_session_dto.RefreshSessionResponse(
+        next_heartbeat_in_seconds: 60,
+      ),
     ))
 
   let assert Ok(session) = dict.get(db.sessions, uuid_key(test_session_id()))
@@ -155,6 +159,9 @@ pub fn refresh_session_is_noop_when_rotated_too_recently_test() {
     == Ok(refresh_session_domain.RefreshSessionResult(
       session_token: "session-token",
       session_cookie_max_age: 86_400,
+      response: refresh_session_dto.RefreshSessionResponse(
+        next_heartbeat_in_seconds: 60,
+      ),
     ))
 
   let assert Ok(session) = dict.get(db.sessions, uuid_key(test_session_id()))
@@ -222,6 +229,9 @@ pub fn app_config_uses_default_auth_config_test() {
       login_token_max_age: 900,
       session_token_max_age: 86_400,
       session_cookie_max_age: 86_400,
+      session_refresh_interval_seconds: 300,
+      session_previous_token_grace_seconds: 60,
+      session_heartbeat_interval_seconds: 60,
     )
 }
 
@@ -475,6 +485,9 @@ pub fn upsert_auth_config_allows_admin_role_test() {
       login_token_max_age: 1200,
       session_token_max_age: 172_800,
       session_cookie_max_age: 172_800,
+      session_refresh_interval_seconds: 600,
+      session_previous_token_grace_seconds: 90,
+      session_heartbeat_interval_seconds: 120,
     )
 
   let #(run_result, updated_db) =
@@ -489,6 +502,9 @@ pub fn upsert_auth_config_allows_admin_role_test() {
       login_token_max_age: request.login_token_max_age,
       session_token_max_age: request.session_token_max_age,
       session_cookie_max_age: request.session_cookie_max_age,
+      session_refresh_interval_seconds: request.session_refresh_interval_seconds,
+      session_previous_token_grace_seconds: request.session_previous_token_grace_seconds,
+      session_heartbeat_interval_seconds: request.session_heartbeat_interval_seconds,
     ))
   assert updated_db.user_action_count == 1
 }
@@ -1759,6 +1775,9 @@ fn run_test_app_config_effect(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
               session_cookie_max_age: 86_400,
+              session_refresh_interval_seconds: 300,
+              session_previous_token_grace_seconds: 60,
+              session_heartbeat_interval_seconds: 60,
             ),
             cleanup: test_cleanup_config(),
             docker_run: option.None,
@@ -1782,6 +1801,9 @@ fn run_test_app_config_effect(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
               session_cookie_max_age: 86_400,
+              session_refresh_interval_seconds: 300,
+              session_previous_token_grace_seconds: 60,
+              session_heartbeat_interval_seconds: 60,
             ),
             cleanup: test_cleanup_config(),
             docker_run: option.None,
@@ -1824,6 +1846,9 @@ fn run_test_app_config_effect(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
               session_cookie_max_age: 86_400,
+              session_refresh_interval_seconds: 300,
+              session_previous_token_grace_seconds: 60,
+              session_heartbeat_interval_seconds: 60,
             ),
             cleanup: config,
             docker_run: option.None,
@@ -1853,6 +1878,9 @@ fn run_test_app_config_effect(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
               session_cookie_max_age: 86_400,
+              session_refresh_interval_seconds: 300,
+              session_previous_token_grace_seconds: 60,
+              session_heartbeat_interval_seconds: 60,
             ),
             cleanup: test_cleanup_config(),
             docker_run: option.Some(config),
@@ -1873,6 +1901,9 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
       login_token_max_age: 900,
       session_token_max_age: 86_400,
       session_cookie_max_age: 86_400,
+      session_refresh_interval_seconds: 300,
+      session_previous_token_grace_seconds: 60,
+      session_heartbeat_interval_seconds: 60,
     ),
     cleanup: test_cleanup_config(),
     docker_run: option.None,

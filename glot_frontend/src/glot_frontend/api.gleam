@@ -26,6 +26,7 @@ import glot_core/public_action
 import glot_core/auth/account_dto
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
+import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
 import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/pageview_dto
@@ -252,10 +253,17 @@ pub fn get_session(
   )
 }
 
-pub fn refresh_session(to_msg: fn(ApiResponse(Nil)) -> msg) -> effect.Effect(msg) {
+pub fn refresh_session(
+  to_msg: fn(ApiResponse(refresh_session_dto.RefreshSessionResponse)) -> msg,
+) -> effect.Effect(msg) {
   let req = PublicApiRequest(public_action.RefreshSessionAction, Nil)
 
-  send_public_api_request(req, fn(_) { json.null() }, nil_decoder(), to_msg)
+  send_public_api_request(
+    req,
+    fn(_) { json.null() },
+    refresh_session_dto.decoder(),
+    to_msg,
+  )
 }
 
 pub fn get_account(

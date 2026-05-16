@@ -30,6 +30,11 @@ pub fn upsert_auth_config(
       login_token_max_age: request.login_token_max_age,
       session_token_max_age: request.session_token_max_age,
       session_cookie_max_age: request.session_cookie_max_age,
+      session_refresh_interval_seconds: request.session_refresh_interval_seconds,
+      session_previous_token_grace_seconds:
+        request.session_previous_token_grace_seconds,
+      session_heartbeat_interval_seconds:
+        request.session_heartbeat_interval_seconds,
     ),
     ctx.timestamp,
   ))
@@ -39,6 +44,11 @@ pub fn upsert_auth_config(
     login_token_max_age: request.login_token_max_age,
     session_token_max_age: request.session_token_max_age,
     session_cookie_max_age: request.session_cookie_max_age,
+    session_refresh_interval_seconds: request.session_refresh_interval_seconds,
+    session_previous_token_grace_seconds:
+      request.session_previous_token_grace_seconds,
+    session_heartbeat_interval_seconds:
+      request.session_heartbeat_interval_seconds,
   ))
 }
 
@@ -57,6 +67,9 @@ fn validate_request(
         request.login_token_max_age,
         request.session_token_max_age,
         request.session_cookie_max_age,
+        request.session_refresh_interval_seconds,
+        request.session_previous_token_grace_seconds,
+        request.session_heartbeat_interval_seconds,
       ],
       fn(value) { value <= 0 },
     )

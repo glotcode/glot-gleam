@@ -144,6 +144,35 @@ pub fn run(
           )
           |> result.map_error(error.CommandError)
         })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "auth",
+            "session_refresh_interval_seconds",
+            json.int(config.session_refresh_interval_seconds) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "auth",
+            "session_previous_token_grace_seconds",
+            json.int(config.session_previous_token_grace_seconds)
+            |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "auth",
+            "session_heartbeat_interval_seconds",
+            json.int(config.session_heartbeat_interval_seconds)
+            |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
       continue(

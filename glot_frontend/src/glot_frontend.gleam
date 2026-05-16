@@ -2,6 +2,7 @@ import gleam/list
 import gleam/option
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
 import glot_core/helpers/timestamp_helpers
 import glot_core/auth/user_model
@@ -67,6 +68,7 @@ type Model {
     page_visible: Bool,
     heartbeat_in_flight: Bool,
     last_heartbeat_at: option.Option(Timestamp),
+    heartbeat_interval_seconds: Int,
     quick_action_query: String,
     quick_action_selected_index: Int,
   )
@@ -483,6 +485,7 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
       page_visible: page_visibility.document_is_visible(),
       heartbeat_in_flight: False,
       last_heartbeat_at: option.None,
+      heartbeat_interval_seconds: default_heartbeat_interval_seconds,
       quick_action_query: "",
       quick_action_selected_index: 0,
     ),
@@ -494,7 +497,7 @@ type Msg {
   UserNavigatedTo(route: route.Route)
   PageviewTracked(api.ApiResponse(Nil))
   SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
-  SessionRefreshed(api.ApiResponse(Nil))
+  SessionRefreshed(api.ApiResponse(refresh_session_dto.RefreshSessionResponse))
   ClockTicked(Timestamp)
   QuickActionsOpened
   QuickActionsDismissed
@@ -781,8 +784,12 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     SessionRefreshed(result), _ ->
       case result {
-        api.ApiSuccess(_) -> #(
-          Model(..model, heartbeat_in_flight: False),
+        api.ApiSuccess(response) -> #(
+          Model(
+            ..model,
+            heartbeat_in_flight: False,
+            heartbeat_interval_seconds: response.next_heartbeat_in_seconds,
+          ),
           effect.none(),
         )
         api.ApiFailure(_) | api.HttpFailure(_) -> #(
@@ -1078,7 +1085,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-const heartbeat_interval_seconds = 60
+const default_heartbeat_interval_seconds = 60
 
 fn heartbeat_effect(model: Model) -> Effect(Msg) {
   case should_refresh_session(model) {
@@ -1090,12 +1097,17 @@ fn heartbeat_effect(model: Model) -> Effect(Msg) {
 fn should_refresh_session(model: Model) -> Bool {
   case model.session, model.page_visible, model.heartbeat_in_flight {
     AuthenticatedSession(_), True, False ->
-      heartbeat_is_due(model.last_heartbeat_at, model.now)
+      heartbeat_is_due(
+        model.heartbeat_interval_seconds,
+        model.last_heartbeat_at,
+        model.now,
+      )
     _, _, _ -> False
   }
 }
 
 fn heartbeat_is_due(
+  heartbeat_interval_seconds: Int,
   last_heartbeat_at: option.Option(Timestamp),
   now: Timestamp,
 ) -> Bool {

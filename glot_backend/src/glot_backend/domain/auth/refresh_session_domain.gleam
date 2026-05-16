@@ -18,14 +18,16 @@ import gleam/option
 import gleam/time/timestamp
 import glot_core/api_action
 import glot_core/public_action
+import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_model
 import glot_core/user_action
 
-const refresh_rotation_interval_seconds = 300
-const previous_token_grace_window_seconds = 60
-
 pub type RefreshSessionResult {
-  RefreshSessionResult(session_token: String, session_cookie_max_age: Int)
+  RefreshSessionResult(
+    session_token: String,
+    session_cookie_max_age: Int,
+    response: refresh_session_dto.RefreshSessionResponse,
+  )
 }
 
 pub fn refresh_session(
@@ -62,23 +64,32 @@ pub fn refresh_session(
   ))
 
   use refresh_outcome <- program.and_then(
-    transaction_effect.run(refresh_session_tx(ctx, session_token, user_action)),
+    transaction_effect.run(refresh_session_tx(
+      ctx,
+      session_token,
+      user_action,
+      auth_config,
+    )),
   )
 
   program.succeed(RefreshSessionResult(
     session_token: refresh_outcome.session_token,
     session_cookie_max_age: auth_config.session_cookie_max_age,
+    response: refresh_session_dto.RefreshSessionResponse(
+      next_heartbeat_in_seconds: refresh_outcome.next_heartbeat_in_seconds,
+    ),
   ))
 }
 
 type RefreshOutcome {
-  RefreshOutcome(session_token: String)
+  RefreshOutcome(session_token: String, next_heartbeat_in_seconds: Int)
 }
 
 fn refresh_session_tx(
   ctx: context.Context,
   session_token: String,
   user_action: user_action.UserAction,
+  auth_config: dynamic_config.AuthConfig,
 ) -> program_types.TransactionProgram(RefreshOutcome) {
   use token <- transaction_program.and_then(transaction_program.from_option(
     ctx.client_info.session_token,
@@ -89,13 +100,20 @@ fn refresh_session_tx(
   )
 
   let next_session =
-    case should_rotate_session(session, ctx.timestamp) {
+    case should_rotate_session(
+      session,
+      ctx.timestamp,
+      auth_config.session_refresh_interval_seconds,
+    ) {
       True ->
         session
         |> session_model.rotate_token(
           session_token,
           ctx.timestamp,
-          add_seconds(ctx.timestamp, previous_token_grace_window_seconds),
+          add_seconds(
+            ctx.timestamp,
+            auth_config.session_previous_token_grace_seconds,
+          ),
         )
       False -> session
     }
@@ -106,7 +124,14 @@ fn refresh_session_tx(
   use _ <- transaction_program.and_then(
     user_action_effect.create_user_action_tx(user_action),
   )
-  transaction_program.succeed(RefreshOutcome(session_token: next_session.token))
+  transaction_program.succeed(RefreshOutcome(
+    session_token: next_session.token,
+    next_heartbeat_in_seconds: next_heartbeat_in_seconds(
+      next_session,
+      ctx.timestamp,
+      auth_config,
+    ),
+  ))
 }
 
 fn get_session_by_client_token_for_update(
@@ -138,8 +163,9 @@ fn get_session_by_client_token_for_update(
 fn should_rotate_session(
   session: session_model.Session,
   now: timestamp.Timestamp,
+  session_refresh_interval_seconds: Int,
 ) -> Bool {
-  elapsed_seconds(session.token_updated_at, now) >= refresh_rotation_interval_seconds
+  elapsed_seconds(session.token_updated_at, now) >= session_refresh_interval_seconds
 }
 
 fn add_seconds(ts: timestamp.Timestamp, seconds_to_add: Int) -> timestamp.Timestamp {
@@ -151,4 +177,26 @@ fn elapsed_seconds(from: timestamp.Timestamp, to: timestamp.Timestamp) -> Int {
   let #(from_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(from)
   let #(to_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(to)
   int.absolute_value(to_seconds - from_seconds)
+}
+
+fn next_heartbeat_in_seconds(
+  session: session_model.Session,
+  now: timestamp.Timestamp,
+  auth_config: dynamic_config.AuthConfig,
+) -> Int {
+  let remaining =
+    auth_config.session_refresh_interval_seconds
+    - elapsed_seconds(session.token_updated_at, now)
+
+  case remaining <= 0 {
+    True -> auth_config.session_heartbeat_interval_seconds
+    False -> min_int(auth_config.session_heartbeat_interval_seconds, remaining)
+  }
+}
+
+fn min_int(a: Int, b: Int) -> Int {
+  case a <= b {
+    True -> a
+    False -> b
+  }
 }

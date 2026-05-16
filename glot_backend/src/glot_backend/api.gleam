@@ -96,6 +96,7 @@ import glot_core/admin_action
 import glot_core/public_action
 import glot_core/auth/account_dto
 import glot_core/auth/account_model
+import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
 import glot_core/run
 import glot_core/snippet/snippet_dto
@@ -625,7 +626,7 @@ fn api_result_to_response(
     }
     RefreshSessionResponse(refresh_result) ->
       set_session_cookie(
-        success_response(json.null()),
+        success_response(refresh_session_dto.encode(refresh_result.response)),
         req,
         refresh_result.session_token,
         refresh_result.session_cookie_max_age,
