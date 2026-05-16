@@ -3,6 +3,7 @@ import gleam/option
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/session_dto
+import glot_core/helpers/timestamp_helpers
 import glot_core/auth/user_model
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
@@ -39,6 +40,7 @@ import glot_frontend/home_page
 import glot_frontend/keyboard_shortcuts
 import glot_frontend/login_page
 import glot_frontend/manage_snippets_page
+import glot_frontend/page_visibility
 import glot_frontend/quick_action_scroll
 import glot_frontend/snippets_page
 import glot_frontend/string_helpers
@@ -62,6 +64,9 @@ type Model {
     page_model: PageModel,
     session: SessionState,
     now: Timestamp,
+    page_visible: Bool,
+    heartbeat_in_flight: Bool,
+    last_heartbeat_at: option.Option(Timestamp),
     quick_action_query: String,
     quick_action_selected_index: Int,
   )
@@ -475,6 +480,9 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
       page_model: page_model,
       session: LoadingSession,
       now: clock.now(),
+      page_visible: page_visibility.document_is_visible(),
+      heartbeat_in_flight: False,
+      last_heartbeat_at: option.None,
       quick_action_query: "",
       quick_action_selected_index: 0,
     ),
@@ -486,6 +494,7 @@ type Msg {
   UserNavigatedTo(route: route.Route)
   PageviewTracked(api.ApiResponse(Nil))
   SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
+  SessionRefreshed(api.ApiResponse(Nil))
   ClockTicked(Timestamp)
   QuickActionsOpened
   QuickActionsDismissed
@@ -525,10 +534,38 @@ type Msg {
 
 fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg, model.page_model {
-    ClockTicked(now), _ -> #(
-      Model(..model, now: now),
-      clock.schedule_next_tick(ClockTicked),
-    )
+    ClockTicked(now), _ -> {
+      let should_start_heartbeat =
+        should_refresh_session(Model(
+          ..model,
+          now: now,
+          page_visible: page_visibility.document_is_visible(),
+        ))
+      let next_model =
+        case should_start_heartbeat {
+          True ->
+            Model(
+              ..model,
+              now: now,
+              page_visible: page_visibility.document_is_visible(),
+              heartbeat_in_flight: True,
+              last_heartbeat_at: option.Some(now),
+            )
+          False ->
+            Model(
+              ..model,
+              now: now,
+              page_visible: page_visibility.document_is_visible(),
+            )
+        }
+      #(
+        next_model,
+        effect.batch([
+          clock.schedule_next_tick(ClockTicked),
+          heartbeat_effect(next_model),
+        ]),
+      )
+    }
 
     SessionLoaded(result), _ -> {
       let session = case result {
@@ -537,7 +574,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(_) | api.HttpFailure(_) -> SessionError
       }
 
-      let next_model = Model(..model, session: session)
+      let next_model = Model(
+        ..model,
+        session: session,
+        heartbeat_in_flight: False,
+      )
 
       case route.is_admin_route(model.route) {
         True ->
@@ -737,6 +778,18 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         False -> #(next_model, effect.none())
       }
     }
+
+    SessionRefreshed(result), _ ->
+      case result {
+        api.ApiSuccess(_) -> #(
+          Model(..model, heartbeat_in_flight: False),
+          effect.none(),
+        )
+        api.ApiFailure(_) | api.HttpFailure(_) -> #(
+          Model(..model, heartbeat_in_flight: False),
+          api.get_session(SessionLoaded),
+        )
+      }
 
     PageviewTracked(_), _ -> #(model, effect.none())
 
@@ -1022,6 +1075,36 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     }
 
     _, _ -> #(model, effect.none())
+  }
+}
+
+const heartbeat_interval_seconds = 60
+
+fn heartbeat_effect(model: Model) -> Effect(Msg) {
+  case should_refresh_session(model) {
+    True -> api.refresh_session(SessionRefreshed)
+    False -> effect.none()
+  }
+}
+
+fn should_refresh_session(model: Model) -> Bool {
+  case model.session, model.page_visible, model.heartbeat_in_flight {
+    AuthenticatedSession(_), True, False ->
+      heartbeat_is_due(model.last_heartbeat_at, model.now)
+    _, _, _ -> False
+  }
+}
+
+fn heartbeat_is_due(
+  last_heartbeat_at: option.Option(Timestamp),
+  now: Timestamp,
+) -> Bool {
+  case last_heartbeat_at {
+    option.None -> True
+    option.Some(last_heartbeat_at) ->
+      timestamp_helpers.to_microseconds(now)
+      - timestamp_helpers.to_microseconds(last_heartbeat_at)
+      >= heartbeat_interval_seconds * 1_000_000
   }
 }
 
