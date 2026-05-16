@@ -170,6 +170,176 @@ pub fn refresh_session_is_noop_when_rotated_too_recently_test() {
   assert session.token_updated_at == test_timestamp()
 }
 
+pub fn get_session_accepts_previous_token_within_grace_window_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let now = add_seconds(test_timestamp(), 30)
+  let rotated_session =
+    session_model.Session(
+      ..fixture.session,
+      token: "current-token",
+      previous_token: option.Some("session-token"),
+      previous_token_valid_until: option.Some(add_seconds(test_timestamp(), 60)),
+      token_updated_at: test_timestamp(),
+    )
+  let db =
+    TestDb(
+      ..fixture.db,
+      sessions: dict.from_list([#(uuid_key(rotated_session.id), rotated_session)]),
+      session_ids_by_token: dict.from_list([
+        #(rotated_session.token, uuid_key(rotated_session.id)),
+      ]),
+    )
+  let ctx =
+    context.Context(
+      ..fixture.ctx,
+      timestamp: now,
+      client_info: context.ClientInfo(
+        ..fixture.ctx.client_info,
+        session_token: option.Some("session-token"),
+      ),
+    )
+
+  let #(run_result, _) =
+    run_test_program(session_domain.get_session(ctx), ctx, db)
+
+  let assert Ok(option.Some(session)) = run_result
+  assert session.identity.id == rotated_session.id
+  assert session.identity.token == "current-token"
+}
+
+pub fn get_session_rejects_previous_token_after_grace_window_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let now = add_seconds(test_timestamp(), 61)
+  let rotated_session =
+    session_model.Session(
+      ..fixture.session,
+      token: "current-token",
+      previous_token: option.Some("session-token"),
+      previous_token_valid_until: option.Some(add_seconds(test_timestamp(), 60)),
+      token_updated_at: test_timestamp(),
+    )
+  let db =
+    TestDb(
+      ..fixture.db,
+      sessions: dict.from_list([#(uuid_key(rotated_session.id), rotated_session)]),
+      session_ids_by_token: dict.from_list([
+        #(rotated_session.token, uuid_key(rotated_session.id)),
+      ]),
+    )
+  let ctx =
+    context.Context(
+      ..fixture.ctx,
+      timestamp: now,
+      client_info: context.ClientInfo(
+        ..fixture.ctx.client_info,
+        session_token: option.Some("session-token"),
+      ),
+    )
+
+  let #(run_result, _) =
+    run_test_program(session_domain.get_session(ctx), ctx, db)
+
+  assert run_result == Ok(option.None)
+}
+
+pub fn refresh_session_uses_configured_heartbeat_cadence_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let auth_config =
+    dynamic_config.AuthConfig(
+      login_token_max_age: 900,
+      session_token_max_age: 86_400,
+      session_cookie_max_age: 86_400,
+      session_refresh_interval_seconds: 300,
+      session_previous_token_grace_seconds: 60,
+      session_heartbeat_interval_seconds: 17,
+    )
+  let db =
+    TestDb(
+      ..fixture.db,
+      dynamic_config: dynamic_config.DynamicConfig(
+        ..fixture.db.dynamic_config,
+        auth: auth_config,
+      ),
+    )
+  let now = add_seconds(test_timestamp(), 301)
+  let ctx = context.Context(..fixture.ctx, timestamp: now)
+
+  let #(run_result, _) =
+    run_test_program(
+      refresh_session_domain.refresh_session(ctx),
+      ctx,
+      db,
+    )
+
+  assert run_result
+    == Ok(refresh_session_domain.RefreshSessionResult(
+      session_token: "random",
+      session_cookie_max_age: 86_400,
+      response: refresh_session_dto.RefreshSessionResponse(
+        next_heartbeat_in_seconds: 17,
+      ),
+    ))
+}
+
+pub fn refresh_session_rejects_expired_previous_token_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let now = add_seconds(test_timestamp(), 61)
+  let rotated_session =
+    session_model.Session(
+      ..fixture.session,
+      token: "current-token",
+      previous_token: option.Some("session-token"),
+      previous_token_valid_until: option.Some(add_seconds(test_timestamp(), 60)),
+      token_updated_at: test_timestamp(),
+    )
+  let db =
+    TestDb(
+      ..fixture.db,
+      sessions: dict.from_list([#(uuid_key(rotated_session.id), rotated_session)]),
+      session_ids_by_token: dict.from_list([
+        #(rotated_session.token, uuid_key(rotated_session.id)),
+      ]),
+    )
+  let ctx =
+    context.Context(
+      ..fixture.ctx,
+      timestamp: now,
+      client_info: context.ClientInfo(
+        ..fixture.ctx.client_info,
+        session_token: option.Some("session-token"),
+      ),
+    )
+
+  let #(run_result, _) =
+    run_test_program(
+      refresh_session_domain.refresh_session(ctx),
+      ctx,
+      db,
+    )
+
+  assert run_result == Error(error.SessionError(error.SessionNotFoundError))
+}
+
 pub fn rate_limit_policy_prefers_tier_specific_rule_test() {
   let policy =
     dynamic_config.RateLimitPolicy(rules: [
@@ -1379,6 +1549,7 @@ type TestFixture {
 
 type TestDb {
   TestDb(
+    dynamic_config: dynamic_config.DynamicConfig,
     accounts: Dict(String, account_model.Account),
     users: Dict(String, user_model.User),
     email_templates: Dict(String, email_template.EmailTemplate),
@@ -1453,6 +1624,7 @@ fn integration_fixture(
     )
   let db =
     TestDb(
+      dynamic_config: test_dynamic_config(),
       accounts: dict.from_list([#(uuid_key(account.id), account)]),
       users: dict.from_list([#(uuid_key(user.id), user)]),
       email_templates: default_email_templates(),
@@ -1545,6 +1717,7 @@ fn admin_integration_fixture() -> TestFixture {
 
 fn empty_test_db() -> TestDb {
   TestDb(
+    dynamic_config: test_dynamic_config(),
     accounts: dict.new(),
     users: dict.new(),
     email_templates: default_email_templates(),
@@ -1759,7 +1932,7 @@ fn run_test_app_config_effect(
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
     app_config_algebra.GetDynamicConfig(next:) ->
-      run_test_program(next(Ok(test_dynamic_config())), ctx, db)
+      run_test_program(next(Ok(db.dynamic_config)), ctx, db)
     app_config_algebra.UpsertDebugConfig(
       config: config,
       updated_at: _,
@@ -1896,17 +2069,21 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
   dynamic_config.DynamicConfig(
     debug: dynamic_config.DebugConfig(enabled: False),
     availability: test_availability_config(),
-    auth: dynamic_config.AuthConfig(
-      login_token_max_age: 900,
-      session_token_max_age: 86_400,
-      session_cookie_max_age: 86_400,
-      session_refresh_interval_seconds: 300,
-      session_previous_token_grace_seconds: 60,
-      session_heartbeat_interval_seconds: 60,
-    ),
+    auth: test_auth_config(),
     cleanup: test_cleanup_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),
+  )
+}
+
+fn test_auth_config() -> dynamic_config.AuthConfig {
+  dynamic_config.AuthConfig(
+    login_token_max_age: 900,
+    session_token_max_age: 86_400,
+    session_cookie_max_age: 86_400,
+    session_refresh_interval_seconds: 300,
+    session_previous_token_grace_seconds: 60,
+    session_heartbeat_interval_seconds: 60,
   )
 }
 
