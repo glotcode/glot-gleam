@@ -1025,7 +1025,7 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
 
   config_section(
     title: "Auth",
-    subtitle: "Controls login token and session expiration values used by the backend.",
+    subtitle: "Controls login token expiry, session lifetime, rotation policy, and frontend heartbeat cadence.",
     badge: section_badge(section.state, dirty, option.None),
     fields: html.div([attribute.class("admin-page__field-grid")], [
       admin_ui.text_input(
@@ -1050,22 +1050,22 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
         on_input: AuthSessionCookieMaxAgeChanged,
       ),
       admin_ui.text_input(
-        label: "Session refresh interval",
-        help: "Minimum seconds between server-side session token rotations.",
+        label: "Session rotation interval",
+        help: "Minimum seconds between backend session token rotations.",
         value: section.draft.session_refresh_interval_seconds,
         placeholder: "",
         on_input: AuthSessionRefreshIntervalSecondsChanged,
       ),
       admin_ui.text_input(
-        label: "Previous token grace",
-        help: "Seconds to accept the previous session token after rotation.",
+        label: "Previous token grace window",
+        help: "Seconds to keep accepting the previous session token after a rotation.",
         value: section.draft.session_previous_token_grace_seconds,
         placeholder: "",
         on_input: AuthSessionPreviousTokenGraceSecondsChanged,
       ),
       admin_ui.text_input(
-        label: "Heartbeat interval",
-        help: "Seconds the frontend should wait before sending the next heartbeat.",
+        label: "Heartbeat cadence",
+        help: "Seconds the frontend should wait before sending the next session heartbeat.",
         value: section.draft.session_heartbeat_interval_seconds,
         placeholder: "",
         on_input: AuthSessionHeartbeatIntervalSecondsChanged,
@@ -1668,19 +1668,19 @@ fn validate_auth_fields(
   use session_refresh_interval_seconds <- result.try(
     admin_format.parse_positive_int_with_error(
       fields.session_refresh_interval_seconds,
-      "Session refresh interval must be a positive integer.",
+      "Session rotation interval must be a positive integer.",
     ),
   )
   use session_previous_token_grace_seconds <- result.try(
     admin_format.parse_positive_int_with_error(
       fields.session_previous_token_grace_seconds,
-      "Previous token grace must be a positive integer.",
+      "Previous token grace window must be a positive integer.",
     ),
   )
   use session_heartbeat_interval_seconds <- result.try(
     admin_format.parse_positive_int_with_error(
       fields.session_heartbeat_interval_seconds,
-      "Heartbeat interval must be a positive integer.",
+      "Heartbeat cadence must be a positive integer.",
     ),
   )
 
