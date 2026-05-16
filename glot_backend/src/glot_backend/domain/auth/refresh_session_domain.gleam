@@ -63,7 +63,7 @@ pub fn refresh_session(
     crypto_token.AlphaNumeric,
   ))
 
-  use refresh_outcome <- program.and_then(
+  use rotation_outcome <- program.and_then(
     transaction_effect.run(refresh_session_tx(
       ctx,
       session_token,
@@ -72,17 +72,33 @@ pub fn refresh_session(
     )),
   )
 
+  use _ <- program.and_then(
+    basic_effect.info(log.from_list([
+      log.uuid("session_id", session.identity.id),
+      log.uuid("user_id", session.user.identity.id),
+      log.bool("token_rotated", rotation_outcome.rotated),
+      log.int(
+        "next_heartbeat_in_seconds",
+        rotation_outcome.next_heartbeat_in_seconds,
+      ),
+    ])),
+  )
+
   program.succeed(RefreshSessionResult(
-    session_token: refresh_outcome.session_token,
+    session_token: rotation_outcome.session_token,
     session_cookie_max_age: auth_config.session_cookie_max_age,
     response: refresh_session_dto.RefreshSessionResponse(
-      next_heartbeat_in_seconds: refresh_outcome.next_heartbeat_in_seconds,
+      next_heartbeat_in_seconds: rotation_outcome.next_heartbeat_in_seconds,
     ),
   ))
 }
 
-type RefreshOutcome {
-  RefreshOutcome(session_token: String, next_heartbeat_in_seconds: Int)
+type RotationOutcome {
+  RotationOutcome(
+    rotated: Bool,
+    session_token: String,
+    next_heartbeat_in_seconds: Int,
+  )
 }
 
 fn refresh_session_tx(
@@ -90,7 +106,7 @@ fn refresh_session_tx(
   session_token: String,
   user_action: user_action.UserAction,
   auth_config: dynamic_config.AuthConfig,
-) -> program_types.TransactionProgram(RefreshOutcome) {
+) -> program_types.TransactionProgram(RotationOutcome) {
   use token <- transaction_program.and_then(transaction_program.from_option(
     ctx.client_info.session_token,
     error.SessionError(error.MissingSessionTokenError),
@@ -99,13 +115,13 @@ fn refresh_session_tx(
     get_session_by_client_token_for_update(token, ctx.timestamp),
   )
 
-  let next_session = case
-    should_rotate_session(
-      session,
-      ctx.timestamp,
-      auth_config.session_refresh_interval_seconds,
-    )
-  {
+  let token_rotated = should_rotate_session_token(
+    session,
+    ctx.timestamp,
+    auth_config.session_refresh_interval_seconds,
+  )
+
+  let next_session = case token_rotated {
     True ->
       session
       |> session_model.rotate_token(
@@ -125,7 +141,8 @@ fn refresh_session_tx(
   use _ <- transaction_program.and_then(
     user_action_effect.create_user_action_tx(user_action),
   )
-  transaction_program.succeed(RefreshOutcome(
+  transaction_program.succeed(RotationOutcome(
+    rotated: token_rotated,
     session_token: next_session.token,
     next_heartbeat_in_seconds: next_heartbeat_in_seconds(
       next_session,
@@ -162,7 +179,7 @@ fn get_session_by_client_token_for_update(
   }
 }
 
-fn should_rotate_session(
+fn should_rotate_session_token(
   session: session_model.Session,
   now: timestamp.Timestamp,
   session_refresh_interval_seconds: Int,
@@ -191,13 +208,25 @@ fn next_heartbeat_in_seconds(
   auth_config: dynamic_config.AuthConfig,
 ) -> Int {
   let remaining =
-    auth_config.session_refresh_interval_seconds
-    - elapsed_seconds(session.token_updated_at, now)
+    remaining_seconds_until_rotation(
+      session.token_updated_at,
+      now,
+      auth_config.session_refresh_interval_seconds,
+    )
 
   case remaining <= 0 {
     True -> auth_config.session_heartbeat_interval_seconds
     False -> min_int(auth_config.session_heartbeat_interval_seconds, remaining)
   }
+}
+
+fn remaining_seconds_until_rotation(
+  session_token_updated_at: timestamp.Timestamp,
+  now: timestamp.Timestamp,
+  session_refresh_interval_seconds: Int,
+) -> Int {
+  session_refresh_interval_seconds
+  - elapsed_seconds(session_token_updated_at, now)
 }
 
 fn min_int(a: Int, b: Int) -> Int {
