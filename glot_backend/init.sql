@@ -109,12 +109,18 @@ CREATE TABLE sessions (
   id UUID PRIMARY KEY,
   user_id UUID NOT NULL REFERENCES users(id),
   token TEXT NOT NULL UNIQUE,
+  previous_token TEXT NULL,
+  previous_token_valid_until TIMESTAMPTZ NULL,
   ip TEXT NULL,
   user_agent TEXT NULL,
-  created_at TIMESTAMPTZ NOT NULL
+  created_at TIMESTAMPTZ NOT NULL,
+  token_updated_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE UNIQUE INDEX idx_sessions_previous_token
+  ON sessions(previous_token)
+  WHERE previous_token IS NOT NULL;
 
 -- SNIPPETS
 

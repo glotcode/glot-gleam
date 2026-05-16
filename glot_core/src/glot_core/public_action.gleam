@@ -7,6 +7,7 @@ pub type PublicAction {
   RunAction
   GetLanguageVersionAction
   GetSessionAction
+  RefreshSessionAction
   LogoutAction
   GetAccountAction
   UpdateAccountAction
@@ -28,6 +29,7 @@ pub fn list() -> List(PublicAction) {
     RunAction,
     GetLanguageVersionAction,
     GetSessionAction,
+    RefreshSessionAction,
     LogoutAction,
     GetAccountAction,
     UpdateAccountAction,
@@ -62,6 +64,7 @@ pub fn to_string(action: PublicAction) -> String {
     RunAction -> "run"
     GetLanguageVersionAction -> "get_language_version"
     GetSessionAction -> "get_session"
+    RefreshSessionAction -> "refresh_session"
     LogoutAction -> "logout"
     GetAccountAction -> "get_account"
     UpdateAccountAction -> "update_account"
@@ -84,6 +87,7 @@ pub fn from_string(action: String) -> option.Option(PublicAction) {
     "run" -> option.Some(RunAction)
     "get_language_version" -> option.Some(GetLanguageVersionAction)
     "get_session" -> option.Some(GetSessionAction)
+    "refresh_session" -> option.Some(RefreshSessionAction)
     "logout" -> option.Some(LogoutAction)
     "get_account" -> option.Some(GetAccountAction)
     "update_account" -> option.Some(UpdateAccountAction)

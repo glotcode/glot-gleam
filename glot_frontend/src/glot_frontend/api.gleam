@@ -252,6 +252,12 @@ pub fn get_session(
   )
 }
 
+pub fn refresh_session(to_msg: fn(ApiResponse(Nil)) -> msg) -> effect.Effect(msg) {
+  let req = PublicApiRequest(public_action.RefreshSessionAction, Nil)
+
+  send_public_api_request(req, fn(_) { json.null() }, nil_decoder(), to_msg)
+}
+
 pub fn get_account(
   to_msg: fn(ApiResponse(account_dto.AccountResponse)) -> msg,
 ) -> effect.Effect(msg) {

@@ -64,6 +64,35 @@ pub fn get_session_by_token(
   )
 }
 
+pub fn get_session_by_previous_token(
+  token token: String,
+) -> program_types.Program(option.Option(session_model.HydratedSession)) {
+  program_types.Impure(
+    program_types.DbEffect(get_session_by_previous_token_effect(
+      token,
+      program_types.Pure,
+    )),
+  )
+}
+
+pub fn get_session_by_token_for_update_tx(
+  token token: String,
+) -> program_types.TransactionProgram(option.Option(session_model.Session)) {
+  program_types.TxImpure(get_session_by_token_for_update_effect(
+    token,
+    program_types.TxPure,
+  ))
+}
+
+pub fn get_session_by_previous_token_for_update_tx(
+  token token: String,
+) -> program_types.TransactionProgram(option.Option(session_model.Session)) {
+  program_types.TxImpure(get_session_by_previous_token_for_update_effect(
+    token,
+    program_types.TxPure,
+  ))
+}
+
 pub fn create_user(user user: user_model.User) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(create_user_effect(user, command_next)),
@@ -250,6 +279,12 @@ pub fn create_session_tx(
   program_types.TxImpure(create_session_effect(session, tx_command_next))
 }
 
+pub fn update_session_tx(
+  session session: session_model.Session,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(update_session_effect(session, tx_command_next))
+}
+
 pub fn delete_session_tx(id id: Uuid) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(delete_session_effect(id, tx_command_next))
 }
@@ -335,7 +370,40 @@ fn get_session_by_token_effect(
   token: String,
   next: fn(option.Option(session_model.HydratedSession)) -> next,
 ) -> program_types.DbEffect(next) {
-  program_types.AuthEffect(auth_algebra.GetSessionByToken(token:, next: next))
+  program_types.AuthEffect(auth_algebra.GetSessionByToken(
+    token: token,
+    next: next,
+  ))
+}
+
+fn get_session_by_token_for_update_effect(
+  token: String,
+  next: fn(option.Option(session_model.Session)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.GetSessionByTokenForUpdate(
+    token: token,
+    next: next,
+  ))
+}
+
+fn get_session_by_previous_token_effect(
+  token: String,
+  next: fn(option.Option(session_model.HydratedSession)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.GetSessionByPreviousToken(
+    token: token,
+    next: next,
+  ))
+}
+
+fn get_session_by_previous_token_for_update_effect(
+  token: String,
+  next: fn(option.Option(session_model.Session)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.GetSessionByPreviousTokenForUpdate(
+    token: token,
+    next: next,
+  ))
 }
 
 fn create_user_effect(
@@ -401,6 +469,13 @@ fn create_session_effect(
   next: fn(Result(Nil, error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.CreateSession(session:, next: next))
+}
+
+fn update_session_effect(
+  session: session_model.Session,
+  next: fn(Result(Nil, error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.UpdateSession(session:, next: next))
 }
 
 fn delete_session_effect(

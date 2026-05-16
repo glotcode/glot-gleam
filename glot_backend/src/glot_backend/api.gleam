@@ -50,6 +50,7 @@ import glot_backend/domain/admin/upsert_availability_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
+import glot_backend/domain/auth/refresh_session_domain
 import glot_backend/domain/auth/logout_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/navigation/track_pageview_domain
@@ -181,6 +182,9 @@ fn handle_public_api_request(
       get_session_domain.get_session(ctx)
       |> program.map(SessionResponse)
     }
+    public_action.RefreshSessionAction ->
+      refresh_session_domain.refresh_session(ctx)
+      |> program.map(RefreshSessionResponse)
     public_action.LogoutAction ->
       logout_domain.logout(ctx)
       |> program.map(fn(_) { LogoutResponse })
@@ -533,6 +537,7 @@ type ApiResult {
   JobTypePolicyResponse(job_type_policy_dto.JobTypePolicyResponse)
   DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
   LoginResponse(login_domain.LoginResult)
+  RefreshSessionResponse(refresh_session_domain.RefreshSessionResult)
   LogoutResponse
   NoContentResponse
 }
@@ -611,15 +616,20 @@ fn api_result_to_response(
     DockerRunConfigResponse(response) ->
       success_response(docker_run_config_dto.encode_response(response))
     LoginResponse(login_result) -> {
-      success_response(json.null())
-      |> wisp.set_cookie(
-        request: req,
-        name: "session",
-        value: login_result.session_token,
-        security: wisp.Signed,
-        max_age: login_result.session_cookie_max_age,
+      set_session_cookie(
+        success_response(json.null()),
+        req,
+        login_result.session_token,
+        login_result.session_cookie_max_age,
       )
     }
+    RefreshSessionResponse(refresh_result) ->
+      set_session_cookie(
+        success_response(json.null()),
+        req,
+        refresh_result.session_token,
+        refresh_result.session_cookie_max_age,
+      )
     LogoutResponse -> {
       success_response(json.null())
       |> wisp.set_cookie(
@@ -636,6 +646,22 @@ fn api_result_to_response(
 
 fn success_response(data: json.Json) -> wisp.Response {
   wisp.json_response(json.to_string(json.object([#("data", data)])), 200)
+}
+
+fn set_session_cookie(
+  response: wisp.Response,
+  request: wisp.Request,
+  token: String,
+  max_age: Int,
+) -> wisp.Response {
+  response
+  |> wisp.set_cookie(
+    request: request,
+    name: "session",
+    value: token,
+    security: wisp.Signed,
+    max_age: max_age,
+  )
 }
 
 fn error_response(status: Int, code: String, message: String) -> wisp.Response {

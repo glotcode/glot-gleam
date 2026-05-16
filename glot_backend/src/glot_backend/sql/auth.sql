@@ -142,10 +142,14 @@ SELECT id, email, token, created_at, used_at FROM login_tokens WHERE email = $1 
 -- name: GetSessionByToken :one
 SELECT
   sessions.id,
+  sessions.user_id,
   sessions.token,
+  sessions.previous_token,
+  sessions.previous_token_valid_until,
   sessions.ip,
   sessions.user_agent,
   sessions.created_at,
+  sessions.token_updated_at,
   users.id AS user_id,
   users.account_id AS user_account_id,
   users.email AS user_email,
@@ -165,6 +169,66 @@ INNER JOIN accounts ON accounts.id = users.account_id
 LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
 WHERE sessions.token = $1;
 
+-- name: GetSessionByTokenForUpdate :one
+SELECT
+  sessions.id,
+  sessions.user_id,
+  sessions.token,
+  sessions.previous_token,
+  sessions.previous_token_valid_until,
+  sessions.ip,
+  sessions.user_agent,
+  sessions.created_at,
+  sessions.token_updated_at
+FROM sessions
+WHERE sessions.token = $1
+FOR UPDATE;
+
+-- name: GetSessionByPreviousToken :one
+SELECT
+  sessions.id,
+  sessions.user_id,
+  sessions.token,
+  sessions.previous_token,
+  sessions.previous_token_valid_until,
+  sessions.ip,
+  sessions.user_agent,
+  sessions.created_at,
+  sessions.token_updated_at,
+  users.id AS user_id,
+  users.account_id AS user_account_id,
+  users.email AS user_email,
+  users.username AS user_username,
+  users.role AS user_role,
+  accounts.account_state AS user_account_state,
+  accounts.account_state_reason AS user_account_state_reason,
+  accounts.account_tier AS user_account_tier,
+  accounts.delete_job_id AS user_account_delete_job_id,
+  jobs.run_at AS user_account_delete_scheduled_at,
+  users.last_login_at AS user_last_login_at,
+  users.created_at AS user_created_at,
+  users.updated_at AS user_updated_at
+FROM sessions
+INNER JOIN users ON users.id = sessions.user_id
+INNER JOIN accounts ON accounts.id = users.account_id
+LEFT JOIN jobs ON jobs.id = accounts.delete_job_id
+WHERE sessions.previous_token = $1;
+
+-- name: GetSessionByPreviousTokenForUpdate :one
+SELECT
+  sessions.id,
+  sessions.user_id,
+  sessions.token,
+  sessions.previous_token,
+  sessions.previous_token_valid_until,
+  sessions.ip,
+  sessions.user_agent,
+  sessions.created_at,
+  sessions.token_updated_at
+FROM sessions
+WHERE sessions.previous_token = $1
+FOR UPDATE;
+
 -- name: InsertUser :exec
 INSERT INTO users (id, account_id, email, username, role, last_login_at, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 
@@ -175,7 +239,19 @@ INSERT INTO accounts (id, account_state, account_state_reason, account_tier, del
 INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2, $3, $4, $5);
 
 -- name: InsertSession :exec
-INSERT INTO sessions (id, user_id, token, ip, user_agent, created_at) VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, user_agent, created_at, token_updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+
+-- name: UpdateSession :exec
+UPDATE sessions
+SET user_id = $1,
+    token = $2,
+    previous_token = $3,
+    previous_token_valid_until = $4,
+    ip = $5,
+    user_agent = $6,
+    created_at = $7,
+    token_updated_at = $8
+WHERE id = $9;
 
 -- name: UpdateAccount :exec
 UPDATE accounts

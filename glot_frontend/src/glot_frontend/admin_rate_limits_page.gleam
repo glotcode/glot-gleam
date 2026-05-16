@@ -852,6 +852,7 @@ fn action_label(action: public_action.PublicAction) -> String {
     public_action.RunAction -> "Run code"
     public_action.GetLanguageVersionAction -> "Get language version"
     public_action.GetSessionAction -> "Get session"
+    public_action.RefreshSessionAction -> "Refresh session"
     public_action.LogoutAction -> "Logout"
     public_action.GetAccountAction -> "Get account"
     public_action.UpdateAccountAction -> "Update account"

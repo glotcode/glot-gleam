@@ -30,12 +30,7 @@ fn get_validated_session(
   use config <- program.and_then(app_config_effect.get_dynamic_config())
   let auth_config = dynamic_config.auth_config(config)
   use session_result <- program.and_then(case ctx.client_info.session_token {
-    option.Some(token) ->
-      auth_effect.get_session_by_token(token)
-      |> program.map(option.to_result(
-        _,
-        error.SessionError(error.SessionNotFoundError),
-      ))
+    option.Some(token) -> get_session_by_client_token(ctx.timestamp, token)
     option.None ->
       program.succeed(Error(error.SessionError(error.MissingSessionTokenError)))
   })
@@ -47,6 +42,19 @@ fn get_validated_session(
     auth_config.session_token_max_age,
   ))
   |> program.succeed
+}
+
+pub fn get_session_by_client_token(
+  now: timestamp.Timestamp,
+  token: String,
+) -> program_types.Program(Result(session_model.HydratedSession, error.Error)) {
+  use maybe_session <- program.and_then(auth_effect.get_session_by_token(token))
+  case maybe_session {
+    option.Some(session) -> program.succeed(Ok(session))
+    option.None ->
+      auth_effect.get_session_by_previous_token(token)
+      |> program.map(result_from_previous_token(_, now))
+  }
 }
 
 fn validate_session(
@@ -63,6 +71,37 @@ fn validate_session(
   }
 }
 
+fn result_from_previous_token(
+  maybe_session: Option(session_model.HydratedSession),
+  now: timestamp.Timestamp,
+) -> Result(session_model.HydratedSession, error.Error) {
+  case option.to_result(
+    maybe_session,
+    error.SessionError(error.SessionNotFoundError),
+  ) {
+    Ok(session) ->
+      case validate_previous_token(session.identity, now) {
+        Ok(_) -> Ok(session)
+        Error(err) -> Error(err)
+      }
+    Error(err) -> Error(err)
+  }
+}
+
+pub fn validate_previous_token(
+  session: session_model.Session,
+  now: timestamp.Timestamp,
+) -> Result(Nil, error.Error) {
+  case session.previous_token_valid_until {
+    option.Some(valid_until) ->
+      case timestamp_is_on_or_before(now, valid_until) {
+        True -> Ok(Nil)
+        False -> Error(error.SessionError(error.SessionNotFoundError))
+      }
+    option.None -> Error(error.SessionError(error.SessionNotFoundError))
+  }
+}
+
 fn is_expired(
   created_at: timestamp.Timestamp,
   now: timestamp.Timestamp,
@@ -73,4 +112,17 @@ fn is_expired(
   let #(now_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(now)
 
   now_seconds >= created_seconds && now_seconds - created_seconds > max_age
+}
+
+fn timestamp_is_on_or_before(
+  left: timestamp.Timestamp,
+  right: timestamp.Timestamp,
+) -> Bool {
+  let #(left_seconds, left_nanos) =
+    timestamp.to_unix_seconds_and_nanoseconds(left)
+  let #(right_seconds, right_nanos) =
+    timestamp.to_unix_seconds_and_nanoseconds(right)
+
+  left_seconds < right_seconds
+  || { left_seconds == right_seconds && left_nanos <= right_nanos }
 }

@@ -249,6 +249,14 @@ fn public_policy(action: public_action.PublicAction) -> ApiActionPolicy {
           account_model.Suspended,
         ]),
       )
+    public_action.RefreshSessionAction ->
+      authenticated_action_policy(
+        AllowedAccountStates([
+          account_model.Active,
+          account_model.ReadOnly,
+          account_model.Suspended,
+        ]),
+      )
     public_action.LogoutAction ->
       authenticated_action_policy(
         AllowedAccountStates([

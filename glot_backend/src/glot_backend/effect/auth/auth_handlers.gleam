@@ -31,6 +31,12 @@ pub type AuthHandlers {
       Result(List(login_token_model.LoginToken), error.DbQueryError),
     get_session_by_token: fn(regexp.Regexp, String) ->
       Result(option.Option(session_model.HydratedSession), error.DbQueryError),
+    get_session_by_token_for_update: fn(String) ->
+      Result(option.Option(session_model.Session), error.DbQueryError),
+    get_session_by_previous_token: fn(regexp.Regexp, String) ->
+      Result(option.Option(session_model.HydratedSession), error.DbQueryError),
+    get_session_by_previous_token_for_update: fn(String) ->
+      Result(option.Option(session_model.Session), error.DbQueryError),
     create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
     create_account: fn(account_model.Account) ->
       Result(Nil, error.DbCommandError),
@@ -43,6 +49,8 @@ pub type AuthHandlers {
       Result(Nil, error.DbCommandError),
     delete_account: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
     create_session: fn(session_model.Session) ->
+      Result(Nil, error.DbCommandError),
+    update_session: fn(session_model.Session) ->
       Result(Nil, error.DbCommandError),
     delete_session: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
     create_login_token: fn(login_token_model.LoginToken) ->
@@ -69,6 +77,15 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     get_session_by_token: fn(is_email, token) {
       get_session_by_token(db, is_email, token)
     },
+    get_session_by_token_for_update: fn(token) {
+      get_session_by_token_for_update(db, token)
+    },
+    get_session_by_previous_token: fn(is_email, token) {
+      get_session_by_previous_token(db, is_email, token)
+    },
+    get_session_by_previous_token_for_update: fn(token) {
+      get_session_by_previous_token_for_update(db, token)
+    },
     create_user: fn(user) { create_user(db, user) },
     create_account: fn(account) { create_account(db, account) },
     update_account: fn(account) { update_account(db, account) },
@@ -81,6 +98,9 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     },
     delete_account: fn(account_id) { delete_account(db, account_id) },
     create_session: fn(session) { create_session(db, session) },
+    update_session: fn(session) {
+      update_session(db, session)
+    },
     delete_session: fn(id) { delete_session(db, id) },
     create_login_token: fn(login_token) { create_login_token(db, login_token) },
     update_login_token: fn(login_token) { update_login_token(db, login_token) },
@@ -215,6 +235,43 @@ pub fn get_session_by_token(
   |> result.try(fn(returned) { session_from_rows(is_email, returned.rows) })
 }
 
+pub fn get_session_by_token_for_update(
+  db: db_helpers.Db,
+  token: String,
+) -> Result(option.Option(session_model.Session), error.DbQueryError) {
+  db_helpers.query(
+    db,
+    sql.get_session_by_token_for_update(token),
+    fn(err) {
+      error.DbQueryError(string.inspect(err))
+    },
+  )
+  |> result.try(fn(returned) { session_identity_from_rows(returned.rows) })
+}
+
+pub fn get_session_by_previous_token(
+  db: db_helpers.Db,
+  is_email: regexp.Regexp,
+  token: String,
+) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
+  db_helpers.query(db, sql.get_session_by_previous_token(option.Some(token)), fn(err) {
+    error.DbQueryError(string.inspect(err))
+  })
+  |> result.try(fn(returned) { session_from_previous_rows(is_email, returned.rows) })
+}
+
+pub fn get_session_by_previous_token_for_update(
+  db: db_helpers.Db,
+  token: String,
+) -> Result(option.Option(session_model.Session), error.DbQueryError) {
+  db_helpers.query(
+    db,
+    sql.get_session_by_previous_token_for_update(option.Some(token)),
+    fn(err) { error.DbQueryError(string.inspect(err)) },
+  )
+  |> result.try(fn(returned) { session_identity_from_previous_rows(returned.rows) })
+}
+
 pub fn create_user(
   db: db_helpers.Db,
   user: user_model.User,
@@ -341,9 +398,36 @@ pub fn create_session(
       id: uuid.to_bit_array(session.id),
       user_id: uuid.to_bit_array(session.user_id),
       token: session.token,
+      previous_token: session.previous_token,
+      previous_token_valid_until: session.previous_token_valid_until,
       ip: session.ip,
       user_agent: session.user_agent,
       created_at: session.created_at,
+      token_updated_at: session.token_updated_at,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn update_session(
+  db: db_helpers.Db,
+  session: session_model.Session,
+) -> Result(Nil, error.DbCommandError) {
+  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.update_session(
+      user_id: uuid.to_bit_array(session.user_id),
+      token: session.token,
+      previous_token: session.previous_token,
+      previous_token_valid_until: session.previous_token_valid_until,
+      ip: session.ip,
+      user_agent: session.user_agent,
+      created_at: session.created_at,
+      token_updated_at: session.token_updated_at,
+      id: uuid.to_bit_array(session.id),
     ),
     to_error,
   )
@@ -691,6 +775,39 @@ fn session_from_rows(
   }
 }
 
+fn session_identity_from_rows(
+  rows: List(sql.GetSessionByTokenForUpdate),
+) -> Result(option.Option(session_model.Session), error.DbQueryError) {
+  case rows {
+    [] -> Ok(option.None)
+    [first] -> session_identity_from_row(first) |> result.map(option.Some)
+    _ -> Error(error.DbQueryError("Expected at most one session row"))
+  }
+}
+
+fn session_from_previous_rows(
+  is_email: regexp.Regexp,
+  rows: List(sql.GetSessionByPreviousToken),
+) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
+  case rows {
+    [] -> Ok(option.None)
+    [first] ->
+      session_from_previous_row(is_email, first)
+      |> result.map(option.Some)
+    _ -> Error(error.DbQueryError("Expected at most one session row"))
+  }
+}
+
+fn session_identity_from_previous_rows(
+  rows: List(sql.GetSessionByPreviousTokenForUpdate),
+) -> Result(option.Option(session_model.Session), error.DbQueryError) {
+  case rows {
+    [] -> Ok(option.None)
+    [first] -> session_identity_from_previous_row(first) |> result.map(option.Some)
+    _ -> Error(error.DbQueryError("Expected at most one session row"))
+  }
+}
+
 fn session_from_row(
   is_email: regexp.Regexp,
   row: sql.GetSessionByToken,
@@ -723,15 +840,18 @@ fn session_from_row(
   Ok(session_model.HydratedSession(
     identity: session_model.Session(
       id: uuid_helpers.from_bit_array(row.id),
-      user_id: uuid_helpers.from_bit_array(row.user_id),
+      user_id: uuid_helpers.from_bit_array(row.sessions_user_id),
       token: row.token,
+      previous_token: row.previous_token,
+      previous_token_valid_until: row.previous_token_valid_until,
       ip: row.ip,
       user_agent: row.user_agent,
       created_at: row.created_at,
+      token_updated_at: row.token_updated_at,
     ),
     user: user_model.HydratedUser(
       identity: user_model.User(
-        id: uuid_helpers.from_bit_array(row.user_id),
+        id: uuid_helpers.from_bit_array(row.users_user_id),
         account_id: uuid_helpers.from_bit_array(row.user_account_id),
         email: valid_email,
         username: row.user_username,
@@ -754,5 +874,106 @@ fn session_from_row(
         delete_scheduled_at: row.user_account_delete_scheduled_at,
       ),
     ),
+  ))
+}
+
+fn session_identity_from_row(
+  row: sql.GetSessionByTokenForUpdate,
+) -> Result(session_model.Session, error.DbQueryError) {
+  Ok(session_model.Session(
+    id: uuid_helpers.from_bit_array(row.id),
+    user_id: uuid_helpers.from_bit_array(row.user_id),
+    token: row.token,
+    previous_token: row.previous_token,
+    previous_token_valid_until: row.previous_token_valid_until,
+    ip: row.ip,
+    user_agent: row.user_agent,
+    created_at: row.created_at,
+    token_updated_at: row.token_updated_at,
+  ))
+}
+
+fn session_from_previous_row(
+  is_email: regexp.Regexp,
+  row: sql.GetSessionByPreviousToken,
+) -> Result(session_model.HydratedSession, error.DbQueryError) {
+  use valid_email <- result.try(
+    email_address_model.from_string(is_email, row.user_email)
+    |> option.to_result(error.DbQueryError(
+      "Invalid email format in session row: " <> row.user_email,
+    )),
+  )
+  use role <- result.try(
+    user_model.role_from_string(row.user_role)
+    |> option.to_result(error.DbQueryError(
+      "Invalid user role: " <> row.user_role,
+    )),
+  )
+  use account_state <- result.try(
+    account_model.account_state_from_string(row.user_account_state)
+    |> option.to_result(error.DbQueryError(
+      "Invalid account state: " <> row.user_account_state,
+    )),
+  )
+  use account_tier <- result.try(
+    account_model.account_tier_from_string(row.user_account_tier)
+    |> option.to_result(error.DbQueryError(
+      "Invalid account tier: " <> row.user_account_tier,
+    )),
+  )
+
+  Ok(session_model.HydratedSession(
+    identity: session_model.Session(
+      id: uuid_helpers.from_bit_array(row.id),
+      user_id: uuid_helpers.from_bit_array(row.sessions_user_id),
+      token: row.token,
+      previous_token: row.previous_token,
+      previous_token_valid_until: row.previous_token_valid_until,
+      ip: row.ip,
+      user_agent: row.user_agent,
+      created_at: row.created_at,
+      token_updated_at: row.token_updated_at,
+    ),
+    user: user_model.HydratedUser(
+      identity: user_model.User(
+        id: uuid_helpers.from_bit_array(row.users_user_id),
+        account_id: uuid_helpers.from_bit_array(row.user_account_id),
+        email: valid_email,
+        username: row.user_username,
+        role: role,
+        last_login_at: row.user_last_login_at,
+        created_at: row.user_created_at,
+        updated_at: row.user_updated_at,
+      ),
+      account: account_model.HydratedAccount(
+        identity: account_model.Account(
+          id: uuid_helpers.from_bit_array(row.user_account_id),
+          account_state: account_state,
+          account_state_reason: row.user_account_state_reason,
+          account_tier: account_tier,
+          delete_job_id: row.user_account_delete_job_id
+            |> option.map(uuid_helpers.from_bit_array),
+          created_at: row.user_created_at,
+          updated_at: row.user_updated_at,
+        ),
+        delete_scheduled_at: row.user_account_delete_scheduled_at,
+      ),
+    ),
+  ))
+}
+
+fn session_identity_from_previous_row(
+  row: sql.GetSessionByPreviousTokenForUpdate,
+) -> Result(session_model.Session, error.DbQueryError) {
+  Ok(session_model.Session(
+    id: uuid_helpers.from_bit_array(row.id),
+    user_id: uuid_helpers.from_bit_array(row.user_id),
+    token: row.token,
+    previous_token: row.previous_token,
+    previous_token_valid_until: row.previous_token_valid_until,
+    ip: row.ip,
+    user_agent: row.user_agent,
+    created_at: row.created_at,
+    token_updated_at: row.token_updated_at,
   ))
 }

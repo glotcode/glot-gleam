@@ -21,6 +21,7 @@ import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/auth/login_domain
+import glot_backend/domain/auth/refresh_session_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/cleanup/clean_jobs_domain
 import glot_backend/domain/cleanup/clean_login_tokens_domain
@@ -95,6 +96,72 @@ pub fn get_session_without_token_returns_none_test() {
     run_test_program(session_domain.get_session(ctx), ctx, empty_test_db())
 
   assert run_result == Ok(option.None)
+}
+
+pub fn refresh_session_rotates_token_with_previous_token_grace_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let now = add_seconds(test_timestamp(), 301)
+  let ctx = context.Context(..fixture.ctx, timestamp: now)
+
+  let #(run_result, db) =
+    run_test_program(
+      refresh_session_domain.refresh_session(ctx),
+      ctx,
+      fixture.db,
+    )
+
+  assert run_result
+    == Ok(refresh_session_domain.RefreshSessionResult(
+      session_token: "random",
+      session_cookie_max_age: 86_400,
+    ))
+
+  let assert Ok(session) = dict.get(db.sessions, uuid_key(test_session_id()))
+  assert session.token == "random"
+  assert session.previous_token == option.Some("session-token")
+  assert session.previous_token_valid_until
+    == option.Some(add_seconds(now, 60))
+  assert session.token_updated_at == now
+
+  let current_lookup = find_hydrated_session(db, "random", now)
+  let previous_lookup = find_hydrated_session(db, "session-token", now)
+  assert current_lookup != option.None
+  assert previous_lookup != option.None
+}
+
+pub fn refresh_session_is_noop_when_rotated_too_recently_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let now = add_seconds(test_timestamp(), 120)
+  let ctx = context.Context(..fixture.ctx, timestamp: now)
+
+  let #(run_result, db) =
+    run_test_program(
+      refresh_session_domain.refresh_session(ctx),
+      ctx,
+      fixture.db,
+    )
+
+  assert run_result
+    == Ok(refresh_session_domain.RefreshSessionResult(
+      session_token: "session-token",
+      session_cookie_max_age: 86_400,
+    ))
+
+  let assert Ok(session) = dict.get(db.sessions, uuid_key(test_session_id()))
+  assert session.token == "session-token"
+  assert session.previous_token == option.None
+  assert session.previous_token_valid_until == option.None
+  assert session.token_updated_at == test_timestamp()
 }
 
 pub fn rate_limit_policy_prefers_tier_specific_rule_test() {
@@ -1348,9 +1415,12 @@ fn integration_fixture(
       id: test_session_id(),
       user_id: user.id,
       token: "session-token",
+      previous_token: option.None,
+      previous_token_valid_until: option.None,
       ip: option.Some("127.0.0.1"),
       user_agent: option.Some("gleeunit"),
       created_at: test_timestamp(),
+      token_updated_at: test_timestamp(),
     )
   let snippet =
     snippet_model.Snippet(
@@ -2198,7 +2268,13 @@ fn run_test_auth_effect(
         db,
       )
     auth_algebra.GetSessionByToken(token:, next:) ->
-      run_test_program(next(find_hydrated_session(db, token)), ctx, db)
+      run_test_program(next(find_hydrated_session(db, token, ctx.timestamp)), ctx, db)
+    auth_algebra.GetSessionByTokenForUpdate(token:, next:) ->
+      run_test_program(next(find_session_by_token(db, token, ctx.timestamp)), ctx, db)
+    auth_algebra.GetSessionByPreviousToken(token:, next:) ->
+      run_test_program(next(find_hydrated_session(db, token, ctx.timestamp)), ctx, db)
+    auth_algebra.GetSessionByPreviousTokenForUpdate(token:, next:) ->
+      run_test_program(next(find_session_by_token(db, token, ctx.timestamp)), ctx, db)
     auth_algebra.CreateUser(user: user, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, insert_user(db, user))
     auth_algebra.CreateAccount(account: account, next: next) ->
@@ -2223,6 +2299,12 @@ fn run_test_auth_effect(
       run_test_program(next(Ok(Nil)), ctx, delete_account_by_id(db, account_id))
     auth_algebra.CreateSession(session: session, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, insert_session(db, session))
+    auth_algebra.UpdateSession(session: session, next: next) ->
+      run_test_program(
+        next(Ok(Nil)),
+        ctx,
+        update_session(db, session),
+      )
     auth_algebra.DeleteSession(id: id, next: next) ->
       run_test_program(next(Ok(Nil)), ctx, delete_session_by_id(db, id))
     auth_algebra.CreateLoginToken(login_token:, next:) -> {
@@ -2258,7 +2340,13 @@ fn run_test_auth_tx_effect(
         db,
       )
     auth_algebra.GetSessionByToken(token:, next:) ->
-      run_test_tx_program(next(find_hydrated_session(db, token)), ctx, db)
+      run_test_tx_program(next(find_hydrated_session(db, token, ctx.timestamp)), ctx, db)
+    auth_algebra.GetSessionByTokenForUpdate(token:, next:) ->
+      run_test_tx_program(next(find_session_by_token(db, token, ctx.timestamp)), ctx, db)
+    auth_algebra.GetSessionByPreviousToken(token:, next:) ->
+      run_test_tx_program(next(find_hydrated_session(db, token, ctx.timestamp)), ctx, db)
+    auth_algebra.GetSessionByPreviousTokenForUpdate(token:, next:) ->
+      run_test_tx_program(next(find_session_by_token(db, token, ctx.timestamp)), ctx, db)
     auth_algebra.CreateUser(user: user, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, insert_user(db, user))
     auth_algebra.CreateAccount(account: account, next: next) ->
@@ -2287,6 +2375,12 @@ fn run_test_auth_tx_effect(
       )
     auth_algebra.CreateSession(session: session, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, insert_session(db, session))
+    auth_algebra.UpdateSession(session: session, next: next) ->
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        update_session(db, session),
+      )
     auth_algebra.DeleteSession(id: id, next: next) ->
       run_test_tx_program(next(Ok(Nil)), ctx, delete_session_by_id(db, id))
     auth_algebra.CreateLoginToken(login_token:, next:) -> {
@@ -2936,32 +3030,61 @@ fn find_login_tokens_by_email(
 fn find_hydrated_session(
   db: TestDb,
   token: String,
+  now: timestamp.Timestamp,
 ) -> option.Option(session_model.HydratedSession) {
-  case dict.get(db.session_ids_by_token, token) {
-    Ok(session_id) ->
-      case dict.get(db.sessions, session_id) {
-        Ok(session) ->
-          case dict.get(db.users, uuid_key(session.user_id)) {
-            Ok(user) ->
-              case dict.get(db.accounts, uuid_key(user.account_id)) {
-                Ok(account) ->
-                  option.Some(session_model.HydratedSession(
-                    identity: session,
-                    user: user_model.HydratedUser(
-                      identity: user,
-                      account: account_model.HydratedAccount(
-                        identity: account,
-                        delete_scheduled_at: option.None,
-                      ),
-                    ),
-                  ))
-                Error(_) -> option.None
-              }
+  case find_session_by_token(db, token, now) {
+    option.Some(session) ->
+      case dict.get(db.users, uuid_key(session.user_id)) {
+        Ok(user) ->
+          case dict.get(db.accounts, uuid_key(user.account_id)) {
+            Ok(account) ->
+              option.Some(session_model.HydratedSession(
+                identity: session,
+                user: user_model.HydratedUser(
+                  identity: user,
+                  account: account_model.HydratedAccount(
+                    identity: account,
+                    delete_scheduled_at: option.None,
+                  ),
+                ),
+              ))
             Error(_) -> option.None
           }
         Error(_) -> option.None
       }
-    Error(_) -> option.None
+    option.None -> option.None
+  }
+}
+
+fn find_session_by_token(
+  db: TestDb,
+  token: String,
+  now: timestamp.Timestamp,
+) -> option.Option(session_model.Session) {
+  case dict.get(db.session_ids_by_token, token) {
+    Ok(session_id) ->
+      case dict.get(db.sessions, session_id) {
+        Ok(session) -> option.Some(session)
+        Error(_) -> option.None
+      }
+    Error(_) ->
+      db.sessions
+      |> dict.to_list
+      |> list.find(fn(entry) {
+        let #(_, session) = entry
+        case session.previous_token, session.previous_token_valid_until {
+          option.Some(previous_token), option.Some(valid_until) ->
+            previous_token == token
+            && timestamp_helpers.to_microseconds(valid_until)
+            >= timestamp_helpers.to_microseconds(now)
+          _, _ -> False
+        }
+      })
+      |> option.from_result()
+      |> option.map(fn(entry) {
+        let #(_, session) = entry
+        session
+      })
   }
 }
 
@@ -3003,6 +3126,26 @@ fn insert_session(db: TestDb, session: session_model.Session) -> TestDb {
     ),
     write_steps: ["create_session", ..db.write_steps],
   )
+}
+
+fn update_session(
+  db: TestDb,
+  session: session_model.Session,
+) -> TestDb {
+  let session_key = uuid_key(session.id)
+  case dict.get(db.sessions, session_key) {
+    Ok(previous_session) -> {
+      TestDb(
+        ..db,
+        sessions: dict.insert(db.sessions, session_key, session),
+        session_ids_by_token: db.session_ids_by_token
+          |> dict.delete(previous_session.token)
+          |> dict.insert(session.token, session_key),
+        write_steps: ["update_session", ..db.write_steps],
+      )
+    }
+    Error(_) -> db
+  }
 }
 
 fn upsert_login_token(
@@ -3280,6 +3423,11 @@ fn test_timestamp() -> timestamp.Timestamp {
 
 fn test_system_time() -> timestamp.Timestamp {
   timestamp.from_unix_seconds_and_nanoseconds(1_700_000_005, 0)
+}
+
+fn add_seconds(ts: timestamp.Timestamp, seconds_to_add: Int) -> timestamp.Timestamp {
+  let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
+  timestamp.from_unix_seconds_and_nanoseconds(seconds + seconds_to_add, nanos)
 }
 
 fn test_context() -> context.Context {

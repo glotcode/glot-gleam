@@ -88,9 +88,12 @@ pub fn login(
       id: session_id,
       user_id: user.id,
       token: session_token,
+      previous_token: option.None,
+      previous_token_valid_until: option.None,
       ip: ctx.client_info.ip,
       user_agent: ctx.client_info.user_agent,
       created_at: ctx.timestamp,
+      token_updated_at: ctx.timestamp,
     )
 
   use _ <- program.and_then(

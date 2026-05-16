@@ -43,6 +43,18 @@ pub type AuthEffect(next) {
     token: String,
     next: fn(option.Option(session_model.HydratedSession)) -> next,
   )
+  GetSessionByTokenForUpdate(
+    token: String,
+    next: fn(option.Option(session_model.Session)) -> next,
+  )
+  GetSessionByPreviousToken(
+    token: String,
+    next: fn(option.Option(session_model.HydratedSession)) -> next,
+  )
+  GetSessionByPreviousTokenForUpdate(
+    token: String,
+    next: fn(option.Option(session_model.Session)) -> next,
+  )
   CreateUser(
     user: user_model.User,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
@@ -72,6 +84,10 @@ pub type AuthEffect(next) {
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
   CreateSession(
+    session: session_model.Session,
+    next: fn(Result(Nil, error.DbCommandError)) -> next,
+  )
+  UpdateSession(
     session: session_model.Session,
     next: fn(Result(Nil, error.DbCommandError)) -> next,
   )
@@ -105,7 +121,25 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
         f(next(value))
       })
     GetSessionByToken(token:, next:) ->
-      GetSessionByToken(token: token, next: fn(value) { f(next(value)) })
+      GetSessionByToken(
+        token: token,
+        next: fn(value) { f(next(value)) },
+      )
+    GetSessionByTokenForUpdate(token:, next:) ->
+      GetSessionByTokenForUpdate(
+        token: token,
+        next: fn(value) { f(next(value)) },
+      )
+    GetSessionByPreviousToken(token:, next:) ->
+      GetSessionByPreviousToken(
+        token: token,
+        next: fn(value) { f(next(value)) },
+      )
+    GetSessionByPreviousTokenForUpdate(token:, next:) ->
+      GetSessionByPreviousTokenForUpdate(
+        token: token,
+        next: fn(value) { f(next(value)) },
+      )
     CreateUser(user: user, next: next) ->
       CreateUser(user: user, next: fn(value) { f(next(value)) })
     CreateAccount(account: account, next: next) ->
@@ -126,6 +160,11 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       DeleteAccount(account_id: account_id, next: fn(value) { f(next(value)) })
     CreateSession(session: session, next: next) ->
       CreateSession(session: session, next: fn(value) { f(next(value)) })
+    UpdateSession(session:, next:) ->
+      UpdateSession(
+        session: session,
+        next: fn(value) { f(next(value)) },
+      )
     DeleteSession(id: id, next: next) ->
       DeleteSession(id: id, next: fn(value) { f(next(value)) })
     CreateLoginToken(login_token: login_token, next: next) ->
@@ -147,6 +186,9 @@ pub type EffectName {
   ListUsersEffectName
   ListLoginTokensByEmailEffectName
   GetSessionByTokenEffectName
+  GetSessionByTokenForUpdateEffectName
+  GetSessionByPreviousTokenEffectName
+  GetSessionByPreviousTokenForUpdateEffectName
   CreateUserEffectName
   CreateAccountEffectName
   UpdateAccountEffectName
@@ -155,6 +197,7 @@ pub type EffectName {
   DeleteUsersByAccountIdEffectName
   DeleteAccountEffectName
   CreateSessionEffectName
+  UpdateSessionEffectName
   DeleteSessionEffectName
   CreateLoginTokenEffectName
   UpdateLoginTokenEffectName
@@ -168,6 +211,10 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     ListUsersEffectName -> "list_users"
     ListLoginTokensByEmailEffectName -> "list_login_tokens_by_email"
     GetSessionByTokenEffectName -> "get_session_by_token"
+    GetSessionByTokenForUpdateEffectName -> "get_session_by_token_for_update"
+    GetSessionByPreviousTokenEffectName -> "get_session_by_previous_token"
+    GetSessionByPreviousTokenForUpdateEffectName ->
+      "get_session_by_previous_token_for_update"
     CreateUserEffectName -> "create_user"
     CreateAccountEffectName -> "create_account"
     UpdateAccountEffectName -> "update_account"
@@ -176,6 +223,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     DeleteUsersByAccountIdEffectName -> "delete_users_by_account_id"
     DeleteAccountEffectName -> "delete_account"
     CreateSessionEffectName -> "create_session"
+    UpdateSessionEffectName -> "update_session"
     DeleteSessionEffectName -> "delete_session"
     CreateLoginTokenEffectName -> "create_login_token"
     UpdateLoginTokenEffectName -> "update_login_token"

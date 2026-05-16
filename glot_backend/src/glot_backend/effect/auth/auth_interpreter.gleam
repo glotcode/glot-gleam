@@ -122,8 +122,7 @@ pub fn run(
     }
     auth_algebra.GetSessionByToken(token:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result =
-        handlers.auth.get_session_by_token(ctx.regexes.is_email, token)
+      let result = handlers.auth.get_session_by_token(ctx.regexes.is_email, token)
       case result {
         Ok(value) ->
           continue(
@@ -143,6 +142,94 @@ pub fn run(
             state,
             effect_trace.AuthEffectName(
               auth_algebra.GetSessionByTokenEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    auth_algebra.GetSessionByTokenForUpdate(token:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.get_session_by_token_for_update(token)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(
+                auth_algebra.GetSessionByTokenForUpdateEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(
+              auth_algebra.GetSessionByTokenForUpdateEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    auth_algebra.GetSessionByPreviousToken(token:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        handlers.auth.get_session_by_previous_token(ctx.regexes.is_email, token)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(
+                auth_algebra.GetSessionByPreviousTokenEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(
+              auth_algebra.GetSessionByPreviousTokenEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    auth_algebra.GetSessionByPreviousTokenForUpdate(token:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.get_session_by_previous_token_for_update(token)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(
+                auth_algebra.GetSessionByPreviousTokenForUpdateEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.QueryError(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(
+              auth_algebra.GetSessionByPreviousTokenForUpdateEffectName,
             ),
             effect_trace.DbReadEffectCategory,
             started_at,
@@ -253,6 +340,19 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.CreateSessionEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    auth_algebra.UpdateSession(session: session, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.update_session(session)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(auth_algebra.UpdateSessionEffectName),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),

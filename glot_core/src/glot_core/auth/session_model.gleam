@@ -8,12 +8,30 @@ pub type Session {
     id: Uuid,
     user_id: Uuid,
     token: String,
+    previous_token: Option(String),
+    previous_token_valid_until: Option(Timestamp),
     ip: Option(String),
     user_agent: Option(String),
     created_at: Timestamp,
+    token_updated_at: Timestamp,
   )
 }
 
 pub type HydratedSession {
   HydratedSession(identity: Session, user: HydratedUser)
+}
+
+pub fn rotate_token(
+  session: Session,
+  token: String,
+  token_updated_at: Timestamp,
+  previous_token_valid_until: Timestamp,
+) -> Session {
+  Session(
+    ..session,
+    token: token,
+    previous_token: option.Some(session.token),
+    previous_token_valid_until: option.Some(previous_token_valid_until),
+    token_updated_at: token_updated_at,
+  )
 }
