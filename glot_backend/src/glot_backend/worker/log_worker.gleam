@@ -8,11 +8,13 @@ import gleam/result
 import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
+import glot_backend/dynamic_config
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/log
 import glot_backend/sql
+import glot_backend/worker/app_config_cache_worker
 import glot_core/api_action.{type ApiAction}
 import glot_core/helpers/dict_helpers
 import glot_core/helpers/list_helpers
@@ -76,6 +78,7 @@ pub type Message {
   Insert(ApiLogEntry)
   InsertPage(PageLogEntry)
   InsertPageview(PageviewLogEntry)
+  RefreshConfig
   Tick
   Drain(reply: process.Subject(Nil))
 }
@@ -90,6 +93,8 @@ type State {
   State(
     subject: process.Subject(Message),
     db: pog.Connection,
+    app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
+    config: dynamic_config.LogWorkerConfig,
     pending_entries: List(PendingEntry),
     pending_count: Int,
     flush_scheduled: Bool,
@@ -98,22 +103,23 @@ type State {
 
 const call_timeout_ms = 5000
 
-const flush_interval_ms = 5000
-
-const max_batch_size = 100
-
-const max_buffer_size = 1000
-
-pub fn start(name: process.Name(Message), db: pog.Connection) {
+pub fn start(
+  name: process.Name(Message),
+  db: pog.Connection,
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
+) {
   actor.new_with_initialiser(1000, fn(subject) {
     let initial_state =
       State(
         subject: subject,
         db: db,
+        app_config_cache_subject: app_config_cache_subject,
+        config: dynamic_config.log_worker_config(dynamic_config.empty()),
         pending_entries: [],
         pending_count: 0,
         flush_scheduled: False,
       )
+    let _ = process.send(subject, RefreshConfig)
     let initialised = actor.initialised(initial_state)
     Ok(actor.returning(initialised, Nil))
   })
@@ -122,8 +128,12 @@ pub fn start(name: process.Name(Message), db: pog.Connection) {
   |> actor.start
 }
 
-pub fn supervised(name: process.Name(Message), db: pog.Connection) {
-  supervision.worker(fn() { start(name, db) })
+pub fn supervised(
+  name: process.Name(Message),
+  db: pog.Connection,
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
+) {
+  supervision.worker(fn() { start(name, db, app_config_cache_subject) })
 }
 
 pub fn drain(subject: process.Subject(Message)) -> Nil {
@@ -141,7 +151,7 @@ fn handle_message(
         |> enqueue_entry(PendingApiLogEntry(log_entry))
         |> schedule_flush_if_needed()
 
-      case state.pending_count >= max_batch_size {
+      case reached_max_batch_size(state) {
         True -> actor.continue(flush_entries_runtime(state))
         False -> actor.continue(state)
       }
@@ -152,7 +162,7 @@ fn handle_message(
         |> enqueue_entry(PendingPageLogEntry(log_entry))
         |> schedule_flush_if_needed()
 
-      case state.pending_count >= max_batch_size {
+      case reached_max_batch_size(state) {
         True -> actor.continue(flush_entries_runtime(state))
         False -> actor.continue(state)
       }
@@ -163,12 +173,14 @@ fn handle_message(
         |> enqueue_entry(PendingPageviewLogEntry(log_entry))
         |> schedule_flush_if_needed()
 
-      case state.pending_count >= max_batch_size {
+      case reached_max_batch_size(state) {
         True -> actor.continue(flush_entries_runtime(state))
         False -> actor.continue(state)
       }
     }
+    RefreshConfig -> actor.continue(refresh_config(state))
     Tick -> {
+      let state = refresh_config(state)
       let state = State(..state, flush_scheduled: False)
       actor.continue(flush_entries_runtime(state))
     }
@@ -183,7 +195,7 @@ fn handle_message(
 }
 
 fn enqueue_entry(state: State, entry: PendingEntry) -> State {
-  case state.pending_count >= max_buffer_size {
+  case state.pending_count >= state.config.max_buffer_size {
     True ->
       State(..state, pending_entries: [
         entry,
@@ -198,6 +210,10 @@ fn enqueue_entry(state: State, entry: PendingEntry) -> State {
   }
 }
 
+fn reached_max_batch_size(state: State) -> Bool {
+  state.pending_count >= state.config.max_batch_size
+}
+
 fn drop_oldest_entry(entries: List(PendingEntry)) -> List(PendingEntry) {
   case list.reverse(entries) {
     [] -> []
@@ -208,10 +224,25 @@ fn drop_oldest_entry(entries: List(PendingEntry)) -> List(PendingEntry) {
 fn schedule_flush_if_needed(state: State) -> State {
   case state.pending_count > 0 && !state.flush_scheduled {
     True -> {
-      let _ = process.send_after(state.subject, flush_interval_ms, Tick)
+      let _ =
+        process.send_after(state.subject, state.config.flush_interval_ms, Tick)
       State(..state, flush_scheduled: True)
     }
     False -> state
+  }
+}
+
+fn refresh_config(state: State) -> State {
+  case app_config_cache_worker.get_config(state.app_config_cache_subject) {
+    Ok(config) ->
+      State(..state, config: dynamic_config.log_worker_config(config))
+    Error(err) -> {
+      wisp.log_error(
+        "Failed to refresh log worker config: "
+          <> error.to_string(error.QueryError(err)),
+      )
+      state
+    }
   }
 }
 

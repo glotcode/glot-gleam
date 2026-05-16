@@ -18,6 +18,7 @@ pub type DynamicConfig {
     availability: AvailabilityConfig,
     auth: AuthConfig,
     cleanup: CleanupConfig,
+    log_worker: LogWorkerConfig,
     docker_run: option.Option(DockerRunConfig),
     rate_limit_policies: dict.Dict(public_action.PublicAction, RateLimitPolicy),
   )
@@ -63,6 +64,14 @@ pub type CleanupConfig {
   )
 }
 
+pub type LogWorkerConfig {
+  LogWorkerConfig(
+    flush_interval_ms: Int,
+    max_batch_size: Int,
+    max_buffer_size: Int,
+  )
+}
+
 pub type RateLimitPolicy {
   RateLimitPolicy(rules: List(RateLimitRule))
 }
@@ -89,6 +98,7 @@ pub fn empty() -> DynamicConfig {
     availability: default_availability_config(),
     auth: default_auth_config(),
     cleanup: default_cleanup_config(),
+    log_worker: default_log_worker_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),
   )
@@ -119,6 +129,10 @@ pub fn docker_run_config(
 
 pub fn auth_config(config: DynamicConfig) -> AuthConfig {
   config.auth
+}
+
+pub fn log_worker_config(config: DynamicConfig) -> LogWorkerConfig {
+  config.log_worker
 }
 
 pub fn debug_config(config: DynamicConfig) -> DebugConfig {
@@ -172,6 +186,7 @@ fn apply_entry(
     "availability" -> decode_availability_config_entry(config, entry)
     "auth" -> decode_auth_config_entry(config, entry)
     "cleanup" -> decode_cleanup_config_entry(config, entry)
+    "log_worker" -> decode_log_worker_config_entry(config, entry)
     "docker_run" -> decode_docker_run_entry(config, entry)
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
@@ -307,6 +322,14 @@ fn default_cleanup_config() -> CleanupConfig {
   )
 }
 
+fn default_log_worker_config() -> LogWorkerConfig {
+  LogWorkerConfig(
+    flush_interval_ms: 5000,
+    max_batch_size: 100,
+    max_buffer_size: 1000,
+  )
+}
+
 fn decode_cleanup_config_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
@@ -334,6 +357,25 @@ fn decode_cleanup_config_entry(
   }
 
   Ok(DynamicConfig(..config, cleanup: cleanup))
+}
+
+fn decode_log_worker_config_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  use value <- result.try(decode_int_entry("log_worker", entry))
+
+  let log_worker = case entry.key {
+    "flush_interval_ms" ->
+      LogWorkerConfig(..config.log_worker, flush_interval_ms: value)
+    "max_batch_size" ->
+      LogWorkerConfig(..config.log_worker, max_batch_size: value)
+    "max_buffer_size" ->
+      LogWorkerConfig(..config.log_worker, max_buffer_size: value)
+    _ -> config.log_worker
+  }
+
+  Ok(DynamicConfig(..config, log_worker: log_worker))
 }
 
 fn decode_int_entry(

@@ -349,11 +349,15 @@ fn start_supervisor_tree(
     db,
     process.named_subject(server_mode_name),
   ))
-  |> static_supervisor.add(log_worker.supervised(log_worker_name, db))
   |> static_supervisor.add(app_config_cache_worker.supervised(
     app_config_cache_worker_name,
     db,
     process.named_subject(server_mode_name),
+  ))
+  |> static_supervisor.add(log_worker.supervised(
+    log_worker_name,
+    db,
+    process.named_subject(app_config_cache_worker_name),
   ))
   |> static_supervisor.add(language_version_cache_worker.supervised(
     language_version_cache_worker_name,

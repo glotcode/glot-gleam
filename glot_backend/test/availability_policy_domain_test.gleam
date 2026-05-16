@@ -192,6 +192,11 @@ fn run_app_config_effect(
             login_tokens_retention_days: 30,
             user_actions_retention_days: 90,
           ),
+          log_worker: dynamic_config.LogWorkerConfig(
+            flush_interval_ms: 5000,
+            max_batch_size: 100,
+            max_buffer_size: 1000,
+          ),
           docker_run: option.None,
           rate_limit_policies: dict.new(),
         )),

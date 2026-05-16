@@ -11,6 +11,8 @@ pub type AdminAction {
   UpsertAdminAuthConfigAction
   GetAdminCleanupConfigAction
   UpsertAdminCleanupConfigAction
+  GetAdminLogWorkerConfigAction
+  UpsertAdminLogWorkerConfigAction
   GetAdminPeriodicJobsAction
   GetAdminPeriodicJobAction
   UpdateAdminPeriodicJobAction
@@ -51,6 +53,8 @@ pub fn list() -> List(AdminAction) {
     UpsertAdminAuthConfigAction,
     GetAdminCleanupConfigAction,
     UpsertAdminCleanupConfigAction,
+    GetAdminLogWorkerConfigAction,
+    UpsertAdminLogWorkerConfigAction,
     GetAdminPeriodicJobsAction,
     GetAdminPeriodicJobAction,
     UpdateAdminPeriodicJobAction,
@@ -105,6 +109,8 @@ pub fn to_string(action: AdminAction) -> String {
     UpsertAdminAuthConfigAction -> "upsert_admin_auth_config"
     GetAdminCleanupConfigAction -> "get_admin_cleanup_config"
     UpsertAdminCleanupConfigAction -> "upsert_admin_cleanup_config"
+    GetAdminLogWorkerConfigAction -> "get_admin_log_worker_config"
+    UpsertAdminLogWorkerConfigAction -> "upsert_admin_log_worker_config"
     GetAdminPeriodicJobsAction -> "get_admin_periodic_jobs"
     GetAdminPeriodicJobAction -> "get_admin_periodic_job"
     UpdateAdminPeriodicJobAction -> "update_admin_periodic_job"
@@ -148,6 +154,10 @@ pub fn from_string(action: String) -> option.Option(AdminAction) {
     "upsert_admin_auth_config" -> option.Some(UpsertAdminAuthConfigAction)
     "get_admin_cleanup_config" -> option.Some(GetAdminCleanupConfigAction)
     "upsert_admin_cleanup_config" -> option.Some(UpsertAdminCleanupConfigAction)
+    "get_admin_log_worker_config" ->
+      option.Some(GetAdminLogWorkerConfigAction)
+    "upsert_admin_log_worker_config" ->
+      option.Some(UpsertAdminLogWorkerConfigAction)
     "get_admin_periodic_jobs" -> option.Some(GetAdminPeriodicJobsAction)
     "get_admin_periodic_job" -> option.Some(GetAdminPeriodicJobAction)
     "update_admin_periodic_job" -> option.Some(UpdateAdminPeriodicJobAction)

@@ -6,6 +6,7 @@ import glot_core/admin/availability_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/log_worker_config_dto
 import glot_core/availability_mode
 import glot_frontend/admin_format
 import glot_frontend/admin_ui
@@ -24,11 +25,13 @@ pub type Model {
     availability: AvailabilitySection,
     auth: AuthSection,
     cleanup: CleanupSection,
+    log_worker: LogWorkerSection,
     docker_run: DockerRunSection,
     debug_loaded: Bool,
     availability_loaded: Bool,
     auth_loaded: Bool,
     cleanup_loaded: Bool,
+    log_worker_loaded: Bool,
     docker_run_loaded: Bool,
   )
 }
@@ -120,6 +123,22 @@ pub type CleanupFields {
   )
 }
 
+pub type LogWorkerSection {
+  LogWorkerSection(
+    saved: LogWorkerFields,
+    draft: LogWorkerFields,
+    state: mutation.MutationState,
+  )
+}
+
+pub type LogWorkerFields {
+  LogWorkerFields(
+    flush_interval_ms: String,
+    max_batch_size: String,
+    max_buffer_size: String,
+  )
+}
+
 pub type Msg {
   DebugLoaded(api.ApiResponse(debug_config_dto.DebugConfigResponse))
   DebugToggleClicked
@@ -159,6 +178,15 @@ pub type Msg {
   CleanupResetClicked
   CleanupSaveClicked
   CleanupSaveFinished(api.ApiResponse(cleanup_config_dto.CleanupConfigResponse))
+  LogWorkerLoaded(api.ApiResponse(log_worker_config_dto.LogWorkerConfigResponse))
+  LogWorkerFlushIntervalMsChanged(String)
+  LogWorkerMaxBatchSizeChanged(String)
+  LogWorkerMaxBufferSizeChanged(String)
+  LogWorkerResetClicked
+  LogWorkerSaveClicked
+  LogWorkerSaveFinished(
+    api.ApiResponse(log_worker_config_dto.LogWorkerConfigResponse),
+  )
   DockerRunLoaded(
     api.ApiResponse(docker_run_config_dto.DockerRunConfigResponse),
   )
@@ -179,11 +207,13 @@ pub fn init() -> #(Model, Effect(Msg)) {
       availability: empty_availability_section(),
       auth: empty_auth_section(),
       cleanup: empty_cleanup_section(),
+      log_worker: empty_log_worker_section(),
       docker_run: empty_docker_run_section(),
       debug_loaded: False,
       availability_loaded: False,
       auth_loaded: False,
       cleanup_loaded: False,
+      log_worker_loaded: False,
       docker_run_loaded: False,
     ),
     effect.none(),
@@ -199,6 +229,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
         load_availability_config(),
         load_auth_config(),
         load_cleanup_config(),
+        load_log_worker_config(),
         load_docker_run_config(),
       ]),
     )
@@ -859,6 +890,158 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
       }
 
+    LogWorkerLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = log_worker_fields_from_response(response)
+          let next_model =
+            Model(
+              ..model,
+              log_worker: LogWorkerSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
+              log_worker_loaded: True,
+            )
+
+          #(
+            Model(..next_model, status: loaded_status(next_model)),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(..model, status: LoadError(error.message)),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            status: LoadError("Could not load log worker config."),
+          ),
+          effect.none(),
+        )
+      }
+
+    LogWorkerFlushIntervalMsChanged(value) -> #(
+      Model(
+        ..model,
+        log_worker: LogWorkerSection(
+          ..model.log_worker,
+          draft: LogWorkerFields(
+            ..model.log_worker.draft,
+            flush_interval_ms: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LogWorkerMaxBatchSizeChanged(value) -> #(
+      Model(
+        ..model,
+        log_worker: LogWorkerSection(
+          ..model.log_worker,
+          draft: LogWorkerFields(
+            ..model.log_worker.draft,
+            max_batch_size: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LogWorkerMaxBufferSizeChanged(value) -> #(
+      Model(
+        ..model,
+        log_worker: LogWorkerSection(
+          ..model.log_worker,
+          draft: LogWorkerFields(
+            ..model.log_worker.draft,
+            max_buffer_size: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LogWorkerResetClicked -> #(
+      Model(
+        ..model,
+        log_worker: LogWorkerSection(
+          ..model.log_worker,
+          draft: model.log_worker.saved,
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LogWorkerSaveClicked ->
+      case validate_log_worker_fields(model.log_worker.draft) {
+        Error(message) -> #(
+          Model(
+            ..model,
+            log_worker: LogWorkerSection(
+              ..model.log_worker,
+              state: mutation.SaveError(message),
+            ),
+          ),
+          effect.none(),
+        )
+        Ok(request) -> #(
+          Model(
+            ..model,
+            log_worker: LogWorkerSection(
+              ..model.log_worker,
+              state: mutation.Saving,
+            ),
+          ),
+          api.upsert_admin_log_worker_config(request, LogWorkerSaveFinished),
+        )
+      }
+
+    LogWorkerSaveFinished(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = log_worker_fields_from_response(response)
+          #(
+            Model(
+              ..model,
+              log_worker: LogWorkerSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Saved,
+              ),
+            ),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            log_worker: LogWorkerSection(
+              ..model.log_worker,
+              state: mutation.SaveError(error.message),
+            ),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            log_worker: LogWorkerSection(
+              ..model.log_worker,
+              state: mutation.SaveError("Could not save log worker config."),
+            ),
+          ),
+          effect.none(),
+        )
+      }
+
     DockerRunLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> {
@@ -1014,6 +1197,7 @@ pub fn view(model: Model) -> Element(Msg) {
         availability_section_view(model.availability, model.status),
         auth_section_view(model.auth, model.status),
         cleanup_section_view(model.cleanup, model.status),
+        log_worker_section_view(model.log_worker, model.status),
         docker_run_section_view(model.docker_run, model.status),
       ]),
     ]),
@@ -1157,6 +1341,50 @@ fn cleanup_section_view(
       message: section_state_message(section.state, option.None),
       reset_msg: CleanupResetClicked,
       save_msg: CleanupSaveClicked,
+    ),
+  )
+}
+
+fn log_worker_section_view(
+  section: LogWorkerSection,
+  status: Status,
+) -> Element(Msg) {
+  let dirty = is_dirty_log_worker(section)
+
+  config_section(
+    title: "Log worker",
+    subtitle: "Controls batching and buffering for API, page, and pageview log writes.",
+    badge: section_badge(section.state, dirty, option.None),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      admin_ui.text_input(
+        label: "Flush interval",
+        help: "Milliseconds to wait before flushing a partial log batch.",
+        value: section.draft.flush_interval_ms,
+        placeholder: "",
+        on_input: LogWorkerFlushIntervalMsChanged,
+      ),
+      admin_ui.text_input(
+        label: "Max batch size",
+        help: "Flush immediately once this many pending entries are buffered.",
+        value: section.draft.max_batch_size,
+        placeholder: "",
+        on_input: LogWorkerMaxBatchSizeChanged,
+      ),
+      admin_ui.text_input(
+        label: "Max buffer size",
+        help: "Cap on queued log entries before the oldest pending entries are dropped.",
+        value: section.draft.max_buffer_size,
+        placeholder: "",
+        on_input: LogWorkerMaxBufferSizeChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(section.state, option.None),
+      reset_msg: LogWorkerResetClicked,
+      save_msg: LogWorkerSaveClicked,
     ),
   )
 }
@@ -1514,6 +1742,10 @@ fn load_cleanup_config() -> Effect(Msg) {
   api.get_admin_cleanup_config(CleanupLoaded)
 }
 
+fn load_log_worker_config() -> Effect(Msg) {
+  api.get_admin_log_worker_config(LogWorkerLoaded)
+}
+
 fn load_docker_run_config() -> Effect(Msg) {
   api.get_admin_docker_run_config(DockerRunLoaded)
 }
@@ -1572,6 +1804,16 @@ fn cleanup_fields_from_response(
     user_actions_retention_days: int.to_string(
       response.user_actions_retention_days,
     ),
+  )
+}
+
+fn log_worker_fields_from_response(
+  response: log_worker_config_dto.LogWorkerConfigResponse,
+) -> LogWorkerFields {
+  LogWorkerFields(
+    flush_interval_ms: int.to_string(response.flush_interval_ms),
+    max_batch_size: int.to_string(response.max_batch_size),
+    max_buffer_size: int.to_string(response.max_buffer_size),
   )
 }
 
@@ -1641,6 +1883,10 @@ fn is_dirty_auth(section: AuthSection) -> Bool {
 }
 
 fn is_dirty_cleanup(section: CleanupSection) -> Bool {
+  section.saved != section.draft
+}
+
+fn is_dirty_log_worker(section: LogWorkerSection) -> Bool {
   section.saved != section.draft
 }
 
@@ -1758,6 +2004,42 @@ fn validate_cleanup_fields(
   ))
 }
 
+fn validate_log_worker_fields(
+  fields: LogWorkerFields,
+) -> Result(log_worker_config_dto.UpsertLogWorkerConfigRequest, String) {
+  use flush_interval_ms <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.flush_interval_ms,
+      "Flush interval must be a positive integer.",
+    ),
+  )
+  use max_batch_size <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.max_batch_size,
+      "Max batch size must be a positive integer.",
+    ),
+  )
+  use max_buffer_size <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.max_buffer_size,
+      "Max buffer size must be a positive integer.",
+    ),
+  )
+
+  case max_buffer_size < max_batch_size {
+    True ->
+      Error(
+        "Max buffer size must be greater than or equal to max batch size.",
+      )
+    False ->
+      Ok(log_worker_config_dto.UpsertLogWorkerConfigRequest(
+        flush_interval_ms: flush_interval_ms,
+        max_batch_size: max_batch_size,
+        max_buffer_size: max_buffer_size,
+      ))
+  }
+}
+
 fn empty_auth_section() -> AuthSection {
   let fields = empty_auth_fields()
   AuthSection(saved: fields, draft: fields, state: mutation.Idle)
@@ -1814,6 +2096,19 @@ fn empty_cleanup_fields() -> CleanupFields {
   )
 }
 
+fn empty_log_worker_section() -> LogWorkerSection {
+  let fields = empty_log_worker_fields()
+  LogWorkerSection(saved: fields, draft: fields, state: mutation.Idle)
+}
+
+fn empty_log_worker_fields() -> LogWorkerFields {
+  LogWorkerFields(
+    flush_interval_ms: "",
+    max_batch_size: "",
+    max_buffer_size: "",
+  )
+}
+
 fn empty_docker_run_section() -> DockerRunSection {
   let fields = empty_docker_run_fields()
   DockerRunSection(saved: fields, draft: fields, state: mutation.Idle)
@@ -1829,6 +2124,7 @@ fn loaded_status(model: Model) -> Status {
     && model.availability_loaded
     && model.auth_loaded
     && model.cleanup_loaded
+    && model.log_worker_loaded
     && model.docker_run_loaded
   {
     True -> Ready

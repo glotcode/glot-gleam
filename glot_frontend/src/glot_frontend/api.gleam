@@ -16,6 +16,7 @@ import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/job_type_policy_dto
+import glot_core/admin/log_worker_config_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/admin/run_log_dto
@@ -461,6 +462,19 @@ pub fn get_admin_cleanup_config(
   )
 }
 
+pub fn get_admin_log_worker_config(
+  to_msg: fn(ApiResponse(log_worker_config_dto.LogWorkerConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = AdminApiRequest(admin_action.GetAdminLogWorkerConfigAction, Nil)
+
+  send_admin_api_request(
+    req,
+    fn(_) { json.null() },
+    log_worker_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn get_admin_periodic_jobs(
   to_msg: fn(ApiResponse(periodic_job_dto.ListPeriodicJobsResponse)) -> msg,
 ) -> effect.Effect(msg) {
@@ -783,6 +797,21 @@ pub fn upsert_admin_cleanup_config(
     req,
     cleanup_config_dto.encode_request,
     cleanup_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_log_worker_config(
+  request: log_worker_config_dto.UpsertLogWorkerConfigRequest,
+  to_msg: fn(ApiResponse(log_worker_config_dto.LogWorkerConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req =
+    AdminApiRequest(admin_action.UpsertAdminLogWorkerConfigAction, request)
+
+  send_admin_api_request(
+    req,
+    log_worker_config_dto.encode_request,
+    log_worker_config_dto.response_decoder(),
     to_msg,
   )
 }

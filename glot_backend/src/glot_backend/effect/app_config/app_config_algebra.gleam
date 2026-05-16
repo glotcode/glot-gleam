@@ -27,6 +27,11 @@ pub type AppConfigEffect(next) {
     updated_at: Timestamp,
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
   )
+  UpsertLogWorkerConfig(
+    config: dynamic_config.LogWorkerConfig,
+    updated_at: Timestamp,
+    next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
+  )
   UpsertRateLimitPolicy(
     action: PublicAction,
     policy: dynamic_config.RateLimitPolicy,
@@ -64,6 +69,12 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
         updated_at: updated_at,
         next: fn(value) { f(next(value)) },
       )
+    UpsertLogWorkerConfig(config:, updated_at:, next:) ->
+      UpsertLogWorkerConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(value) { f(next(value)) },
+      )
     UpsertRateLimitPolicy(action:, policy:, updated_at:, next:) ->
       UpsertRateLimitPolicy(
         action: action,
@@ -86,6 +97,7 @@ pub type EffectName {
   UpsertAvailabilityConfigEffectName
   UpsertAuthConfigEffectName
   UpsertCleanupConfigEffectName
+  UpsertLogWorkerConfigEffectName
   UpsertRateLimitPolicyEffectName
   UpsertDockerRunConfigEffectName
 }
@@ -97,6 +109,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     UpsertAvailabilityConfigEffectName -> "upsert_availability_config"
     UpsertAuthConfigEffectName -> "upsert_auth_config"
     UpsertCleanupConfigEffectName -> "upsert_cleanup_config"
+    UpsertLogWorkerConfigEffectName -> "upsert_log_worker_config"
     UpsertRateLimitPolicyEffectName -> "upsert_rate_limit_policy"
     UpsertDockerRunConfigEffectName -> "upsert_docker_run_config"
   }

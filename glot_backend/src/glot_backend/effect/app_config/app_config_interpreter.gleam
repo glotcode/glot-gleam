@@ -275,6 +275,48 @@ pub fn run(
         ),
       )
     }
+    app_config_algebra.UpsertLogWorkerConfig(config:, updated_at:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        runtime.handlers.app_config.upsert_entry(
+          "log_worker",
+          "flush_interval_ms",
+          json.int(config.flush_interval_ms) |> json.to_string(),
+          updated_at,
+        )
+        |> result.map_error(error.CommandError)
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "log_worker",
+            "max_batch_size",
+            json.int(config.max_batch_size) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "log_worker",
+            "max_buffer_size",
+            json.int(config.max_buffer_size) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) { refresh_dynamic_config(runtime) })
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.UpsertLogWorkerConfigEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     app_config_algebra.UpsertRateLimitPolicy(
       action:,
       policy:,

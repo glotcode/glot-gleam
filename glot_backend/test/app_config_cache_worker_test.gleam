@@ -294,6 +294,11 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
       login_tokens_retention_days: 30,
       user_actions_retention_days: 90,
     ),
+    log_worker: dynamic_config.LogWorkerConfig(
+      flush_interval_ms: 5000,
+      max_batch_size: 100,
+      max_buffer_size: 1000,
+    ),
     docker_run: option.Some(dynamic_config.DockerRunConfig(
       base_url: "http://docker-run",
       access_token: "test-token",
@@ -349,6 +354,11 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
       jobs_retention_days: 90,
       login_tokens_retention_days: 30,
       user_actions_retention_days: 90,
+    ),
+    log_worker: dynamic_config.LogWorkerConfig(
+      flush_interval_ms: 2500,
+      max_batch_size: 200,
+      max_buffer_size: 1500,
     ),
     docker_run: option.Some(dynamic_config.DockerRunConfig(
       base_url: "http://docker-run-2",
