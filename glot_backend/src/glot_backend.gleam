@@ -102,6 +102,7 @@ pub fn main() {
           server_mode_subject,
           req,
         )
+        |> response_helpers.with_request_id(ctx.request_id)
       },
       cfg.encryption_key,
     )(conn)

@@ -110,7 +110,6 @@ import glot_core/server_timing_policy
 import glot_core/snippet/snippet_dto
 import pog
 import wisp
-import youid/uuid
 
 pub fn handle_request(
   db: pog.Connection,
@@ -758,7 +757,6 @@ fn error_response(
     ),
     status,
   )
-  |> wisp.set_header("X-Request-Id", ctx.request_id |> api_request_id())
 }
 
 fn insert_log_entry(
@@ -1005,10 +1003,6 @@ fn error_to_response(
         }
       }
   }
-}
-
-fn api_request_id(request_id: uuid.Uuid) -> String {
-  uuid.to_string(request_id)
 }
 
 pub fn error_status(error: error.Error) -> Int {
