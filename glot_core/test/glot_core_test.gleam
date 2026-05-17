@@ -1,10 +1,12 @@
 import gleam/option
+import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
 import glot_core/admin_action
 import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/auth/user_model
+import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/pagination_model
@@ -132,6 +134,20 @@ pub fn validate_username_rejects_invalid_values_test() {
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     )
     == error
+}
+
+pub fn email_address_accepts_hyphenated_domains_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+
+  assert email_address_model.from_string(
+      is_email,
+      "hardbounce@bounce-testing.postmarkapp.com",
+    )
+    == option.Some(
+      email_address_model.EmailAddress(
+        "hardbounce@bounce-testing.postmarkapp.com",
+      ),
+    )
 }
 
 pub fn validate_snippet_fields_rejects_empty_files_test() {
