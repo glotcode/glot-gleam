@@ -16,6 +16,8 @@ import glot_core/api_action
 import glot_core/email/email_address_model
 import glot_core/validation_error
 
+const max_default_timeout_ms = 600_000
+
 pub fn upsert_email_config(
   ctx: context.Context,
   request: email_config_dto.UpsertEmailConfigRequest,
@@ -32,6 +34,7 @@ pub fn upsert_email_config(
     dynamic_config.EmailConfig(
       from_address: request.from_address,
       from_name: from_name,
+      default_timeout_ms: request.default_timeout_ms,
     ),
     ctx.timestamp,
   ))
@@ -40,6 +43,7 @@ pub fn upsert_email_config(
   program.succeed(email_config_dto.EmailConfigResponse(
     from_address: request.from_address,
     from_name: from_name,
+    default_timeout_ms: request.default_timeout_ms,
   ))
 }
 
@@ -53,6 +57,16 @@ fn validate_request(
   ctx: context.Context,
   request: email_config_dto.UpsertEmailConfigRequest,
 ) -> program_types.Program(Nil) {
+  use _ <- program.and_then(require_positive(
+    request.default_timeout_ms,
+    "default_timeout_ms",
+  ))
+  use _ <- program.and_then(require_max(
+    request.default_timeout_ms,
+    "default_timeout_ms",
+    max_default_timeout_ms,
+  ))
+
   case string.trim(request.from_address) {
     "" ->
       program.fail(error.validation(validation_error.EmptyField("fromAddress")))
@@ -69,6 +83,30 @@ fn validate_request(
             error.validation(validation_error.InvalidEmail("fromAddress")),
           )
       }
+  }
+}
+
+fn require_positive(value: Int, field: String) -> program_types.Program(Nil) {
+  case value > 0 {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThan(field, 0)),
+      )
+  }
+}
+
+fn require_max(
+  value: Int,
+  field: String,
+  max: Int,
+) -> program_types.Program(Nil) {
+  case value <= max {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeLessThanOrEqual(field, max)),
+      )
   }
 }
 

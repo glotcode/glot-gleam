@@ -89,7 +89,11 @@ pub type EmailSection {
 }
 
 pub type EmailFields {
-  EmailFields(from_address: String, from_name: String)
+  EmailFields(
+    from_address: String,
+    from_name: String,
+    default_timeout_ms: String,
+  )
 }
 
 pub type DebugSection {
@@ -283,6 +287,7 @@ pub type Msg {
   EmailLoaded(api.ApiResponse(email_config_dto.EmailConfigResponse))
   EmailFromAddressChanged(String)
   EmailFromNameChanged(String)
+  EmailDefaultTimeoutMsChanged(String)
   EmailResetClicked
   EmailSaveClicked
   EmailSaveFinished(api.ApiResponse(email_config_dto.EmailConfigResponse))
@@ -1674,6 +1679,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
+    EmailDefaultTimeoutMsChanged(value) -> #(
+      Model(
+        ..model,
+        email: EmailSection(
+          ..model.email,
+          draft: EmailFields(..model.email.draft, default_timeout_ms: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
     EmailResetClicked -> #(
       Model(
         ..model,
@@ -2247,7 +2264,7 @@ fn email_section_view(section: EmailSection, status: Status) -> Element(Msg) {
 
   config_section(
     title: "Email",
-    subtitle: "Stores the sender address and optional sender name used for outbound email.",
+    subtitle: "Stores the sender address, optional sender name, and fallback timeout used for outbound email.",
     badge: section_badge(section.state, dirty, idle_text(is_empty)),
     fields: html.div([attribute.class("admin-page__field-grid")], [
       admin_ui.text_input(
@@ -2263,6 +2280,13 @@ fn email_section_view(section: EmailSection, status: Status) -> Element(Msg) {
         value: section.draft.from_name,
         placeholder: "",
         on_input: EmailFromNameChanged,
+      ),
+      admin_ui.text_input(
+        label: "Default timeout",
+        help: "Fallback timeout in milliseconds when no request deadline is present.",
+        value: section.draft.default_timeout_ms,
+        placeholder: "",
+        on_input: EmailDefaultTimeoutMsChanged,
       ),
     ]),
     footer: section_footer(
@@ -2575,6 +2599,7 @@ fn email_fields_from_response(
   EmailFields(
     from_address: response.from_address,
     from_name: option.unwrap(response.from_name, ""),
+    default_timeout_ms: int.to_string(response.default_timeout_ms),
   )
 }
 
@@ -2625,18 +2650,24 @@ fn is_dirty_cloudflare(section: CloudflareSection) -> Bool {
 fn validate_email_fields(
   fields: EmailFields,
 ) -> Result(email_config_dto.UpsertEmailConfigRequest, String) {
+  use default_timeout_ms <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.default_timeout_ms,
+      "Default timeout must be a positive integer.",
+    ),
+  )
+
   case fields.from_address {
     "" -> Error("From address must not be empty.")
     _ ->
-      Ok(
-        email_config_dto.UpsertEmailConfigRequest(
-          from_address: fields.from_address,
-          from_name: case fields.from_name {
-            "" -> option.None
-            value -> option.Some(value)
-          },
-        ),
-      )
+      Ok(email_config_dto.UpsertEmailConfigRequest(
+        from_address: fields.from_address,
+        from_name: case fields.from_name {
+          "" -> option.None
+          value -> option.Some(value)
+        },
+        default_timeout_ms: default_timeout_ms,
+      ))
   }
 }
 
@@ -2995,7 +3026,7 @@ fn empty_email_section() -> EmailSection {
 }
 
 fn empty_email_fields() -> EmailFields {
-  EmailFields(from_address: "", from_name: "")
+  EmailFields(from_address: "", from_name: "", default_timeout_ms: "")
 }
 
 fn loaded_status(model: Model) -> Status {

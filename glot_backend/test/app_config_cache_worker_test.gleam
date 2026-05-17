@@ -315,7 +315,11 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
       default_timeout_ms: 60_000,
     )),
     cloudflare: option.None,
-    email: option.None,
+    email: option.Some(dynamic_config.EmailConfig(
+      from_address: "sender@example.com",
+      from_name: option.Some("Sender"),
+      default_timeout_ms: 60_000,
+    )),
     rate_limit_policies: dict.from_list([
       #(
         public_action.RunAction,
@@ -385,7 +389,11 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
       default_timeout_ms: 45_000,
     )),
     cloudflare: option.None,
-    email: option.None,
+    email: option.Some(dynamic_config.EmailConfig(
+      from_address: "updated-sender@example.com",
+      from_name: option.Some("Updated Sender"),
+      default_timeout_ms: 45_000,
+    )),
     rate_limit_policies: dict.from_list([
       #(
         public_action.RunAction,

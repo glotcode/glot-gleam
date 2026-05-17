@@ -26,5 +26,6 @@ pub fn get_email_config(
   program.succeed(email_config_dto.EmailConfigResponse(
     from_address: dynamic_config.email_config(config).from_address,
     from_name: dynamic_config.email_config(config).from_name,
+    default_timeout_ms: dynamic_config.email_config(config).default_timeout_ms,
   ))
 }

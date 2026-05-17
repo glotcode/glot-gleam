@@ -14,8 +14,6 @@ import glot_backend/erlang
 import glot_backend/worker/app_config_cache_worker
 import wisp
 
-const default_timeout_ms = 60_000
-
 pub fn run(
   effect: email_algebra.EmailEffect(program_types.Program(a)),
   ctx: context.Context,
@@ -30,6 +28,7 @@ pub fn run(
       let send_result =
         load_config(runtime)
         |> result.try(fn(config) {
+          let email_config = dynamic_config.email_config(config)
           case dynamic_config.cloudflare_config(config) {
             option.Some(cloudflare) ->
               runtime.handlers.email.send_email(
@@ -37,7 +36,7 @@ pub fn run(
                 message,
                 option.unwrap(
                   context.remaining_timeout_ms(ctx),
-                  default_timeout_ms,
+                  email_config.default_timeout_ms,
                 ),
               )
             option.None -> {

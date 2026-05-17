@@ -63,7 +63,11 @@ pub type CloudflareConfig {
 }
 
 pub type EmailConfig {
-  EmailConfig(from_address: String, from_name: option.Option(String))
+  EmailConfig(
+    from_address: String,
+    from_name: option.Option(String),
+    default_timeout_ms: Int,
+  )
 }
 
 pub type CleanupConfig {
@@ -241,7 +245,11 @@ fn apply_entry(
 }
 
 fn default_email_config() -> EmailConfig {
-  EmailConfig(from_address: "glot@glot.io", from_name: option.Some("glot"))
+  EmailConfig(
+    from_address: "glot@glot.io",
+    from_name: option.Some("glot"),
+    default_timeout_ms: 60_000,
+  )
 }
 
 fn decode_debug_config_entry(
@@ -623,37 +631,29 @@ fn decode_email_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
-  case entry.key {
-    "from_address" -> {
-      use value <- result.try(decode_string_entry("email", entry))
-      let email = case config.email {
-        option.Some(email) ->
-          option.Some(EmailConfig(
-            from_address: value,
-            from_name: email.from_name,
-          ))
-        option.None ->
-          option.Some(EmailConfig(from_address: value, from_name: option.None))
-      }
+  let current = option.unwrap(config.email, default_email_config())
 
-      Ok(DynamicConfig(..config, email: email))
-    }
-    "from_name" -> {
-      use from_name <- result.try(decode_optional_string_entry("email", entry))
-      let email = case config.email {
-        option.Some(email) ->
-          option.Some(EmailConfig(
-            from_address: email.from_address,
-            from_name: from_name,
-          ))
-        option.None ->
-          option.Some(EmailConfig(from_address: "", from_name: from_name))
-      }
-
-      Ok(DynamicConfig(..config, email: email))
-    }
-    _ -> Ok(config)
+  let email = case entry.key {
+    "from_address" ->
+      decode_string_entry("email", entry)
+      |> result.map(fn(value) {
+        option.Some(EmailConfig(..current, from_address: value))
+      })
+    "from_name" ->
+      decode_optional_string_entry("email", entry)
+      |> result.map(fn(from_name) {
+        option.Some(EmailConfig(..current, from_name: from_name))
+      })
+    "default_timeout_ms" ->
+      decode_int_entry("email", entry)
+      |> result.map(fn(value) {
+        option.Some(EmailConfig(..current, default_timeout_ms: value))
+      })
+    _ -> Ok(config.email)
   }
+  use email <- result.try(email)
+
+  Ok(DynamicConfig(..config, email: email))
 }
 
 fn decode_string_entry(

@@ -440,12 +440,18 @@ pub fn app_config_decodes_email_config_test() {
         key: "from_name",
         value: "\"Sender\"",
       ),
+      app_config.AppConfigEntry(
+        namespace: "email",
+        key: "default_timeout_ms",
+        value: "45000",
+      ),
     ])
 
   assert dynamic_config.email_config(config)
     == dynamic_config.EmailConfig(
       from_address: "sender@example.com",
       from_name: option.Some("Sender"),
+      default_timeout_ms: 45_000,
     )
 }
 
@@ -456,6 +462,7 @@ pub fn app_config_uses_default_email_config_test() {
     == dynamic_config.EmailConfig(
       from_address: "glot@glot.io",
       from_name: option.Some("glot"),
+      default_timeout_ms: 60_000,
     )
 }
 
@@ -768,6 +775,7 @@ pub fn upsert_email_config_allows_admin_role_test() {
     email_config_dto.UpsertEmailConfigRequest(
       from_address: "sender@example.com",
       from_name: option.Some("Sender"),
+      default_timeout_ms: 45_000,
     )
 
   let #(run_result, updated_db) =
@@ -781,6 +789,7 @@ pub fn upsert_email_config_allows_admin_role_test() {
     == Ok(email_config_dto.EmailConfigResponse(
       from_address: request.from_address,
       from_name: request.from_name,
+      default_timeout_ms: request.default_timeout_ms,
     ))
   assert updated_db.user_action_count == 1
 }
@@ -2376,6 +2385,7 @@ fn test_email_config() -> dynamic_config.EmailConfig {
   dynamic_config.EmailConfig(
     from_address: "sender@example.com",
     from_name: option.Some("Sender"),
+    default_timeout_ms: 60_000,
   )
 }
 
