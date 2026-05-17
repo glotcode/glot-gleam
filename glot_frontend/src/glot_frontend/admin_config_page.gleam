@@ -61,7 +61,11 @@ pub type DockerRunSection {
 }
 
 pub type DockerRunFields {
-  DockerRunFields(base_url: String, access_token: String)
+  DockerRunFields(
+    base_url: String,
+    access_token: String,
+    default_timeout_ms: String,
+  )
 }
 
 pub type CloudflareSection {
@@ -260,6 +264,7 @@ pub type Msg {
   )
   DockerRunBaseUrlChanged(String)
   DockerRunAccessTokenChanged(String)
+  DockerRunDefaultTimeoutMsChanged(String)
   DockerRunResetClicked
   DockerRunSaveClicked
   DockerRunSaveFinished(
@@ -1382,6 +1387,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
+    DockerRunDefaultTimeoutMsChanged(value) -> #(
+      Model(
+        ..model,
+        docker_run: DockerRunSection(
+          ..model.docker_run,
+          draft: DockerRunFields(
+            ..model.docker_run.draft,
+            default_timeout_ms: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
     DockerRunResetClicked -> #(
       Model(
         ..model,
@@ -2135,7 +2155,7 @@ fn docker_run_section_view(
 
   config_section(
     title: "Docker run",
-    subtitle: "Controls the base URL and access token used when the backend calls the docker-run service.",
+    subtitle: "Controls the base URL, access token, and fallback timeout used when the backend calls the docker-run service.",
     badge: section_badge(section.state, dirty, idle_text(is_empty)),
     fields: html.div([attribute.class("admin-page__field-grid")], [
       admin_ui.text_input(
@@ -2151,6 +2171,13 @@ fn docker_run_section_view(
         value: section.draft.access_token,
         placeholder: "",
         on_input: DockerRunAccessTokenChanged,
+      ),
+      admin_ui.text_input(
+        label: "Default timeout",
+        help: "Fallback timeout in milliseconds when no request deadline is present.",
+        value: section.draft.default_timeout_ms,
+        placeholder: "",
+        on_input: DockerRunDefaultTimeoutMsChanged,
       ),
     ]),
     footer: section_footer(
@@ -2529,6 +2556,7 @@ fn docker_run_fields_from_response(
   DockerRunFields(
     base_url: response.base_url,
     access_token: response.access_token,
+    default_timeout_ms: int.to_string(response.default_timeout_ms),
   )
 }
 
@@ -2553,6 +2581,13 @@ fn email_fields_from_response(
 fn validate_docker_run_fields(
   fields: DockerRunFields,
 ) -> Result(docker_run_config_dto.UpsertDockerRunConfigRequest, String) {
+  use default_timeout_ms <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.default_timeout_ms,
+      "Default timeout must be a positive integer.",
+    ),
+  )
+
   case fields.base_url, fields.access_token {
     "", _ -> Error("Base URL must not be empty.")
     _, "" -> Error("Access token must not be empty.")
@@ -2560,6 +2595,7 @@ fn validate_docker_run_fields(
       Ok(docker_run_config_dto.UpsertDockerRunConfigRequest(
         base_url: fields.base_url,
         access_token: fields.access_token,
+        default_timeout_ms: default_timeout_ms,
       ))
   }
 }
@@ -2941,7 +2977,7 @@ fn empty_docker_run_section() -> DockerRunSection {
 }
 
 fn empty_docker_run_fields() -> DockerRunFields {
-  DockerRunFields(base_url: "", access_token: "")
+  DockerRunFields(base_url: "", access_token: "", default_timeout_ms: "")
 }
 
 fn empty_cloudflare_section() -> CloudflareSection {

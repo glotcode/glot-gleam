@@ -312,6 +312,7 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
     docker_run: option.Some(dynamic_config.DockerRunConfig(
       base_url: "http://docker-run",
       access_token: "test-token",
+      default_timeout_ms: 60_000,
     )),
     cloudflare: option.None,
     email: option.None,
@@ -381,6 +382,7 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
     docker_run: option.Some(dynamic_config.DockerRunConfig(
       base_url: "http://docker-run-2",
       access_token: "updated-token",
+      default_timeout_ms: 45_000,
     )),
     cloudflare: option.None,
     email: option.None,

@@ -390,12 +390,18 @@ pub fn app_config_decodes_docker_run_config_test() {
         key: "access_token",
         value: "\"plain-token\"",
       ),
+      app_config.AppConfigEntry(
+        namespace: "docker_run",
+        key: "default_timeout_ms",
+        value: "45000",
+      ),
     ])
 
   assert dynamic_config.docker_run_config(config)
     == option.Some(dynamic_config.DockerRunConfig(
       base_url: "https://docker-run.internal",
       access_token: "plain-token",
+      default_timeout_ms: 45_000,
     ))
 }
 
@@ -708,6 +714,7 @@ pub fn upsert_docker_run_config_allows_admin_role_test() {
     docker_run_config_dto.UpsertDockerRunConfigRequest(
       base_url: "https://docker-run.internal",
       access_token: "plain-token",
+      default_timeout_ms: 45_000,
     )
 
   let #(run_result, updated_db) =
@@ -724,6 +731,7 @@ pub fn upsert_docker_run_config_allows_admin_role_test() {
     == Ok(docker_run_config_dto.DockerRunConfigResponse(
       base_url: request.base_url,
       access_token: request.access_token,
+      default_timeout_ms: request.default_timeout_ms,
     ))
   assert updated_db.user_action_count == 1
 }

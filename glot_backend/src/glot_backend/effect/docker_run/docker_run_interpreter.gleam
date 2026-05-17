@@ -14,8 +14,6 @@ import glot_backend/erlang
 import glot_backend/worker/app_config_cache_worker
 import wisp
 
-const default_timeout_ms = 60_000
-
 pub fn run(
   effect: docker_run_algebra.DockerRunEffect(program_types.Program(a)),
   runtime: runtime.Runtime,
@@ -37,7 +35,7 @@ pub fn run(
                 request,
                 option.unwrap(
                   context.remaining_timeout_ms(ctx),
-                  default_timeout_ms,
+                  docker_run.default_timeout_ms,
                 ),
               )
             option.None -> {

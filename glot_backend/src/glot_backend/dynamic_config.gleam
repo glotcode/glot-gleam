@@ -51,7 +51,11 @@ pub type AuthConfig {
 }
 
 pub type DockerRunConfig {
-  DockerRunConfig(base_url: String, access_token: String)
+  DockerRunConfig(
+    base_url: String,
+    access_token: String,
+    default_timeout_ms: Int,
+  )
 }
 
 pub type CloudflareConfig {
@@ -524,25 +528,35 @@ fn decode_docker_run_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
-  use value <- result.try(decode_string_entry("docker_run", entry))
+  let current =
+    option.unwrap(
+      config.docker_run,
+      DockerRunConfig(
+        base_url: "",
+        access_token: "",
+        default_timeout_ms: 60_000,
+      ),
+    )
 
-  let docker_run = case entry.key, config.docker_run {
-    "base_url", option.Some(docker_run) ->
-      option.Some(DockerRunConfig(
-        base_url: value,
-        access_token: docker_run.access_token,
-      ))
-    "base_url", option.None ->
-      option.Some(DockerRunConfig(base_url: value, access_token: ""))
-    "access_token", option.Some(docker_run) ->
-      option.Some(DockerRunConfig(
-        base_url: docker_run.base_url,
-        access_token: value,
-      ))
-    "access_token", option.None ->
-      option.Some(DockerRunConfig(base_url: "", access_token: value))
-    _, _ -> config.docker_run
+  let docker_run = case entry.key {
+    "base_url" ->
+      decode_string_entry("docker_run", entry)
+      |> result.map(fn(value) {
+        option.Some(DockerRunConfig(..current, base_url: value))
+      })
+    "access_token" ->
+      decode_string_entry("docker_run", entry)
+      |> result.map(fn(value) {
+        option.Some(DockerRunConfig(..current, access_token: value))
+      })
+    "default_timeout_ms" ->
+      decode_int_entry("docker_run", entry)
+      |> result.map(fn(value) {
+        option.Some(DockerRunConfig(..current, default_timeout_ms: value))
+      })
+    _ -> Ok(config.docker_run)
   }
+  use docker_run <- result.try(docker_run)
 
   Ok(DynamicConfig(..config, docker_run: docker_run))
 }

@@ -16,8 +16,6 @@ import glot_core/language
 import glot_core/run
 import wisp
 
-const default_timeout_ms = 60_000
-
 pub fn run(
   effect: get_language_version_algebra.GetLanguageVersionEffect(
     program_types.Program(a),
@@ -44,7 +42,7 @@ pub fn run(
                   run_request(language),
                   option.unwrap(
                     context.remaining_timeout_ms(ctx),
-                    default_timeout_ms,
+                    docker_run.default_timeout_ms,
                   ),
                 )
               option.None -> {

@@ -15,6 +15,8 @@ import glot_core/admin_action
 import glot_core/api_action
 import glot_core/validation_error
 
+const max_default_timeout_ms = 600_000
+
 pub fn upsert_docker_run_config(
   ctx: context.Context,
   request: docker_run_config_dto.UpsertDockerRunConfigRequest,
@@ -30,6 +32,7 @@ pub fn upsert_docker_run_config(
     dynamic_config.DockerRunConfig(
       base_url: request.base_url,
       access_token: request.access_token,
+      default_timeout_ms: request.default_timeout_ms,
     ),
     ctx.timestamp,
   ))
@@ -38,6 +41,7 @@ pub fn upsert_docker_run_config(
   program.succeed(docker_run_config_dto.DockerRunConfigResponse(
     base_url: request.base_url,
     access_token: request.access_token,
+    default_timeout_ms: request.default_timeout_ms,
   ))
 }
 
@@ -50,11 +54,45 @@ pub fn request_from_dynamic(
 fn validate_request(
   request: docker_run_config_dto.UpsertDockerRunConfigRequest,
 ) -> program_types.Program(Nil) {
+  use _ <- program.and_then(require_positive(
+    request.default_timeout_ms,
+    "default_timeout_ms",
+  ))
+  use _ <- program.and_then(require_max(
+    request.default_timeout_ms,
+    "default_timeout_ms",
+    max_default_timeout_ms,
+  ))
+
   case string.trim(request.base_url), string.trim(request.access_token) {
     "", _ ->
       program.fail(error.validation(validation_error.EmptyField("baseUrl")))
     _, "" ->
       program.fail(error.validation(validation_error.EmptyField("accessToken")))
     _, _ -> program.succeed(Nil)
+  }
+}
+
+fn require_positive(value: Int, field: String) -> program_types.Program(Nil) {
+  case value > 0 {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThan(field, 0)),
+      )
+  }
+}
+
+fn require_max(
+  value: Int,
+  field: String,
+  max: Int,
+) -> program_types.Program(Nil) {
+  case value <= max {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeLessThanOrEqual(field, max)),
+      )
   }
 }

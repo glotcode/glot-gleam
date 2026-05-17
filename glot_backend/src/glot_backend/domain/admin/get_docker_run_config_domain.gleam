@@ -38,5 +38,6 @@ fn response_from_dynamic_config(
   docker_run_config_dto.DockerRunConfigResponse(
     base_url: config.base_url,
     access_token: config.access_token,
+    default_timeout_ms: config.default_timeout_ms,
   )
 }
