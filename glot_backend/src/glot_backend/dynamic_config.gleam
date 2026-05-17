@@ -349,8 +349,7 @@ fn default_log_worker_config() -> LogWorkerConfig {
   )
 }
 
-fn default_language_version_cache_worker_config(
-) -> LanguageVersionCacheWorkerConfig {
+fn default_language_version_cache_worker_config() -> LanguageVersionCacheWorkerConfig {
   LanguageVersionCacheWorkerConfig(
     refresh_interval_ms: 3_600_000,
     refresh_step_delay_ms: 1000,
@@ -411,9 +410,10 @@ fn decode_language_version_cache_worker_config_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
 ) -> Result(DynamicConfig, String) {
-  use value <- result.try(
-    decode_int_entry("language_version_cache_worker", entry),
-  )
+  use value <- result.try(decode_int_entry(
+    "language_version_cache_worker",
+    entry,
+  ))
 
   let language_version_cache_worker = case entry.key {
     "refresh_interval_ms" ->

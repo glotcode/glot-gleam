@@ -15,8 +15,11 @@ import glot_core/admin_action
 import glot_core/api_action
 
 const max_refresh_interval_ms = 86_400_000
+
 const max_refresh_step_delay_ms = 60_000
+
 const max_refresh_step_jitter_ms = 60_000
+
 const max_default_timeout_ms = 600_000
 
 pub fn upsert_language_version_cache_worker_config(

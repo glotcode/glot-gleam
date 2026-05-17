@@ -189,7 +189,9 @@ pub fn get_session_accepts_previous_token_within_grace_window_test() {
   let db =
     TestDb(
       ..fixture.db,
-      sessions: dict.from_list([#(uuid_key(rotated_session.id), rotated_session)]),
+      sessions: dict.from_list([
+        #(uuid_key(rotated_session.id), rotated_session),
+      ]),
       session_ids_by_token: dict.from_list([
         #(rotated_session.token, uuid_key(rotated_session.id)),
       ]),
@@ -231,7 +233,9 @@ pub fn get_session_rejects_previous_token_after_grace_window_test() {
   let db =
     TestDb(
       ..fixture.db,
-      sessions: dict.from_list([#(uuid_key(rotated_session.id), rotated_session)]),
+      sessions: dict.from_list([
+        #(uuid_key(rotated_session.id), rotated_session),
+      ]),
       session_ids_by_token: dict.from_list([
         #(rotated_session.token, uuid_key(rotated_session.id)),
       ]),
@@ -280,11 +284,7 @@ pub fn refresh_session_uses_configured_heartbeat_cadence_test() {
   let ctx = context.Context(..fixture.ctx, timestamp: now)
 
   let #(run_result, _) =
-    run_test_program(
-      refresh_session_domain.refresh_session(ctx),
-      ctx,
-      db,
-    )
+    run_test_program(refresh_session_domain.refresh_session(ctx), ctx, db)
 
   assert run_result
     == Ok(refresh_session_domain.RefreshSessionResult(
@@ -315,7 +315,9 @@ pub fn refresh_session_rejects_expired_previous_token_test() {
   let db =
     TestDb(
       ..fixture.db,
-      sessions: dict.from_list([#(uuid_key(rotated_session.id), rotated_session)]),
+      sessions: dict.from_list([
+        #(uuid_key(rotated_session.id), rotated_session),
+      ]),
       session_ids_by_token: dict.from_list([
         #(rotated_session.token, uuid_key(rotated_session.id)),
       ]),
@@ -331,11 +333,7 @@ pub fn refresh_session_rejects_expired_previous_token_test() {
     )
 
   let #(run_result, _) =
-    run_test_program(
-      refresh_session_domain.refresh_session(ctx),
-      ctx,
-      db,
-    )
+    run_test_program(refresh_session_domain.refresh_session(ctx), ctx, db)
 
   assert run_result == Error(error.SessionError(error.SessionNotFoundError))
 }
@@ -1953,8 +1951,7 @@ fn run_test_app_config_effect(
             ),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
-            language_version_cache_worker:
-              test_language_version_cache_worker_config(),
+            language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -1982,8 +1979,7 @@ fn run_test_app_config_effect(
             ),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
-            language_version_cache_worker:
-              test_language_version_cache_worker_config(),
+            language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -2004,8 +2000,7 @@ fn run_test_app_config_effect(
             auth: config,
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
-            language_version_cache_worker:
-              test_language_version_cache_worker_config(),
+            language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -2033,8 +2028,7 @@ fn run_test_app_config_effect(
             ),
             cleanup: config,
             log_worker: test_log_worker_config(),
-            language_version_cache_worker:
-              test_language_version_cache_worker_config(),
+            language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -2062,8 +2056,7 @@ fn run_test_app_config_effect(
             ),
             cleanup: test_cleanup_config(),
             log_worker: config,
-            language_version_cache_worker:
-              test_language_version_cache_worker_config(),
+            language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -2125,8 +2118,7 @@ fn run_test_app_config_effect(
             ),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
-            language_version_cache_worker:
-              test_language_version_cache_worker_config(),
+            language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.Some(config),
             rate_limit_policies: dict.new(),
           )),
@@ -2158,8 +2150,7 @@ fn test_log_worker_config() -> dynamic_config.LogWorkerConfig {
   )
 }
 
-fn test_language_version_cache_worker_config(
-) -> dynamic_config.LanguageVersionCacheWorkerConfig {
+fn test_language_version_cache_worker_config() -> dynamic_config.LanguageVersionCacheWorkerConfig {
   dynamic_config.LanguageVersionCacheWorkerConfig(
     refresh_interval_ms: 3_600_000,
     refresh_step_delay_ms: 1000,

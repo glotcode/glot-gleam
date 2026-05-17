@@ -6,8 +6,8 @@ import glot_core/admin/availability_config_dto
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
-import glot_core/admin/log_worker_config_dto
 import glot_core/admin/language_version_cache_worker_config_dto
+import glot_core/admin/log_worker_config_dto
 import glot_core/availability_mode
 import glot_frontend/admin_format
 import glot_frontend/admin_ui
@@ -198,7 +198,9 @@ pub type Msg {
   CleanupResetClicked
   CleanupSaveClicked
   CleanupSaveFinished(api.ApiResponse(cleanup_config_dto.CleanupConfigResponse))
-  LogWorkerLoaded(api.ApiResponse(log_worker_config_dto.LogWorkerConfigResponse))
+  LogWorkerLoaded(
+    api.ApiResponse(log_worker_config_dto.LogWorkerConfigResponse),
+  )
   LogWorkerFlushIntervalMsChanged(String)
   LogWorkerMaxBatchSizeChanged(String)
   LogWorkerMaxBufferSizeChanged(String)
@@ -954,10 +956,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.HttpFailure(_) -> #(
-          Model(
-            ..model,
-            status: LoadError("Could not load log worker config."),
-          ),
+          Model(..model, status: LoadError("Could not load log worker config.")),
           effect.none(),
         )
       }
@@ -1084,9 +1083,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     LanguageVersionCacheWorkerLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> {
-          let fields = language_version_cache_worker_fields_from_response(
-            response,
-          )
+          let fields =
+            language_version_cache_worker_fields_from_response(response)
           let next_model =
             Model(
               ..model,
@@ -1191,9 +1189,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     LanguageVersionCacheWorkerSaveClicked ->
-      case validate_language_version_cache_worker_fields(
-        model.language_version_cache_worker.draft,
-      ) {
+      case
+        validate_language_version_cache_worker_fields(
+          model.language_version_cache_worker.draft,
+        )
+      {
         Error(message) -> #(
           Model(
             ..model,
@@ -1222,9 +1222,8 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     LanguageVersionCacheWorkerSaveFinished(result) ->
       case result {
         api.ApiSuccess(response) -> {
-          let fields = language_version_cache_worker_fields_from_response(
-            response,
-          )
+          let fields =
+            language_version_cache_worker_fields_from_response(response)
           #(
             Model(
               ..model,
@@ -2310,24 +2309,18 @@ fn validate_log_worker_fields(
       "Flush interval must be a positive integer.",
     ),
   )
-  use max_batch_size <- result.try(
-    admin_format.parse_positive_int_with_error(
-      fields.max_batch_size,
-      "Max batch size must be a positive integer.",
-    ),
-  )
-  use max_buffer_size <- result.try(
-    admin_format.parse_positive_int_with_error(
-      fields.max_buffer_size,
-      "Max buffer size must be a positive integer.",
-    ),
-  )
+  use max_batch_size <- result.try(admin_format.parse_positive_int_with_error(
+    fields.max_batch_size,
+    "Max batch size must be a positive integer.",
+  ))
+  use max_buffer_size <- result.try(admin_format.parse_positive_int_with_error(
+    fields.max_buffer_size,
+    "Max buffer size must be a positive integer.",
+  ))
 
   case max_buffer_size < max_batch_size {
     True ->
-      Error(
-        "Max buffer size must be greater than or equal to max batch size.",
-      )
+      Error("Max buffer size must be greater than or equal to max batch size.")
     False ->
       Ok(log_worker_config_dto.UpsertLogWorkerConfigRequest(
         flush_interval_ms: flush_interval_ms,
@@ -2450,8 +2443,7 @@ fn empty_log_worker_fields() -> LogWorkerFields {
   )
 }
 
-fn empty_language_version_cache_worker_section(
-) -> LanguageVersionCacheWorkerSection {
+fn empty_language_version_cache_worker_section() -> LanguageVersionCacheWorkerSection {
   let fields = empty_language_version_cache_worker_fields()
   LanguageVersionCacheWorkerSection(
     saved: fields,
@@ -2460,8 +2452,7 @@ fn empty_language_version_cache_worker_section(
   )
 }
 
-fn empty_language_version_cache_worker_fields(
-) -> LanguageVersionCacheWorkerFields {
+fn empty_language_version_cache_worker_fields() -> LanguageVersionCacheWorkerFields {
   LanguageVersionCacheWorkerFields(
     refresh_interval_ms: "",
     refresh_step_delay_ms: "",

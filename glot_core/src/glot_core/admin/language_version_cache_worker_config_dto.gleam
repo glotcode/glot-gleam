@@ -24,10 +24,7 @@ pub fn response_decoder() -> decode.Decoder(
 ) {
   use refresh_interval_ms <- decode.field("refreshIntervalMs", decode.int)
   use refresh_step_delay_ms <- decode.field("refreshStepDelayMs", decode.int)
-  use refresh_step_jitter_ms <- decode.field(
-    "refreshStepJitterMs",
-    decode.int,
-  )
+  use refresh_step_jitter_ms <- decode.field("refreshStepJitterMs", decode.int)
   use default_timeout_ms <- decode.field("defaultTimeoutMs", decode.int)
   decode.success(LanguageVersionCacheWorkerConfigResponse(
     refresh_interval_ms: refresh_interval_ms,
@@ -42,10 +39,7 @@ pub fn decoder() -> decode.Decoder(
 ) {
   use refresh_interval_ms <- decode.field("refreshIntervalMs", decode.int)
   use refresh_step_delay_ms <- decode.field("refreshStepDelayMs", decode.int)
-  use refresh_step_jitter_ms <- decode.field(
-    "refreshStepJitterMs",
-    decode.int,
-  )
+  use refresh_step_jitter_ms <- decode.field("refreshStepJitterMs", decode.int)
   use default_timeout_ms <- decode.field("defaultTimeoutMs", decode.int)
   decode.success(UpsertLanguageVersionCacheWorkerConfigRequest(
     refresh_interval_ms: refresh_interval_ms,

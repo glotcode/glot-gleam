@@ -77,26 +77,28 @@ pub fn api_action_from_string_rejects_unknown_values_test() {
 }
 
 pub fn api_action_server_timing_policy_suppresses_account_related_actions_test() {
-  assert api_action.server_timing_policy(
-      api_action.public(public_action.GetSessionAction),
-    )
+  assert api_action.server_timing_policy(api_action.public(
+      public_action.GetSessionAction,
+    ))
     == server_timing_policy.SuppressServerTiming
-  assert api_action.server_timing_policy(
-      api_action.public(public_action.LoginAction),
-    )
+  assert api_action.server_timing_policy(api_action.public(
+      public_action.LoginAction,
+    ))
     == server_timing_policy.SuppressServerTiming
-  assert api_action.server_timing_policy(
-      api_action.public(public_action.UpdateAccountAction),
-    )
+  assert api_action.server_timing_policy(api_action.public(
+      public_action.UpdateAccountAction,
+    ))
     == server_timing_policy.SuppressServerTiming
 }
 
 pub fn api_action_server_timing_policy_exposes_non_account_actions_test() {
-  assert api_action.server_timing_policy(api_action.public(public_action.RunAction))
+  assert api_action.server_timing_policy(api_action.public(
+      public_action.RunAction,
+    ))
     == server_timing_policy.ExposeServerTiming
-  assert api_action.server_timing_policy(
-      api_action.admin(admin_action.GetAdminDebugConfigAction),
-    )
+  assert api_action.server_timing_policy(api_action.admin(
+      admin_action.GetAdminDebugConfigAction,
+    ))
     == server_timing_policy.ExposeServerTiming
 }
 

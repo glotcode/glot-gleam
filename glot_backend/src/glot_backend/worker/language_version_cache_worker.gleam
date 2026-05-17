@@ -48,9 +48,8 @@ pub type FetchHandlers {
       language_module.Language,
       Int,
     ) -> Result(run.RunResult, error.RunRequestError),
-    get_config: fn(
-      process.Subject(app_config_cache_worker.Message),
-    ) -> Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    get_config: fn(process.Subject(app_config_cache_worker.Message)) ->
+      Result(dynamic_config.DynamicConfig, error.DbQueryError),
     now_ns: fn() -> Int,
     supported_languages: fn() -> List(language_module.Language),
   )
@@ -172,7 +171,11 @@ fn handle_message(
     Tick -> {
       let state = refresh_config(state)
       let _ =
-        process.send_after(state.subject, state.config.refresh_interval_ms, Tick)
+        process.send_after(
+          state.subject,
+          state.config.refresh_interval_ms,
+          Tick,
+        )
       case should_schedule_refreshes(state) {
         True ->
           actor.continue(

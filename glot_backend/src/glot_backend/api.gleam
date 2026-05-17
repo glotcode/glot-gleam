@@ -633,9 +633,9 @@ fn api_result_to_response(
     LogWorkerConfigResponse(response) ->
       success_response(log_worker_config_dto.encode_response(response))
     LanguageVersionCacheWorkerConfigResponse(response) ->
-      success_response(
-        language_version_cache_worker_config_dto.encode_response(response),
-      )
+      success_response(language_version_cache_worker_config_dto.encode_response(
+        response,
+      ))
     AdminPeriodicJobsResponse(response) ->
       success_response(periodic_job_dto.encode_list_response(response))
     AdminPeriodicJobDetailResponse(response) ->

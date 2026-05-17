@@ -73,15 +73,17 @@ pub fn refresh_session(
   )
 
   use _ <- program.and_then(
-    basic_effect.info(log.from_list([
-      log.uuid("session_id", session.identity.id),
-      log.uuid("user_id", session.user.identity.id),
-      log.bool("token_rotated", rotation_outcome.rotated),
-      log.int(
-        "next_heartbeat_in_seconds",
-        rotation_outcome.next_heartbeat_in_seconds,
-      ),
-    ])),
+    basic_effect.info(
+      log.from_list([
+        log.uuid("session_id", session.identity.id),
+        log.uuid("user_id", session.user.identity.id),
+        log.bool("token_rotated", rotation_outcome.rotated),
+        log.int(
+          "next_heartbeat_in_seconds",
+          rotation_outcome.next_heartbeat_in_seconds,
+        ),
+      ]),
+    ),
   )
 
   program.succeed(RefreshSessionResult(
@@ -115,11 +117,12 @@ fn refresh_session_tx(
     get_session_by_client_token_for_update(token, ctx.timestamp),
   )
 
-  let token_rotated = should_rotate_session_token(
-    session,
-    ctx.timestamp,
-    auth_config.session_refresh_interval_seconds,
-  )
+  let token_rotated =
+    should_rotate_session_token(
+      session,
+      ctx.timestamp,
+      auth_config.session_refresh_interval_seconds,
+    )
 
   let next_session = case token_rotated {
     True ->

@@ -239,7 +239,7 @@ fn refresh_config(state: State) -> State {
     Error(err) -> {
       wisp.log_error(
         "Failed to refresh log worker config: "
-          <> error.to_string(error.QueryError(err)),
+        <> error.to_string(error.QueryError(err)),
       )
       state
     }

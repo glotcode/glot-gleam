@@ -15,7 +15,9 @@ import glot_core/admin_action
 import glot_core/api_action
 
 const max_flush_interval_ms = 60_000
+
 const max_batch_size_limit = 10_000
+
 const max_buffer_size_limit = 100_000
 
 pub fn upsert_log_worker_config(
