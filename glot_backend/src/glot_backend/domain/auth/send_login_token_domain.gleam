@@ -45,7 +45,7 @@ pub fn send_login_token(
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 
-  use token <- program.and_then(basic_effect.new_token(10, crypto_token.Numeric))
+  use token <- program.and_then(basic_effect.new_token(6, crypto_token.Numeric))
   use login_token_id <- program.and_then(basic_effect.uuid_v7())
   use job_id <- program.and_then(basic_effect.uuid_v7())
 
