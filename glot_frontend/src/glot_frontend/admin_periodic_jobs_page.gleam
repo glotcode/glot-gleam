@@ -51,7 +51,7 @@ pub fn update(_model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(periodic_jobs: loadable.LoadError(error.message)),
+          Model(periodic_jobs: loadable.LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(

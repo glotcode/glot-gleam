@@ -301,7 +301,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -365,7 +365,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             debug: DebugSection(
               ..model.debug,
-              state: mutation.SaveError(error.message),
+              state: mutation.SaveError(api.error_message(error)),
             ),
           ),
           effect.none(),
@@ -403,7 +403,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -514,7 +514,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             availability: AvailabilitySection(
               ..model.availability,
-              state: mutation.SaveError(error.message),
+              state: mutation.SaveError(api.error_message(error)),
             ),
           ),
           effect.none(),
@@ -552,7 +552,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -693,7 +693,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             auth: AuthSection(
               ..model.auth,
-              state: mutation.SaveError(error.message),
+              state: mutation.SaveError(api.error_message(error)),
             ),
           ),
           effect.none(),
@@ -731,7 +731,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -914,7 +914,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             cleanup: CleanupSection(
               ..model.cleanup,
-              state: mutation.SaveError(error.message),
+              state: mutation.SaveError(api.error_message(error)),
             ),
           ),
           effect.none(),
@@ -952,7 +952,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -1063,7 +1063,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             log_worker: LogWorkerSection(
               ..model.log_worker,
-              state: mutation.SaveError(error.message),
+              state: mutation.SaveError(api.error_message(error)),
             ),
           ),
           effect.none(),
@@ -1102,7 +1102,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -1241,7 +1241,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             language_version_cache_worker: LanguageVersionCacheWorkerSection(
               ..model.language_version_cache_worker,
-              state: mutation.SaveError(error.message),
+              state: mutation.SaveError(api.error_message(error)),
             ),
           ),
           effect.none(),
@@ -1296,7 +1296,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
               )
             }
             _ -> #(
-              Model(..model, status: LoadError(error.message)),
+              Model(..model, status: LoadError(api.error_message(error))),
               effect.none(),
             )
           }
@@ -1387,7 +1387,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             ..model,
             docker_run: DockerRunSection(
               ..model.docker_run,
-              state: mutation.SaveError(error.message),
+              state: mutation.SaveError(api.error_message(error)),
             ),
           ),
           effect.none(),

@@ -86,7 +86,7 @@ pub fn page_from_response(
 ) -> loadable.Loadable(pagination_model.CursorPage(a)) {
   case result {
     api.ApiSuccess(response) -> loadable.Loaded(to_page(response))
-    api.ApiFailure(error) -> loadable.LoadError(error.message)
+    api.ApiFailure(error) -> loadable.LoadError(api.error_message(error))
     api.HttpFailure(_) -> loadable.LoadError(http_error)
   }
 }

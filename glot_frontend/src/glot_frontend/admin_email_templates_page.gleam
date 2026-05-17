@@ -49,7 +49,7 @@ pub fn update(_model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(templates: loadable.LoadError(error.message)),
+          Model(templates: loadable.LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(

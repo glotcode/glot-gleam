@@ -86,7 +86,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(policies: loadable.LoadError(error.message)),
+          Model(policies: loadable.LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -170,7 +170,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           Model(
             policies: loadable.Loaded(
               update_editor(loaded_policies(model), job_type, fn(editor) {
-                PolicyEditor(..editor, state: mutation.SaveError(error.message))
+                PolicyEditor(
+                  ..editor,
+                  state: mutation.SaveError(api.error_message(error)),
+                )
               }),
             ),
           ),

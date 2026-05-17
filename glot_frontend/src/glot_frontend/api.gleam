@@ -24,6 +24,7 @@ import glot_core/admin/run_log_dto
 import glot_core/admin/snippet_dto as admin_snippet_dto
 import glot_core/admin/user_dto
 import glot_core/admin_action
+import glot_core/api_error_dto
 import glot_core/auth/account_dto
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
@@ -37,6 +38,7 @@ import glot_core/run
 import glot_core/snippet/snippet_dto
 import lustre/effect
 import rsvp
+import youid/uuid
 
 pub type PublicApiRequest(a) {
   PublicApiRequest(action: public_action.PublicAction, data: a)
@@ -47,7 +49,7 @@ pub type AdminApiRequest(a) {
 }
 
 pub type ApiError {
-  ApiError(code: String, message: String)
+  ApiError(code: String, message: String, request_id: uuid.Uuid)
 }
 
 pub type ApiResponse(a) {
@@ -57,13 +59,15 @@ pub type ApiResponse(a) {
 }
 
 pub fn error_message(error: ApiError) -> String {
-  case error.code {
+  let message = case error.code {
     "read_only_mode_enabled" ->
       error.message <> " Changes are temporarily disabled."
     "maintenance_mode_enabled" ->
       error.message <> " Most public actions are temporarily unavailable."
     _ -> error.message
   }
+
+  message <> " Request ID: " <> uuid.to_string(error.request_id)
 }
 
 pub fn send_login_token(
@@ -971,9 +975,14 @@ fn api_response_decoder(
 }
 
 fn api_error_decoder() -> decode.Decoder(ApiError) {
-  use code <- decode.field("code", decode.string)
-  use message <- decode.field("message", decode.string)
-  decode.success(ApiError(code: code, message: message))
+  api_error_dto.decoder()
+  |> decode.map(fn(error) {
+    ApiError(
+      code: error.code,
+      message: error.message,
+      request_id: error.request_id,
+    )
+  })
 }
 
 fn decode_api_response(
@@ -1004,8 +1013,7 @@ fn ensure_json_response(
 }
 
 fn error_response_decoder() -> decode.Decoder(ApiResponse(a)) {
-  use error <- decode.field("error", api_error_decoder())
-  decode.success(ApiFailure(error))
+  api_error_decoder() |> decode.map(ApiFailure)
 }
 
 fn nil_decoder() -> decode.Decoder(Nil) {

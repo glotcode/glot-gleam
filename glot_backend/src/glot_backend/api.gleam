@@ -99,6 +99,7 @@ import glot_core/admin/snippet_dto as admin_snippet_dto
 import glot_core/admin/user_dto
 import glot_core/admin_action
 import glot_core/api_action
+import glot_core/api_error_dto
 import glot_core/auth/account_dto
 import glot_core/auth/account_model
 import glot_core/auth/refresh_session_dto
@@ -109,6 +110,7 @@ import glot_core/server_timing_policy
 import glot_core/snippet/snippet_dto
 import pog
 import wisp
+import youid/uuid
 
 pub fn handle_request(
   db: pog.Connection,
@@ -120,7 +122,7 @@ pub fn handle_request(
   log_worker_subject: process.Subject(log_worker.Message),
   req: wisp.Request,
 ) -> wisp.Response {
-  use api_request <- require_api_request(req)
+  use api_request <- require_api_request(ctx, req)
   let effect_runtime =
     runtime.new(db, app_config_cache_subject, language_version_cache_subject)
 
@@ -531,6 +533,7 @@ pub fn api_request_decoder(bytes: Int) -> decode.Decoder(ApiRequest) {
 }
 
 fn require_api_request(
+  ctx: context.Context,
   request: wisp.Request,
   next: fn(ApiRequest) -> wisp.Response,
 ) -> wisp.Response {
@@ -544,6 +547,7 @@ fn require_api_request(
             Ok(api_request) -> next(api_request)
             Error(decode_errors) ->
               error_response(
+                ctx,
                 400,
                 "invalid_api_request",
                 "Failed to decode as api request: "
@@ -551,10 +555,15 @@ fn require_api_request(
               )
           }
         Error(_) ->
-          error_response(400, "invalid_utf8", "Request body is not valid UTF-8")
+          error_response(
+            ctx,
+            400,
+            "invalid_utf8",
+            "Request body is not valid UTF-8",
+          )
       }
     Error(_) ->
-      error_response(400, "body_read_error", "Failed to read request body")
+      error_response(ctx, 400, "body_read_error", "Failed to read request body")
   }
 }
 
@@ -733,21 +742,23 @@ fn set_session_cookie(
   )
 }
 
-fn error_response(status: Int, code: String, message: String) -> wisp.Response {
+fn error_response(
+  ctx: context.Context,
+  status: Int,
+  code: String,
+  message: String,
+) -> wisp.Response {
   wisp.json_response(
     json.to_string(
-      json.object([
-        #(
-          "error",
-          json.object([
-            #("code", json.string(code)),
-            #("message", json.string(message)),
-          ]),
-        ),
-      ]),
+      api_error_dto.encode(api_error_dto.ApiError(
+        code: code,
+        message: message,
+        request_id: ctx.request_id,
+      )),
     ),
     status,
   )
+  |> wisp.set_header("X-Request-Id", ctx.request_id |> api_request_id())
 }
 
 fn insert_log_entry(
@@ -853,108 +864,112 @@ fn result_to_response(
         server_timing_policy.SuppressServerTiming -> response
       }
     }
-    Error(err) -> error_to_response(err)
+    Error(err) -> error_to_response(ctx, err)
   }
 }
 
-fn error_to_response(error: error.Error) -> wisp.Response {
+fn error_to_response(
+  ctx: context.Context,
+  error: error.Error,
+) -> wisp.Response {
   let #(status, code, message) = api_error_details(error)
 
   case error {
-    error.JsonParseError(_error) -> error_response(status, code, message)
-    error.DecodeError(_errors) -> error_response(status, code, message)
-    error.EmailInvalidError(_message) -> error_response(status, code, message)
+    error.JsonParseError(_error) -> error_response(ctx, status, code, message)
+    error.DecodeError(_errors) -> error_response(ctx, status, code, message)
+    error.EmailInvalidError(_message) ->
+      error_response(ctx, status, code, message)
     error.ValidationError(message) -> {
       wisp.log_error("Validation error: " <> message)
-      error_response(status, code, message)
+      error_response(ctx, status, code, message)
     }
     error.NotFoundError(code, message) -> {
       wisp.log_error("Not found error: " <> code <> ":" <> message)
-      error_response(status, code, message)
+      error_response(ctx, status, code, message)
     }
     error.ConflictError(code, message) -> {
       wisp.log_error("Conflict error: " <> code <> ":" <> message)
-      error_response(status, code, message)
+      error_response(ctx, status, code, message)
     }
     error.TooManyRequestsError(_count, _config) ->
-      error_response(status, code, message)
+      error_response(ctx, status, code, message)
     error.QueryError(error.DbQueryError(message: message)) -> {
       wisp.log_error("Query error: " <> message)
-      error_response(status, code, message)
+      error_response(ctx, status, code, message)
     }
     error.CommandError(error.DbCommandError(message: message)) -> {
       wisp.log_error("Command error: " <> message)
-      error_response(status, code, message)
+      error_response(ctx, status, code, message)
     }
     error.TransactionError(error.DbTransactionError(message: message)) -> {
       wisp.log_error("Transaction error: " <> message)
-      error_response(status, code, message)
+      error_response(ctx, status, code, message)
     }
     error.LoginError(login_error) ->
       case login_error {
         error.InvalidTokenError -> {
           wisp.log_error("Login error: invalid token")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
         error.TokenUsedError -> {
           wisp.log_error("Login error: token used")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
         error.TokenExpiredError -> {
           wisp.log_error("Login error: token expired")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
       }
     error.SendEmailError(send_email_error) ->
       case send_email_error {
         error.PublicSendEmailError(message: message) -> {
           wisp.log_error("Send email error (public): " <> message)
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
         error.InternalSendEmailError(message: message) -> {
           wisp.log_error("Send email error (private): " <> message)
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
       }
     error.SessionError(session_error) ->
       case session_error {
         error.MissingSessionTokenError -> {
           wisp.log_error("Session error: missing session token")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
         error.SessionNotFoundError -> {
           wisp.log_error("Session error: session not found")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
         error.SessionExpiredError -> {
           wisp.log_error("Session error: session expired")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
       }
     error.ClientInfoError(client_info_error) ->
       case client_info_error {
         error.MissingUserIdAndIpError -> {
           wisp.log_error("Client info error: missing user_id and ip")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
       }
     error.AuthorizationError(authorization_error) ->
       case authorization_error {
         error.AuthenticationRequiredError -> {
           wisp.log_error("Authorization error: authentication required")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
         error.NotOwnerError -> {
           wisp.log_error("Authorization error: not owner")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
         error.AdminRequiredError -> {
           wisp.log_error("Authorization error: admin required")
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
       }
     error.AvailabilityError(availability_error) -> {
-      let response = error_response(status, code, message)
+      let response = error_response(ctx, status, code, message)
       let response = case availability_error.retry_after_seconds {
         option.Some(seconds) ->
           wisp.set_header(response, "Retry-After", int.to_string(seconds))
@@ -975,21 +990,25 @@ fn error_to_response(error: error.Error) -> wisp.Response {
             <> " not allowed for "
             <> api_action.to_string(action),
           )
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
       }
     error.RunError(run_request_error) ->
       case run_request_error {
         error.PublicRunRequestError(message: message) -> {
           wisp.log_error("Run request error (public): " <> message)
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
         error.InternalRunRequestError(message: message) -> {
           wisp.log_error("Run request error (private): " <> message)
-          error_response(status, code, message)
+          error_response(ctx, status, code, message)
         }
       }
   }
+}
+
+fn api_request_id(request_id: uuid.Uuid) -> String {
+  uuid.to_string(request_id)
 }
 
 pub fn error_status(error: error.Error) -> Int {

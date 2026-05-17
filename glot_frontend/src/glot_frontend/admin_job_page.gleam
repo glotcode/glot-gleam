@@ -150,7 +150,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, job_status: LoadError(error.message)),
+          Model(..model, job_status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -166,7 +166,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, logs_status: LoadError(error.message)),
+          Model(..model, logs_status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -266,7 +266,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
                 create_job_editor: option.Some(
                   CreateJobEditor(
                     ..editor,
-                    state: CreateJobError(error.message),
+                    state: CreateJobError(api.error_message(error)),
                   ),
                 ),
               ),

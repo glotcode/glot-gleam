@@ -153,7 +153,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(error.message)),
+          Model(..model, status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -261,7 +261,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
         api.ApiFailure(error) -> #(
           update_editor_model(model, fn(editor) {
-            PeriodicJobEditor(..editor, state: SaveError(error.message))
+            PeriodicJobEditor(
+              ..editor,
+              state: SaveError(api.error_message(error)),
+            )
           }),
           effect.none(),
         )
@@ -287,7 +290,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
         api.ApiFailure(error) -> #(
-          Model(..model, jobs_status: LoadError(error.message)),
+          Model(..model, jobs_status: LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(

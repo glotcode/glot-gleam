@@ -128,7 +128,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            user: loadable.LoadError(error.message),
+            user: loadable.LoadError(api.error_message(error)),
             pending_delete: option.None,
             delete_state: DeleteIdle,
           ),
@@ -293,7 +293,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
         api.ApiFailure(error) -> #(
           update_editor(model, fn(editor) {
-            UserEditor(..editor, state: mutation.SaveError(error.message))
+            UserEditor(
+              ..editor,
+              state: mutation.SaveError(api.error_message(error)),
+            )
           }),
           effect.none(),
         )
@@ -317,7 +320,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            user: loadable.LoadError(error.message),
+            user: loadable.LoadError(api.error_message(error)),
             pending_delete: option.None,
             delete_state: DeleteIdle,
           ),

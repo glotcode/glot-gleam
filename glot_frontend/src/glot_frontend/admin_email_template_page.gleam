@@ -86,7 +86,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, template: loadable.LoadError(error.message)),
+          Model(..model, template: loadable.LoadError(api.error_message(error))),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
@@ -165,7 +165,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           )
         }
         api.ApiFailure(error) -> #(
-          Model(..model, save_state: mutation.SaveError(error.message)),
+          Model(
+            ..model,
+            save_state: mutation.SaveError(api.error_message(error)),
+          ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(

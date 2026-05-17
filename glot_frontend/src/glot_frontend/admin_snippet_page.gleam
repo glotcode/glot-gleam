@@ -88,7 +88,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            snippet: loadable.LoadError(error.message),
+            snippet: loadable.LoadError(api.error_message(error)),
             pending_delete: option.None,
             delete_state: DeleteIdle,
           ),
@@ -145,7 +145,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            snippet: loadable.LoadError(error.message),
+            snippet: loadable.LoadError(api.error_message(error)),
             pending_delete: option.None,
             delete_state: DeleteIdle,
           ),
