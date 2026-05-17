@@ -119,6 +119,14 @@ pub fn validate_fields(
 ) -> Result(Nil, validation_error.ValidationError) {
   use _ <- result.try(validate_non_empty("title", title))
   use _ <- result.try(validate_max_length("title", title, title_max_length))
+  validate_execution_fields(stdin, run_instructions, files)
+}
+
+pub fn validate_execution_fields(
+  stdin: String,
+  run_instructions: option.Option(language.RunInstructions),
+  files: List(File),
+) -> Result(Nil, validation_error.ValidationError) {
   use _ <- result.try(validate_max_length("stdin", stdin, stdin_max_length))
   use _ <- result.try(validate_run_instructions(run_instructions))
   validate_files(files)

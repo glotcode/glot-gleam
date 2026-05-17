@@ -9,6 +9,7 @@ import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/public_action
+import glot_core/run
 import glot_core/server_timing_policy
 import glot_core/snippet/snippet_model
 import glot_core/validation_error
@@ -201,6 +202,68 @@ pub fn validate_snippet_fields_rejects_too_long_file_content_test() {
       snippet_model.File(name: "main.py", content: repeat_string("a", 100_001)),
     ])
     == Error(validation_error.FieldTooLong("files[0].content", 100_000))
+}
+
+pub fn validate_run_request_accepts_valid_payload_test() {
+  assert run.validate_request(run.RunRequest(
+      image: language.container_image(language.Python),
+      payload: run.RunRequestPayload(
+        run_instructions: language.RunInstructions(
+          build_commands: [],
+          run_command: "python main.py",
+        ),
+        files: [snippet_model.File(name: "main.py", content: "print(1)")],
+        stdin: option.Some("input"),
+      ),
+    ))
+    == Ok(Nil)
+}
+
+pub fn validate_run_request_rejects_unknown_image_test() {
+  assert run.validate_request(run.RunRequest(
+      image: "ghcr.io/example/unknown:latest",
+      payload: run.RunRequestPayload(
+        run_instructions: language.RunInstructions(
+          build_commands: [],
+          run_command: "python main.py",
+        ),
+        files: [snippet_model.File(name: "main.py", content: "print(1)")],
+        stdin: option.None,
+      ),
+    ))
+    == Error(
+      validation_error.UnknownRunLanguage("ghcr.io/example/unknown:latest"),
+    )
+}
+
+pub fn validate_run_request_rejects_empty_file_name_test() {
+  assert run.validate_request(run.RunRequest(
+      image: language.container_image(language.Python),
+      payload: run.RunRequestPayload(
+        run_instructions: language.RunInstructions(
+          build_commands: [],
+          run_command: "python main.py",
+        ),
+        files: [snippet_model.File(name: " ", content: "print(1)")],
+        stdin: option.None,
+      ),
+    ))
+    == Error(validation_error.EmptyField("files[0].name"))
+}
+
+pub fn validate_run_request_rejects_too_long_stdin_test() {
+  assert run.validate_request(run.RunRequest(
+      image: language.container_image(language.Python),
+      payload: run.RunRequestPayload(
+        run_instructions: language.RunInstructions(
+          build_commands: [],
+          run_command: "python main.py",
+        ),
+        files: [snippet_model.File(name: "main.py", content: "print(1)")],
+        stdin: option.Some(repeat_string("a", 20_001)),
+      ),
+    ))
+    == Error(validation_error.FieldTooLong("stdin", 20_000))
 }
 
 pub fn pagination_validate_accepts_valid_limit_test() {

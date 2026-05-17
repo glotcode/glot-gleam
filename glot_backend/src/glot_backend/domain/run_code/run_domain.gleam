@@ -1,5 +1,6 @@
 import gleam/dynamic
 import gleam/option
+import gleam/result
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
@@ -17,7 +18,6 @@ import glot_core/language
 import glot_core/public_action
 import glot_core/run
 import glot_core/run_log_model
-import glot_core/validation_error
 
 pub fn run(
   ctx: context.Context,
@@ -27,10 +27,14 @@ pub fn run(
   let maybe_session_id = option.map(maybe_session, fn(s) { s.identity.id })
   let maybe_user_id = option.map(maybe_session, fn(s) { s.user.identity.id })
   let maybe_user = option.map(maybe_session, fn(session) { session.user })
-  use language <- program.and_then(program.from_option(
-    language.from_container_image(request.image),
-    error.validation(validation_error.UnknownRunLanguage(request.image)),
-  ))
+
+  use _ <- program.and_then(
+    run.validate_request(request)
+    |> result.map_error(error.validation)
+    |> program.from_result,
+  )
+
+  let assert option.Some(language) = language.from_container_image(request.image)
 
   use _ <- program.and_then(
     basic_effect.info(

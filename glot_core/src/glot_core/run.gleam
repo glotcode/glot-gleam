@@ -1,8 +1,10 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option.{type Option}
+import gleam/result
 import glot_core/language
 import glot_core/snippet/snippet_model
+import glot_core/validation_error
 
 pub type RunRequest {
   RunRequest(image: String, payload: RunRequestPayload)
@@ -90,6 +92,33 @@ pub fn run_request_payload_decoder() -> decode.Decoder(RunRequestPayload) {
     files: files,
     stdin: stdin,
   ))
+}
+
+pub fn validate_request(
+  request: RunRequest,
+) -> Result(Nil, validation_error.ValidationError) {
+  use _ <- result.try(validate_image(request.image))
+  validate_payload(request.payload)
+}
+
+fn validate_image(image: String) -> Result(Nil, validation_error.ValidationError) {
+  case language.from_container_image(image) {
+    option.Some(_) -> Ok(Nil)
+    option.None -> Error(validation_error.UnknownRunLanguage(image))
+  }
+}
+
+fn validate_payload(
+  payload: RunRequestPayload,
+) -> Result(Nil, validation_error.ValidationError) {
+  snippet_model.validate_execution_fields(
+    case payload.stdin {
+      option.Some(stdin) -> stdin
+      option.None -> ""
+    },
+    option.Some(payload.run_instructions),
+    payload.files,
+  )
 }
 
 pub fn successful_run_decoder() -> decode.Decoder(SuccessfulRun) {
