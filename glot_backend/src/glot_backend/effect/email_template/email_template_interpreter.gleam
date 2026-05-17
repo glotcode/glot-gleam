@@ -31,7 +31,7 @@ pub fn run(
             ),
           )
         Error(query_error) -> #(
-          Error(error.QueryError(query_error)),
+          Error(error.database_query_error(query_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.EmailTemplateEffectName(
@@ -61,7 +61,7 @@ pub fn run(
             ),
           )
         Error(query_error) -> #(
-          Error(error.QueryError(query_error)),
+          Error(error.database_query_error(query_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.EmailTemplateEffectName(
@@ -91,7 +91,7 @@ pub fn run(
             ),
           )
         Error(command_error) -> #(
-          Error(error.CommandError(command_error)),
+          Error(error.database_command_error(command_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.EmailTemplateEffectName(

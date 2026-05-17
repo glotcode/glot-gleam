@@ -4,14 +4,15 @@ import gleam/json
 import gleam/result
 import gleam/string
 import glot_backend/dynamic_config
-import glot_backend/effect/error
+import glot_backend/effect/error/run_request_error
 import glot_backend/http_client
 import glot_core/run
+import wisp
 
 pub type DockerRunHandlers {
   DockerRunHandlers(
     run_code: fn(dynamic_config.DockerRunConfig, run.RunRequest, Int) ->
-      Result(run.RunResult, error.RunRequestError),
+      Result(run.RunResult, run_request_error.RunRequestError),
   )
 }
 
@@ -23,7 +24,7 @@ pub fn run_code(
   cfg: dynamic_config.DockerRunConfig,
   request: run.RunRequest,
   timeout_ms: Int,
-) -> Result(run.RunResult, error.RunRequestError) {
+) -> Result(run.RunResult, run_request_error.RunRequestError) {
   http_client.post_json(
     url: cfg.base_url <> "/run",
     body: run.encode_run_request(request),
@@ -34,14 +35,24 @@ pub fn run_code(
   |> result.map_error(map_run_http_error)
 }
 
-fn map_run_http_error(err: http_client.HttpError) -> error.RunRequestError {
+fn map_run_http_error(
+  err: http_client.HttpError,
+) -> run_request_error.RunRequestError {
   case err {
     http_client.BadStatus(status: _, body: body) ->
       case json.parse(body, run_error_message_decoder()) {
-        Ok(message) -> error.PublicRunRequestError(message)
-        Error(_) -> error.InternalRunRequestError(string.inspect(err))
+        Ok(message) -> run_request_error.ClientRunRequestError(message)
+        Error(_) -> {
+          wisp.log_error(
+            "Failed to decode docker run error: " <> string.inspect(err),
+          )
+          run_request_error.ServerRunRequestError
+        }
       }
-    _ -> error.InternalRunRequestError(string.inspect(err))
+    _ -> {
+      wisp.log_error("Docker run request failed: " <> string.inspect(err))
+      run_request_error.ServerRunRequestError
+    }
   }
 }
 

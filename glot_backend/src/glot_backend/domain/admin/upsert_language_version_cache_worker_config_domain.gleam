@@ -1,5 +1,4 @@
 import gleam/dynamic
-import gleam/list
 import gleam/option
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
@@ -13,6 +12,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/language_version_cache_worker_config_dto
 import glot_core/admin_action
 import glot_core/api_action
+import glot_core/validation_error
 
 const max_refresh_interval_ms = 86_400_000
 
@@ -74,44 +74,79 @@ pub fn request_from_dynamic(
 fn validate_request(
   request: language_version_cache_worker_config_dto.UpsertLanguageVersionCacheWorkerConfigRequest,
 ) -> program_types.Program(Nil) {
-  use _ <- program.and_then(require(
-    !list.any(
-      [
-        request.refresh_interval_ms,
-        request.refresh_step_delay_ms,
-        request.default_timeout_ms,
-      ],
-      fn(value) { value <= 0 },
-    ),
-    "language version cache worker config values must be greater than 0",
+  use _ <- program.and_then(require_positive(
+    request.refresh_interval_ms,
+    "refresh_interval_ms",
   ))
-  use _ <- program.and_then(require(
-    request.refresh_step_jitter_ms >= 0,
-    "refresh step jitter must be greater than or equal to 0",
+  use _ <- program.and_then(require_positive(
+    request.refresh_step_delay_ms,
+    "refresh_step_delay_ms",
   ))
-  use _ <- program.and_then(require(
-    request.refresh_interval_ms <= max_refresh_interval_ms,
-    "refresh interval must be less than or equal to 86400000 ms",
+  use _ <- program.and_then(require_positive(
+    request.default_timeout_ms,
+    "default_timeout_ms",
   ))
-  use _ <- program.and_then(require(
-    request.refresh_step_delay_ms <= max_refresh_step_delay_ms,
-    "refresh step delay must be less than or equal to 60000 ms",
+  use _ <- program.and_then(require_non_negative(
+    request.refresh_step_jitter_ms,
+    "refresh_step_jitter_ms",
   ))
-  use _ <- program.and_then(require(
-    request.refresh_step_jitter_ms <= max_refresh_step_jitter_ms,
-    "refresh step jitter must be less than or equal to 60000 ms",
+  use _ <- program.and_then(require_max(
+    request.refresh_interval_ms,
+    "refresh_interval_ms",
+    max_refresh_interval_ms,
   ))
-  use _ <- program.and_then(require(
-    request.default_timeout_ms <= max_default_timeout_ms,
-    "default timeout must be less than or equal to 600000 ms",
+  use _ <- program.and_then(require_max(
+    request.refresh_step_delay_ms,
+    "refresh_step_delay_ms",
+    max_refresh_step_delay_ms,
+  ))
+  use _ <- program.and_then(require_max(
+    request.refresh_step_jitter_ms,
+    "refresh_step_jitter_ms",
+    max_refresh_step_jitter_ms,
+  ))
+  use _ <- program.and_then(require_max(
+    request.default_timeout_ms,
+    "default_timeout_ms",
+    max_default_timeout_ms,
   ))
 
   program.succeed(Nil)
 }
 
-fn require(condition: Bool, message: String) -> program_types.Program(Nil) {
-  case condition {
+fn require_positive(value: Int, field: String) -> program_types.Program(Nil) {
+  case value > 0 {
     True -> program.succeed(Nil)
-    False -> program.fail(error.ValidationError(message))
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThan(field, 0)),
+      )
+  }
+}
+
+fn require_non_negative(
+  value: Int,
+  field: String,
+) -> program_types.Program(Nil) {
+  case value >= 0 {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThanOrEqual(field, 0)),
+      )
+  }
+}
+
+fn require_max(
+  value: Int,
+  field: String,
+  max: Int,
+) -> program_types.Program(Nil) {
+  case value <= max {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeLessThanOrEqual(field, max)),
+      )
   }
 }

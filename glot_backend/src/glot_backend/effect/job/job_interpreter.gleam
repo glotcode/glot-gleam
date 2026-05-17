@@ -28,7 +28,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(job_algebra.ListJobsEffectName),
@@ -53,7 +53,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(job_algebra.SummarizeJobsEffectName),
@@ -78,7 +78,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(job_algebra.GetNextJobEffectName),
@@ -105,7 +105,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(
@@ -132,7 +132,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(job_algebra.GetJobByIdEffectName),

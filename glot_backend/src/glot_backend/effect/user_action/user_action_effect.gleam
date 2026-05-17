@@ -1,5 +1,6 @@
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_algebra
 import glot_core/rate_limit
@@ -28,11 +29,11 @@ pub fn delete_before(before: Timestamp) -> program_types.Program(Nil) {
 }
 
 fn command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.Program(Nil) {
   case result {
     Ok(_) -> program_types.Pure(Nil)
-    Error(err) -> program_types.Fail(error.CommandError(err))
+    Error(err) -> program_types.Fail(error.database_command_error(err))
   }
 }
 
@@ -55,11 +56,11 @@ pub fn delete_before_tx(
 }
 
 fn tx_command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.TransactionProgram(Nil) {
   case result {
     Ok(_) -> program_types.TxPure(Nil)
-    Error(err) -> program_types.TxFail(error.CommandError(err))
+    Error(err) -> program_types.TxFail(error.database_command_error(err))
   }
 }
 
@@ -75,7 +76,7 @@ fn count_user_actions_effect(
 
 fn create_user_action_effect(
   user_action: UserAction,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.UserActionEffect(user_action_algebra.CreateUserAction(
     user_action: user_action,
@@ -85,7 +86,7 @@ fn create_user_action_effect(
 
 fn delete_before_effect(
   before: Timestamp,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.UserActionEffect(user_action_algebra.DeleteBefore(
     before: before,

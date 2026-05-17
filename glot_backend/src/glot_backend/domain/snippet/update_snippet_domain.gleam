@@ -6,6 +6,7 @@ import glot_backend/domain/shared/authorization_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
@@ -52,16 +53,13 @@ pub fn update_snippet(
       request.data.run_instructions,
       request.data.files,
     )
-    |> result.map_error(error.ValidationError)
+    |> result.map_error(error.validation)
     |> program.from_result,
   )
 
   use existing_snippet <- program.and_then(
     snippet_effect.get_by_slug(request.slug)
-    |> program.require(error.NotFoundError(
-      "snippet_not_found",
-      "Snippet not found",
-    )),
+    |> program.require(error.resource(resource_error.SnippetNotFound)),
   )
 
   use _ <- program.and_then(authorization_domain.require_owner(
@@ -71,7 +69,7 @@ pub fn update_snippet(
 
   use _ <- program.and_then(
     snippet_spam.ensure_clean(request.data)
-    |> result.map_error(error.ValidationError)
+    |> result.map_error(error.validation)
     |> program.from_result,
   )
 

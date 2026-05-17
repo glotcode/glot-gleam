@@ -5,6 +5,7 @@ import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
@@ -24,7 +25,7 @@ pub fn get_user(
   ))
   use user <- program.and_then(
     auth_effect.get_user_by_id(request.id)
-    |> program.require(error.NotFoundError("user_not_found", "User not found")),
+    |> program.require(error.resource(resource_error.UserNotFound)),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

@@ -1,6 +1,7 @@
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/program_types
 import glot_core/job/job_model
@@ -95,11 +96,11 @@ pub fn delete_before(
 }
 
 fn command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.Program(Nil) {
   case result {
     Ok(_) -> program_types.Pure(Nil)
-    Error(err) -> program_types.Fail(error.CommandError(err))
+    Error(err) -> program_types.Fail(error.database_command_error(err))
   }
 }
 
@@ -155,11 +156,11 @@ pub fn delete_before_tx(
 }
 
 fn tx_command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.TransactionProgram(Nil) {
   case result {
     Ok(_) -> program_types.TxPure(Nil)
-    Error(err) -> program_types.TxFail(error.CommandError(err))
+    Error(err) -> program_types.TxFail(error.database_command_error(err))
   }
 }
 
@@ -213,7 +214,7 @@ fn summarize_jobs_effect(
 
 fn create_job_effect(
   job: job_model.Job,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.JobEffect(job_algebra.CreateJob(job, next))
 }
@@ -227,14 +228,14 @@ fn get_job_by_id_effect(
 
 fn update_job_effect(
   job: job_model.Job,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.JobEffect(job_algebra.UpdateJob(job, next))
 }
 
 fn delete_job_effect(
   id: Uuid,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.JobEffect(job_algebra.DeleteJob(id, next))
 }
@@ -242,7 +243,7 @@ fn delete_job_effect(
 fn delete_before_effect(
   before: Timestamp,
   statuses: List(job_model.Status),
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.JobEffect(job_algebra.DeleteBefore(
     before: before,

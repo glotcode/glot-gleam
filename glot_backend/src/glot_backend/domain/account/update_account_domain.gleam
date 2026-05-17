@@ -47,7 +47,7 @@ pub fn update_account(
 
   use _ <- program.and_then(
     user_model.validate_username(username)
-    |> result.map_error(error.ValidationError)
+    |> result.map_error(error.validation)
     |> program.from_result,
   )
 

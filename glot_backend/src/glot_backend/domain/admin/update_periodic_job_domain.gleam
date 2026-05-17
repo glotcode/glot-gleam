@@ -4,6 +4,7 @@ import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/periodic_job/periodic_job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -12,6 +13,7 @@ import glot_core/admin/periodic_job_dto
 import glot_core/admin_action
 import glot_core/api_action
 import glot_core/periodic_job/periodic_job_model
+import glot_core/validation_error
 
 pub fn update_periodic_job(
   ctx: context.Context,
@@ -26,10 +28,7 @@ pub fn update_periodic_job(
   use _ <- program.and_then(validate_request(request))
   use periodic_job <- program.and_then(
     periodic_job_effect.get_periodic_job_by_id(request.id)
-    |> program.require(error.NotFoundError(
-      "periodic_job_not_found",
-      "Periodic job not found",
-    )),
+    |> program.require(error.resource(resource_error.PeriodicJobNotFound)),
   )
 
   let updated_periodic_job =
@@ -63,9 +62,12 @@ fn validate_request(
 ) -> program_types.Program(Nil) {
   case request.interval_seconds <= 0 {
     True ->
-      program.fail(error.ValidationError(
-        "interval_seconds must be greater than 0",
-      ))
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThan(
+          "interval_seconds",
+          0,
+        )),
+      )
     False -> program.succeed(Nil)
   }
 }

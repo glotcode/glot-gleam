@@ -6,6 +6,7 @@ import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/auth_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
@@ -46,7 +47,7 @@ pub fn enforce(
       ip: ctx.client_info.ip,
       action: action,
     ),
-    error.ClientInfoError(error.MissingUserIdAndIpError),
+    error.auth(auth_error.MissingUserIdAndIp),
   ))
 
   use counts <- program.and_then(user_action_effect.count_user_actions(filter))
@@ -119,7 +120,7 @@ fn check_rate_limit(
 ) -> Result(Nil, error.Error) {
   case first_exceeded_rate_limit(rate_limits, counts) {
     option.Some(#(count, rate_limit)) ->
-      Error(error.TooManyRequestsError(count + 1, rate_limit))
+      Error(error.too_many_requests(count + 1, rate_limit))
     option.None -> Ok(Nil)
   }
 }

@@ -5,6 +5,7 @@ import gleam/string
 import glot_backend/context
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/handlers
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
@@ -44,7 +45,10 @@ pub fn run(
 
       case transaction_result {
         Ok(value) -> continue(value, next_state)
-        Error(err) -> #(Error(error.TransactionError(err)), next_state)
+        Error(err) -> #(
+          Error(error.database_transaction_error(err)),
+          next_state,
+        )
       }
     }
   }
@@ -55,7 +59,7 @@ fn run_in_transaction(
   ctx: context.Context,
   program: program_types.TransactionProgram(program_types.Program(a)),
 ) -> #(
-  Result(program_types.Program(a), error.DbTransactionError),
+  Result(program_types.Program(a), db_error.DbTransactionError),
   program_state.State,
 ) {
   let timeout_ms =
@@ -91,23 +95,23 @@ fn collapse_transaction_result(
     #(a, program_state.State),
     transaction_handlers.RunError(#(error.Error, program_state.State)),
   ),
-) -> #(Result(a, error.DbTransactionError), program_state.State) {
+) -> #(Result(a, db_error.DbTransactionError), program_state.State) {
   case result {
     Ok(#(value, state)) -> #(Ok(value), state)
     Error(transaction_handlers.MissingConnection) -> #(
-      Error(error.DbTransactionError("Missing transaction db")),
+      Error(db_error.DbTransactionError("Missing transaction db")),
       program_state.new_state(),
     )
     Error(transaction_handlers.StatementTimeoutSetupError(query_error)) -> #(
-      Error(error.DbTransactionError(string.inspect(query_error))),
+      Error(db_error.DbTransactionError(string.inspect(query_error))),
       program_state.new_state(),
     )
     Error(transaction_handlers.TransactionError(pog.TransactionRolledBack(#(
       err,
       state,
-    )))) -> #(Error(error.DbTransactionError(string.inspect(err))), state)
+    )))) -> #(Error(db_error.DbTransactionError(string.inspect(err))), state)
     Error(transaction_handlers.TransactionError(err)) -> #(
-      Error(error.DbTransactionError(string.inspect(err))),
+      Error(db_error.DbTransactionError(string.inspect(err))),
       program_state.new_state(),
     )
   }

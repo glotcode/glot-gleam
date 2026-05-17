@@ -30,7 +30,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.JobTypePolicyEffectName(
@@ -60,7 +60,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.JobTypePolicyEffectName(
@@ -89,7 +89,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.CommandError(error)),
+          Error(error.database_command_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.JobTypePolicyEffectName(

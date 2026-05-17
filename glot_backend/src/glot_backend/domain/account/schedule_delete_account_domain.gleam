@@ -8,6 +8,7 @@ import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -90,9 +91,8 @@ fn require_no_pending_delete(
         option.Some(job) -> {
           case is_pending_delete_job_for_account(job, account.identity.id) {
             True ->
-              program.fail(error.ConflictError(
-                "account_delete_already_scheduled",
-                "Account deletion already scheduled",
+              program.fail(error.resource(
+                resource_error.AccountDeleteAlreadyScheduled,
               ))
             False -> {
               let repaired_account =

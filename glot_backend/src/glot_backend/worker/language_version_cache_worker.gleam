@@ -9,7 +9,8 @@ import gleam/result
 import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/effect/docker_run/docker_run_handlers
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
+import glot_backend/effect/error/run_request_error
 import glot_backend/erlang
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker
@@ -22,7 +23,9 @@ const call_timeout_ms = 5000
 pub type Message {
   GetLanguageVersion(
     language: language_module.Language,
-    reply: process.Subject(Result(run.RunResult, error.RunRequestError)),
+    reply: process.Subject(
+      Result(run.RunResult, run_request_error.RunRequestError),
+    ),
   )
   RefreshConfig
   Tick
@@ -30,13 +33,15 @@ pub type Message {
   FetchCompleted(
     language: language_module.Language,
     fetched_at_ns: Int,
-    result: Result(run.RunResult, error.RunRequestError),
+    result: Result(run.RunResult, run_request_error.RunRequestError),
   )
 }
 
 type InFlight {
   InFlight(
-    waiters: List(process.Subject(Result(run.RunResult, error.RunRequestError))),
+    waiters: List(
+      process.Subject(Result(run.RunResult, run_request_error.RunRequestError)),
+    ),
     refresh: Bool,
   )
 }
@@ -47,9 +52,9 @@ pub type FetchHandlers {
       process.Subject(app_config_cache_worker.Message),
       language_module.Language,
       Int,
-    ) -> Result(run.RunResult, error.RunRequestError),
+    ) -> Result(run.RunResult, run_request_error.RunRequestError),
     get_config: fn(process.Subject(app_config_cache_worker.Message)) ->
-      Result(dynamic_config.DynamicConfig, error.DbQueryError),
+      Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
     now_ns: fn() -> Int,
     supported_languages: fn() -> List(language_module.Language),
   )
@@ -134,7 +139,7 @@ pub fn supervised(
 pub fn get_language_version(
   subject: process.Subject(Message),
   language: language_module.Language,
-) -> Result(run.RunResult, error.RunRequestError) {
+) -> Result(run.RunResult, run_request_error.RunRequestError) {
   process.call(subject, call_timeout_ms, fn(reply) {
     GetLanguageVersion(language:, reply:)
   })
@@ -200,7 +205,9 @@ fn lookup_language_version(
   state: State,
   language: language_module.Language,
   now_ns: Int,
-  reply: process.Subject(Result(run.RunResult, error.RunRequestError)),
+  reply: process.Subject(
+    Result(run.RunResult, run_request_error.RunRequestError),
+  ),
 ) -> #(State, Result(run.RunResult, Nil)) {
   case dict.get(state.cached_versions, language) {
     Ok(entry) -> {
@@ -265,7 +272,9 @@ fn enqueue_refresh(state: State, language: language_module.Language) -> State {
 fn enqueue_waiter(
   state: State,
   language: language_module.Language,
-  reply: process.Subject(Result(run.RunResult, error.RunRequestError)),
+  reply: process.Subject(
+    Result(run.RunResult, run_request_error.RunRequestError),
+  ),
 ) -> State {
   let in_flight = case dict.get(state.in_flight, language) {
     Ok(in_flight) ->
@@ -322,7 +331,7 @@ fn fetch_language_version(
   app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   language: language_module.Language,
   timeout_ms: Int,
-) -> Result(run.RunResult, error.RunRequestError) {
+) -> Result(run.RunResult, run_request_error.RunRequestError) {
   app_config_cache_worker.get_config(app_config_cache_subject)
   |> result.map_error(map_query_error)
   |> result.try(fn(config) {
@@ -333,8 +342,10 @@ fn fetch_language_version(
           run_request(language),
           timeout_ms,
         )
-      option.None ->
-        Error(error.InternalRunRequestError("Missing docker_run app_config"))
+      option.None -> {
+        wisp.log_warning("Missing docker_run app_config")
+        Error(run_request_error.ServerRunRequestError)
+      }
     }
   })
 }
@@ -350,9 +361,12 @@ fn run_request(language: language_module.Language) -> run.RunRequest {
   )
 }
 
-fn map_query_error(err: error.DbQueryError) -> error.RunRequestError {
-  let error.DbQueryError(message: message) = err
-  error.InternalRunRequestError(message)
+fn map_query_error(
+  err: db_error.DbQueryError,
+) -> run_request_error.RunRequestError {
+  let db_error.DbQueryError(message: message) = err
+  wisp.log_warning("Failed to load language version config: " <> message)
+  run_request_error.ServerRunRequestError
 }
 
 fn refresh_config(state: State) -> State {
@@ -363,7 +377,7 @@ fn refresh_config(state: State) -> State {
         config: dynamic_config.language_version_cache_worker_config(config),
       )
     Error(err) -> {
-      let error.DbQueryError(message: message) = err
+      let db_error.DbQueryError(message: message) = err
       wisp.log_warning(
         "Failed to refresh language version cache worker config: " <> message,
       )
@@ -406,7 +420,7 @@ fn complete_fetch(
   state: State,
   language: language_module.Language,
   fetched_at_ns: Int,
-  result: Result(run.RunResult, error.RunRequestError),
+  result: Result(run.RunResult, run_request_error.RunRequestError),
 ) -> State {
   let in_flight = case dict.get(state.in_flight, language) {
     Ok(in_flight) -> in_flight
@@ -482,8 +496,10 @@ fn should_schedule_refreshes(state: State) -> Bool {
 }
 
 fn reply_waiters(
-  waiters: List(process.Subject(Result(run.RunResult, error.RunRequestError))),
-  result: Result(run.RunResult, error.RunRequestError),
+  waiters: List(
+    process.Subject(Result(run.RunResult, run_request_error.RunRequestError)),
+  ),
+  result: Result(run.RunResult, run_request_error.RunRequestError),
 ) -> Nil {
   list.each(waiters, fn(reply) { process.send(reply, result) })
 }
@@ -496,9 +512,11 @@ fn ms_to_ns(value_ms: Int) -> Int {
   value_ms * 1_000_000
 }
 
-fn string_from_run_request_error(err: error.RunRequestError) -> String {
+fn string_from_run_request_error(
+  err: run_request_error.RunRequestError,
+) -> String {
   case err {
-    error.PublicRunRequestError(message) -> message
-    error.InternalRunRequestError(message) -> message
+    run_request_error.ClientRunRequestError(message) -> message
+    run_request_error.ServerRunRequestError -> "server run request error"
   }
 }

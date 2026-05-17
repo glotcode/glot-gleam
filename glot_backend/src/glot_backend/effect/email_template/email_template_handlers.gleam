@@ -2,19 +2,20 @@ import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/email_template
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
+import glot_core/validation_error
 
 pub type EmailTemplateHandlers {
   EmailTemplateHandlers(
     list_email_templates: fn() ->
-      Result(List(email_template.EmailTemplate), error.DbQueryError),
+      Result(List(email_template.EmailTemplate), db_error.DbQueryError),
     get_email_template_by_name: fn(email_template.EmailTemplateName) ->
-      Result(option.Option(email_template.EmailTemplate), error.DbQueryError),
+      Result(option.Option(email_template.EmailTemplate), db_error.DbQueryError),
     update_email_template: fn(email_template.EmailTemplate) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
   )
 }
 
@@ -30,8 +31,8 @@ pub fn new(db: db_helpers.Db) -> EmailTemplateHandlers {
 
 pub fn list_email_templates(
   db: db_helpers.Db,
-) -> Result(List(email_template.EmailTemplate), error.DbQueryError) {
-  let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
+) -> Result(List(email_template.EmailTemplate), db_error.DbQueryError) {
+  let to_error = fn(err) { db_error.DbQueryError(string.inspect(err)) }
   use returned <- result.try(db_helpers.query(
     db,
     sql.list_email_templates(),
@@ -41,14 +42,15 @@ pub fn list_email_templates(
   returned.rows
   |> list.map(row_to_list_template)
   |> result.all
-  |> result.map_error(error.DbQueryError)
+  |> result.map_error(validation_error.to_string)
+  |> result.map_error(db_error.DbQueryError)
 }
 
 pub fn get_email_template_by_name(
   db: db_helpers.Db,
   name: email_template.EmailTemplateName,
-) -> Result(option.Option(email_template.EmailTemplate), error.DbQueryError) {
-  let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
+) -> Result(option.Option(email_template.EmailTemplate), db_error.DbQueryError) {
+  let to_error = fn(err) { db_error.DbQueryError(string.inspect(err)) }
   use returned <- result.try(db_helpers.query(
     db,
     sql.get_email_template_by_name(email_template.to_db_name(name)),
@@ -60,16 +62,17 @@ pub fn get_email_template_by_name(
     [row] ->
       row_to_get_template(row)
       |> result.map(option.Some)
-      |> result.map_error(error.DbQueryError)
-    _ -> Error(error.DbQueryError("Expected at most one email template row"))
+      |> result.map_error(validation_error.to_string)
+      |> result.map_error(db_error.DbQueryError)
+    _ -> Error(db_error.DbQueryError("Expected at most one email template row"))
   }
 }
 
 pub fn update_email_template(
   db: db_helpers.Db,
   template: email_template.EmailTemplate,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -87,7 +90,7 @@ pub fn update_email_template(
 
 fn row_to_list_template(
   row: sql.ListEmailTemplates,
-) -> Result(email_template.EmailTemplate, String) {
+) -> Result(email_template.EmailTemplate, validation_error.ValidationError) {
   use name <- result.try(email_template.from_db_name(row.name))
   Ok(email_template.EmailTemplate(
     name: name,
@@ -100,7 +103,7 @@ fn row_to_list_template(
 
 fn row_to_get_template(
   row: sql.GetEmailTemplateByName,
-) -> Result(email_template.EmailTemplate, String) {
+) -> Result(email_template.EmailTemplate, validation_error.ValidationError) {
   use name <- result.try(email_template.from_db_name(row.name))
   Ok(email_template.EmailTemplate(
     name: name,

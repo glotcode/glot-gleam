@@ -4,6 +4,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/account_model.{type HydratedAccount}
 import glot_core/email/email_address_model
+import glot_core/validation_error
 import youid/uuid.{type Uuid}
 
 pub type UserRole {
@@ -59,18 +60,18 @@ pub fn role_from_string(role: String) -> option.Option(UserRole) {
   }
 }
 
-pub fn validate_username(username: String) -> Result(Nil, String) {
+pub fn validate_username(
+  username: String,
+) -> Result(Nil, validation_error.ValidationError) {
   let chars = username |> string.to_graphemes()
   let length = list.length(chars)
-  let error =
-    "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens"
 
   case length < 3 || length > 40 {
-    True -> Error(error)
+    True -> Error(validation_error.InvalidUsername)
     False ->
       case validate_username_chars(chars, False, True) {
         True -> Ok(Nil)
-        False -> Error(error)
+        False -> Error(validation_error.InvalidUsername)
       }
   }
 }

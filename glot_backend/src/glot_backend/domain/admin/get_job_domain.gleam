@@ -4,6 +4,7 @@ import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -24,7 +25,7 @@ pub fn get_job(
   ))
   use job <- program.and_then(
     job_effect.get_job_by_id(request.id)
-    |> program.require(error.NotFoundError("job_not_found", "Job not found")),
+    |> program.require(error.resource(resource_error.JobNotFound)),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

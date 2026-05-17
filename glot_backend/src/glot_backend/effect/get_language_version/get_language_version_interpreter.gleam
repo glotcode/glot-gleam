@@ -3,7 +3,8 @@ import gleam/result
 import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/effect/effect_trace
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
+import glot_backend/effect/error/run_request_error
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
@@ -13,6 +14,7 @@ import glot_backend/worker/app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker
 import glot_core/language
 import glot_core/run
+import wisp
 
 const default_timeout_ms = 60_000
 
@@ -45,10 +47,10 @@ pub fn run(
                     default_timeout_ms,
                   ),
                 )
-              option.None ->
-                Error(error.InternalRunRequestError(
-                  "Missing docker_run app_config",
-                ))
+              option.None -> {
+                wisp.log_error("Missing docker_run app_config")
+                Error(run_request_error.ServerRunRequestError)
+              }
             }
           })
       }
@@ -70,7 +72,7 @@ pub fn run(
 
 fn load_config(
   runtime: runtime.Runtime,
-) -> Result(dynamic_config.DynamicConfig, error.RunRequestError) {
+) -> Result(dynamic_config.DynamicConfig, run_request_error.RunRequestError) {
   case runtime.app_config_cache_subject {
     option.Some(subject) ->
       app_config_cache_worker.get_config(subject)
@@ -81,15 +83,21 @@ fn load_config(
       |> result.try(fn(entries) {
         dynamic_config.from_entries(entries)
         |> result.map_error(fn(message) {
-          error.InternalRunRequestError(message)
+          wisp.log_error(
+            "Invalid app config for get_language_version: " <> message,
+          )
+          run_request_error.ServerRunRequestError
         })
       })
   }
 }
 
-fn map_query_error(err: error.DbQueryError) -> error.RunRequestError {
-  let error.DbQueryError(message: message) = err
-  error.InternalRunRequestError(message)
+fn map_query_error(
+  err: db_error.DbQueryError,
+) -> run_request_error.RunRequestError {
+  let db_error.DbQueryError(message: message) = err
+  wisp.log_error("Failed to load get_language_version config: " <> message)
+  run_request_error.ServerRunRequestError
 }
 
 fn run_request(requested_language: language.Language) -> run.RunRequest {

@@ -6,6 +6,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_core/email/email_address_model
 import glot_core/email/email_model
 import glot_core/helpers/uuid_helpers
+import glot_core/validation_error
 import youid/uuid.{type Uuid}
 
 pub type JobType {
@@ -38,7 +39,9 @@ pub fn job_type_to_string(job_type: JobType) -> String {
   }
 }
 
-pub fn job_type_from_string(value: String) -> Result(JobType, String) {
+pub fn job_type_from_string(
+  value: String,
+) -> Result(JobType, validation_error.ValidationError) {
   case value {
     "send_email" -> Ok(SendEmailJob)
     "delete_account" -> Ok(DeleteAccountJob)
@@ -51,7 +54,7 @@ pub fn job_type_from_string(value: String) -> Result(JobType, String) {
     "clean_login_tokens" -> Ok(CleanLoginTokensJob)
     "clean_user_actions" -> Ok(CleanUserActionsJob)
     "aggregate_metrics" -> Ok(AggregateMetricsJob)
-    _ -> Error("Invalid job type: " <> value)
+    _ -> Error(validation_error.InvalidJobType(value))
   }
 }
 

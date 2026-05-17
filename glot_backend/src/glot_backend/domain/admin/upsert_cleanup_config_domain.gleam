@@ -1,5 +1,4 @@
 import gleam/dynamic
-import gleam/list
 import gleam/option
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
@@ -13,6 +12,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/cleanup_config_dto
 import glot_core/admin_action
 import glot_core/api_action
+import glot_core/validation_error
 
 pub fn upsert_cleanup_config(
   ctx: context.Context,
@@ -61,25 +61,48 @@ pub fn request_from_dynamic(
 fn validate_request(
   request: cleanup_config_dto.UpsertCleanupConfigRequest,
 ) -> program_types.Program(Nil) {
-  case
-    list.any(
-      [
-        request.api_log_retention_days,
-        request.page_log_retention_days,
-        request.pageview_log_retention_days,
-        request.run_log_retention_days,
-        request.job_log_retention_days,
-        request.jobs_retention_days,
-        request.login_tokens_retention_days,
-        request.user_actions_retention_days,
-      ],
-      fn(value) { value <= 0 },
-    )
-  {
-    True ->
-      program.fail(error.ValidationError(
-        "cleanup config values must be greater than 0",
-      ))
-    False -> program.succeed(Nil)
+  use _ <- program.and_then(require_positive(
+    request.api_log_retention_days,
+    "api_log_retention_days",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.page_log_retention_days,
+    "page_log_retention_days",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.pageview_log_retention_days,
+    "pageview_log_retention_days",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.run_log_retention_days,
+    "run_log_retention_days",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.job_log_retention_days,
+    "job_log_retention_days",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.jobs_retention_days,
+    "jobs_retention_days",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.login_tokens_retention_days,
+    "login_tokens_retention_days",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.user_actions_retention_days,
+    "user_actions_retention_days",
+  ))
+
+  program.succeed(Nil)
+}
+
+fn require_positive(value: Int, field: String) -> program_types.Program(Nil) {
+  case value > 0 {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThan(field, 0)),
+      )
   }
 }

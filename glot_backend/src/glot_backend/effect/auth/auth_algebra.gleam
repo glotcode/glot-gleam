@@ -1,6 +1,6 @@
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_core/auth/account_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
@@ -57,52 +57,55 @@ pub type AuthEffect(next) {
   )
   CreateUser(
     user: user_model.User,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   CreateAccount(
     account: account_model.Account,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   UpdateAccount(
     account: account_model.Account,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   UpdateUser(
     user: user_model.User,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   DeleteSessionsByAccountId(
     account_id: Uuid,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   DeleteUsersByAccountId(
     account_id: Uuid,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   DeleteAccount(
     account_id: Uuid,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   CreateSession(
     session: session_model.Session,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   UpdateSession(
     session: session_model.Session,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
-  DeleteSession(id: Uuid, next: fn(Result(Nil, error.DbCommandError)) -> next)
+  DeleteSession(
+    id: Uuid,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+  )
   CreateLoginToken(
     login_token: login_token_model.LoginToken,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   UpdateLoginToken(
     login_token: login_token_model.LoginToken,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   DeleteLoginTokensBefore(
     before: Timestamp,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
 }
 

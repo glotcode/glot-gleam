@@ -13,6 +13,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/rate_limit_config_dto
 import glot_core/admin_action
 import glot_core/api_action
+import glot_core/validation_error
 
 pub fn upsert_rate_limit_policy(
   ctx: context.Context,
@@ -48,8 +49,7 @@ fn validate_request(
   request: rate_limit_config_dto.UpsertRateLimitPolicyRequest,
 ) -> program_types.Program(Nil) {
   case list.is_empty(request.rules) {
-    True ->
-      program.fail(error.ValidationError("rules must contain at least one rule"))
+    True -> program.fail(error.validation(validation_error.RulesMissing))
     False -> program.succeed(Nil)
   }
 }

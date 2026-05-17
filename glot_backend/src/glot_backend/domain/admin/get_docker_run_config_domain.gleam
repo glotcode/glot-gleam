@@ -5,6 +5,7 @@ import glot_backend/domain/shared/session_domain
 import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
@@ -24,10 +25,7 @@ pub fn get_docker_run_config(
   use config <- program.and_then(app_config_effect.get_dynamic_config())
   use docker_run_config <- program.and_then(program.from_option(
     dynamic_config.docker_run_config(config),
-    error.NotFoundError(
-      code: "docker_run_config_not_found",
-      message: "Docker run config is not configured",
-    ),
+    error.resource(resource_error.DockerRunConfigNotFound),
   ))
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

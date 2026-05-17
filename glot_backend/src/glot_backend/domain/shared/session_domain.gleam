@@ -6,6 +6,7 @@ import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/auth_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_core/auth/session_model
@@ -32,7 +33,7 @@ fn get_validated_session(
   use session_result <- program.and_then(case ctx.client_info.session_token {
     option.Some(token) -> get_session_by_client_token(ctx.timestamp, token)
     option.None ->
-      program.succeed(Error(error.SessionError(error.MissingSessionTokenError)))
+      program.succeed(Error(error.auth(auth_error.MissingSessionToken)))
   })
 
   session_result
@@ -66,7 +67,7 @@ fn validate_session(
     is_expired(session.identity.created_at, now, session_token_max_age)
 
   case expired {
-    True -> Error(error.SessionError(error.SessionExpiredError))
+    True -> Error(error.auth(auth_error.SessionExpired))
     False -> Ok(session)
   }
 }
@@ -75,12 +76,7 @@ fn result_from_previous_token(
   maybe_session: Option(session_model.HydratedSession),
   now: timestamp.Timestamp,
 ) -> Result(session_model.HydratedSession, error.Error) {
-  case
-    option.to_result(
-      maybe_session,
-      error.SessionError(error.SessionNotFoundError),
-    )
-  {
+  case option.to_result(maybe_session, error.auth(auth_error.SessionNotFound)) {
     Ok(session) ->
       case validate_previous_token(session.identity, now) {
         Ok(_) -> Ok(session)
@@ -98,9 +94,9 @@ pub fn validate_previous_token(
     option.Some(valid_until) ->
       case timestamp_is_on_or_before(now, valid_until) {
         True -> Ok(Nil)
-        False -> Error(error.SessionError(error.SessionNotFoundError))
+        False -> Error(error.auth(auth_error.SessionNotFound))
       }
-    option.None -> Error(error.SessionError(error.SessionNotFoundError))
+    option.None -> Error(error.auth(auth_error.SessionNotFound))
   }
 }
 

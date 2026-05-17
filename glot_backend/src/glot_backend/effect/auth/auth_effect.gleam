@@ -2,6 +2,7 @@ import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/auth/auth_algebra
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/program_types
 import glot_core/auth/account_model
 import glot_core/auth/login_token_model
@@ -311,20 +312,20 @@ pub fn delete_login_tokens_before_tx(
 }
 
 fn command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.Program(Nil) {
   case result {
     Ok(_) -> program_types.Pure(Nil)
-    Error(err) -> program_types.Fail(error.CommandError(err))
+    Error(err) -> program_types.Fail(error.database_command_error(err))
   }
 }
 
 fn tx_command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.TransactionProgram(Nil) {
   case result {
     Ok(_) -> program_types.TxPure(Nil)
-    Error(err) -> program_types.TxFail(error.CommandError(err))
+    Error(err) -> program_types.TxFail(error.database_command_error(err))
   }
 }
 
@@ -408,35 +409,35 @@ fn get_session_by_previous_token_for_update_effect(
 
 fn create_user_effect(
   user: user_model.User,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.CreateUser(user: user, next: next))
 }
 
 fn create_account_effect(
   account: account_model.Account,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.CreateAccount(account:, next: next))
 }
 
 fn update_account_effect(
   account: account_model.Account,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.UpdateAccount(account:, next: next))
 }
 
 fn update_user_effect(
   user: user_model.User,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.UpdateUser(user: user, next: next))
 }
 
 fn delete_sessions_by_account_id_effect(
   id: Uuid,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.DeleteSessionsByAccountId(
     account_id: id,
@@ -446,7 +447,7 @@ fn delete_sessions_by_account_id_effect(
 
 fn delete_users_by_account_id_effect(
   id: Uuid,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.DeleteUsersByAccountId(
     account_id: id,
@@ -456,7 +457,7 @@ fn delete_users_by_account_id_effect(
 
 fn delete_account_effect(
   id: Uuid,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.DeleteAccount(
     account_id: id,
@@ -466,28 +467,28 @@ fn delete_account_effect(
 
 fn create_session_effect(
   session: session_model.Session,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.CreateSession(session:, next: next))
 }
 
 fn update_session_effect(
   session: session_model.Session,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.UpdateSession(session:, next: next))
 }
 
 fn delete_session_effect(
   id: Uuid,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.DeleteSession(id:, next: next))
 }
 
 fn create_login_token_effect(
   login_token: login_token_model.LoginToken,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.CreateLoginToken(
     login_token:,
@@ -497,7 +498,7 @@ fn create_login_token_effect(
 
 fn update_login_token_effect(
   login_token: login_token_model.LoginToken,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.UpdateLoginToken(
     login_token:,
@@ -507,7 +508,7 @@ fn update_login_token_effect(
 
 fn delete_login_tokens_before_effect(
   before: Timestamp,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.DeleteLoginTokensBefore(
     before: before,

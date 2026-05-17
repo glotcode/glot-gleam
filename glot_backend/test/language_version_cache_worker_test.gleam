@@ -5,7 +5,7 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
 import glot_backend/dynamic_config
-import glot_backend/effect/error
+import glot_backend/effect/error/run_request_error
 import glot_backend/server_mode
 import glot_backend/worker/language_version_cache_worker
 import glot_core/language
@@ -19,12 +19,16 @@ pub fn main() -> Nil {
 type ControlMessage {
   RegisterFetch(
     language: language.Language,
-    reply: process.Subject(Result(run.RunResult, error.RunRequestError)),
+    reply: process.Subject(
+      Result(run.RunResult, run_request_error.RunRequestError),
+    ),
   )
   TakeFetch(
     reply: process.Subject(
       option.Option(
-        process.Subject(Result(run.RunResult, error.RunRequestError)),
+        process.Subject(
+          Result(run.RunResult, run_request_error.RunRequestError),
+        ),
       ),
     ),
   )
@@ -38,7 +42,7 @@ type ControlState {
     fetch_count: Int,
     now_ns: Int,
     pending_fetches: List(
-      process.Subject(Result(run.RunResult, error.RunRequestError)),
+      process.Subject(Result(run.RunResult, run_request_error.RunRequestError)),
     ),
   )
 }
@@ -115,10 +119,7 @@ pub fn failed_refresh_keeps_stale_value_test() {
   assert stale_result == Ok(successful_run("Python 3.13"))
 
   let refresh_reply = expect_fetch(control_subject, 20)
-  process.send(
-    refresh_reply,
-    Error(error.InternalRunRequestError("refresh failed")),
-  )
+  process.send(refresh_reply, Error(run_request_error.ServerRunRequestError))
 
   assert language_version_cache_worker.get_language_version(
       worker_subject,
@@ -217,7 +218,9 @@ fn control_loop(
 
 fn request_language_version(
   worker_subject: process.Subject(language_version_cache_worker.Message),
-  result_subject: process.Subject(Result(run.RunResult, error.RunRequestError)),
+  result_subject: process.Subject(
+    Result(run.RunResult, run_request_error.RunRequestError),
+  ),
 ) -> Nil {
   let _ =
     process.spawn_unlinked(fn() {
@@ -234,7 +237,7 @@ fn request_language_version(
 fn expect_fetch(
   control_subject: process.Subject(ControlMessage),
   attempts_remaining: Int,
-) -> process.Subject(Result(run.RunResult, error.RunRequestError)) {
+) -> process.Subject(Result(run.RunResult, run_request_error.RunRequestError)) {
   let maybe_fetch = process.call(control_subject, 100, TakeFetch)
 
   case maybe_fetch {
@@ -270,7 +273,7 @@ fn wait_for_fetch_count(
 fn wait_for_language_version(
   worker_subject: process.Subject(language_version_cache_worker.Message),
   attempts_remaining: Int,
-) -> Result(run.RunResult, error.RunRequestError) {
+) -> Result(run.RunResult, run_request_error.RunRequestError) {
   let result =
     language_version_cache_worker.get_language_version(
       worker_subject,
@@ -288,8 +291,10 @@ fn wait_for_language_version(
 }
 
 fn expect_result(
-  result_subject: process.Subject(Result(run.RunResult, error.RunRequestError)),
-) -> Result(run.RunResult, error.RunRequestError) {
+  result_subject: process.Subject(
+    Result(run.RunResult, run_request_error.RunRequestError),
+  ),
+) -> Result(run.RunResult, run_request_error.RunRequestError) {
   process.receive_forever(result_subject)
 }
 

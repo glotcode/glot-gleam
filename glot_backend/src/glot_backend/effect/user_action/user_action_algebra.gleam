@@ -1,5 +1,5 @@
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_core/rate_limit
 import glot_core/user_action
 
@@ -10,11 +10,11 @@ pub type UserActionEffect(next) {
   )
   CreateUserAction(
     user_action: user_action.UserAction,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   DeleteBefore(
     before: Timestamp,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
 }
 

@@ -10,6 +10,7 @@ import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/auth_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
@@ -111,7 +112,7 @@ fn refresh_session_tx(
 ) -> program_types.TransactionProgram(RotationOutcome) {
   use token <- transaction_program.and_then(transaction_program.from_option(
     ctx.client_info.session_token,
-    error.SessionError(error.MissingSessionTokenError),
+    error.auth(auth_error.MissingSessionToken),
   ))
   use session <- transaction_program.and_then(
     get_session_by_client_token_for_update(token, ctx.timestamp),
@@ -168,7 +169,7 @@ fn get_session_by_client_token_for_update(
       use previous_session <- transaction_program.and_then(
         transaction_program.require(
           auth_effect.get_session_by_previous_token_for_update_tx(token),
-          error.SessionError(error.SessionNotFoundError),
+          error.auth(auth_error.SessionNotFound),
         ),
       )
       transaction_program.and_then(

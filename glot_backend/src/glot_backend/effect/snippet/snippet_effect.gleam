@@ -1,5 +1,6 @@
 import gleam/option
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_algebra
 import glot_core/pagination_model.{type CursorPagination}
@@ -55,20 +56,20 @@ pub fn create(snippet snippet: Snippet) -> program_types.Program(Nil) {
 }
 
 fn query_next(
-  result: Result(option.Option(HydratedSnippet), error.DbQueryError),
+  result: Result(option.Option(HydratedSnippet), db_error.DbQueryError),
 ) -> program_types.Program(option.Option(HydratedSnippet)) {
   case result {
     Ok(value) -> program_types.Pure(value)
-    Error(err) -> program_types.Fail(error.QueryError(err))
+    Error(err) -> program_types.Fail(error.database_query_error(err))
   }
 }
 
 fn list_next(
-  result: Result(List(HydratedSnippet), error.DbQueryError),
+  result: Result(List(HydratedSnippet), db_error.DbQueryError),
 ) -> program_types.Program(List(HydratedSnippet)) {
   case result {
     Ok(value) -> program_types.Pure(value)
-    Error(err) -> program_types.Fail(error.QueryError(err))
+    Error(err) -> program_types.Fail(error.database_query_error(err))
   }
 }
 
@@ -83,11 +84,11 @@ pub fn delete_by_account_id(id id: uuid.Uuid) -> program_types.Program(Nil) {
 }
 
 fn command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.Program(Nil) {
   case result {
     Ok(_) -> program_types.Pure(Nil)
-    Error(err) -> program_types.Fail(error.CommandError(err))
+    Error(err) -> program_types.Fail(error.database_command_error(err))
   }
 }
 
@@ -132,26 +133,27 @@ pub fn update_tx(
 }
 
 fn tx_query_next(
-  result: Result(option.Option(HydratedSnippet), error.DbQueryError),
+  result: Result(option.Option(HydratedSnippet), db_error.DbQueryError),
 ) -> program_types.TransactionProgram(option.Option(HydratedSnippet)) {
   case result {
     Ok(value) -> program_types.TxPure(value)
-    Error(err) -> program_types.TxFail(error.QueryError(err))
+    Error(err) -> program_types.TxFail(error.database_query_error(err))
   }
 }
 
 fn tx_command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.TransactionProgram(Nil) {
   case result {
     Ok(_) -> program_types.TxPure(Nil)
-    Error(err) -> program_types.TxFail(error.CommandError(err))
+    Error(err) -> program_types.TxFail(error.database_command_error(err))
   }
 }
 
 fn get_by_id_effect(
   id: uuid.Uuid,
-  next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+  next: fn(Result(option.Option(HydratedSnippet), db_error.DbQueryError)) ->
+    next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.GetSnippetById(
     id: uuid.to_bit_array(id),
@@ -161,7 +163,8 @@ fn get_by_id_effect(
 
 fn get_by_slug_effect(
   slug: String,
-  next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+  next: fn(Result(option.Option(HydratedSnippet), db_error.DbQueryError)) ->
+    next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.GetSnippetBySlug(
     slug:,
@@ -171,7 +174,8 @@ fn get_by_slug_effect(
 
 fn get_admin_by_slug_effect(
   slug: String,
-  next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+  next: fn(Result(option.Option(HydratedSnippet), db_error.DbQueryError)) ->
+    next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.GetAdminSnippetBySlug(
     slug:,
@@ -182,7 +186,7 @@ fn get_admin_by_slug_effect(
 fn list_effect(
   filter: ListSnippetsFilter,
   pagination: CursorPagination,
-  next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
+  next: fn(Result(List(HydratedSnippet), db_error.DbQueryError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.ListSnippets(
     filter: filter,
@@ -194,7 +198,7 @@ fn list_effect(
 fn list_admin_effect(
   username: option.Option(String),
   pagination: CursorPagination,
-  next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
+  next: fn(Result(List(HydratedSnippet), db_error.DbQueryError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.ListAdminSnippets(
     username: username,
@@ -205,7 +209,7 @@ fn list_admin_effect(
 
 fn create_effect(
   snippet: Snippet,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.CreateSnippet(
     snippet:,
@@ -215,7 +219,7 @@ fn create_effect(
 
 fn delete_effect(
   id: uuid.Uuid,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.DeleteSnippet(
     id: uuid.to_bit_array(id),
@@ -225,7 +229,7 @@ fn delete_effect(
 
 fn delete_by_account_id_effect(
   id: uuid.Uuid,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.DeleteSnippetsByAccountId(
     account_id: id,
@@ -235,7 +239,7 @@ fn delete_by_account_id_effect(
 
 fn update_effect(
   snippet: Snippet,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.SnippetEffect(snippet_algebra.UpdateSnippet(
     snippet:,

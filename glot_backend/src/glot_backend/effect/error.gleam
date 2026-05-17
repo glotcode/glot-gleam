@@ -1,135 +1,83 @@
 import gleam/dynamic/decode
-import gleam/int
 import gleam/json
-import gleam/option
-import gleam/string
-import glot_core/api_action as api_action_model
-import glot_core/auth/account_model as account_state_model
+import glot_backend/effect/error/auth_error
+import glot_backend/effect/error/db_error
+import glot_backend/effect/error/infra_error
+import glot_backend/effect/error/policy_error
+import glot_backend/effect/error/request_error
+import glot_backend/effect/error/resource_error
+import glot_backend/effect/error/run_request_error
 import glot_core/rate_limit.{type RateLimit}
+import glot_core/validation_error
 
-pub type DbQueryError {
-  DbQueryError(message: String)
-}
-
-pub type DbCommandError {
-  DbCommandError(message: String)
-}
-
-pub type DbTransactionError {
-  DbTransactionError(message: String)
-}
-
-pub type RunRequestError {
-  PublicRunRequestError(message: String)
-  InternalRunRequestError(message: String)
-}
-
-pub type LoginError {
-  InvalidTokenError
-  TokenUsedError
-  TokenExpiredError
-}
-
-pub type SendEmailError {
-  PublicSendEmailError(message: String)
-  InternalSendEmailError(message: String)
-}
-
-pub type SessionError {
-  MissingSessionTokenError
-  SessionNotFoundError
-  SessionExpiredError
-}
-
-pub type ClientInfoError {
-  MissingUserIdAndIpError
-}
-
-pub type AuthorizationError {
-  AuthenticationRequiredError
-  NotOwnerError
-  AdminRequiredError
-}
-
-pub type AvailabilityBlockedError {
-  AvailabilityBlockedError(
-    code: String,
-    message: String,
-    retry_after_seconds: option.Option(Int),
-  )
-}
-
-pub type AccountStateError {
-  ForbiddenAccountState(
-    action: api_action_model.ApiAction,
-    account_state: account_state_model.AccountState,
-  )
-}
-
+// Public application error surface.
 pub type Error {
-  JsonParseError(json.DecodeError)
-  DecodeError(List(decode.DecodeError))
-  EmailInvalidError(String)
-  ValidationError(String)
-  NotFoundError(code: String, message: String)
-  ConflictError(code: String, message: String)
-  TooManyRequestsError(count: Int, rate_limit: RateLimit)
-  QueryError(DbQueryError)
-  CommandError(DbCommandError)
-  TransactionError(DbTransactionError)
-  RunError(RunRequestError)
-  LoginError(LoginError)
-  SendEmailError(SendEmailError)
-  SessionError(SessionError)
-  ClientInfoError(ClientInfoError)
-  AuthorizationError(AuthorizationError)
-  AvailabilityError(AvailabilityBlockedError)
-  AccountStateError(AccountStateError)
+  RequestError(request_error.RequestError)
+  ResourceError(resource_error.ResourceError)
+  AuthError(auth_error.AuthError)
+  PolicyError(policy_error.PolicyError)
+  InfraError(infra_error.InfraError)
 }
 
 pub fn to_string(err: Error) -> String {
   case err {
-    JsonParseError(error) -> "parse_error:" <> string.inspect(error)
-    DecodeError(errors) -> "decode_error:" <> string.inspect(errors)
-    EmailInvalidError(message) -> "email_invalid:" <> message
-    ValidationError(message) -> "validation_error:" <> message
-    NotFoundError(code, message) -> "not_found:" <> code <> ":" <> message
-    ConflictError(code, message) -> "conflict:" <> code <> ":" <> message
-    TooManyRequestsError(count, _) ->
-      "too_many_requests:" <> int.to_string(count)
-    QueryError(DbQueryError(message: message)) -> "query_error:" <> message
-    CommandError(DbCommandError(message: message)) ->
-      "command_error:" <> message
-    TransactionError(DbTransactionError(message: message)) ->
-      "transaction_error:" <> message
-    LoginError(InvalidTokenError) -> "login_error:invalid_token"
-    LoginError(TokenUsedError) -> "login_error:token_used"
-    LoginError(TokenExpiredError) -> "login_error:token_expired"
-    SendEmailError(PublicSendEmailError(message: message)) ->
-      "send_email_public:" <> message
-    SendEmailError(InternalSendEmailError(message: message)) ->
-      "send_email_internal:" <> message
-    SessionError(MissingSessionTokenError) ->
-      "session_error:missing_session_token"
-    SessionError(SessionNotFoundError) -> "session_error:session_not_found"
-    SessionError(SessionExpiredError) -> "session_error:session_expired"
-    ClientInfoError(MissingUserIdAndIpError) ->
-      "client_info_error:missing_user_id_and_ip"
-    AuthorizationError(AuthenticationRequiredError) ->
-      "authorization_error:authentication_required"
-    AuthorizationError(NotOwnerError) -> "authorization_error:not_owner"
-    AuthorizationError(AdminRequiredError) ->
-      "authorization_error:admin_required"
-    AvailabilityError(AvailabilityBlockedError(code: code, ..)) ->
-      "availability:" <> code
-    AccountStateError(ForbiddenAccountState(action, account_state)) ->
-      "account_state_error:"
-      <> api_action_model.to_string(action)
-      <> ":"
-      <> account_state_model.account_state_to_string(account_state)
-    RunError(PublicRunRequestError(message: message)) ->
-      "run_error_public:" <> message
-    RunError(InternalRunRequestError(message: message)) ->
-      "run_error_internal:" <> message
+    RequestError(request_error) -> request_error.to_string(request_error)
+    ResourceError(resource_error) -> resource_error.to_string(resource_error)
+    AuthError(auth_error) -> auth_error.to_string(auth_error)
+    PolicyError(policy_error) -> policy_error.to_string(policy_error)
+    InfraError(infra_error) -> infra_error.to_string(infra_error)
+  }
+}
+
+pub fn json_parse_error(err: json.DecodeError) -> Error {
+  RequestError(request_error.JsonParseError(err))
+}
+
+pub fn decode_error(errs: List(decode.DecodeError)) -> Error {
+  RequestError(request_error.DecodeError(errs))
+}
+
+pub fn validation(err: validation_error.ValidationError) -> Error {
+  RequestError(request_error.Validation(err))
+}
+
+pub fn too_many_requests(count: Int, rate_limit: RateLimit) -> Error {
+  RequestError(request_error.TooManyRequests(count, rate_limit))
+}
+
+pub fn resource(err: resource_error.ResourceError) -> Error {
+  ResourceError(err)
+}
+
+pub fn auth(err: auth_error.AuthError) -> Error {
+  AuthError(err)
+}
+
+pub fn policy(err: policy_error.PolicyError) -> Error {
+  PolicyError(err)
+}
+
+pub fn infra(err: infra_error.InfraError) -> Error {
+  InfraError(err)
+}
+
+pub fn database_query_error(err: db_error.DbQueryError) -> Error {
+  infra(infra_error.from_query_error(err))
+}
+
+pub fn database_command_error(err: db_error.DbCommandError) -> Error {
+  infra(infra_error.from_command_error(err))
+}
+
+pub fn database_transaction_error(err: db_error.DbTransactionError) -> Error {
+  infra(infra_error.from_transaction_error(err))
+}
+
+pub fn run_request_error(err: run_request_error.RunRequestError) -> Error {
+  case err {
+    run_request_error.ClientRunRequestError(message: message) ->
+      infra(infra_error.RunRequestClientError(message))
+    run_request_error.ServerRunRequestError ->
+      infra(infra_error.RunRequestServerError)
   }
 }

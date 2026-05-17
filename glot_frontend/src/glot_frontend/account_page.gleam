@@ -8,6 +8,7 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/route
+import glot_core/validation_error
 import glot_frontend/api
 import glot_frontend/app_event
 import lustre/attribute
@@ -100,7 +101,9 @@ pub fn update(
     UsernameSubmitted -> {
       let username = string.trim(model.username)
 
-      let validation = user_model.validate_username(username)
+      let validation =
+        user_model.validate_username(username)
+        |> result.map_error(validation_error.message)
 
       case validation {
         Ok(_) -> {

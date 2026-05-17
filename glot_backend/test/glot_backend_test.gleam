@@ -44,6 +44,11 @@ import glot_backend/effect/docker_run/docker_run_algebra
 import glot_backend/effect/email/email_algebra
 import glot_backend/effect/email_template/email_template_algebra
 import glot_backend/effect/error
+import glot_backend/effect/error/auth_error
+import glot_backend/effect/error/infra_error
+import glot_backend/effect/error/policy_error
+import glot_backend/effect/error/resource_error
+import glot_backend/effect/error/run_request_error
 import glot_backend/effect/get_language_version/get_language_version_algebra
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job_log/job_log_algebra
@@ -84,6 +89,7 @@ import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_core/snippet/snippet_spam
 import glot_core/user_action
+import glot_core/validation_error
 import youid/uuid
 
 pub fn main() -> Nil {
@@ -335,7 +341,7 @@ pub fn refresh_session_rejects_expired_previous_token_test() {
   let #(run_result, _) =
     run_test_program(refresh_session_domain.refresh_session(ctx), ctx, db)
 
-  assert run_result == Error(error.SessionError(error.SessionNotFoundError))
+  assert run_result == Error(error.auth(auth_error.SessionNotFound))
 }
 
 pub fn rate_limit_policy_prefers_tier_specific_rule_test() {
@@ -468,7 +474,7 @@ pub fn get_rate_limit_policies_requires_admin_role_test() {
       fixture.db,
     )
 
-  assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
+  assert run_result == Error(error.auth(auth_error.AdminRequired))
 }
 
 pub fn get_docker_run_config_requires_admin_role_test() {
@@ -486,7 +492,7 @@ pub fn get_docker_run_config_requires_admin_role_test() {
       fixture.db,
     )
 
-  assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
+  assert run_result == Error(error.auth(auth_error.AdminRequired))
 }
 
 pub fn get_auth_config_requires_admin_role_test() {
@@ -504,7 +510,7 @@ pub fn get_auth_config_requires_admin_role_test() {
       fixture.db,
     )
 
-  assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
+  assert run_result == Error(error.auth(auth_error.AdminRequired))
 }
 
 pub fn get_debug_config_requires_admin_role_test() {
@@ -522,7 +528,7 @@ pub fn get_debug_config_requires_admin_role_test() {
       fixture.db,
     )
 
-  assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
+  assert run_result == Error(error.auth(auth_error.AdminRequired))
 }
 
 pub fn get_availability_config_requires_admin_role_test() {
@@ -540,7 +546,7 @@ pub fn get_availability_config_requires_admin_role_test() {
       fixture.db,
     )
 
-  assert run_result == Error(error.AuthorizationError(error.AdminRequiredError))
+  assert run_result == Error(error.auth(auth_error.AdminRequired))
 }
 
 pub fn upsert_debug_config_allows_admin_role_test() {
@@ -700,7 +706,7 @@ pub fn require_session_without_token_returns_missing_token_error_test() {
   let #(run_result, _) =
     run_test_program(session_domain.require_session(ctx), ctx, empty_test_db())
 
-  assert run_result == Error(error.SessionError(error.MissingSessionTokenError))
+  assert run_result == Error(error.auth(auth_error.MissingSessionToken))
 }
 
 pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
@@ -718,7 +724,7 @@ pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
   let #(run_result, _) =
     run_test_program(session_domain.require_session(ctx), ctx, empty_test_db())
 
-  assert run_result == Error(error.SessionError(error.SessionNotFoundError))
+  assert run_result == Error(error.auth(auth_error.SessionNotFound))
 }
 
 pub fn get_language_version_without_session_reaches_docker_run_test() {
@@ -733,7 +739,7 @@ pub fn get_language_version_without_session_reaches_docker_run_test() {
     )
 
   assert run_result
-    == Error(error.RunError(error.InternalRunRequestError("unused in test")))
+    == Error(error.run_request_error(run_request_error.ServerRunRequestError))
   assert db.write_steps == []
 }
 
@@ -807,7 +813,7 @@ pub fn send_login_token_for_suspended_user_returns_account_state_error_test() {
 
   assert run_result
     == Error(
-      error.AccountStateError(error.ForbiddenAccountState(
+      error.policy(policy_error.ForbiddenAccountState(
         action: api_action.public(public_action.SendLoginTokenAction),
         account_state: account_model.Suspended,
       )),
@@ -857,7 +863,7 @@ pub fn login_for_suspended_user_returns_account_state_error_test() {
 
   assert run_result
     == Error(
-      error.AccountStateError(error.ForbiddenAccountState(
+      error.policy(policy_error.ForbiddenAccountState(
         action: api_action.public(public_action.LoginAction),
         account_state: account_model.Suspended,
       )),
@@ -899,7 +905,7 @@ pub fn snippet_spam_filter_blocks_obvious_spam_test() {
       ),
     )
 
-  let assert Error(message) = result
+  let assert Error(validation_error.SpamDetected(message)) = result
   assert message != ""
 }
 
@@ -929,8 +935,7 @@ pub fn create_snippet_rejects_empty_files_test() {
       fixture.db,
     )
 
-  assert run_result
-    == Error(error.ValidationError("files must contain at least one file"))
+  assert run_result == Error(error.validation(validation_error.FilesMissing))
   assert db.write_steps == []
 }
 
@@ -961,7 +966,7 @@ pub fn create_snippet_rejects_too_long_title_test() {
     )
 
   assert run_result
-    == Error(error.ValidationError("title must be at most 200 characters"))
+    == Error(error.validation(validation_error.FieldTooLong("title", 200)))
   assert db.write_steps == []
 }
 
@@ -998,9 +1003,12 @@ pub fn update_snippet_rejects_too_long_file_content_test() {
     )
 
   assert run_result
-    == Error(error.ValidationError(
-      "files[0].content must be at most 100000 characters",
-    ))
+    == Error(
+      error.validation(validation_error.FieldTooLong(
+        "files[0].content",
+        100_000,
+      )),
+    )
   assert db.write_steps == []
 }
 
@@ -1083,10 +1091,7 @@ pub fn schedule_delete_account_rejects_existing_pending_delete_job_test() {
     )
 
   assert run_result
-    == Error(error.ConflictError(
-      "account_delete_already_scheduled",
-      "Account deletion already scheduled",
-    ))
+    == Error(error.resource(resource_error.AccountDeleteAlreadyScheduled))
 
   let assert Ok(updated_account) =
     dict.get(db.accounts, uuid_key(fixture.account.id))
@@ -1890,7 +1895,11 @@ fn run_test_email_effect(
   case effect {
     email_algebra.SendEmail(_, next) ->
       run_test_program(
-        next(Error(error.InternalSendEmailError("unused in test"))),
+        next(
+          Error(
+            error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed)),
+          ),
+        ),
         ctx,
         db,
       )
@@ -1903,7 +1912,7 @@ fn run_test_docker_run_effect(
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
     docker_run_algebra.RunCode(_, _) -> #(
-      Error(error.RunError(error.InternalRunRequestError("unused in test"))),
+      Error(error.run_request_error(run_request_error.ServerRunRequestError)),
       db,
     )
   }
@@ -1917,7 +1926,7 @@ fn run_test_get_language_version_effect(
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
     get_language_version_algebra.GetLanguageVersion(_, _, _) -> #(
-      Error(error.RunError(error.InternalRunRequestError("unused in test"))),
+      Error(error.run_request_error(run_request_error.ServerRunRequestError)),
       db,
     )
   }

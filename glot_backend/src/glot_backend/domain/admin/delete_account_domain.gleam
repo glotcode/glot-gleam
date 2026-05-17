@@ -5,6 +5,7 @@ import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -28,7 +29,7 @@ pub fn delete_account(
   ))
   use hydrated_user <- program.and_then(
     auth_effect.get_user_by_id(request.user_id)
-    |> program.require(error.NotFoundError("user_not_found", "User not found")),
+    |> program.require(error.resource(resource_error.UserNotFound)),
   )
   let delete_pending_job =
     hydrated_user.account.identity.delete_job_id

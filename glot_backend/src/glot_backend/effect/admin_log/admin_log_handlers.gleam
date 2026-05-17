@@ -4,7 +4,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/admin/api_log_dto
@@ -16,22 +16,23 @@ import glot_core/job_log_model
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/run_log_model
+import glot_core/validation_error
 import youid/uuid
 
 pub type AdminLogHandlers {
   AdminLogHandlers(
     list_api_logs: fn(api_log_dto.ListApiLogsRequest) ->
-      Result(List(api_log_model.ApiLogSummary), error.DbQueryError),
+      Result(List(api_log_model.ApiLogSummary), db_error.DbQueryError),
     get_api_log: fn(uuid.Uuid) ->
-      Result(option.Option(api_log_model.ApiLogDetail), error.DbQueryError),
+      Result(option.Option(api_log_model.ApiLogDetail), db_error.DbQueryError),
     list_run_logs: fn(run_log_dto.ListRunLogsRequest) ->
-      Result(List(run_log_model.RunLog), error.DbQueryError),
+      Result(List(run_log_model.RunLog), db_error.DbQueryError),
     get_run_log: fn(uuid.Uuid) ->
-      Result(option.Option(run_log_model.RunLog), error.DbQueryError),
+      Result(option.Option(run_log_model.RunLog), db_error.DbQueryError),
     list_job_logs: fn(job_log_dto.ListJobLogsRequest) ->
-      Result(List(job_log_model.JobLog), error.DbQueryError),
+      Result(List(job_log_model.JobLog), db_error.DbQueryError),
     get_job_log: fn(uuid.Uuid) ->
-      Result(option.Option(job_log_model.JobLog), error.DbQueryError),
+      Result(option.Option(job_log_model.JobLog), db_error.DbQueryError),
   )
 }
 
@@ -49,7 +50,7 @@ pub fn new(db: db_helpers.Db) -> AdminLogHandlers {
 pub fn list_api_logs(
   db: db_helpers.Db,
   request: api_log_dto.ListApiLogsRequest,
-) -> Result(List(api_log_model.ApiLogSummary), error.DbQueryError) {
+) -> Result(List(api_log_model.ApiLogSummary), db_error.DbQueryError) {
   let has_errors_only = case request.error_filter {
     api_log_dto.OnlyApiLogsWithErrors -> True
     api_log_dto.AllApiLogs -> False
@@ -58,7 +59,8 @@ pub fn list_api_logs(
   case request.pagination {
     pagination_model.BeforePage(cursor, limit) ->
       api_log_model.decode_cursor(cursor)
-      |> result.map_error(error.DbQueryError)
+      |> result.map_error(validation_error.to_string)
+      |> result.map_error(db_error.DbQueryError)
       |> result.try(fn(decoded_cursor) {
         db_helpers.query(
           db,
@@ -71,7 +73,7 @@ pub fn list_api_logs(
             before_id: uuid.to_bit_array(decoded_cursor.1),
             page_limit: limit,
           ),
-          fn(err) { error.DbQueryError(string.inspect(err)) },
+          fn(err) { db_error.DbQueryError(string.inspect(err)) },
         )
         |> result.map(fn(returned) {
           returned.rows
@@ -85,7 +87,8 @@ pub fn list_api_logs(
         pagination_model.AfterPage(cursor, _) ->
           api_log_model.decode_cursor(cursor)
           |> result.map(option.Some)
-          |> result.map_error(error.DbQueryError)
+          |> result.map_error(validation_error.to_string)
+          |> result.map_error(db_error.DbQueryError)
         pagination_model.InitialPage(_) -> Ok(option.None)
         pagination_model.BeforePage(_, _) -> Ok(option.None)
       }
@@ -103,7 +106,7 @@ pub fn list_api_logs(
             after_id: cursor_id(cursor),
             page_limit: limit,
           ),
-          fn(err) { error.DbQueryError(string.inspect(err)) },
+          fn(err) { db_error.DbQueryError(string.inspect(err)) },
         )
         |> result.map(fn(returned) {
           list.map(returned.rows, get_api_log_summary_from_after_row)
@@ -116,26 +119,26 @@ pub fn list_api_logs(
 pub fn get_api_log(
   db: db_helpers.Db,
   id: uuid.Uuid,
-) -> Result(option.Option(api_log_model.ApiLogDetail), error.DbQueryError) {
+) -> Result(option.Option(api_log_model.ApiLogDetail), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
       sql.get_admin_api_log(id: uuid.to_bit_array(id)),
-      fn(err) { error.DbQueryError(string.inspect(err)) },
+      fn(err) { db_error.DbQueryError(string.inspect(err)) },
     ),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> Ok(option.Some(get_api_log_detail_from_row(row)))
-    _ -> Error(error.DbQueryError("Expected at most one api log row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one api log row"))
   }
 }
 
 pub fn list_run_logs(
   db: db_helpers.Db,
   request: run_log_dto.ListRunLogsRequest,
-) -> Result(List(run_log_model.RunLog), error.DbQueryError) {
+) -> Result(List(run_log_model.RunLog), db_error.DbQueryError) {
   let maybe_outcome = case request.outcome_filter {
     run_log_dto.AllRunLogs -> option.None
     run_log_dto.OnlySuccessfulRunLogs ->
@@ -149,7 +152,8 @@ pub fn list_run_logs(
   case request.pagination {
     pagination_model.BeforePage(cursor, limit) ->
       run_log_model.decode_cursor(cursor)
-      |> result.map_error(error.DbQueryError)
+      |> result.map_error(validation_error.to_string)
+      |> result.map_error(db_error.DbQueryError)
       |> result.try(fn(decoded_cursor) {
         db_helpers.query(
           db,
@@ -169,7 +173,7 @@ pub fn list_run_logs(
             before_id: uuid.to_bit_array(decoded_cursor.1),
             page_limit: limit,
           ),
-          fn(err) { error.DbQueryError(string.inspect(err)) },
+          fn(err) { db_error.DbQueryError(string.inspect(err)) },
         )
         |> result.try(fn(returned) {
           returned.rows
@@ -184,7 +188,8 @@ pub fn list_run_logs(
         pagination_model.AfterPage(cursor, _) ->
           run_log_model.decode_cursor(cursor)
           |> result.map(option.Some)
-          |> result.map_error(error.DbQueryError)
+          |> result.map_error(validation_error.to_string)
+          |> result.map_error(db_error.DbQueryError)
         pagination_model.InitialPage(_) -> Ok(option.None)
         pagination_model.BeforePage(_, _) -> Ok(option.None)
       }
@@ -209,7 +214,7 @@ pub fn list_run_logs(
             after_id: cursor_id(cursor),
             page_limit: limit,
           ),
-          fn(err) { error.DbQueryError(string.inspect(err)) },
+          fn(err) { db_error.DbQueryError(string.inspect(err)) },
         )
         |> result.try(fn(returned) {
           returned.rows
@@ -224,26 +229,26 @@ pub fn list_run_logs(
 pub fn get_run_log(
   db: db_helpers.Db,
   id: uuid.Uuid,
-) -> Result(option.Option(run_log_model.RunLog), error.DbQueryError) {
+) -> Result(option.Option(run_log_model.RunLog), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
       sql.get_admin_run_log(id: uuid.to_bit_array(id)),
-      fn(err) { error.DbQueryError(string.inspect(err)) },
+      fn(err) { db_error.DbQueryError(string.inspect(err)) },
     ),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> get_run_log_from_detail_row(row) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one run log row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one run log row"))
   }
 }
 
 pub fn list_job_logs(
   db: db_helpers.Db,
   request: job_log_dto.ListJobLogsRequest,
-) -> Result(List(job_log_model.JobLog), error.DbQueryError) {
+) -> Result(List(job_log_model.JobLog), db_error.DbQueryError) {
   let has_errors_only = case request.error_filter {
     job_log_dto.OnlyJobLogsWithErrors -> True
     job_log_dto.AllJobLogs -> False
@@ -252,7 +257,8 @@ pub fn list_job_logs(
   case request.pagination {
     pagination_model.BeforePage(cursor, limit) ->
       job_log_model.decode_cursor(cursor)
-      |> result.map_error(error.DbQueryError)
+      |> result.map_error(validation_error.to_string)
+      |> result.map_error(db_error.DbQueryError)
       |> result.try(fn(decoded_cursor) {
         db_helpers.query(
           db,
@@ -267,7 +273,7 @@ pub fn list_job_logs(
             before_id: uuid.to_bit_array(decoded_cursor.1),
             page_limit: limit,
           ),
-          fn(err) { error.DbQueryError(string.inspect(err)) },
+          fn(err) { db_error.DbQueryError(string.inspect(err)) },
         )
         |> result.map(fn(returned) {
           returned.rows
@@ -281,7 +287,8 @@ pub fn list_job_logs(
         pagination_model.AfterPage(cursor, _) ->
           job_log_model.decode_cursor(cursor)
           |> result.map(option.Some)
-          |> result.map_error(error.DbQueryError)
+          |> result.map_error(validation_error.to_string)
+          |> result.map_error(db_error.DbQueryError)
         pagination_model.InitialPage(_) -> Ok(option.None)
         pagination_model.BeforePage(_, _) -> Ok(option.None)
       }
@@ -301,7 +308,7 @@ pub fn list_job_logs(
             after_id: cursor_request_id(cursor),
             page_limit: limit,
           ),
-          fn(err) { error.DbQueryError(string.inspect(err)) },
+          fn(err) { db_error.DbQueryError(string.inspect(err)) },
         )
         |> result.map(fn(returned) {
           list.map(returned.rows, get_job_log_from_after_row)
@@ -314,19 +321,19 @@ pub fn list_job_logs(
 pub fn get_job_log(
   db: db_helpers.Db,
   id: uuid.Uuid,
-) -> Result(option.Option(job_log_model.JobLog), error.DbQueryError) {
+) -> Result(option.Option(job_log_model.JobLog), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
       sql.get_admin_job_log(id: uuid.to_bit_array(id)),
-      fn(err) { error.DbQueryError(string.inspect(err)) },
+      fn(err) { db_error.DbQueryError(string.inspect(err)) },
     ),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> Ok(option.Some(get_job_log_from_detail_row(row)))
-    _ -> Error(error.DbQueryError("Expected at most one job log row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one job log row"))
   }
 }
 
@@ -418,7 +425,7 @@ fn get_job_log_from_after_row(
 
 fn get_run_log_from_after_row(
   row: sql.ListAdminRunLogsAfter,
-) -> Result(run_log_model.RunLog, error.DbQueryError) {
+) -> Result(run_log_model.RunLog, db_error.DbQueryError) {
   run_log_from_row(
     id: row.id,
     request_id: row.request_id,
@@ -434,7 +441,7 @@ fn get_run_log_from_after_row(
 
 fn get_run_log_from_before_row(
   row: sql.ListAdminRunLogsBefore,
-) -> Result(run_log_model.RunLog, error.DbQueryError) {
+) -> Result(run_log_model.RunLog, db_error.DbQueryError) {
   run_log_from_row(
     id: row.id,
     request_id: row.request_id,
@@ -450,7 +457,7 @@ fn get_run_log_from_before_row(
 
 fn get_run_log_from_detail_row(
   row: sql.GetAdminRunLog,
-) -> Result(run_log_model.RunLog, error.DbQueryError) {
+) -> Result(run_log_model.RunLog, db_error.DbQueryError) {
   run_log_from_row(
     id: row.id,
     request_id: row.request_id,
@@ -474,16 +481,16 @@ fn run_log_from_row(
   outcome outcome_value: String,
   duration_ns duration_ns: option.Option(Int),
   failure_message failure_message: option.Option(String),
-) -> Result(run_log_model.RunLog, error.DbQueryError) {
+) -> Result(run_log_model.RunLog, db_error.DbQueryError) {
   use parsed_language <- result.try(
     language.from_string(language_value)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid run log language: " <> language_value,
     )),
   )
   use parsed_outcome <- result.try(
     run_log_model.run_outcome_from_string(outcome_value)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid run log outcome: " <> outcome_value,
     )),
   )

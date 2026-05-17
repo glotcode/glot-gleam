@@ -10,6 +10,7 @@ import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/route
+import glot_core/validation_error
 import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
@@ -631,7 +632,10 @@ fn editor_to_request(
 ) -> Result(user_dto.UpdateUserRequest, String) {
   let username = string.trim(editor.draft.username)
 
-  use _ <- result.try(user_model.validate_username(username))
+  use _ <- result.try(
+    user_model.validate_username(username)
+    |> result.map_error(validation_error.message),
+  )
 
   Ok(user_dto.UpdateUserRequest(
     id: editor.id,

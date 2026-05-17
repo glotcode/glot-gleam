@@ -5,6 +5,7 @@ import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
@@ -46,10 +47,7 @@ pub fn get_snippet(
 
   use snippet <- program.and_then(
     snippet_effect.get_by_slug(request.slug)
-    |> program.require(error.NotFoundError(
-      "snippet_not_found",
-      "Snippet not found",
-    )),
+    |> program.require(error.resource(resource_error.SnippetNotFound)),
   )
 
   let is_owner = maybe_user_id == option.Some(snippet.user.id)

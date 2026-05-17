@@ -30,7 +30,7 @@ pub fn run(
             ),
           )
         Error(query_error) -> #(
-          Error(error.QueryError(query_error)),
+          Error(error.database_query_error(query_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.AdminLogEffectName(
@@ -59,7 +59,7 @@ pub fn run(
             ),
           )
         Error(query_error) -> #(
-          Error(error.QueryError(query_error)),
+          Error(error.database_query_error(query_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.AdminLogEffectName(
@@ -88,7 +88,7 @@ pub fn run(
             ),
           )
         Error(query_error) -> #(
-          Error(error.QueryError(query_error)),
+          Error(error.database_query_error(query_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.AdminLogEffectName(
@@ -117,7 +117,7 @@ pub fn run(
             ),
           )
         Error(query_error) -> #(
-          Error(error.QueryError(query_error)),
+          Error(error.database_query_error(query_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.AdminLogEffectName(
@@ -146,7 +146,7 @@ pub fn run(
             ),
           )
         Error(query_error) -> #(
-          Error(error.QueryError(query_error)),
+          Error(error.database_query_error(query_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.AdminLogEffectName(
@@ -175,7 +175,7 @@ pub fn run(
             ),
           )
         Error(query_error) -> #(
-          Error(error.QueryError(query_error)),
+          Error(error.database_query_error(query_error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.AdminLogEffectName(

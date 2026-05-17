@@ -5,6 +5,7 @@ import glot_backend/domain/shared/session_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -44,10 +45,7 @@ pub fn cancel_delete_account(
 
   use delete_job_id <- program.and_then(program.from_option(
     session.user.account.identity.delete_job_id,
-    error.ConflictError(
-      "account_delete_not_scheduled",
-      "Account deletion is not scheduled",
-    ),
+    error.resource(resource_error.AccountDeleteNotScheduled),
   ))
   use maybe_job <- program.and_then(job_effect.get_job_by_id(delete_job_id))
 

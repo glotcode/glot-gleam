@@ -1,5 +1,5 @@
 import glot_backend/context
-import glot_backend/effect/error
+import glot_backend/effect/error/run_request_error
 import glot_core/language.{type Language}
 import glot_core/run
 
@@ -7,7 +7,7 @@ pub type GetLanguageVersionEffect(next) {
   GetLanguageVersion(
     context.Config,
     Language,
-    fn(Result(run.RunResult, error.RunRequestError)) -> next,
+    fn(Result(run.RunResult, run_request_error.RunRequestError)) -> next,
   )
 }
 

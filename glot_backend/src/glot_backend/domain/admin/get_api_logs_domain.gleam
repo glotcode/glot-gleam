@@ -22,7 +22,7 @@ pub fn get_api_logs(
   let pagination = request.pagination
   use _ <- program.and_then(
     pagination_model.validate(pagination, 100)
-    |> result.map_error(error.ValidationError)
+    |> result.map_error(error.validation)
     |> program.from_result,
   )
   use session <- program.and_then(session_domain.require_session(ctx))

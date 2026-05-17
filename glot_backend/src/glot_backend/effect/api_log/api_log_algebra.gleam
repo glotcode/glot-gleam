@@ -1,10 +1,10 @@
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 
 pub type ApiLogEffect(next) {
   DeleteApiLogBefore(
     before: Timestamp,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
 }
 

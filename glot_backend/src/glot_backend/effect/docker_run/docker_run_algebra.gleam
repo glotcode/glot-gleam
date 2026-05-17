@@ -1,10 +1,10 @@
-import glot_backend/effect/error
+import glot_backend/effect/error/run_request_error
 import glot_core/run
 
 pub type DockerRunEffect(next) {
   RunCode(
     run.RunRequest,
-    fn(Result(run.RunResult, error.RunRequestError)) -> next,
+    fn(Result(run.RunResult, run_request_error.RunRequestError)) -> next,
   )
 }
 

@@ -1,5 +1,5 @@
 import gleam/option
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_core/pagination_model.{type CursorPagination}
 import glot_core/snippet/snippet_model.{
   type HydratedSnippet, type ListSnippetsFilter, type Snippet,
@@ -9,41 +9,44 @@ import youid/uuid.{type Uuid}
 pub type SnippetEffect(next) {
   GetSnippetById(
     id: BitArray,
-    next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+    next: fn(Result(option.Option(HydratedSnippet), db_error.DbQueryError)) ->
+      next,
   )
   GetSnippetBySlug(
     slug: String,
-    next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+    next: fn(Result(option.Option(HydratedSnippet), db_error.DbQueryError)) ->
+      next,
   )
   GetAdminSnippetBySlug(
     slug: String,
-    next: fn(Result(option.Option(HydratedSnippet), error.DbQueryError)) -> next,
+    next: fn(Result(option.Option(HydratedSnippet), db_error.DbQueryError)) ->
+      next,
   )
   ListSnippets(
     filter: ListSnippetsFilter,
     pagination: CursorPagination,
-    next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
+    next: fn(Result(List(HydratedSnippet), db_error.DbQueryError)) -> next,
   )
   ListAdminSnippets(
     username: option.Option(String),
     pagination: CursorPagination,
-    next: fn(Result(List(HydratedSnippet), error.DbQueryError)) -> next,
+    next: fn(Result(List(HydratedSnippet), db_error.DbQueryError)) -> next,
   )
   DeleteSnippet(
     id: BitArray,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   DeleteSnippetsByAccountId(
     account_id: Uuid,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   CreateSnippet(
     snippet: Snippet,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   UpdateSnippet(
     snippet: Snippet,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
 }
 

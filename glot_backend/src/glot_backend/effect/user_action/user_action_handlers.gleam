@@ -3,7 +3,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/api_action
@@ -14,10 +14,10 @@ import youid/uuid
 pub type UserActionHandlers {
   UserActionHandlers(
     count_user_actions: fn(user_action.UserActionFilter) ->
-      Result(List(rate_limit.WindowCount), error.DbQueryError),
+      Result(List(rate_limit.WindowCount), db_error.DbQueryError),
     create_user_action: fn(user_action.UserAction) ->
-      Result(Nil, error.DbCommandError),
-    delete_before: fn(Timestamp) -> Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
+    delete_before: fn(Timestamp) -> Result(Nil, db_error.DbCommandError),
   )
 }
 
@@ -32,7 +32,7 @@ pub fn new(db: db_helpers.Db) -> UserActionHandlers {
 pub fn count_user_actions(
   db: db_helpers.Db,
   filter: user_action.UserActionFilter,
-) -> Result(List(rate_limit.WindowCount), error.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), db_error.DbQueryError) {
   case filter.count_by {
     user_action.CountByIp(ip) ->
       db_helpers.query(
@@ -43,7 +43,7 @@ pub fn count_user_actions(
           windows: json.array(filter.windows, of: rate_limit.encode_window)
             |> json.to_string(),
         ),
-        fn(err) { error.DbQueryError(string.inspect(err)) },
+        fn(err) { db_error.DbQueryError(string.inspect(err)) },
       )
       |> result.try(fn(returned) { window_counts_from_ip_rows(returned.rows) })
     user_action.CountByUser(user_id) ->
@@ -55,7 +55,7 @@ pub fn count_user_actions(
           windows: json.array(filter.windows, of: rate_limit.encode_window)
             |> json.to_string(),
         ),
-        fn(err) { error.DbQueryError(string.inspect(err)) },
+        fn(err) { db_error.DbQueryError(string.inspect(err)) },
       )
       |> result.try(fn(returned) { window_counts_from_user_rows(returned.rows) })
   }
@@ -64,8 +64,8 @@ pub fn count_user_actions(
 pub fn create_user_action(
   db: db_helpers.Db,
   user_action: user_action.UserAction,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -85,8 +85,8 @@ pub fn create_user_action(
 pub fn delete_before(
   db: db_helpers.Db,
   before: Timestamp,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(db, sql.delete_user_actions_before(before), to_error)
   |> result.map(fn(_) { Nil })
@@ -94,7 +94,7 @@ pub fn delete_before(
 
 fn window_counts_from_ip_rows(
   rows: List(sql.CountUserActionsByIp),
-) -> Result(List(rate_limit.WindowCount), error.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), db_error.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -107,7 +107,7 @@ fn window_counts_from_ip_rows(
 
 fn window_counts_from_user_rows(
   rows: List(sql.CountUserActionsByUser),
-) -> Result(List(rate_limit.WindowCount), error.DbQueryError) {
+) -> Result(List(rate_limit.WindowCount), db_error.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -121,11 +121,13 @@ fn window_counts_from_user_rows(
 fn window_count_from_row(
   unit: String,
   count: Int,
-) -> Result(rate_limit.WindowCount, error.DbQueryError) {
+) -> Result(rate_limit.WindowCount, db_error.DbQueryError) {
   case rate_limit.unit_from_string(unit) {
     option.Some(parsed_unit) ->
       Ok(rate_limit.WindowCount(unit: parsed_unit, count: count))
     option.None ->
-      Error(error.DbQueryError("Invalid time unit in rate limit row: " <> unit))
+      Error(db_error.DbQueryError(
+        "Invalid time unit in rate limit row: " <> unit,
+      ))
   }
 }

@@ -24,7 +24,7 @@ pub fn list_public_snippets(
   let pagination = request.pagination
   use _ <- program.and_then(
     pagination_model.validate(pagination, 100)
-    |> result.map_error(error.ValidationError)
+    |> result.map_error(error.validation)
     |> program.from_result,
   )
   use maybe_session <- program.and_then(session_domain.get_session(ctx))

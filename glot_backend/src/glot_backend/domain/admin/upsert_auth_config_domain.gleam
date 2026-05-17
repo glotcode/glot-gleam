@@ -1,5 +1,4 @@
 import gleam/dynamic
-import gleam/list
 import gleam/option
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
@@ -13,6 +12,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/auth_config_dto
 import glot_core/admin_action
 import glot_core/api_action
+import glot_core/validation_error
 
 pub fn upsert_auth_config(
   ctx: context.Context,
@@ -57,23 +57,40 @@ pub fn request_from_dynamic(
 fn validate_request(
   request: auth_config_dto.UpsertAuthConfigRequest,
 ) -> program_types.Program(Nil) {
-  case
-    list.any(
-      [
-        request.login_token_max_age,
-        request.session_token_max_age,
-        request.session_cookie_max_age,
-        request.session_refresh_interval_seconds,
-        request.session_previous_token_grace_seconds,
-        request.session_heartbeat_interval_seconds,
-      ],
-      fn(value) { value <= 0 },
-    )
-  {
-    True ->
-      program.fail(error.ValidationError(
-        "auth config values must be greater than 0",
-      ))
-    False -> program.succeed(Nil)
+  use _ <- program.and_then(require_positive(
+    request.login_token_max_age,
+    "login_token_max_age",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.session_token_max_age,
+    "session_token_max_age",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.session_cookie_max_age,
+    "session_cookie_max_age",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.session_refresh_interval_seconds,
+    "session_refresh_interval_seconds",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.session_previous_token_grace_seconds,
+    "session_previous_token_grace_seconds",
+  ))
+  use _ <- program.and_then(require_positive(
+    request.session_heartbeat_interval_seconds,
+    "session_heartbeat_interval_seconds",
+  ))
+
+  program.succeed(Nil)
+}
+
+fn require_positive(value: Int, field: String) -> program_types.Program(Nil) {
+  case value > 0 {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThan(field, 0)),
+      )
   }
 }

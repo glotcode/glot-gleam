@@ -21,6 +21,10 @@ import glot_backend/effect/effect_trace
 import glot_backend/effect/email/email_handlers
 import glot_backend/effect/email_template/email_template_handlers
 import glot_backend/effect/error
+import glot_backend/effect/error/auth_error
+import glot_backend/effect/error/infra_error
+import glot_backend/effect/error/resource_error
+import glot_backend/effect/error/run_request_error
 import glot_backend/effect/get_language_version/get_language_version_handlers
 import glot_backend/effect/handlers
 import glot_backend/effect/interpreter
@@ -41,6 +45,7 @@ import glot_backend/log
 import glot_backend/server_timing
 import glot_core/job/job_model
 import glot_core/rate_limit
+import glot_core/validation_error
 import youid/uuid
 
 pub fn main() -> Nil {
@@ -108,12 +113,12 @@ pub fn measures_effects_in_error_test() {
       5,
       crypto_token.AlphaNumeric,
     ))
-    program.fail(error.EmailInvalidError("bad"))
+    program.fail(error.validation(validation_error.InvalidLimit))
   }
   let #(run_result, state) =
     interpreter.run(failing_effect, effect_runtime, ctx)
 
-  assert run_result == Error(error.EmailInvalidError("bad"))
+  assert run_result == Error(error.validation(validation_error.InvalidLimit))
   let assert [
     effect_trace.EffectMeasurement(
       name: effect_trace.BasicEffectName(basic_algebra.NewTokenEffectName),
@@ -174,53 +179,51 @@ pub fn rolled_back_transaction_effect_is_marked_test() {
 }
 
 pub fn api_error_status_mapping_test() {
-  assert api.error_status(error.ValidationError("bad input")) == 400
-  assert api.error_status(error.NotFoundError("snippet_not_found", "missing"))
-    == 404
-  assert api.error_status(error.ConflictError(
-      "account_delete_not_scheduled",
-      "no pending delete",
+  assert api.error_status(error.validation(validation_error.InvalidLimit))
+    == 400
+  assert api.error_status(error.resource(resource_error.SnippetNotFound)) == 404
+  assert api.error_status(error.resource(
+      resource_error.AccountDeleteNotScheduled,
     ))
     == 409
-  assert api.error_status(error.SessionError(error.MissingSessionTokenError))
-    == 401
-  assert api.error_status(error.AuthorizationError(error.NotOwnerError)) == 403
-  assert api.error_status(error.TooManyRequestsError(3, test_rate_limit()))
-    == 429
-  assert api.error_status(
-      error.RunError(error.InternalRunRequestError("docker unavailable")),
-    )
+  assert api.error_status(error.auth(auth_error.MissingSessionToken)) == 401
+  assert api.error_status(error.auth(auth_error.NotOwner)) == 403
+  assert api.error_status(error.too_many_requests(3, test_rate_limit())) == 429
+  assert api.error_status(error.run_request_error(
+      run_request_error.ServerRunRequestError,
+    ))
     == 500
 }
 
 pub fn api_error_detail_codes_test() {
-  assert api.api_error_details(error.LoginError(error.InvalidTokenError))
+  assert api.api_error_details(error.auth(auth_error.InvalidLoginToken))
     == #(401, "login_invalid_token", "Invalid login token")
-  assert api.api_error_details(error.LoginError(error.TokenUsedError))
+  assert api.api_error_details(error.auth(auth_error.LoginTokenUsed))
     == #(409, "login_token_used", "Login token already used")
-  assert api.api_error_details(error.SessionError(error.SessionExpiredError))
+  assert api.api_error_details(error.auth(auth_error.SessionExpired))
     == #(401, "session_expired", "Session expired")
-  assert api.api_error_details(error.AuthorizationError(error.NotOwnerError))
+  assert api.api_error_details(error.auth(auth_error.NotOwner))
     == #(403, "authorization_not_owner", "Not authorized")
-  assert api.api_error_details(error.ValidationError(
-      "files must contain at least one file",
-    ))
+  assert api.api_error_details(error.validation(validation_error.FilesMissing))
     == #(
       400,
       "validation_files_missing",
       "files must contain at least one file",
     )
-  assert api.api_error_details(error.ValidationError(
-      "title must be at most 200 characters",
-    ))
+  assert api.api_error_details(
+      error.validation(validation_error.FieldTooLong("title", 200)),
+    )
     == #(
       400,
       "validation_title_too_long",
       "title must be at most 200 characters",
     )
-  assert api.api_error_details(error.ValidationError(
-      "files[0].content must be at most 100000 characters",
-    ))
+  assert api.api_error_details(
+      error.validation(validation_error.FieldTooLong(
+        "files[0].content",
+        100_000,
+      )),
+    )
     == #(
       400,
       "validation_files_0_content_too_long",
@@ -267,7 +270,9 @@ fn test_handlers() -> handlers.Handlers {
       uuid_v7: fn(_) { uuid.nil },
     ),
     email: email_handlers.EmailHandlers(send_email: fn(_) {
-      Error(error.InternalSendEmailError("unused in test"))
+      Error(
+        error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed)),
+      )
     }),
     email_template: email_template_handlers.EmailTemplateHandlers(
       list_email_templates: fn() { Ok([]) },
@@ -276,7 +281,7 @@ fn test_handlers() -> handlers.Handlers {
     ),
     get_language_version: get_language_version_handlers.GetLanguageVersionHandlers(
       get_language_version: fn(_, _) {
-        Error(error.InternalRunRequestError("unused in test"))
+        Error(run_request_error.ServerRunRequestError)
       },
     ),
     job: job_handlers.JobHandlers(
@@ -359,7 +364,7 @@ fn test_handlers() -> handlers.Handlers {
       update_snippet: fn(_) { Ok(Nil) },
     ),
     docker_run: docker_run_handlers.DockerRunHandlers(run_code: fn(_, _, _) {
-      Error(error.InternalRunRequestError("unused in test"))
+      Error(run_request_error.ServerRunRequestError)
     }),
     user_action: user_action_handlers.UserActionHandlers(
       count_user_actions: fn(_) { Ok([]) },

@@ -6,6 +6,7 @@ import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/email_template/email_template_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
@@ -26,15 +27,12 @@ pub fn get_email_template(
   ))
   use name <- program.and_then(
     email_template.from_db_name(request.name)
-    |> result.map_error(error.ValidationError)
+    |> result.map_error(error.validation)
     |> program.from_result,
   )
   use template <- program.and_then(
     email_template_effect.get_email_template_by_name(name)
-    |> program.require(error.NotFoundError(
-      "email_template_not_found",
-      "Email template not found",
-    )),
+    |> program.require(error.resource(resource_error.EmailTemplateNotFound)),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

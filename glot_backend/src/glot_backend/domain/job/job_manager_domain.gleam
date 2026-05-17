@@ -14,6 +14,7 @@ import glot_backend/domain/cleanup/clean_user_actions_domain
 import glot_backend/domain/email/send_email_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/infra_error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -133,10 +134,7 @@ fn require_payload(job: job_model.Job) -> program_types.Program(String) {
   case job.payload {
     option.Some(payload) -> program.succeed(payload)
     option.None ->
-      program.fail(error.ValidationError(
-        "Missing payload for job type: "
-        <> job_model.job_type_to_string(job.job_type),
-      ))
+      program.fail(error.infra(infra_error.JobPayloadMissing(job.job_type)))
   }
 }
 

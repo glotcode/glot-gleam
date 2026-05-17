@@ -11,6 +11,7 @@ import glot_core/pagination_model
 import glot_core/public_action
 import glot_core/server_timing_policy
 import glot_core/snippet/snippet_model
+import glot_core/validation_error
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -114,10 +115,7 @@ pub fn validate_username_accepts_valid_values_test() {
 }
 
 pub fn validate_username_rejects_invalid_values_test() {
-  let error =
-    Error(
-      "Invalid username: use 3-40 lowercase letters, digits, dots, or hyphens",
-    )
+  let error = Error(validation_error.InvalidUsername)
 
   assert user_model.validate_username("") == error
   assert user_model.validate_username("ab") == error
@@ -137,21 +135,21 @@ pub fn validate_username_rejects_invalid_values_test() {
 
 pub fn validate_snippet_fields_rejects_empty_files_test() {
   assert snippet_model.validate_fields("Snippet", "", option.None, [])
-    == Error("files must contain at least one file")
+    == Error(validation_error.FilesMissing)
 }
 
 pub fn validate_snippet_fields_rejects_empty_title_test() {
   assert snippet_model.validate_fields("   ", "", option.None, [
       snippet_model.File(name: "main.py", content: "print(1)"),
     ])
-    == Error("title must not be empty")
+    == Error(validation_error.EmptyField("title"))
 }
 
 pub fn validate_snippet_fields_rejects_empty_file_name_test() {
   assert snippet_model.validate_fields("Snippet", "", option.None, [
       snippet_model.File(name: "  ", content: "print(1)"),
     ])
-    == Error("files[0].name must not be empty")
+    == Error(validation_error.EmptyField("files[0].name"))
 }
 
 pub fn validate_snippet_fields_rejects_empty_run_command_test() {
@@ -161,7 +159,7 @@ pub fn validate_snippet_fields_rejects_empty_run_command_test() {
       option.Some(language.RunInstructions(build_commands: [], run_command: " ")),
       [snippet_model.File(name: "main.py", content: "print(1)")],
     )
-    == Error("runInstructions.runCommand must not be empty")
+    == Error(validation_error.EmptyField("runInstructions.runCommand"))
 }
 
 pub fn validate_snippet_fields_rejects_empty_build_command_test() {
@@ -174,7 +172,7 @@ pub fn validate_snippet_fields_rejects_empty_build_command_test() {
       )),
       [snippet_model.File(name: "main.py", content: "print(1)")],
     )
-    == Error("runInstructions.buildCommands[0] must not be empty")
+    == Error(validation_error.EmptyField("runInstructions.buildCommands[0]"))
 }
 
 pub fn cobol_example_code_preserves_fixed_format_indentation_test() {
@@ -195,14 +193,14 @@ pub fn validate_snippet_fields_rejects_too_long_title_test() {
       option.None,
       [snippet_model.File(name: "main.py", content: "print(1)")],
     )
-    == Error("title must be at most 200 characters")
+    == Error(validation_error.FieldTooLong("title", 200))
 }
 
 pub fn validate_snippet_fields_rejects_too_long_file_content_test() {
   assert snippet_model.validate_fields("Snippet", "", option.None, [
       snippet_model.File(name: "main.py", content: repeat_string("a", 100_001)),
     ])
-    == Error("files[0].content must be at most 100000 characters")
+    == Error(validation_error.FieldTooLong("files[0].content", 100_000))
 }
 
 pub fn pagination_validate_accepts_valid_limit_test() {
@@ -212,7 +210,7 @@ pub fn pagination_validate_accepts_valid_limit_test() {
 
 pub fn pagination_validate_rejects_zero_limit_test() {
   assert pagination_model.validate(pagination_model.InitialPage(limit: 0), 100)
-    == Error("limit must be greater than 0")
+    == Error(validation_error.InvalidLimit)
 }
 
 pub fn pagination_validate_rejects_limit_above_max_test() {
@@ -220,7 +218,7 @@ pub fn pagination_validate_rejects_limit_above_max_test() {
       pagination_model.InitialPage(limit: 101),
       100,
     )
-    == Error("limit must be less than or equal to 100")
+    == Error(validation_error.LimitTooLarge(100))
 }
 
 pub fn timestamp_relative_label_for_past_test() {

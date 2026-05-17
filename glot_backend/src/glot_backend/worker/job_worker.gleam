@@ -11,6 +11,7 @@ import glot_backend/domain/job/periodic_job_manager_domain
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
+import glot_backend/effect/error/infra_error
 import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
@@ -334,7 +335,7 @@ fn prepare_timeout_log_entry(
       ctx,
       program_state.new_state(),
       job,
-      Error(error.ValidationError("timeout_exceeded")),
+      Error(error.infra(infra_error.JobTimeoutExceeded)),
     ),
     created_at: basic_handlers.system_time(),
   )

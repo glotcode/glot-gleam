@@ -8,6 +8,7 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/user_model.{type User}
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
+import glot_core/validation_error
 import youid/uuid.{type Uuid}
 
 pub type Snippet {
@@ -115,7 +116,7 @@ pub fn validate_fields(
   stdin: String,
   run_instructions: option.Option(language.RunInstructions),
   files: List(File),
-) -> Result(Nil, String) {
+) -> Result(Nil, validation_error.ValidationError) {
   use _ <- result.try(validate_non_empty("title", title))
   use _ <- result.try(validate_max_length("title", title, title_max_length))
   use _ <- result.try(validate_max_length("stdin", stdin, stdin_max_length))
@@ -171,7 +172,7 @@ pub fn skip_user_ids(
 
 fn validate_run_instructions(
   run_instructions: option.Option(language.RunInstructions),
-) -> Result(Nil, String) {
+) -> Result(Nil, validation_error.ValidationError) {
   case run_instructions {
     option.None -> Ok(Nil)
     option.Some(instructions) -> {
@@ -192,7 +193,7 @@ fn validate_run_instructions(
 fn validate_build_commands(
   commands: List(String),
   index: Int,
-) -> Result(Nil, String) {
+) -> Result(Nil, validation_error.ValidationError) {
   case commands {
     [] -> Ok(Nil)
     [command, ..rest] -> {
@@ -210,14 +211,19 @@ fn validate_build_commands(
   }
 }
 
-fn validate_files(files: List(File)) -> Result(Nil, String) {
+fn validate_files(
+  files: List(File),
+) -> Result(Nil, validation_error.ValidationError) {
   case files {
-    [] -> Error("files must contain at least one file")
+    [] -> Error(validation_error.FilesMissing)
     _ -> validate_file_lengths(files, 0)
   }
 }
 
-fn validate_file_lengths(files: List(File), index: Int) -> Result(Nil, String) {
+fn validate_file_lengths(
+  files: List(File),
+  index: Int,
+) -> Result(Nil, validation_error.ValidationError) {
   case files {
     [] -> Ok(Nil)
     [file, ..rest] -> {
@@ -240,9 +246,12 @@ fn validate_file_lengths(files: List(File), index: Int) -> Result(Nil, String) {
   }
 }
 
-fn validate_non_empty(field: String, value: String) -> Result(Nil, String) {
+fn validate_non_empty(
+  field: String,
+  value: String,
+) -> Result(Nil, validation_error.ValidationError) {
   case string.trim(value) == "" {
-    True -> Error(field <> " must not be empty")
+    True -> Error(validation_error.EmptyField(field))
     False -> Ok(Nil)
   }
 }
@@ -251,15 +260,9 @@ fn validate_max_length(
   field: String,
   value: String,
   max_length: Int,
-) -> Result(Nil, String) {
+) -> Result(Nil, validation_error.ValidationError) {
   case string.length(value) <= max_length {
     True -> Ok(Nil)
-    False ->
-      Error(
-        field
-        <> " must be at most "
-        <> int.to_string(max_length)
-        <> " characters",
-      )
+    False -> Error(validation_error.FieldTooLong(field, max_length))
   }
 }

@@ -1,6 +1,8 @@
 import glot_backend/context
 import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/effect/error
+import glot_backend/effect/error/request_error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/total_program
 import glot_core/page/editor
@@ -25,10 +27,11 @@ pub fn load_existing_view_model(
 
 fn page_error_message(err: error.Error) -> String {
   case err {
-    error.NotFoundError(code: "snippet_not_found", message: _) ->
-      "Snippet not found."
-    error.ValidationError(message) -> message
-    error.TooManyRequestsError(_, _) -> "Too many requests. Please try again."
+    error.ResourceError(resource_error.SnippetNotFound) -> "Snippet not found."
+    error.RequestError(request_error.Validation(validation)) ->
+      request_error.validation_message(validation)
+    error.RequestError(request_error.TooManyRequests(_, _)) ->
+      "Too many requests. Please try again."
     _ -> "Could not load snippet."
   }
 }

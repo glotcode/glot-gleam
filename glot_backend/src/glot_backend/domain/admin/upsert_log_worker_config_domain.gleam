@@ -1,5 +1,4 @@
 import gleam/dynamic
-import gleam/list
 import gleam/option
 import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
@@ -13,6 +12,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/log_worker_config_dto
 import glot_core/admin_action
 import glot_core/api_action
+import glot_core/validation_error
 
 const max_flush_interval_ms = 60_000
 
@@ -57,40 +57,81 @@ pub fn request_from_dynamic(
 fn validate_request(
   request: log_worker_config_dto.UpsertLogWorkerConfigRequest,
 ) -> program_types.Program(Nil) {
-  use _ <- program.and_then(require(
-    !list.any(
-      [
-        request.flush_interval_ms,
-        request.max_batch_size,
-        request.max_buffer_size,
-      ],
-      fn(value) { value <= 0 },
-    ),
-    "log worker config values must be greater than 0",
+  use _ <- program.and_then(require_positive(
+    request.flush_interval_ms,
+    "flush_interval_ms",
   ))
-  use _ <- program.and_then(require(
-    request.flush_interval_ms <= max_flush_interval_ms,
-    "flush interval must be less than or equal to 60000 ms",
+  use _ <- program.and_then(require_positive(
+    request.max_batch_size,
+    "max_batch_size",
   ))
-  use _ <- program.and_then(require(
-    request.max_batch_size <= max_batch_size_limit,
-    "max batch size must be less than or equal to 10000",
+  use _ <- program.and_then(require_positive(
+    request.max_buffer_size,
+    "max_buffer_size",
   ))
-  use _ <- program.and_then(require(
-    request.max_buffer_size <= max_buffer_size_limit,
-    "max buffer size must be less than or equal to 100000",
+  use _ <- program.and_then(require_max(
+    request.flush_interval_ms,
+    "flush_interval_ms",
+    max_flush_interval_ms,
   ))
-  use _ <- program.and_then(require(
-    request.max_buffer_size >= request.max_batch_size,
-    "max buffer size must be greater than or equal to max batch size",
+  use _ <- program.and_then(require_max(
+    request.max_batch_size,
+    "max_batch_size",
+    max_batch_size_limit,
+  ))
+  use _ <- program.and_then(require_max(
+    request.max_buffer_size,
+    "max_buffer_size",
+    max_buffer_size_limit,
+  ))
+  use _ <- program.and_then(require_gte_field(
+    request.max_buffer_size,
+    "max_buffer_size",
+    request.max_batch_size,
+    "max_batch_size",
   ))
 
   program.succeed(Nil)
 }
 
-fn require(condition: Bool, message: String) -> program_types.Program(Nil) {
-  case condition {
+fn require_positive(value: Int, field: String) -> program_types.Program(Nil) {
+  case value > 0 {
     True -> program.succeed(Nil)
-    False -> program.fail(error.ValidationError(message))
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThan(field, 0)),
+      )
+  }
+}
+
+fn require_max(
+  value: Int,
+  field: String,
+  max: Int,
+) -> program_types.Program(Nil) {
+  case value <= max {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeLessThanOrEqual(field, max)),
+      )
+  }
+}
+
+fn require_gte_field(
+  value: Int,
+  field: String,
+  other_value: Int,
+  other_field: String,
+) -> program_types.Program(Nil) {
+  case value >= other_value {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThanOrEqualField(
+          field,
+          other_field,
+        )),
+      )
   }
 }

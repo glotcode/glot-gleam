@@ -2,7 +2,7 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/language
@@ -12,8 +12,8 @@ import youid/uuid
 pub type RunLogHandlers {
   RunLogHandlers(
     create_run_log: fn(run_log_model.RunLog) ->
-      Result(Nil, error.DbCommandError),
-    delete_before: fn(Timestamp) -> Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
+    delete_before: fn(Timestamp) -> Result(Nil, db_error.DbCommandError),
   )
 }
 
@@ -27,8 +27,8 @@ pub fn new(db: db_helpers.Db) -> RunLogHandlers {
 pub fn create_run_log(
   db: db_helpers.Db,
   run_log: run_log_model.RunLog,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -51,8 +51,8 @@ pub fn create_run_log(
 pub fn delete_before(
   db: db_helpers.Db,
   before: Timestamp,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(db, sql.delete_run_log_before(before), to_error)
   |> result.map(fn(_) { Nil })

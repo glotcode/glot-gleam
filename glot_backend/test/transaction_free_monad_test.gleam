@@ -3,6 +3,7 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/get_language_version/get_language_version_effect
 import glot_backend/effect/job/job_algebra
 import glot_backend/effect/job/job_effect
@@ -13,6 +14,7 @@ import glot_backend/effect/transaction/transaction_program
 import glot_core/job/job_model
 import glot_core/language
 import glot_core/run
+import glot_core/validation_error
 import youid/uuid
 
 pub fn main() -> Nil {
@@ -34,7 +36,7 @@ pub fn program_attempt_recovers_from_rolled_back_transaction_test() {
       use _ <- transaction_program.and_then(job_effect.create_job_tx(
         rolled_back_job,
       ))
-      transaction_program.fail(error.ValidationError("force rollback"))
+      transaction_program.fail(error.validation(validation_error.InvalidLimit))
     })
     |> program.attempt(fn(_) { job_effect.create_job(committed_job) })
 
@@ -57,7 +59,7 @@ pub fn process_job_shaped_recovery_after_rollback_test() {
       use _ <- transaction_program.and_then(job_effect.create_job_tx(
         rolled_back_job,
       ))
-      transaction_program.fail(error.ValidationError("force rollback"))
+      transaction_program.fail(error.validation(validation_error.InvalidLimit))
     })
     |> program.attempt(fn(_) { job_effect.update_job(rescheduled_job) })
 
@@ -80,7 +82,7 @@ pub fn program_attempt_retries_recovery_only_once_when_recovery_refails_test() {
           test_job(must_uuid("00000000-0000-0000-0000-000000000204")),
         ),
       )
-      transaction_program.fail(error.ValidationError("force rollback"))
+      transaction_program.fail(error.validation(validation_error.InvalidLimit))
     })
     |> program.attempt(fn(err) {
       use _ <- program.and_then(job_effect.update_job(rescheduled_job))
@@ -92,8 +94,8 @@ pub fn program_attempt_retries_recovery_only_once_when_recovery_refails_test() {
 
   assert result
     == Error(
-      error.TransactionError(error.DbTransactionError(
-        "validation_error:force rollback",
+      error.database_transaction_error(db_error.DbTransactionError(
+        "validation_error:limit must be greater than 0",
       )),
     )
   assert state.created_job_ids == []
@@ -169,8 +171,8 @@ fn run_program(
                 Ok(next_program) -> run_program(next_program, tx_state)
                 Error(err) -> #(
                   Error(
-                    error.TransactionError(
-                      error.DbTransactionError(error.to_string(err)),
+                    error.database_transaction_error(
+                      db_error.DbTransactionError(error.to_string(err)),
                     ),
                   ),
                   state,
@@ -259,19 +261,19 @@ fn update_job(state: TestState, job: job_model.Job) -> TestState {
 fn unsupported_program_effect(
   state: TestState,
 ) -> #(Result(a, error.Error), TestState) {
-  #(Error(error.ValidationError("Unsupported program effect in test")), state)
+  #(Error(error.validation(validation_error.InvalidLimit)), state)
 }
 
 fn unsupported_db_effect(
   state: TestState,
 ) -> #(Result(a, error.Error), TestState) {
-  #(Error(error.ValidationError("Unsupported db effect in test")), state)
+  #(Error(error.validation(validation_error.InvalidLimit)), state)
 }
 
 fn unsupported_job_effect(
   state: TestState,
 ) -> #(Result(a, error.Error), TestState) {
-  #(Error(error.ValidationError("Unsupported job effect in test")), state)
+  #(Error(error.validation(validation_error.InvalidLimit)), state)
 }
 
 fn test_job(id: uuid.Uuid) -> job_model.Job {

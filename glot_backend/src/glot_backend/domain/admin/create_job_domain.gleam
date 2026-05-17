@@ -15,6 +15,7 @@ import glot_core/admin/job_dto
 import glot_core/admin_action
 import glot_core/api_action
 import glot_core/job/job_model
+import glot_core/validation_error
 import youid/uuid.{type Uuid}
 
 pub fn create_job(
@@ -63,17 +64,22 @@ fn validate_request(
 ) -> Result(job_model.JobType, error.Error) {
   case request.max_attempts > 0 {
     False ->
-      Error(error.ValidationError("Max attempts must be greater than zero."))
+      Error(
+        error.validation(validation_error.MustBeGreaterThan("max_attempts", 0)),
+      )
     True ->
       case request.timeout_seconds > 0 {
         False ->
-          Error(error.ValidationError(
-            "Timeout seconds must be greater than zero.",
-          ))
+          Error(
+            error.validation(validation_error.MustBeGreaterThan(
+              "timeout_seconds",
+              0,
+            )),
+          )
         True ->
           case job_model.job_type_from_string(request.job_type) {
             Ok(job_type) -> Ok(job_type)
-            Error(message) -> Error(error.ValidationError(message))
+            Error(err) -> Error(error.validation(err))
           }
       }
   }

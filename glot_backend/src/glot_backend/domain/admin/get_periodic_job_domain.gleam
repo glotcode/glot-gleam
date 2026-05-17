@@ -4,6 +4,7 @@ import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/periodic_job/periodic_job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -24,10 +25,7 @@ pub fn get_periodic_job(
   ))
   use periodic_job <- program.and_then(
     periodic_job_effect.get_periodic_job_by_id(request.id)
-    |> program.require(error.NotFoundError(
-      "periodic_job_not_found",
-      "Periodic job not found",
-    )),
+    |> program.require(error.resource(resource_error.PeriodicJobNotFound)),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

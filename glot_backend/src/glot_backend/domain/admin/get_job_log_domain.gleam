@@ -5,6 +5,7 @@ import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/admin_log/admin_log_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
@@ -24,10 +25,7 @@ pub fn get_job_log(
   ))
   use log <- program.and_then(
     admin_log_effect.get_job_log(request.id)
-    |> program.require(error.NotFoundError(
-      "job_log_not_found",
-      "Job log not found",
-    )),
+    |> program.require(error.resource(resource_error.JobLogNotFound)),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 

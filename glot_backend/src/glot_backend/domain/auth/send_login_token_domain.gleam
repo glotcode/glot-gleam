@@ -10,6 +10,7 @@ import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/email_template/email_template_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/infra_error
 import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -53,25 +54,32 @@ pub fn send_login_token(
     ),
   )
 
-  use template <- program.and_then(program.require(
+  use maybe_template <- program.and_then(
     email_template_effect.get_email_template_by_name(
       email_template.LoginTokenTemplate,
     ),
-    error.SendEmailError(error.InternalSendEmailError(
-      "Missing email template: "
-      <> email_template.to_db_name(email_template.LoginTokenTemplate),
-    )),
+  )
+  let assert_template = case maybe_template {
+    option.Some(template) -> Ok(template)
+    option.None ->
+      Error(
+        infra_error.EmailTemplateMissing(email_template.to_db_name(
+          email_template.LoginTokenTemplate,
+        )),
+      )
+  }
+  use template <- program.and_then(log_send_email_internal_error(
+    assert_template,
   ))
-  use login_email <- program.and_then(program.from_result(
+  use login_email <- program.and_then(
     email_template.render_email_template(
       template,
       request.email,
       dict.from_list([#("token", token)]),
     )
-    |> result.map_error(fn(message) {
-      error.SendEmailError(error.InternalSendEmailError(message))
-    }),
-  ))
+    |> result.map_error(infra_error.EmailTemplateRenderFailed)
+    |> log_send_email_internal_error,
+  )
   use send_email_policy <- program.and_then(
     job_type_policy_domain.require_job_type_policy(job_model.SendEmailJob),
   )
@@ -106,4 +114,27 @@ pub fn request_from_dynamic(
   data: dynamic.Dynamic,
 ) -> program_types.Program(login_token_dto.LoginTokenRequest) {
   program.decode_dynamic(data, login_token_dto.decoder(ctx.regexes.is_email))
+}
+
+fn log_send_email_internal_error(
+  result: Result(a, infra_error.EmailError),
+) -> program_types.Program(a) {
+  case result {
+    Ok(value) -> program.succeed(value)
+    Error(email_error) -> {
+      use _ <- program.and_then(
+        basic_effect.warn(
+          log.singleton(
+            log.object("send_email_error", [
+              log.string(
+                "message",
+                infra_error.to_string(infra_error.EmailError(email_error)),
+              ),
+            ]),
+          ),
+        ),
+      )
+      program.fail(error.infra(infra_error.EmailError(email_error)))
+    }
+  }
 }

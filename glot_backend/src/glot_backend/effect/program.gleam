@@ -95,7 +95,7 @@ pub fn parse_json(
   decoder: decode.Decoder(a),
 ) -> program_types.Program(a) {
   json.parse(json_str, decoder)
-  |> result.map_error(error.JsonParseError)
+  |> result.map_error(error.json_parse_error)
   |> from_result
 }
 
@@ -104,7 +104,7 @@ pub fn decode_dynamic(
   decoder: decode.Decoder(a),
 ) -> program_types.Program(a) {
   decode.run(data, decoder)
-  |> result.map_error(error.DecodeError)
+  |> result.map_error(error.decode_error)
   |> from_result
 }
 

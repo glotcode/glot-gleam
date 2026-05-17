@@ -7,7 +7,7 @@ import gleam/result
 import gleam/string
 import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_handlers
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/erlang
 import glot_backend/helpers/db_helpers
 import glot_backend/server_mode
@@ -21,25 +21,27 @@ const refresh_interval_ms = 60_000
 pub type Message {
   GetConfig(
     reply: process.Subject(
-      Result(dynamic_config.DynamicConfig, error.DbQueryError),
+      Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
     ),
   )
   Refresh(
     reply: process.Subject(
-      Result(dynamic_config.DynamicConfig, error.DbQueryError),
+      Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
     ),
   )
   Tick
   RefreshCompleted(
     fetched_at_ns: Int,
-    result: Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    result: Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
   )
 }
 
 type InFlight {
   InFlight(
     waiters: List(
-      process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+      process.Subject(
+        Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+      ),
     ),
   )
 }
@@ -47,7 +49,7 @@ type InFlight {
 pub type FetchHandlers {
   FetchHandlers(
     fetch_config: fn() ->
-      Result(dynamic_config.DynamicConfig, error.DbQueryError),
+      Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
     now_ns: fn() -> Int,
   )
 }
@@ -79,7 +81,7 @@ pub fn start(
         app_config_handlers.new(db_helpers.new(db)).list_entries()
         |> result.try(fn(entries) {
           dynamic_config.from_entries(entries)
-          |> result.map_error(error.DbQueryError)
+          |> result.map_error(db_error.DbQueryError)
         })
       },
       now_ns: erlang.perf_counter_ns,
@@ -120,13 +122,13 @@ pub fn supervised(
 
 pub fn get_config(
   subject: process.Subject(Message),
-) -> Result(dynamic_config.DynamicConfig, error.DbQueryError) {
+) -> Result(dynamic_config.DynamicConfig, db_error.DbQueryError) {
   process.call(subject, call_timeout_ms, GetConfig)
 }
 
 pub fn refresh(
   subject: process.Subject(Message),
-) -> Result(dynamic_config.DynamicConfig, error.DbQueryError) {
+) -> Result(dynamic_config.DynamicConfig, db_error.DbQueryError) {
   process.call(subject, call_timeout_ms, Refresh)
 }
 
@@ -175,7 +177,7 @@ fn lookup_config(
   state: State,
   now_ns: Int,
   reply: process.Subject(
-    Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
   ),
 ) -> #(State, Result(dynamic_config.DynamicConfig, Nil)) {
   case state.cache_entry {
@@ -238,7 +240,7 @@ fn ensure_fetch_started(state: State) -> State {
 fn enqueue_waiter(
   state: State,
   reply: process.Subject(
-    Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
   ),
 ) -> State {
   let in_flight = case state.in_flight {
@@ -255,7 +257,7 @@ fn enqueue_waiter(
 fn complete_fetch(
   state: State,
   fetched_at_ns: Int,
-  result: Result(dynamic_config.DynamicConfig, error.DbQueryError),
+  result: Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
 ) -> State {
   let in_flight = case state.in_flight {
     option.Some(in_flight) -> in_flight
@@ -296,9 +298,9 @@ fn should_schedule_refreshes(state: State) -> Bool {
 
 fn reply_waiters(
   waiters: List(
-    process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+    process.Subject(Result(dynamic_config.DynamicConfig, db_error.DbQueryError)),
   ),
-  result: Result(dynamic_config.DynamicConfig, error.DbQueryError),
+  result: Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
 ) -> Nil {
   list.each(waiters, fn(reply) { process.send(reply, result) })
 }

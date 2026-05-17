@@ -11,7 +11,7 @@ pub fn run_code(
       docker_run_algebra.RunCode(request, fn(run_result) {
         case run_result {
           Ok(value) -> program_types.Pure(value)
-          Error(err) -> program_types.Fail(error.RunError(err))
+          Error(err) -> program_types.Fail(error.run_request_error(err))
         }
       }),
     ),

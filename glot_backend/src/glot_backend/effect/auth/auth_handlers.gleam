@@ -4,7 +4,7 @@ import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/auth/auth_algebra
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/auth/account_model
@@ -19,46 +19,52 @@ import youid/uuid
 pub type AuthHandlers {
   AuthHandlers(
     get_user_by_email: fn(regexp.Regexp, email_address_model.EmailAddress) ->
-      Result(option.Option(user_model.HydratedUser), error.DbQueryError),
+      Result(option.Option(user_model.HydratedUser), db_error.DbQueryError),
     get_user_by_id: fn(regexp.Regexp, uuid.Uuid) ->
-      Result(option.Option(user_model.HydratedUser), error.DbQueryError),
+      Result(option.Option(user_model.HydratedUser), db_error.DbQueryError),
     list_users: fn(
       regexp.Regexp,
       pagination_model.CursorPagination,
       auth_algebra.UserListFilters,
-    ) -> Result(List(user_model.HydratedUser), error.DbQueryError),
+    ) -> Result(List(user_model.HydratedUser), db_error.DbQueryError),
     list_login_tokens_by_email: fn(email_address_model.EmailAddress, Int) ->
-      Result(List(login_token_model.LoginToken), error.DbQueryError),
+      Result(List(login_token_model.LoginToken), db_error.DbQueryError),
     get_session_by_token: fn(regexp.Regexp, String) ->
-      Result(option.Option(session_model.HydratedSession), error.DbQueryError),
+      Result(
+        option.Option(session_model.HydratedSession),
+        db_error.DbQueryError,
+      ),
     get_session_by_token_for_update: fn(String) ->
-      Result(option.Option(session_model.Session), error.DbQueryError),
+      Result(option.Option(session_model.Session), db_error.DbQueryError),
     get_session_by_previous_token: fn(regexp.Regexp, String) ->
-      Result(option.Option(session_model.HydratedSession), error.DbQueryError),
+      Result(
+        option.Option(session_model.HydratedSession),
+        db_error.DbQueryError,
+      ),
     get_session_by_previous_token_for_update: fn(String) ->
-      Result(option.Option(session_model.Session), error.DbQueryError),
-    create_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
+      Result(option.Option(session_model.Session), db_error.DbQueryError),
+    create_user: fn(user_model.User) -> Result(Nil, db_error.DbCommandError),
     create_account: fn(account_model.Account) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
     update_account: fn(account_model.Account) ->
-      Result(Nil, error.DbCommandError),
-    update_user: fn(user_model.User) -> Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
+    update_user: fn(user_model.User) -> Result(Nil, db_error.DbCommandError),
     delete_sessions_by_account_id: fn(uuid.Uuid) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
     delete_users_by_account_id: fn(uuid.Uuid) ->
-      Result(Nil, error.DbCommandError),
-    delete_account: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
+    delete_account: fn(uuid.Uuid) -> Result(Nil, db_error.DbCommandError),
     create_session: fn(session_model.Session) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
     update_session: fn(session_model.Session) ->
-      Result(Nil, error.DbCommandError),
-    delete_session: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
+    delete_session: fn(uuid.Uuid) -> Result(Nil, db_error.DbCommandError),
     create_login_token: fn(login_token_model.LoginToken) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
     update_login_token: fn(login_token_model.LoginToken) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
     delete_login_tokens_before: fn(Timestamp) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
   )
 }
 
@@ -112,11 +118,11 @@ pub fn get_user_by_email(
   db: db_helpers.Db,
   is_email: regexp.Regexp,
   user_email: email_address_model.EmailAddress,
-) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
+) -> Result(option.Option(user_model.HydratedUser), db_error.DbQueryError) {
   db_helpers.query(
     db,
     sql.get_user_by_email(email_address_model.to_string(user_email)),
-    fn(err) { error.DbQueryError(string.inspect(err)) },
+    fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { user_from_rows(is_email, returned.rows) })
 }
@@ -125,9 +131,9 @@ pub fn get_user_by_id(
   db: db_helpers.Db,
   is_email: regexp.Regexp,
   id: uuid.Uuid,
-) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
+) -> Result(option.Option(user_model.HydratedUser), db_error.DbQueryError) {
   db_helpers.query(db, sql.get_user_by_id(uuid.to_bit_array(id)), fn(err) {
-    error.DbQueryError(string.inspect(err))
+    db_error.DbQueryError(string.inspect(err))
   })
   |> result.try(fn(returned) { user_by_id_from_rows(is_email, returned.rows) })
 }
@@ -137,8 +143,8 @@ pub fn list_users(
   is_email: regexp.Regexp,
   pagination: pagination_model.CursorPagination,
   filters: auth_algebra.UserListFilters,
-) -> Result(List(user_model.HydratedUser), error.DbQueryError) {
-  let to_error = fn(err) { error.DbQueryError(string.inspect(err)) }
+) -> Result(List(user_model.HydratedUser), db_error.DbQueryError) {
+  let to_error = fn(err) { db_error.DbQueryError(string.inspect(err)) }
   let role = option.map(filters.role, user_model.role_to_string)
   let account_state =
     option.map(filters.account_state, account_model.account_state_to_string)
@@ -213,11 +219,11 @@ pub fn list_login_tokens_by_email(
   db: db_helpers.Db,
   email: email_address_model.EmailAddress,
   limit: Int,
-) -> Result(List(login_token_model.LoginToken), error.DbQueryError) {
+) -> Result(List(login_token_model.LoginToken), db_error.DbQueryError) {
   db_helpers.query(
     db,
     sql.list_login_tokens_by_email(email_address_model.to_string(email), limit),
-    fn(err) { error.DbQueryError(string.inspect(err)) },
+    fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { login_tokens_from_rows(returned.rows) })
 }
@@ -226,9 +232,9 @@ pub fn get_session_by_token(
   db: db_helpers.Db,
   is_email: regexp.Regexp,
   token: String,
-) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
+) -> Result(option.Option(session_model.HydratedSession), db_error.DbQueryError) {
   db_helpers.query(db, sql.get_session_by_token(token), fn(err) {
-    error.DbQueryError(string.inspect(err))
+    db_error.DbQueryError(string.inspect(err))
   })
   |> result.try(fn(returned) { session_from_rows(is_email, returned.rows) })
 }
@@ -236,9 +242,9 @@ pub fn get_session_by_token(
 pub fn get_session_by_token_for_update(
   db: db_helpers.Db,
   token: String,
-) -> Result(option.Option(session_model.Session), error.DbQueryError) {
+) -> Result(option.Option(session_model.Session), db_error.DbQueryError) {
   db_helpers.query(db, sql.get_session_by_token_for_update(token), fn(err) {
-    error.DbQueryError(string.inspect(err))
+    db_error.DbQueryError(string.inspect(err))
   })
   |> result.try(fn(returned) { session_identity_from_rows(returned.rows) })
 }
@@ -247,11 +253,11 @@ pub fn get_session_by_previous_token(
   db: db_helpers.Db,
   is_email: regexp.Regexp,
   token: String,
-) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
+) -> Result(option.Option(session_model.HydratedSession), db_error.DbQueryError) {
   db_helpers.query(
     db,
     sql.get_session_by_previous_token(option.Some(token)),
-    fn(err) { error.DbQueryError(string.inspect(err)) },
+    fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) {
     session_from_previous_rows(is_email, returned.rows)
@@ -261,11 +267,11 @@ pub fn get_session_by_previous_token(
 pub fn get_session_by_previous_token_for_update(
   db: db_helpers.Db,
   token: String,
-) -> Result(option.Option(session_model.Session), error.DbQueryError) {
+) -> Result(option.Option(session_model.Session), db_error.DbQueryError) {
   db_helpers.query(
     db,
     sql.get_session_by_previous_token_for_update(option.Some(token)),
-    fn(err) { error.DbQueryError(string.inspect(err)) },
+    fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) {
     session_identity_from_previous_rows(returned.rows)
@@ -275,8 +281,8 @@ pub fn get_session_by_previous_token_for_update(
 pub fn create_user(
   db: db_helpers.Db,
   user: user_model.User,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -298,8 +304,8 @@ pub fn create_user(
 pub fn create_account(
   db: db_helpers.Db,
   account: account_model.Account,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -322,8 +328,8 @@ pub fn create_account(
 pub fn update_account(
   db: db_helpers.Db,
   account: account_model.Account,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -346,8 +352,8 @@ pub fn update_account(
 pub fn update_user(
   db: db_helpers.Db,
   user: user_model.User,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -369,8 +375,8 @@ pub fn update_user(
 pub fn create_login_token(
   db: db_helpers.Db,
   login_token: login_token_model.LoginToken,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -389,8 +395,8 @@ pub fn create_login_token(
 pub fn create_session(
   db: db_helpers.Db,
   session: session_model.Session,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -413,8 +419,8 @@ pub fn create_session(
 pub fn update_session(
   db: db_helpers.Db,
   session: session_model.Session,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -437,8 +443,8 @@ pub fn update_session(
 pub fn delete_session(
   db: db_helpers.Db,
   id: uuid.Uuid,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(db, sql.delete_session(uuid.to_bit_array(id)), to_error)
   |> result.map(fn(_) { Nil })
@@ -447,8 +453,8 @@ pub fn delete_session(
 pub fn delete_sessions_by_account_id(
   db: db_helpers.Db,
   account_id: uuid.Uuid,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -461,8 +467,8 @@ pub fn delete_sessions_by_account_id(
 pub fn delete_users_by_account_id(
   db: db_helpers.Db,
   account_id: uuid.Uuid,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -475,8 +481,8 @@ pub fn delete_users_by_account_id(
 pub fn delete_account(
   db: db_helpers.Db,
   account_id: uuid.Uuid,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -489,8 +495,8 @@ pub fn delete_account(
 pub fn update_login_token(
   db: db_helpers.Db,
   login_token: login_token_model.LoginToken,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -509,8 +515,8 @@ pub fn update_login_token(
 pub fn delete_login_tokens_before(
   db: db_helpers.Db,
   before: Timestamp,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(db, sql.delete_login_tokens_before(before), to_error)
   |> result.map(fn(_) { Nil })
@@ -519,30 +525,30 @@ pub fn delete_login_tokens_before(
 fn user_from_rows(
   is_email: regexp.Regexp,
   rows: List(sql.GetUserByEmail),
-) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
+) -> Result(option.Option(user_model.HydratedUser), db_error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> user_from_row(is_email, first) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one user row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one user row"))
   }
 }
 
 fn user_by_id_from_rows(
   is_email: regexp.Regexp,
   rows: List(sql.GetUserById),
-) -> Result(option.Option(user_model.HydratedUser), error.DbQueryError) {
+) -> Result(option.Option(user_model.HydratedUser), db_error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] ->
       user_from_get_user_by_id_row(is_email, first) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one user row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one user row"))
   }
 }
 
 fn user_from_row(
   is_email: regexp.Regexp,
   row: sql.GetUserByEmail,
-) -> Result(user_model.HydratedUser, error.DbQueryError) {
+) -> Result(user_model.HydratedUser, db_error.DbQueryError) {
   hydrated_user(
     is_email: is_email,
     id: row.id,
@@ -564,7 +570,7 @@ fn user_from_row(
 fn user_from_get_user_by_id_row(
   is_email: regexp.Regexp,
   row: sql.GetUserById,
-) -> Result(user_model.HydratedUser, error.DbQueryError) {
+) -> Result(user_model.HydratedUser, db_error.DbQueryError) {
   hydrated_user(
     is_email: is_email,
     id: row.id,
@@ -586,7 +592,7 @@ fn user_from_get_user_by_id_row(
 fn user_from_list_users_after_row(
   is_email: regexp.Regexp,
   row: sql.ListUsersAfter,
-) -> Result(user_model.HydratedUser, error.DbQueryError) {
+) -> Result(user_model.HydratedUser, db_error.DbQueryError) {
   hydrated_user(
     is_email: is_email,
     id: row.id,
@@ -608,7 +614,7 @@ fn user_from_list_users_after_row(
 fn user_from_list_users_before_row(
   is_email: regexp.Regexp,
   row: sql.ListUsersBefore,
-) -> Result(user_model.HydratedUser, error.DbQueryError) {
+) -> Result(user_model.HydratedUser, db_error.DbQueryError) {
   hydrated_user(
     is_email: is_email,
     id: row.id,
@@ -642,26 +648,26 @@ fn hydrated_user(
   last_login_at last_login_at: Timestamp,
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
-) -> Result(user_model.HydratedUser, error.DbQueryError) {
+) -> Result(user_model.HydratedUser, db_error.DbQueryError) {
   use valid_email <- result.try(
     email_address_model.from_string(is_email, email)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid email format in user row: " <> email,
     )),
   )
   use role <- result.try(
     user_model.role_from_string(role)
-    |> option.to_result(error.DbQueryError("Invalid user role: " <> role)),
+    |> option.to_result(db_error.DbQueryError("Invalid user role: " <> role)),
   )
   use account_state <- result.try(
     account_model.account_state_from_string(account_state)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid account state: " <> account_state,
     )),
   )
   use account_tier <- result.try(
     account_model.account_tier_from_string(account_tier)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid account tier: " <> account_tier,
     )),
   )
@@ -696,7 +702,7 @@ fn hydrated_user(
 fn list_users_after_rows(
   is_email: regexp.Regexp,
   rows: List(sql.ListUsersAfter),
-) -> Result(List(user_model.HydratedUser), error.DbQueryError) {
+) -> Result(List(user_model.HydratedUser), db_error.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -710,7 +716,7 @@ fn list_users_after_rows(
 fn list_users_before_rows(
   is_email: regexp.Regexp,
   rows: List(sql.ListUsersBefore),
-) -> Result(List(user_model.HydratedUser), error.DbQueryError) {
+) -> Result(List(user_model.HydratedUser), db_error.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -723,16 +729,16 @@ fn list_users_before_rows(
 
 fn cursor_to_uuid(
   cursor: pagination_model.Cursor,
-) -> Result(uuid.Uuid, error.DbQueryError) {
+) -> Result(uuid.Uuid, db_error.DbQueryError) {
   cursor
   |> pagination_model.to_string
   |> uuid.from_string
-  |> result.map_error(fn(_) { error.DbQueryError("Invalid user cursor") })
+  |> result.map_error(fn(_) { db_error.DbQueryError("Invalid user cursor") })
 }
 
 fn login_tokens_from_rows(
   rows: List(sql.ListLoginTokensByEmail),
-) -> Result(List(login_token_model.LoginToken), error.DbQueryError) {
+) -> Result(List(login_token_model.LoginToken), db_error.DbQueryError) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -745,7 +751,7 @@ fn login_tokens_from_rows(
 
 fn login_token_from_row(
   row: sql.ListLoginTokensByEmail,
-) -> Result(login_token_model.LoginToken, error.DbQueryError) {
+) -> Result(login_token_model.LoginToken, db_error.DbQueryError) {
   let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
 
   case email_address_model.from_string(is_email, row.email) {
@@ -758,7 +764,7 @@ fn login_token_from_row(
         used_at: row.used_at,
       ))
     option.None ->
-      Error(error.DbQueryError(
+      Error(db_error.DbQueryError(
         "Invalid email format in login token row: " <> row.email,
       ))
   }
@@ -767,73 +773,73 @@ fn login_token_from_row(
 fn session_from_rows(
   is_email: regexp.Regexp,
   rows: List(sql.GetSessionByToken),
-) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
+) -> Result(option.Option(session_model.HydratedSession), db_error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> session_from_row(is_email, first) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one session row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one session row"))
   }
 }
 
 fn session_identity_from_rows(
   rows: List(sql.GetSessionByTokenForUpdate),
-) -> Result(option.Option(session_model.Session), error.DbQueryError) {
+) -> Result(option.Option(session_model.Session), db_error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] -> session_identity_from_row(first) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one session row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one session row"))
   }
 }
 
 fn session_from_previous_rows(
   is_email: regexp.Regexp,
   rows: List(sql.GetSessionByPreviousToken),
-) -> Result(option.Option(session_model.HydratedSession), error.DbQueryError) {
+) -> Result(option.Option(session_model.HydratedSession), db_error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] ->
       session_from_previous_row(is_email, first)
       |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one session row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one session row"))
   }
 }
 
 fn session_identity_from_previous_rows(
   rows: List(sql.GetSessionByPreviousTokenForUpdate),
-) -> Result(option.Option(session_model.Session), error.DbQueryError) {
+) -> Result(option.Option(session_model.Session), db_error.DbQueryError) {
   case rows {
     [] -> Ok(option.None)
     [first] ->
       session_identity_from_previous_row(first) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one session row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one session row"))
   }
 }
 
 fn session_from_row(
   is_email: regexp.Regexp,
   row: sql.GetSessionByToken,
-) -> Result(session_model.HydratedSession, error.DbQueryError) {
+) -> Result(session_model.HydratedSession, db_error.DbQueryError) {
   use valid_email <- result.try(
     email_address_model.from_string(is_email, row.user_email)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid email format in session row: " <> row.user_email,
     )),
   )
   use role <- result.try(
     user_model.role_from_string(row.user_role)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid user role: " <> row.user_role,
     )),
   )
   use account_state <- result.try(
     account_model.account_state_from_string(row.user_account_state)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid account state: " <> row.user_account_state,
     )),
   )
   use account_tier <- result.try(
     account_model.account_tier_from_string(row.user_account_tier)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid account tier: " <> row.user_account_tier,
     )),
   )
@@ -880,7 +886,7 @@ fn session_from_row(
 
 fn session_identity_from_row(
   row: sql.GetSessionByTokenForUpdate,
-) -> Result(session_model.Session, error.DbQueryError) {
+) -> Result(session_model.Session, db_error.DbQueryError) {
   Ok(session_model.Session(
     id: uuid_helpers.from_bit_array(row.id),
     user_id: uuid_helpers.from_bit_array(row.user_id),
@@ -897,28 +903,28 @@ fn session_identity_from_row(
 fn session_from_previous_row(
   is_email: regexp.Regexp,
   row: sql.GetSessionByPreviousToken,
-) -> Result(session_model.HydratedSession, error.DbQueryError) {
+) -> Result(session_model.HydratedSession, db_error.DbQueryError) {
   use valid_email <- result.try(
     email_address_model.from_string(is_email, row.user_email)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid email format in session row: " <> row.user_email,
     )),
   )
   use role <- result.try(
     user_model.role_from_string(row.user_role)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid user role: " <> row.user_role,
     )),
   )
   use account_state <- result.try(
     account_model.account_state_from_string(row.user_account_state)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid account state: " <> row.user_account_state,
     )),
   )
   use account_tier <- result.try(
     account_model.account_tier_from_string(row.user_account_tier)
-    |> option.to_result(error.DbQueryError(
+    |> option.to_result(db_error.DbQueryError(
       "Invalid account tier: " <> row.user_account_tier,
     )),
   )
@@ -965,7 +971,7 @@ fn session_from_previous_row(
 
 fn session_identity_from_previous_row(
   row: sql.GetSessionByPreviousTokenForUpdate,
-) -> Result(session_model.Session, error.DbQueryError) {
+) -> Result(session_model.Session, db_error.DbQueryError) {
   Ok(session_model.Session(
     id: uuid_helpers.from_bit_array(row.id),
     user_id: uuid_helpers.from_bit_array(row.user_id),

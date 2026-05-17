@@ -17,6 +17,7 @@ import glot_core/language
 import glot_core/public_action
 import glot_core/run
 import glot_core/run_log_model
+import glot_core/validation_error
 
 pub fn run(
   ctx: context.Context,
@@ -28,7 +29,7 @@ pub fn run(
   let maybe_user = option.map(maybe_session, fn(session) { session.user })
   use language <- program.and_then(program.from_option(
     language.from_container_image(request.image),
-    error.ValidationError("Unknown run language for image: " <> request.image),
+    error.validation(validation_error.UnknownRunLanguage(request.image)),
   ))
 
   use _ <- program.and_then(

@@ -4,6 +4,8 @@ import glot_backend/context
 import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/auth_error
+import glot_backend/effect/error/policy_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_core/admin_action
@@ -101,8 +103,7 @@ fn enforce_authentication(
     NoAuthenticationRequired -> Ok(Nil)
     RequireAuthentication ->
       case actor {
-        Anonymous ->
-          Error(error.AuthorizationError(error.AuthenticationRequiredError))
+        Anonymous -> Error(error.auth(auth_error.AuthenticationRequired))
         KnownUser(_, _, _, _) -> Ok(Nil)
       }
   }
@@ -117,7 +118,7 @@ fn enforce_authorization(
     RequireAdmin ->
       case actor_role(actor) == option.Some(user_model.AdminUser) {
         True -> Ok(Nil)
-        False -> Error(error.AuthorizationError(error.AdminRequiredError))
+        False -> Error(error.auth(auth_error.AdminRequired))
       }
   }
 }
@@ -185,7 +186,7 @@ fn forbidden_account_state_error(
   action: api_action.ApiAction,
   account_state: AccountState,
 ) -> error.Error {
-  error.AccountStateError(error.ForbiddenAccountState(
+  error.policy(policy_error.ForbiddenAccountState(
     action: action,
     account_state: account_state,
   ))

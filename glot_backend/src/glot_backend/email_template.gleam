@@ -6,6 +6,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/email/email_address_model
 import glot_core/email/email_model
+import glot_core/validation_error
 
 pub type EmailTemplateName {
   LoginTokenTemplate
@@ -29,11 +30,13 @@ pub fn to_db_name(name: EmailTemplateName) -> String {
   }
 }
 
-pub fn from_db_name(name: String) -> Result(EmailTemplateName, String) {
+pub fn from_db_name(
+  name: String,
+) -> Result(EmailTemplateName, validation_error.ValidationError) {
   case name {
     "login_token" -> Ok(LoginTokenTemplate)
     "account_deleted" -> Ok(AccountDeletedTemplate)
-    _ -> Error("Unknown email template: " <> name)
+    _ -> Error(validation_error.UnknownEmailTemplate(name))
   }
 }
 
@@ -61,7 +64,10 @@ pub fn render_email_template(
   to: email_address_model.EmailAddress,
   variables: Dict(String, String),
 ) -> Result(email_model.Email, String) {
-  use _ <- result.try(validate_template(template))
+  use _ <- result.try(
+    validate_template(template)
+    |> result.map_error(validation_error.message),
+  )
   use _ <- result.try(validate_variables(template.name, variables))
   use subject <- result.try(render_template(
     template.subject_template,
@@ -86,15 +92,17 @@ pub fn render_email_template(
   ))
 }
 
-pub fn validate_template(template: EmailTemplate) -> Result(Nil, String) {
+pub fn validate_template(
+  template: EmailTemplate,
+) -> Result(Nil, validation_error.ValidationError) {
   let supported_tokens = supported_tokens(template.name)
   use _ <- result.try(require_non_empty(
     template.subject_template,
-    "Email subject template cannot be empty",
+    validation_error.EmptyField("subject_template"),
   ))
   use _ <- result.try(require_non_empty(
     template.text_body_template,
-    "Email text body template cannot be empty",
+    validation_error.EmptyField("text_body_template"),
   ))
   use subject_tokens <- result.try(collect_tokens(template.subject_template))
   use text_body_tokens <- result.try(collect_tokens(template.text_body_template))
@@ -111,12 +119,10 @@ pub fn validate_template(template: EmailTemplate) -> Result(Nil, String) {
   case are_supported_tokens(template.name, template_tokens) {
     True -> Ok(Nil)
     False ->
-      Error(
-        "Email template contains unsupported tokens for "
-        <> to_db_name(template.name)
-        <> ". Supported tokens: "
-        <> string.join(supported_tokens, with: ", "),
-      )
+      Error(validation_error.UnsupportedEmailTemplateTokens(
+        template_name: to_db_name(template.name),
+        supported: supported_tokens,
+      ))
   }
 }
 
@@ -166,12 +172,14 @@ fn render_template(
   }
 }
 
-fn collect_tokens(template: String) -> Result(List(String), String) {
+fn collect_tokens(
+  template: String,
+) -> Result(List(String), validation_error.ValidationError) {
   case string.split_once(template, "{{") {
     Error(_) -> Ok([])
     Ok(#(_, remainder)) ->
       case string.split_once(remainder, "}}") {
-        Error(_) -> Error("Unclosed template token in email template")
+        Error(_) -> Error(validation_error.UnclosedEmailTemplateToken)
         Ok(#(raw_token, suffix)) -> {
           use rest <- result.try(collect_tokens(suffix))
           Ok([string.trim(raw_token), ..rest])
@@ -180,9 +188,12 @@ fn collect_tokens(template: String) -> Result(List(String), String) {
   }
 }
 
-fn require_non_empty(value: String, message: String) -> Result(Nil, String) {
+fn require_non_empty(
+  value: String,
+  err: validation_error.ValidationError,
+) -> Result(Nil, validation_error.ValidationError) {
   case string.trim(value) == "" {
-    True -> Error(message)
+    True -> Error(err)
     False -> Ok(Nil)
   }
 }

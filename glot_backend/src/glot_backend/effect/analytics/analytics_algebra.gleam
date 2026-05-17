@@ -1,38 +1,38 @@
 import gleam/option.{type Option}
 import gleam/time/calendar.{type Date}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 
 pub type AnalyticsEffect(next) {
   GetMaxCompletedMetricsDay(
-    next: fn(Result(Option(Date), error.DbQueryError)) -> next,
+    next: fn(Result(Option(Date), db_error.DbQueryError)) -> next,
   )
   GetFirstMetricsSourceDay(
     before: Date,
-    next: fn(Result(Option(Date), error.DbQueryError)) -> next,
+    next: fn(Result(Option(Date), db_error.DbQueryError)) -> next,
   )
   InsertMetricsPageviewDay(
     day: Date,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   InsertMetricsProductEventDay(
     day: Date,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   InsertMetricsRunDay(
     day: Date,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   InsertMetricsReliabilityPageDay(
     day: Date,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   InsertMetricsReliabilityApiDay(
     day: Date,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   InsertMetricsCompletedDay(
     day: Date,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
 }
 

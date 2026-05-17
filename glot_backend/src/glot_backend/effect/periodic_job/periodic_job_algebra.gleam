@@ -1,6 +1,6 @@
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_core/periodic_job/periodic_job_model
 import youid/uuid
 
@@ -16,11 +16,11 @@ pub type PeriodicJobEffect(next) {
   )
   CreatePeriodicJob(
     periodic_job_model.PeriodicJob,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   UpdatePeriodicJob(
     periodic_job_model.PeriodicJob,
-    next: fn(Result(Nil, error.DbCommandError)) -> next,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
 }
 

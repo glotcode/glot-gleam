@@ -10,6 +10,7 @@ import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/auth_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
@@ -179,14 +180,14 @@ fn find_valid_token(
   max_age: Int,
 ) -> Result(login_token_model.LoginToken, error.Error) {
   case list.find(tokens, fn(token) { token.token == submitted_token }) {
-    Error(_) -> Error(error.LoginError(error.InvalidTokenError))
+    Error(_) -> Error(error.auth(auth_error.InvalidLoginToken))
     Ok(token) ->
       case token.used_at {
-        option.Some(_) -> Error(error.LoginError(error.TokenUsedError))
+        option.Some(_) -> Error(error.auth(auth_error.LoginTokenUsed))
         option.None ->
           case token_is_still_valid(token.created_at, now, max_age) {
             True -> Ok(token)
-            False -> Error(error.LoginError(error.TokenExpiredError))
+            False -> Error(error.auth(auth_error.LoginTokenExpired))
           }
       }
   }

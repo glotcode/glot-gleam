@@ -5,6 +5,7 @@ import gleam/string
 import glot_core/language
 import glot_core/snippet/snippet_dto.{type SnippetData}
 import glot_core/snippet/snippet_model.{type File}
+import glot_core/validation_error
 
 const block_threshold = 12
 
@@ -12,12 +13,14 @@ pub type Signal {
   Signal(reason: String, score: Int)
 }
 
-pub fn ensure_clean(data: SnippetData) -> Result(Nil, String) {
+pub fn ensure_clean(
+  data: SnippetData,
+) -> Result(Nil, validation_error.ValidationError) {
   let signals = payload_signals(data)
   let score = total_score(signals)
 
   case score >= block_threshold {
-    True -> Error(block_message(score, signals))
+    True -> Error(validation_error.SpamDetected(block_message(score, signals)))
     False -> Ok(Nil)
   }
 }

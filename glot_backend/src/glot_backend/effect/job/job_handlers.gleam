@@ -3,31 +3,32 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/helpers/uuid_helpers
 import glot_core/job/job_model
 import glot_core/pagination_model
+import glot_core/validation_error
 import youid/uuid
 
 pub type JobHandlers {
   JobHandlers(
     list_jobs: fn(job_model.ListJobsFilter, pagination_model.CursorPagination) ->
-      Result(List(job_model.Job), error.DbQueryError),
+      Result(List(job_model.Job), db_error.DbQueryError),
     summarize_jobs: fn(job_model.ListJobsFilter, Timestamp) ->
-      Result(job_model.Summary, error.DbQueryError),
+      Result(job_model.Summary, db_error.DbQueryError),
     get_next_job: fn(Timestamp, job_model.Status) ->
-      Result(option.Option(job_model.Job), error.DbQueryError),
+      Result(option.Option(job_model.Job), db_error.DbQueryError),
     get_expired_running_job: fn(Timestamp, job_model.Status) ->
-      Result(option.Option(job_model.Job), error.DbQueryError),
+      Result(option.Option(job_model.Job), db_error.DbQueryError),
     get_job_by_id: fn(uuid.Uuid) ->
-      Result(option.Option(job_model.Job), error.DbQueryError),
-    create_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
-    update_job: fn(job_model.Job) -> Result(Nil, error.DbCommandError),
-    delete_job: fn(uuid.Uuid) -> Result(Nil, error.DbCommandError),
+      Result(option.Option(job_model.Job), db_error.DbQueryError),
+    create_job: fn(job_model.Job) -> Result(Nil, db_error.DbCommandError),
+    update_job: fn(job_model.Job) -> Result(Nil, db_error.DbCommandError),
+    delete_job: fn(uuid.Uuid) -> Result(Nil, db_error.DbCommandError),
     delete_before: fn(Timestamp, List(job_model.Status)) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
   )
 }
 
@@ -53,7 +54,7 @@ pub fn list_jobs(
   db: db_helpers.Db,
   filter: job_model.ListJobsFilter,
   pagination: pagination_model.CursorPagination,
-) -> Result(List(job_model.Job), error.DbQueryError) {
+) -> Result(List(job_model.Job), db_error.DbQueryError) {
   let #(statuses, job_type, periodic_job_id) = filter_params(filter)
 
   case pagination {
@@ -69,7 +70,7 @@ pub fn list_jobs(
             before_id: option.Some(uuid.to_bit_array(before_uuid)),
             page_limit: limit,
           ),
-          fn(err) { error.DbQueryError(string.inspect(err)) },
+          fn(err) { db_error.DbQueryError(string.inspect(err)) },
         )
         |> result.try(fn(returned) {
           returned.rows
@@ -98,7 +99,7 @@ pub fn list_jobs(
             after_id: after_uuid |> option.map(uuid.to_bit_array),
             page_limit: limit,
           ),
-          fn(err) { error.DbQueryError(string.inspect(err)) },
+          fn(err) { db_error.DbQueryError(string.inspect(err)) },
         )
         |> result.try(fn(returned) {
           returned.rows
@@ -114,7 +115,7 @@ pub fn summarize_jobs(
   db: db_helpers.Db,
   filter: job_model.ListJobsFilter,
   now: Timestamp,
-) -> Result(job_model.Summary, error.DbQueryError) {
+) -> Result(job_model.Summary, db_error.DbQueryError) {
   let #(statuses, job_type, periodic_job_id) = filter_params(filter)
 
   use returned <- result.try(
@@ -126,7 +127,7 @@ pub fn summarize_jobs(
         periodic_job_id: periodic_job_id,
         now: now,
       ),
-      fn(err) { error.DbQueryError(string.inspect(err)) },
+      fn(err) { db_error.DbQueryError(string.inspect(err)) },
     ),
   )
 
@@ -140,8 +141,8 @@ pub fn summarize_jobs(
         done_count: summary.done_count,
         overdue_count: summary.overdue_count,
       ))
-    [] -> Error(error.DbQueryError("Expected one jobs summary row"))
-    _ -> Error(error.DbQueryError("Expected at most one jobs summary row"))
+    [] -> Error(db_error.DbQueryError("Expected one jobs summary row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one jobs summary row"))
   }
 }
 
@@ -149,19 +150,19 @@ pub fn get_next_job(
   db: db_helpers.Db,
   now: Timestamp,
   pending_status: job_model.Status,
-) -> Result(option.Option(job_model.Job), error.DbQueryError) {
+) -> Result(option.Option(job_model.Job), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
       sql.get_next_job(job_model.status_to_string(pending_status), now),
-      fn(err) { error.DbQueryError(string.inspect(err)) },
+      fn(err) { db_error.DbQueryError(string.inspect(err)) },
     ),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> get_job_from_next_job_row(row) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one job row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one job row"))
   }
 }
 
@@ -169,7 +170,7 @@ pub fn get_expired_running_job(
   db: db_helpers.Db,
   now: Timestamp,
   running_status: job_model.Status,
-) -> Result(option.Option(job_model.Job), error.DbQueryError) {
+) -> Result(option.Option(job_model.Job), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
@@ -177,7 +178,7 @@ pub fn get_expired_running_job(
         running_status: job_model.status_to_string(running_status),
         now: option.Some(now),
       ),
-      fn(err) { error.DbQueryError(string.inspect(err)) },
+      fn(err) { db_error.DbQueryError(string.inspect(err)) },
     ),
   )
 
@@ -185,32 +186,32 @@ pub fn get_expired_running_job(
     [] -> Ok(option.None)
     [row] ->
       get_job_from_expired_running_job_row(row) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one expired job row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one expired job row"))
   }
 }
 
 pub fn get_job_by_id(
   db: db_helpers.Db,
   id: uuid.Uuid,
-) -> Result(option.Option(job_model.Job), error.DbQueryError) {
+) -> Result(option.Option(job_model.Job), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(db, sql.get_job_by_id(uuid.to_bit_array(id)), fn(err) {
-      error.DbQueryError(string.inspect(err))
+      db_error.DbQueryError(string.inspect(err))
     }),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> get_job_from_job_by_id_row(row) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one job row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one job row"))
   }
 }
 
 pub fn create_job(
   db: db_helpers.Db,
   j: job_model.Job,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -243,8 +244,8 @@ pub fn create_job(
 pub fn update_job(
   db: db_helpers.Db,
   j: job_model.Job,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -277,8 +278,8 @@ pub fn update_job(
 pub fn delete_job(
   db: db_helpers.Db,
   id: uuid.Uuid,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(db, sql.delete_job(uuid.to_bit_array(id)), to_error)
   |> result.map(fn(_) { Nil })
@@ -288,8 +289,8 @@ pub fn delete_before(
   db: db_helpers.Db,
   before: Timestamp,
   statuses: List(job_model.Status),
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -304,7 +305,7 @@ pub fn delete_before(
 
 fn get_job_from_next_job_row(
   row: sql.GetNextJob,
-) -> Result(job_model.Job, error.DbQueryError) {
+) -> Result(job_model.Job, db_error.DbQueryError) {
   get_job(
     row.id,
     row.request_id,
@@ -330,7 +331,7 @@ fn get_job_from_next_job_row(
 
 fn get_job_from_expired_running_job_row(
   row: sql.GetExpiredRunningJob,
-) -> Result(job_model.Job, error.DbQueryError) {
+) -> Result(job_model.Job, db_error.DbQueryError) {
   get_job(
     row.id,
     row.request_id,
@@ -356,7 +357,7 @@ fn get_job_from_expired_running_job_row(
 
 fn get_job_from_list_after_row(
   row: sql.ListJobsAfter,
-) -> Result(job_model.Job, error.DbQueryError) {
+) -> Result(job_model.Job, db_error.DbQueryError) {
   get_job(
     row.id,
     row.request_id,
@@ -382,7 +383,7 @@ fn get_job_from_list_after_row(
 
 fn get_job_from_list_before_row(
   row: sql.ListJobsBefore,
-) -> Result(job_model.Job, error.DbQueryError) {
+) -> Result(job_model.Job, db_error.DbQueryError) {
   get_job(
     row.id,
     row.request_id,
@@ -418,16 +419,16 @@ fn filter_params(
 
 fn decode_cursor(
   cursor: pagination_model.Cursor,
-) -> Result(uuid.Uuid, error.DbQueryError) {
+) -> Result(uuid.Uuid, db_error.DbQueryError) {
   case uuid.from_string(pagination_model.to_string(cursor)) {
     Ok(value) -> Ok(value)
-    Error(_) -> Error(error.DbQueryError("Invalid jobs cursor"))
+    Error(_) -> Error(db_error.DbQueryError("Invalid jobs cursor"))
   }
 }
 
 fn get_job_from_job_by_id_row(
   row: sql.GetJobById,
-) -> Result(job_model.Job, error.DbQueryError) {
+) -> Result(job_model.Job, db_error.DbQueryError) {
   get_job(
     row.id,
     row.request_id,
@@ -471,14 +472,15 @@ fn get_job(
   last_error: option.Option(String),
   created_at: Timestamp,
   updated_at: Timestamp,
-) -> Result(job_model.Job, error.DbQueryError) {
+) -> Result(job_model.Job, db_error.DbQueryError) {
   use status <- result.try(
     job_model.status_from_string(status_str)
-    |> result.map_error(error.DbQueryError),
+    |> result.map_error(db_error.DbQueryError),
   )
   use job_type <- result.try(
     job_model.job_type_from_string(job_type_str)
-    |> result.map_error(error.DbQueryError),
+    |> result.map_error(validation_error.to_string)
+    |> result.map_error(db_error.DbQueryError),
   )
 
   Ok(job_model.Job(

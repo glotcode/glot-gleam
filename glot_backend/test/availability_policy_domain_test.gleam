@@ -6,6 +6,7 @@ import glot_backend/domain/shared/availability_policy_domain
 import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/error
+import glot_backend/effect/error/policy_error
 import glot_backend/effect/program_types
 import glot_core/admin_action
 import glot_core/api_action
@@ -39,8 +40,7 @@ pub fn read_only_mode_blocks_public_write_api_test() {
       config,
     )
     == Error(
-      error.AvailabilityError(error.AvailabilityBlockedError(
-        code: "read_only_mode_enabled",
+      error.policy(policy_error.ReadOnlyModeBlocked(
         message: config.message,
         retry_after_seconds: config.retry_after_seconds,
       )),
@@ -69,8 +69,7 @@ pub fn maintenance_mode_blocks_public_read_api_test() {
       config,
     )
     == Error(
-      error.AvailabilityError(error.AvailabilityBlockedError(
-        code: "maintenance_mode_enabled",
+      error.policy(policy_error.MaintenanceModeBlocked(
         message: config.message,
         retry_after_seconds: config.retry_after_seconds,
       )),

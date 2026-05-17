@@ -1,15 +1,12 @@
 import gleam/erlang/process
 import gleam/http/request
-import gleam/int
 import gleam/list
 import gleam/option
-import gleam/string
 import glot_backend/context
 import glot_backend/domain/shared/availability_policy_domain
 import glot_backend/editor_page
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
-import glot_backend/effect/error
 import glot_backend/effect/interpreter
 import glot_backend/effect/program_state
 import glot_backend/effect/runtime
@@ -18,6 +15,7 @@ import glot_backend/erlang
 import glot_backend/home_page
 import glot_backend/page/editor_page_domain
 import glot_backend/page/snippets_page_domain
+import glot_backend/page_error_presenter
 import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/server_timing
@@ -28,7 +26,6 @@ import glot_backend/worker/log_worker
 import glot_core/route
 import lustre/attribute
 import lustre/element
-import lustre/element/html
 import pog
 import wisp
 
@@ -101,13 +98,17 @@ fn handle_page_request(
       handle_page_request_with_runtime(runtime, ctx, page_request)
       |> prepend_effects(availability_state.effect_measurements)
     Ok(availability_policy_domain.UnavailablePage(message, retry_after_seconds)) ->
-      unavailable_page_response(
+      page_error_presenter.unavailable_page_response(
         availability_state,
         message,
         retry_after_seconds,
       )
     Error(err) ->
-      internal_page_error("availability page", err, availability_state)
+      page_error_presenter.internal_page_error(
+        "availability page",
+        err,
+        availability_state,
+      )
   }
 }
 
@@ -215,102 +216,6 @@ fn handle_page_request_with_runtime(
   }
 }
 
-fn unavailable_page_response(
-  state: program_state.State,
-  message: String,
-  retry_after_seconds: option.Option(Int),
-) -> page_response.PageResponse {
-  let response =
-    wisp.html_response(
-      page_layout.document(
-        title: "glot.io - unavailable",
-        head_children: [],
-        app_attributes: [],
-        app_children: [
-          html.main([attribute.class("app-shell app-shell--narrow")], [
-            html.section([attribute.class("app-panel")], [
-              html.p([attribute.class("login-page__status")], [
-                html.text("Availability mode"),
-              ]),
-              html.h1([attribute.class("login-page__title")], [
-                html.text("Temporarily unavailable"),
-              ]),
-              html.p([attribute.class("login-page__status")], [
-                html.text(message),
-              ]),
-              availability_retry_after_view(retry_after_seconds),
-              html.div([attribute.class("admin-page__actions")], [
-                html.a(
-                  [
-                    attribute.class(
-                      "admin-page__button admin-page__button--secondary",
-                    ),
-                    route.href(route.Public(route.Login)),
-                  ],
-                  [html.text("Login")],
-                ),
-                html.a(
-                  [
-                    attribute.class(
-                      "admin-page__button admin-page__button--secondary",
-                    ),
-                    route.href(route.Admin(route.AdminHome)),
-                  ],
-                  [html.text("Admin")],
-                ),
-              ]),
-            ]),
-          ]),
-        ],
-      ),
-      503,
-    )
-  let response = case retry_after_seconds {
-    option.Some(seconds) ->
-      wisp.set_header(response, "Retry-After", int.to_string(seconds))
-    option.None -> response
-  }
-
-  page_response.PageResponse(
-    response: response,
-    status_code: 503,
-    render_mode: "unavailable",
-    effects: state.effect_measurements,
-    info: state.info_fields,
-    warnings: state.warning_fields,
-    debug: state.debug_fields,
-    error: option.None,
-  )
-}
-
-fn availability_retry_after_view(
-  retry_after_seconds: option.Option(Int),
-) -> element.Element(Nil) {
-  case retry_after_seconds {
-    option.Some(seconds) ->
-      html.p([attribute.class("login-page__status")], [
-        html.text(
-          "Please try again in about " <> retry_after_text(seconds) <> ".",
-        ),
-      ])
-    option.None ->
-      html.p([attribute.class("login-page__status")], [
-        html.text("Please try again shortly."),
-      ])
-  }
-}
-
-fn retry_after_text(seconds: Int) -> String {
-  case seconds >= 3600 {
-    True -> int.to_string(seconds / 3600) <> " hour(s)"
-    False ->
-      case seconds >= 60 {
-        True -> int.to_string(seconds / 60) <> " minute(s)"
-        False -> int.to_string(seconds) <> " second(s)"
-      }
-  }
-}
-
 fn spa_page(title: String) -> page_response.PageResponse {
   let state = empty_page_state()
   page_response.PageResponse(
@@ -368,31 +273,9 @@ fn run_page_program(
         debug: state.debug_fields,
         error: option.None,
       )
-    Error(err) -> internal_page_error(page_name, err, state)
+    Error(err) ->
+      page_error_presenter.internal_page_error(page_name, err, state)
   }
-}
-
-fn internal_page_error(
-  page_name: String,
-  err: error.Error,
-  state: program_state.State,
-) -> page_response.PageResponse {
-  wisp.log_error(
-    "TotalProgram failed unexpectedly for "
-    <> page_name
-    <> ": "
-    <> string.inspect(err),
-  )
-  page_response.PageResponse(
-    response: wisp.html_response("Internal Server Error", 500),
-    status_code: 500,
-    render_mode: "error",
-    effects: state.effect_measurements,
-    info: state.info_fields,
-    warnings: state.warning_fields,
-    debug: state.debug_fields,
-    error: option.Some(err),
-  )
 }
 
 fn empty_page_state() -> program_state.State {

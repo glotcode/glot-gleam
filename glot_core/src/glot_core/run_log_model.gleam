@@ -5,6 +5,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/language.{type Language}
 import glot_core/pagination_model
+import glot_core/validation_error
 import youid/uuid.{type Uuid}
 
 pub type RunOutcome {
@@ -56,7 +57,7 @@ pub fn cursor(log: RunLog) -> pagination_model.Cursor {
 
 pub fn decode_cursor(
   cursor: pagination_model.Cursor,
-) -> Result(#(Timestamp, uuid.Uuid), String) {
+) -> Result(#(Timestamp, uuid.Uuid), validation_error.ValidationError) {
   case string.split(pagination_model.to_string(cursor), "|") {
     [seconds, nanos, id] -> {
       use parsed_seconds <- result.try(parse_int(seconds))
@@ -71,7 +72,7 @@ pub fn decode_cursor(
         parsed_id,
       ))
     }
-    _ -> Error("Invalid run log cursor")
+    _ -> Error(validation_error.InvalidCursor(validation_error.RunLogCursor))
   }
 }
 
@@ -82,12 +83,18 @@ pub fn has_failure(log: RunLog) -> Bool {
   }
 }
 
-fn parse_int(value: String) -> Result(Int, String) {
+fn parse_int(value: String) -> Result(Int, validation_error.ValidationError) {
   int.parse(value)
-  |> result.map_error(fn(_) { "Invalid run log cursor" })
+  |> result.map_error(fn(_) {
+    validation_error.InvalidCursor(validation_error.RunLogCursor)
+  })
 }
 
-fn parse_uuid(value: String) -> Result(uuid.Uuid, String) {
+fn parse_uuid(
+  value: String,
+) -> Result(uuid.Uuid, validation_error.ValidationError) {
   uuid.from_string(value)
-  |> result.map_error(fn(_) { "Invalid run log cursor" })
+  |> result.map_error(fn(_) {
+    validation_error.InvalidCursor(validation_error.RunLogCursor)
+  })
 }

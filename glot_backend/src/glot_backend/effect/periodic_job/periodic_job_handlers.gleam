@@ -3,26 +3,33 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/helpers/uuid_helpers
 import glot_core/job/job_model
 import glot_core/periodic_job/periodic_job_model
+import glot_core/validation_error
 import youid/uuid
 
 pub type PeriodicJobHandlers {
   PeriodicJobHandlers(
     list_periodic_jobs: fn() ->
-      Result(List(periodic_job_model.PeriodicJob), error.DbQueryError),
+      Result(List(periodic_job_model.PeriodicJob), db_error.DbQueryError),
     get_next_periodic_job: fn(Timestamp) ->
-      Result(option.Option(periodic_job_model.PeriodicJob), error.DbQueryError),
+      Result(
+        option.Option(periodic_job_model.PeriodicJob),
+        db_error.DbQueryError,
+      ),
     get_periodic_job_by_id: fn(uuid.Uuid) ->
-      Result(option.Option(periodic_job_model.PeriodicJob), error.DbQueryError),
+      Result(
+        option.Option(periodic_job_model.PeriodicJob),
+        db_error.DbQueryError,
+      ),
     create_periodic_job: fn(periodic_job_model.PeriodicJob) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
     update_periodic_job: fn(periodic_job_model.PeriodicJob) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
   )
 }
 
@@ -42,10 +49,10 @@ pub fn new(db: db_helpers.Db) -> PeriodicJobHandlers {
 
 pub fn list_periodic_jobs(
   db: db_helpers.Db,
-) -> Result(List(periodic_job_model.PeriodicJob), error.DbQueryError) {
+) -> Result(List(periodic_job_model.PeriodicJob), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(db, sql.list_periodic_jobs(), fn(err) {
-      error.DbQueryError(string.inspect(err))
+      db_error.DbQueryError(string.inspect(err))
     }),
   )
 
@@ -57,44 +64,50 @@ pub fn list_periodic_jobs(
 pub fn get_next_periodic_job(
   db: db_helpers.Db,
   now: Timestamp,
-) -> Result(option.Option(periodic_job_model.PeriodicJob), error.DbQueryError) {
+) -> Result(
+  option.Option(periodic_job_model.PeriodicJob),
+  db_error.DbQueryError,
+) {
   use returned <- result.try(
     db_helpers.query(db, sql.get_next_periodic_job(now), fn(err) {
-      error.DbQueryError(string.inspect(err))
+      db_error.DbQueryError(string.inspect(err))
     }),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> periodic_job_from_row(row) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one periodic job row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one periodic job row"))
   }
 }
 
 pub fn get_periodic_job_by_id(
   db: db_helpers.Db,
   id: uuid.Uuid,
-) -> Result(option.Option(periodic_job_model.PeriodicJob), error.DbQueryError) {
+) -> Result(
+  option.Option(periodic_job_model.PeriodicJob),
+  db_error.DbQueryError,
+) {
   use returned <- result.try(
     db_helpers.query(
       db,
       sql.get_periodic_job_by_id(id: uuid.to_bit_array(id)),
-      fn(err) { error.DbQueryError(string.inspect(err)) },
+      fn(err) { db_error.DbQueryError(string.inspect(err)) },
     ),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> periodic_job_from_get_by_id_row(row) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one periodic job row"))
+    _ -> Error(db_error.DbQueryError("Expected at most one periodic job row"))
   }
 }
 
 pub fn create_periodic_job(
   db: db_helpers.Db,
   periodic_job: periodic_job_model.PeriodicJob,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -118,8 +131,8 @@ pub fn create_periodic_job(
 pub fn update_periodic_job(
   db: db_helpers.Db,
   periodic_job: periodic_job_model.PeriodicJob,
-) -> Result(Nil, error.DbCommandError) {
-  let to_error = fn(err) { error.DbCommandError(string.inspect(err)) }
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(
     db,
@@ -142,10 +155,11 @@ pub fn update_periodic_job(
 
 fn periodic_job_from_row(
   row: sql.GetNextPeriodicJob,
-) -> Result(periodic_job_model.PeriodicJob, error.DbQueryError) {
+) -> Result(periodic_job_model.PeriodicJob, db_error.DbQueryError) {
   use job_type <- result.try(
     job_model.job_type_from_string(row.job_type)
-    |> result.map_error(error.DbQueryError),
+    |> result.map_error(validation_error.to_string)
+    |> result.map_error(db_error.DbQueryError),
   )
 
   Ok(periodic_job_model.PeriodicJob(
@@ -164,10 +178,11 @@ fn periodic_job_from_row(
 
 fn periodic_job_from_list_row(
   row: sql.ListPeriodicJobs,
-) -> Result(periodic_job_model.PeriodicJob, error.DbQueryError) {
+) -> Result(periodic_job_model.PeriodicJob, db_error.DbQueryError) {
   use job_type <- result.try(
     job_model.job_type_from_string(row.job_type)
-    |> result.map_error(error.DbQueryError),
+    |> result.map_error(validation_error.to_string)
+    |> result.map_error(db_error.DbQueryError),
   )
 
   Ok(periodic_job_model.PeriodicJob(
@@ -186,10 +201,11 @@ fn periodic_job_from_list_row(
 
 fn periodic_job_from_get_by_id_row(
   row: sql.GetPeriodicJobById,
-) -> Result(periodic_job_model.PeriodicJob, error.DbQueryError) {
+) -> Result(periodic_job_model.PeriodicJob, db_error.DbQueryError) {
   use job_type <- result.try(
     job_model.job_type_from_string(row.job_type)
-    |> result.map_error(error.DbQueryError),
+    |> result.map_error(validation_error.to_string)
+    |> result.map_error(db_error.DbQueryError),
   )
 
   Ok(periodic_job_model.PeriodicJob(

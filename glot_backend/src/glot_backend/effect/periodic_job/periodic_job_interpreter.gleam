@@ -30,7 +30,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.PeriodicJobEffectName(
@@ -59,7 +59,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.PeriodicJobEffectName(
@@ -88,7 +88,7 @@ pub fn run(
             ),
           )
         Error(error) -> #(
-          Error(error.QueryError(error)),
+          Error(error.database_query_error(error)),
           program_state.add_effect_measurement(
             state,
             effect_trace.PeriodicJobEffectName(

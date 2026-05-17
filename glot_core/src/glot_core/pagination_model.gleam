@@ -1,8 +1,8 @@
 import gleam/dynamic/decode
-import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
+import glot_core/validation_error
 
 pub type Cursor {
   Cursor(String)
@@ -186,17 +186,14 @@ pub fn encode_page(
 pub fn validate(
   pagination: CursorPagination,
   max_limit: Int,
-) -> Result(Nil, String) {
+) -> Result(Nil, validation_error.ValidationError) {
   let page_limit = limit(pagination)
   case page_limit <= 0 {
-    True -> Error("limit must be greater than 0")
+    True -> Error(validation_error.InvalidLimit)
     False ->
       case page_limit <= max_limit {
         True -> Ok(Nil)
-        False ->
-          Error(
-            "limit must be less than or equal to " <> int.to_string(max_limit),
-          )
+        False -> Error(validation_error.LimitTooLarge(max_limit))
       }
   }
 }

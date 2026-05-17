@@ -2,6 +2,7 @@ import gleam/option.{type Option}
 import gleam/time/calendar.{type Date}
 import glot_backend/effect/analytics/analytics_algebra
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/program_types
 
 pub fn get_max_completed_metrics_day() -> program_types.Program(Option(Date)) {
@@ -103,35 +104,35 @@ pub fn insert_metrics_completed_day_tx(
 }
 
 fn next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.Program(Nil) {
   case result {
     Ok(_) -> program_types.Pure(Nil)
-    Error(err) -> program_types.Fail(error.CommandError(err))
+    Error(err) -> program_types.Fail(error.database_command_error(err))
   }
 }
 
 fn tx_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.TransactionProgram(Nil) {
   case result {
     Ok(_) -> program_types.TxPure(Nil)
-    Error(err) -> program_types.TxFail(error.CommandError(err))
+    Error(err) -> program_types.TxFail(error.database_command_error(err))
   }
 }
 
 fn query_next(
-  result: Result(Option(Date), error.DbQueryError),
+  result: Result(Option(Date), db_error.DbQueryError),
 ) -> program_types.Program(Option(Date)) {
   case result {
     Ok(value) -> program_types.Pure(value)
-    Error(err) -> program_types.Fail(error.QueryError(err))
+    Error(err) -> program_types.Fail(error.database_query_error(err))
   }
 }
 
 fn insert_metrics_pageview_day_effect(
   day: Date,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AnalyticsEffect(analytics_algebra.InsertMetricsPageviewDay(
     day: day,
@@ -141,7 +142,7 @@ fn insert_metrics_pageview_day_effect(
 
 fn insert_metrics_product_event_day_effect(
   day: Date,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AnalyticsEffect(analytics_algebra.InsertMetricsProductEventDay(
     day: day,
@@ -151,7 +152,7 @@ fn insert_metrics_product_event_day_effect(
 
 fn insert_metrics_run_day_effect(
   day: Date,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AnalyticsEffect(analytics_algebra.InsertMetricsRunDay(
     day: day,
@@ -161,7 +162,7 @@ fn insert_metrics_run_day_effect(
 
 fn insert_metrics_reliability_page_day_effect(
   day: Date,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AnalyticsEffect(
     analytics_algebra.InsertMetricsReliabilityPageDay(day: day, next: next),
@@ -170,7 +171,7 @@ fn insert_metrics_reliability_page_day_effect(
 
 fn insert_metrics_reliability_api_day_effect(
   day: Date,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AnalyticsEffect(
     analytics_algebra.InsertMetricsReliabilityApiDay(day: day, next: next),
@@ -179,7 +180,7 @@ fn insert_metrics_reliability_api_day_effect(
 
 fn insert_metrics_completed_day_effect(
   day: Date,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AnalyticsEffect(analytics_algebra.InsertMetricsCompletedDay(
     day: day,

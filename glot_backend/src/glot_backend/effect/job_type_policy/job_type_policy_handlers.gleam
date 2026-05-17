@@ -3,19 +3,20 @@ import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/timestamp.{type Timestamp}
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/job/job_model
+import glot_core/validation_error
 
 pub type JobTypePolicyHandlers {
   JobTypePolicyHandlers(
     list_job_type_policies: fn() ->
-      Result(List(job_model.JobTypePolicy), error.DbQueryError),
+      Result(List(job_model.JobTypePolicy), db_error.DbQueryError),
     get_job_type_policy_by_job_type: fn(job_model.JobType) ->
-      Result(option.Option(job_model.JobTypePolicy), error.DbQueryError),
+      Result(option.Option(job_model.JobTypePolicy), db_error.DbQueryError),
     upsert_job_type_policy: fn(job_model.JobTypePolicy, Timestamp) ->
-      Result(Nil, error.DbCommandError),
+      Result(Nil, db_error.DbCommandError),
   )
 }
 
@@ -33,10 +34,10 @@ pub fn new(db: db_helpers.Db) -> JobTypePolicyHandlers {
 
 pub fn list_job_type_policies(
   db: db_helpers.Db,
-) -> Result(List(job_model.JobTypePolicy), error.DbQueryError) {
+) -> Result(List(job_model.JobTypePolicy), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(db, sql.list_job_type_policies(), fn(err) {
-      error.DbQueryError(string.inspect(err))
+      db_error.DbQueryError(string.inspect(err))
     }),
   )
 
@@ -48,21 +49,22 @@ pub fn list_job_type_policies(
 pub fn get_job_type_policy_by_job_type(
   db: db_helpers.Db,
   job_type: job_model.JobType,
-) -> Result(option.Option(job_model.JobTypePolicy), error.DbQueryError) {
+) -> Result(option.Option(job_model.JobTypePolicy), db_error.DbQueryError) {
   use returned <- result.try(
     db_helpers.query(
       db,
       sql.get_job_type_policy_by_job_type(
         job_type: job_model.job_type_to_string(job_type),
       ),
-      fn(err) { error.DbQueryError(string.inspect(err)) },
+      fn(err) { db_error.DbQueryError(string.inspect(err)) },
     ),
   )
 
   case returned.rows {
     [] -> Ok(option.None)
     [row] -> job_type_policy_from_get_row(row) |> result.map(option.Some)
-    _ -> Error(error.DbQueryError("Expected at most one job type policy row"))
+    _ ->
+      Error(db_error.DbQueryError("Expected at most one job type policy row"))
   }
 }
 
@@ -70,7 +72,7 @@ pub fn upsert_job_type_policy(
   db: db_helpers.Db,
   policy: job_model.JobTypePolicy,
   now: Timestamp,
-) -> Result(Nil, error.DbCommandError) {
+) -> Result(Nil, db_error.DbCommandError) {
   db_helpers.execute(
     db,
     sql.upsert_job_type_policy(
@@ -81,7 +83,7 @@ pub fn upsert_job_type_policy(
       max_backoff_seconds: policy.max_backoff_seconds,
       created_at: now,
     ),
-    fn(err) { error.DbCommandError(string.inspect(err)) },
+    fn(err) { db_error.DbCommandError(string.inspect(err)) },
   )
   |> result.map(fn(_) { Nil })
 }
@@ -94,10 +96,11 @@ fn job_type_policy_from_row(
   max_backoff_seconds: Int,
   created_at: Timestamp,
   updated_at: Timestamp,
-) -> Result(job_model.JobTypePolicy, error.DbQueryError) {
+) -> Result(job_model.JobTypePolicy, db_error.DbQueryError) {
   use job_type <- result.try(
     job_model.job_type_from_string(job_type)
-    |> result.map_error(error.DbQueryError),
+    |> result.map_error(validation_error.to_string)
+    |> result.map_error(db_error.DbQueryError),
   )
 
   Ok(job_model.JobTypePolicy(
@@ -113,7 +116,7 @@ fn job_type_policy_from_row(
 
 fn job_type_policy_from_list_row(
   row: sql.ListJobTypePolicies,
-) -> Result(job_model.JobTypePolicy, error.DbQueryError) {
+) -> Result(job_model.JobTypePolicy, db_error.DbQueryError) {
   job_type_policy_from_row(
     row.job_type,
     row.max_attempts,
@@ -127,7 +130,7 @@ fn job_type_policy_from_list_row(
 
 fn job_type_policy_from_get_row(
   row: sql.GetJobTypePolicyByJobType,
-) -> Result(job_model.JobTypePolicy, error.DbQueryError) {
+) -> Result(job_model.JobTypePolicy, db_error.DbQueryError) {
   job_type_policy_from_row(
     row.job_type,
     row.max_attempts,

@@ -50,13 +50,13 @@ pub fn create_snippet(
       request.data.run_instructions,
       request.data.files,
     )
-    |> result.map_error(error.ValidationError)
+    |> result.map_error(error.validation)
     |> program.from_result,
   )
 
   use _ <- program.and_then(
     snippet_spam.ensure_clean(request.data)
-    |> result.map_error(error.ValidationError)
+    |> result.map_error(error.validation)
     |> program.from_result,
   )
 

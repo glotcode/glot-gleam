@@ -13,6 +13,7 @@ import glot_backend/effect/user_action/user_action_effect
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin_action
 import glot_core/api_action
+import glot_core/validation_error
 
 pub fn upsert_docker_run_config(
   ctx: context.Context,
@@ -50,9 +51,10 @@ fn validate_request(
   request: docker_run_config_dto.UpsertDockerRunConfigRequest,
 ) -> program_types.Program(Nil) {
   case string.trim(request.base_url), string.trim(request.access_token) {
-    "", _ -> program.fail(error.ValidationError("baseUrl must not be empty"))
+    "", _ ->
+      program.fail(error.validation(validation_error.EmptyField("baseUrl")))
     _, "" ->
-      program.fail(error.ValidationError("accessToken must not be empty"))
+      program.fail(error.validation(validation_error.EmptyField("accessToken")))
     _, _ -> program.succeed(Nil)
   }
 }

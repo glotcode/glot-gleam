@@ -1,6 +1,7 @@
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/program_types
 import glot_core/periodic_job/periodic_job_model
@@ -53,11 +54,11 @@ pub fn update_periodic_job(
 }
 
 fn command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.Program(Nil) {
   case result {
     Ok(_) -> program_types.Pure(Nil)
-    Error(err) -> program_types.Fail(error.CommandError(err))
+    Error(err) -> program_types.Fail(error.database_command_error(err))
   }
 }
 
@@ -88,11 +89,11 @@ pub fn update_periodic_job_tx(
 }
 
 fn tx_command_next(
-  result: Result(Nil, error.DbCommandError),
+  result: Result(Nil, db_error.DbCommandError),
 ) -> program_types.TransactionProgram(Nil) {
   case result {
     Ok(_) -> program_types.TxPure(Nil)
-    Error(err) -> program_types.TxFail(error.CommandError(err))
+    Error(err) -> program_types.TxFail(error.database_command_error(err))
   }
 }
 
@@ -126,7 +127,7 @@ fn get_periodic_job_by_id_effect(
 
 fn create_periodic_job_effect(
   periodic_job: periodic_job_model.PeriodicJob,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.PeriodicJobEffect(periodic_job_algebra.CreatePeriodicJob(
     periodic_job,
@@ -136,7 +137,7 @@ fn create_periodic_job_effect(
 
 fn update_periodic_job_effect(
   periodic_job: periodic_job_model.PeriodicJob,
-  next: fn(Result(Nil, error.DbCommandError)) -> next,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.PeriodicJobEffect(periodic_job_algebra.UpdatePeriodicJob(
     periodic_job,

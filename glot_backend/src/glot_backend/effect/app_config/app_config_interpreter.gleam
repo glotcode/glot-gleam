@@ -5,6 +5,7 @@ import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_algebra
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
@@ -29,7 +30,7 @@ pub fn run(
           runtime.handlers.app_config.list_entries()
           |> result.try(fn(entries) {
             dynamic_config.from_entries(entries)
-            |> result.map_error(error.DbQueryError)
+            |> result.map_error(db_error.DbQueryError)
           })
       }
 
@@ -54,7 +55,7 @@ pub fn run(
           json.bool(config.enabled) |> json.to_string(),
           updated_at,
         )
-        |> result.map_error(error.CommandError)
+        |> result.map_error(error.database_command_error)
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
       continue(
@@ -82,7 +83,7 @@ pub fn run(
           config.mode |> availability_mode.encode |> json.to_string(),
           updated_at,
         )
-        |> result.map_error(error.CommandError)
+        |> result.map_error(error.database_command_error)
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
             "availability",
@@ -90,7 +91,7 @@ pub fn run(
             json.string(config.message) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -100,7 +101,7 @@ pub fn run(
               |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
@@ -125,7 +126,7 @@ pub fn run(
           json.int(config.login_token_max_age) |> json.to_string(),
           updated_at,
         )
-        |> result.map_error(error.CommandError)
+        |> result.map_error(error.database_command_error)
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
             "auth",
@@ -133,7 +134,7 @@ pub fn run(
             json.int(config.session_token_max_age) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -142,7 +143,7 @@ pub fn run(
             json.int(config.session_cookie_max_age) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -152,7 +153,7 @@ pub fn run(
               |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -162,7 +163,7 @@ pub fn run(
               |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -172,7 +173,7 @@ pub fn run(
               |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
@@ -197,7 +198,7 @@ pub fn run(
           json.int(config.api_log_retention_days) |> json.to_string(),
           updated_at,
         )
-        |> result.map_error(error.CommandError)
+        |> result.map_error(error.database_command_error)
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
             "cleanup",
@@ -205,7 +206,7 @@ pub fn run(
             json.int(config.page_log_retention_days) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -214,7 +215,7 @@ pub fn run(
             json.int(config.pageview_log_retention_days) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -223,7 +224,7 @@ pub fn run(
             json.int(config.run_log_retention_days) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -232,7 +233,7 @@ pub fn run(
             json.int(config.job_log_retention_days) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -241,7 +242,7 @@ pub fn run(
             json.int(config.jobs_retention_days) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -250,7 +251,7 @@ pub fn run(
             json.int(config.login_tokens_retention_days) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -259,7 +260,7 @@ pub fn run(
             json.int(config.user_actions_retention_days) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
@@ -284,7 +285,7 @@ pub fn run(
           json.int(config.flush_interval_ms) |> json.to_string(),
           updated_at,
         )
-        |> result.map_error(error.CommandError)
+        |> result.map_error(error.database_command_error)
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
             "log_worker",
@@ -292,7 +293,7 @@ pub fn run(
             json.int(config.max_batch_size) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -301,7 +302,7 @@ pub fn run(
             json.int(config.max_buffer_size) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
@@ -330,7 +331,7 @@ pub fn run(
           json.int(config.refresh_interval_ms) |> json.to_string(),
           updated_at,
         )
-        |> result.map_error(error.CommandError)
+        |> result.map_error(error.database_command_error)
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
             "language_version_cache_worker",
@@ -338,7 +339,7 @@ pub fn run(
             json.int(config.refresh_step_delay_ms) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -347,7 +348,7 @@ pub fn run(
             json.int(config.refresh_step_jitter_ms) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
@@ -356,7 +357,7 @@ pub fn run(
             json.int(config.default_timeout_ms) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
@@ -386,7 +387,7 @@ pub fn run(
           dynamic_config.encode_rate_limit_policy(policy) |> json.to_string(),
           updated_at,
         )
-        |> result.map_error(error.CommandError)
+        |> result.map_error(error.database_command_error)
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
       continue(
@@ -410,7 +411,7 @@ pub fn run(
           json.string(config.base_url) |> json.to_string(),
           updated_at,
         )
-        |> result.map_error(error.CommandError)
+        |> result.map_error(error.database_command_error)
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
             "docker_run",
@@ -418,7 +419,7 @@ pub fn run(
             json.string(config.access_token) |> json.to_string(),
             updated_at,
           )
-          |> result.map_error(error.CommandError)
+          |> result.map_error(error.database_command_error)
         })
         |> result.try(fn(_) { refresh_dynamic_config(runtime) })
 
@@ -443,14 +444,14 @@ fn refresh_dynamic_config(
   case runtime.app_config_cache_subject {
     option.Some(subject) ->
       app_config_cache_worker.refresh(subject)
-      |> result.map_error(error.QueryError)
+      |> result.map_error(error.database_query_error)
     option.None ->
       runtime.handlers.app_config.list_entries()
-      |> result.map_error(error.QueryError)
+      |> result.map_error(error.database_query_error)
       |> result.try(fn(entries) {
         dynamic_config.from_entries(entries)
         |> result.map_error(fn(message) {
-          error.QueryError(error.DbQueryError(message))
+          error.database_query_error(db_error.DbQueryError(message))
         })
       })
   }

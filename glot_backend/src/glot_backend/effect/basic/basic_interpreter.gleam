@@ -5,6 +5,7 @@ import glot_backend/dynamic_config
 import glot_backend/effect/basic/basic_algebra
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
@@ -119,7 +120,7 @@ fn debug_enabled(runtime: runtime.Runtime) -> Bool {
       runtime.handlers.app_config.list_entries()
       |> result.try(fn(entries) {
         dynamic_config.from_entries(entries)
-        |> result.map_error(error.DbQueryError)
+        |> result.map_error(db_error.DbQueryError)
       })
   }
 

@@ -3,7 +3,7 @@ import gleam/erlang/process
 import gleam/option
 import gleeunit
 import glot_backend/dynamic_config
-import glot_backend/effect/error
+import glot_backend/effect/error/db_error
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker
 import glot_core/auth/account_model
@@ -18,14 +18,14 @@ pub fn main() -> Nil {
 type ControlMessage {
   RegisterFetch(
     reply: process.Subject(
-      Result(dynamic_config.DynamicConfig, error.DbQueryError),
+      Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
     ),
   )
   TakeFetch(
     reply: process.Subject(
       option.Option(
         process.Subject(
-          Result(dynamic_config.DynamicConfig, error.DbQueryError),
+          Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
         ),
       ),
     ),
@@ -40,7 +40,9 @@ type ControlState {
     fetch_count: Int,
     now_ns: Int,
     pending_fetches: List(
-      process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)),
+      process.Subject(
+        Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+      ),
     ),
   )
 }
@@ -108,7 +110,7 @@ pub fn failed_refresh_keeps_stale_value_test() {
   assert stale_result == Ok(test_dynamic_config())
 
   let refresh_reply = expect_fetch(control_subject, 20)
-  process.send(refresh_reply, Error(error.DbQueryError("refresh failed")))
+  process.send(refresh_reply, Error(db_error.DbQueryError("refresh failed")))
 
   assert app_config_cache_worker.get_config(worker_subject)
     == Ok(test_dynamic_config())
@@ -197,7 +199,7 @@ fn control_loop(
 fn request_config(
   worker_subject: process.Subject(app_config_cache_worker.Message),
   result_subject: process.Subject(
-    Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
   ),
 ) -> Nil {
   let _ =
@@ -211,7 +213,9 @@ fn request_config(
 fn expect_fetch(
   control_subject: process.Subject(ControlMessage),
   attempts_remaining: Int,
-) -> process.Subject(Result(dynamic_config.DynamicConfig, error.DbQueryError)) {
+) -> process.Subject(
+  Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+) {
   let maybe_fetch = process.call(control_subject, 100, TakeFetch)
 
   case maybe_fetch {
@@ -247,7 +251,7 @@ fn wait_for_fetch_count(
 fn wait_for_config(
   worker_subject: process.Subject(app_config_cache_worker.Message),
   attempts_remaining: Int,
-) -> Result(dynamic_config.DynamicConfig, error.DbQueryError) {
+) -> Result(dynamic_config.DynamicConfig, db_error.DbQueryError) {
   let result = app_config_cache_worker.get_config(worker_subject)
 
   case result == Ok(updated_dynamic_config()) {
@@ -262,9 +266,9 @@ fn wait_for_config(
 
 fn expect_result(
   result_subject: process.Subject(
-    Result(dynamic_config.DynamicConfig, error.DbQueryError),
+    Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
   ),
-) -> Result(dynamic_config.DynamicConfig, error.DbQueryError) {
+) -> Result(dynamic_config.DynamicConfig, db_error.DbQueryError) {
   process.receive_forever(result_subject)
 }
 

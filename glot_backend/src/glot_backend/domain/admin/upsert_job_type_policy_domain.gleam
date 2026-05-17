@@ -5,6 +5,7 @@ import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/error
+import glot_backend/effect/error/resource_error
 import glot_backend/effect/job_type_policy/job_type_policy_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
@@ -13,6 +14,7 @@ import glot_core/admin/job_type_policy_dto
 import glot_core/admin_action
 import glot_core/api_action
 import glot_core/job/job_model
+import glot_core/validation_error
 
 pub fn upsert_job_type_policy(
   ctx: context.Context,
@@ -32,10 +34,7 @@ pub fn upsert_job_type_policy(
   ))
   use saved_policy <- program.and_then(
     job_type_policy_effect.get_job_type_policy_by_job_type(policy.job_type)
-    |> program.require(error.NotFoundError(
-      "job_type_policy_not_found",
-      "Job type policy not found",
-    )),
+    |> program.require(error.resource(resource_error.JobTypePolicyNotFound)),
   )
   use _ <- program.and_then(user_action_effect.create_user_action(user_action))
 
@@ -63,40 +62,63 @@ fn policy_from_request(
         created_at: now,
         updated_at: now,
       ))
-    Error(message) -> program.fail(error.ValidationError(message))
+    Error(err) -> program.fail(error.validation(err))
   }
 }
 
 fn validate_policy(
   policy: job_model.JobTypePolicy,
 ) -> program_types.Program(Nil) {
-  use _ <- program.and_then(require(
-    policy.max_attempts > 0,
-    "max_attempts must be greater than 0",
+  use _ <- program.and_then(require_positive(
+    policy.max_attempts,
+    "max_attempts",
   ))
-  use _ <- program.and_then(require(
-    policy.timeout_seconds > 0,
-    "timeout_seconds must be greater than 0",
+  use _ <- program.and_then(require_positive(
+    policy.timeout_seconds,
+    "timeout_seconds",
   ))
-  use _ <- program.and_then(require(
-    policy.base_backoff_seconds > 0,
-    "base_backoff_seconds must be greater than 0",
+  use _ <- program.and_then(require_positive(
+    policy.base_backoff_seconds,
+    "base_backoff_seconds",
   ))
-  use _ <- program.and_then(require(
-    policy.max_backoff_seconds > 0,
-    "max_backoff_seconds must be greater than 0",
+  use _ <- program.and_then(require_positive(
+    policy.max_backoff_seconds,
+    "max_backoff_seconds",
   ))
-  use _ <- program.and_then(require(
-    policy.base_backoff_seconds <= policy.max_backoff_seconds,
-    "base_backoff_seconds must be less than or equal to max_backoff_seconds",
+  use _ <- program.and_then(require_gte_field(
+    policy.max_backoff_seconds,
+    "max_backoff_seconds",
+    policy.base_backoff_seconds,
+    "base_backoff_seconds",
   ))
 
   program.succeed(Nil)
 }
 
-fn require(condition: Bool, message: String) -> program_types.Program(Nil) {
-  case condition {
+fn require_positive(value: Int, field: String) -> program_types.Program(Nil) {
+  case value > 0 {
     True -> program.succeed(Nil)
-    False -> program.fail(error.ValidationError(message))
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThan(field, 0)),
+      )
+  }
+}
+
+fn require_gte_field(
+  value: Int,
+  field: String,
+  other_value: Int,
+  other_field: String,
+) -> program_types.Program(Nil) {
+  case value >= other_value {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(validation_error.MustBeGreaterThanOrEqualField(
+          field,
+          other_field,
+        )),
+      )
   }
 }

@@ -2,6 +2,7 @@ import gleam/option
 import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/error
+import glot_backend/effect/error/policy_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_core/api_action
@@ -35,7 +36,7 @@ pub fn enforce_api_action(
   let availability = dynamic_config.availability_config(config)
 
   case api_action_error(availability, action) {
-    option.Some(err) -> program.fail(error.AvailabilityError(err))
+    option.Some(err) -> program.fail(error.policy(err))
     option.None -> program.succeed(Nil)
   }
 }
@@ -60,7 +61,7 @@ pub fn evaluate_page_route(
 fn api_action_error(
   availability: dynamic_config.AvailabilityConfig,
   action: api_action.ApiAction,
-) -> option.Option(error.AvailabilityBlockedError) {
+) -> option.Option(policy_error.PolicyError) {
   let surface = api_surface(action)
 
   case
@@ -70,14 +71,12 @@ fn api_action_error(
     availability_mode.NormalMode, _ -> option.None
     _, True -> option.None
     availability_mode.ReadOnlyMode, False ->
-      option.Some(error.AvailabilityBlockedError(
-        code: "read_only_mode_enabled",
+      option.Some(policy_error.ReadOnlyModeBlocked(
         message: availability.message,
         retry_after_seconds: availability.retry_after_seconds,
       ))
     availability_mode.MaintenanceMode, False ->
-      option.Some(error.AvailabilityBlockedError(
-        code: "maintenance_mode_enabled",
+      option.Some(policy_error.MaintenanceModeBlocked(
         message: availability.message,
         retry_after_seconds: availability.retry_after_seconds,
       ))

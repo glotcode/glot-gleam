@@ -5,7 +5,7 @@ import glot_core/email/email_model
 
 pub fn send_email(
   message: email_model.Email,
-) -> program_types.Program(Result(Nil, error.SendEmailError)) {
+) -> program_types.Program(Result(Nil, error.Error)) {
   program_types.Impure(
     program_types.EmailEffect(email_algebra.SendEmail(
       message,
