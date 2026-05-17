@@ -213,9 +213,7 @@ pub fn view(model: Model) -> Element(Msg) {
     html.main([attribute.class("app-shell app-shell--narrow")], [
       html.section([attribute.class("app-panel")], [
         html.h2([attribute.class("login-page__title")], [html.text("Login")]),
-        html.p([attribute.class("login-page__status")], [
-          html.text("No account yet? We’ll create one when you sign in."),
-        ]),
+        intro_copy(model.step),
         html.form(
           [
             event.on_submit(fn(_) { submit_msg(model.step) }),
@@ -257,7 +255,6 @@ fn form_fields(model: Model) -> List(Element(Msg)) {
     ]
 
     EnterToken(_email) -> [
-      html.p([attribute.class("login-page__status")], []),
       status_view(model.status),
       html.label(
         [attribute.for("token"), attribute.class("login-page__label")],
@@ -282,6 +279,16 @@ fn form_fields(model: Model) -> List(Element(Msg)) {
         [html.text(button_text(model.status, model.step))],
       ),
     ]
+  }
+}
+
+fn intro_copy(step: Step) -> Element(Msg) {
+  case step {
+    EnterEmail ->
+      html.p([attribute.class("login-page__status")], [
+        html.text("No account yet? We’ll create one when you sign in."),
+      ])
+    EnterToken(_) -> html.text("")
   }
 }
 
