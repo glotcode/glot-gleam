@@ -192,3 +192,23 @@ pub fn upsert_docker_run_config(
     ),
   )
 }
+
+pub fn upsert_cloudflare_config(
+  config: dynamic_config.CloudflareConfig,
+  updated_at: Timestamp,
+) -> program_types.Program(dynamic_config.DynamicConfig) {
+  program_types.Impure(
+    program_types.AppConfigEffect(
+      app_config_algebra.UpsertCloudflareConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(result) {
+          case result {
+            Ok(config) -> program_types.Pure(config)
+            Error(err) -> program_types.Fail(err)
+          }
+        },
+      ),
+    ),
+  )
+}

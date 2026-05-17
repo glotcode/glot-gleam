@@ -9,6 +9,7 @@ pub type ResourceError {
   JobLogNotFound
   EmailTemplateNotFound
   DockerRunConfigNotFound
+  CloudflareConfigNotFound
   AccountDeleteNotScheduled
   AccountDeleteAlreadyScheduled
 }
@@ -32,6 +33,7 @@ pub fn code(err: ResourceError) -> String {
     JobLogNotFound -> "job_log_not_found"
     EmailTemplateNotFound -> "email_template_not_found"
     DockerRunConfigNotFound -> "docker_run_config_not_found"
+    CloudflareConfigNotFound -> "cloudflare_config_not_found"
     AccountDeleteNotScheduled -> "account_delete_not_scheduled"
     AccountDeleteAlreadyScheduled -> "account_delete_already_scheduled"
   }
@@ -49,6 +51,7 @@ pub fn message(err: ResourceError) -> String {
     JobLogNotFound -> "Job log not found"
     EmailTemplateNotFound -> "Email template not found"
     DockerRunConfigNotFound -> "Docker run config is not configured"
+    CloudflareConfigNotFound -> "Cloudflare config is not configured"
     AccountDeleteNotScheduled -> "Account deletion is not scheduled"
     AccountDeleteAlreadyScheduled -> "Account deletion already scheduled"
   }

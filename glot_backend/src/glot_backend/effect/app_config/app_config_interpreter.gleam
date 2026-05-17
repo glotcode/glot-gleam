@@ -435,6 +435,39 @@ pub fn run(
         ),
       )
     }
+    app_config_algebra.UpsertCloudflareConfig(config:, updated_at:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        runtime.handlers.app_config.upsert_entry(
+          "cloudflare",
+          "account_id",
+          json.string(config.account_id) |> json.to_string(),
+          updated_at,
+        )
+        |> result.map_error(error.database_command_error)
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "cloudflare",
+            "api_token",
+            json.string(config.api_token) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.database_command_error)
+        })
+        |> result.try(fn(_) { refresh_dynamic_config(runtime) })
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.UpsertCloudflareConfigEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
   }
 }
 

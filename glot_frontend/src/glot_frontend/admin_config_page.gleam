@@ -4,6 +4,7 @@ import gleam/result
 import glot_core/admin/auth_config_dto
 import glot_core/admin/availability_config_dto
 import glot_core/admin/cleanup_config_dto
+import glot_core/admin/cloudflare_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/language_version_cache_worker_config_dto
@@ -29,6 +30,7 @@ pub type Model {
     log_worker: LogWorkerSection,
     language_version_cache_worker: LanguageVersionCacheWorkerSection,
     docker_run: DockerRunSection,
+    cloudflare: CloudflareSection,
     debug_loaded: Bool,
     availability_loaded: Bool,
     auth_loaded: Bool,
@@ -36,6 +38,7 @@ pub type Model {
     log_worker_loaded: Bool,
     language_version_cache_worker_loaded: Bool,
     docker_run_loaded: Bool,
+    cloudflare_loaded: Bool,
   )
 }
 
@@ -56,6 +59,18 @@ pub type DockerRunSection {
 
 pub type DockerRunFields {
   DockerRunFields(base_url: String, access_token: String)
+}
+
+pub type CloudflareSection {
+  CloudflareSection(
+    saved: CloudflareFields,
+    draft: CloudflareFields,
+    state: mutation.MutationState,
+  )
+}
+
+pub type CloudflareFields {
+  CloudflareFields(account_id: String, api_token: String)
 }
 
 pub type DebugSection {
@@ -235,6 +250,16 @@ pub type Msg {
   DockerRunSaveFinished(
     api.ApiResponse(docker_run_config_dto.DockerRunConfigResponse),
   )
+  CloudflareLoaded(
+    api.ApiResponse(cloudflare_config_dto.CloudflareConfigResponse),
+  )
+  CloudflareAccountIdChanged(String)
+  CloudflareApiTokenChanged(String)
+  CloudflareResetClicked
+  CloudflareSaveClicked
+  CloudflareSaveFinished(
+    api.ApiResponse(cloudflare_config_dto.CloudflareConfigResponse),
+  )
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
@@ -248,6 +273,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       log_worker: empty_log_worker_section(),
       language_version_cache_worker: empty_language_version_cache_worker_section(),
       docker_run: empty_docker_run_section(),
+      cloudflare: empty_cloudflare_section(),
       debug_loaded: False,
       availability_loaded: False,
       auth_loaded: False,
@@ -255,6 +281,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       log_worker_loaded: False,
       language_version_cache_worker_loaded: False,
       docker_run_loaded: False,
+      cloudflare_loaded: False,
     ),
     effect.none(),
   )
@@ -272,6 +299,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
         load_log_worker_config(),
         load_language_version_cache_worker_config(),
         load_docker_run_config(),
+        load_cloudflare_config(),
       ]),
     )
     Loading | Ready | LoadError(_) -> #(model, effect.none())
@@ -1403,6 +1431,150 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
       }
+
+    CloudflareLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = cloudflare_fields_from_response(response)
+          let next_model =
+            Model(
+              ..model,
+              cloudflare: CloudflareSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
+              cloudflare_loaded: True,
+            )
+
+          #(
+            Model(..next_model, status: loaded_status(next_model)),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) ->
+          case error.code {
+            "cloudflare_config_not_found" -> {
+              let next_model =
+                Model(
+                  ..model,
+                  cloudflare: empty_cloudflare_section(),
+                  cloudflare_loaded: True,
+                )
+
+              #(
+                Model(..next_model, status: loaded_status(next_model)),
+                effect.none(),
+              )
+            }
+            _ -> #(
+              Model(..model, status: LoadError(api.error_message(error))),
+              effect.none(),
+            )
+          }
+        api.HttpFailure(_) -> #(
+          Model(..model, status: LoadError("Could not load Cloudflare config.")),
+          effect.none(),
+        )
+      }
+
+    CloudflareAccountIdChanged(value) -> #(
+      Model(
+        ..model,
+        cloudflare: CloudflareSection(
+          ..model.cloudflare,
+          draft: CloudflareFields(..model.cloudflare.draft, account_id: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    CloudflareApiTokenChanged(value) -> #(
+      Model(
+        ..model,
+        cloudflare: CloudflareSection(
+          ..model.cloudflare,
+          draft: CloudflareFields(..model.cloudflare.draft, api_token: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    CloudflareResetClicked -> #(
+      Model(
+        ..model,
+        cloudflare: CloudflareSection(
+          ..model.cloudflare,
+          draft: model.cloudflare.saved,
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    CloudflareSaveClicked ->
+      case validate_cloudflare_fields(model.cloudflare.draft) {
+        Error(message) -> #(
+          Model(
+            ..model,
+            cloudflare: CloudflareSection(
+              ..model.cloudflare,
+              state: mutation.SaveError(message),
+            ),
+          ),
+          effect.none(),
+        )
+        Ok(request) -> #(
+          Model(
+            ..model,
+            cloudflare: CloudflareSection(
+              ..model.cloudflare,
+              state: mutation.Saving,
+            ),
+          ),
+          api.upsert_admin_cloudflare_config(request, CloudflareSaveFinished),
+        )
+      }
+
+    CloudflareSaveFinished(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = cloudflare_fields_from_response(response)
+          #(
+            Model(
+              ..model,
+              cloudflare: CloudflareSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Saved,
+              ),
+            ),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            cloudflare: CloudflareSection(
+              ..model.cloudflare,
+              state: mutation.SaveError(api.error_message(error)),
+            ),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            cloudflare: CloudflareSection(
+              ..model.cloudflare,
+              state: mutation.SaveError("Could not save Cloudflare config."),
+            ),
+          ),
+          effect.none(),
+        )
+      }
   }
 }
 
@@ -1421,6 +1593,7 @@ pub fn view(model: Model) -> Element(Msg) {
           model.status,
         ),
         docker_run_section_view(model.docker_run, model.status),
+        cloudflare_section_view(model.cloudflare, model.status),
       ]),
     ]),
   ])
@@ -1847,6 +2020,50 @@ fn docker_run_section_view(
   )
 }
 
+fn cloudflare_section_view(
+  section: CloudflareSection,
+  status: Status,
+) -> Element(Msg) {
+  let dirty = is_dirty_cloudflare(section)
+  let is_empty = section.saved == empty_cloudflare_fields()
+
+  config_section(
+    title: "Cloudflare",
+    subtitle: "Stores the Cloudflare account ID and API token used by backend integrations.",
+    badge: section_badge(section.state, dirty, idle_text(is_empty)),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      admin_ui.text_input(
+        label: "Account ID",
+        help: "Cloudflare account identifier.",
+        value: section.draft.account_id,
+        placeholder: "",
+        on_input: CloudflareAccountIdChanged,
+      ),
+      admin_ui.text_input(
+        label: "API token",
+        help: "Stored as a regular app config value.",
+        value: section.draft.api_token,
+        placeholder: "",
+        on_input: CloudflareApiTokenChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(
+        section.state,
+        idle_message(
+          is_empty,
+          "This section is empty until you save initial values.",
+        ),
+      ),
+      reset_msg: CloudflareResetClicked,
+      save_msg: CloudflareSaveClicked,
+    ),
+  )
+}
+
 fn config_section(
   title title: String,
   subtitle subtitle: String,
@@ -2029,6 +2246,10 @@ fn load_docker_run_config() -> Effect(Msg) {
   api.get_admin_docker_run_config(DockerRunLoaded)
 }
 
+fn load_cloudflare_config() -> Effect(Msg) {
+  api.get_admin_cloudflare_config(CloudflareLoaded)
+}
+
 fn auth_fields_from_response(
   response: auth_config_dto.AuthConfigResponse,
 ) -> AuthFields {
@@ -2116,6 +2337,15 @@ fn docker_run_fields_from_response(
   )
 }
 
+fn cloudflare_fields_from_response(
+  response: cloudflare_config_dto.CloudflareConfigResponse,
+) -> CloudflareFields {
+  CloudflareFields(
+    account_id: response.account_id,
+    api_token: response.api_token,
+  )
+}
+
 fn validate_docker_run_fields(
   fields: DockerRunFields,
 ) -> Result(docker_run_config_dto.UpsertDockerRunConfigRequest, String) {
@@ -2131,6 +2361,24 @@ fn validate_docker_run_fields(
 }
 
 fn is_dirty(section: DockerRunSection) -> Bool {
+  section.saved != section.draft
+}
+
+fn validate_cloudflare_fields(
+  fields: CloudflareFields,
+) -> Result(cloudflare_config_dto.UpsertCloudflareConfigRequest, String) {
+  case fields.account_id, fields.api_token {
+    "", _ -> Error("Account ID must not be empty.")
+    _, "" -> Error("API token must not be empty.")
+    _, _ ->
+      Ok(cloudflare_config_dto.UpsertCloudflareConfigRequest(
+        account_id: fields.account_id,
+        api_token: fields.api_token,
+      ))
+  }
+}
+
+fn is_dirty_cloudflare(section: CloudflareSection) -> Bool {
   section.saved != section.draft
 }
 
@@ -2470,6 +2718,15 @@ fn empty_docker_run_fields() -> DockerRunFields {
   DockerRunFields(base_url: "", access_token: "")
 }
 
+fn empty_cloudflare_section() -> CloudflareSection {
+  let fields = empty_cloudflare_fields()
+  CloudflareSection(saved: fields, draft: fields, state: mutation.Idle)
+}
+
+fn empty_cloudflare_fields() -> CloudflareFields {
+  CloudflareFields(account_id: "", api_token: "")
+}
+
 fn loaded_status(model: Model) -> Status {
   case
     model.debug_loaded
@@ -2479,6 +2736,7 @@ fn loaded_status(model: Model) -> Status {
     && model.log_worker_loaded
     && model.language_version_cache_worker_loaded
     && model.docker_run_loaded
+    && model.cloudflare_loaded
   {
     True -> Ready
     False -> Loading

@@ -10,6 +10,7 @@ import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto
 import glot_core/admin/availability_config_dto
 import glot_core/admin/cleanup_config_dto
+import glot_core/admin/cloudflare_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/email_template_dto
@@ -903,6 +904,34 @@ pub fn upsert_admin_docker_run_config(
     req,
     docker_run_config_dto.encode_request,
     docker_run_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_cloudflare_config(
+  to_msg: fn(ApiResponse(cloudflare_config_dto.CloudflareConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = AdminApiRequest(admin_action.GetAdminCloudflareConfigAction, Nil)
+
+  send_admin_api_request(
+    req,
+    fn(_) { json.null() },
+    cloudflare_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_cloudflare_config(
+  request: cloudflare_config_dto.UpsertCloudflareConfigRequest,
+  to_msg: fn(ApiResponse(cloudflare_config_dto.CloudflareConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req =
+    AdminApiRequest(admin_action.UpsertAdminCloudflareConfigAction, request)
+
+  send_admin_api_request(
+    req,
+    cloudflare_config_dto.encode_request,
+    cloudflare_config_dto.response_decoder(),
     to_msg,
   )
 }

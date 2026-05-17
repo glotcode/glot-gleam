@@ -21,6 +21,7 @@ pub type DynamicConfig {
     log_worker: LogWorkerConfig,
     language_version_cache_worker: LanguageVersionCacheWorkerConfig,
     docker_run: option.Option(DockerRunConfig),
+    cloudflare: option.Option(CloudflareConfig),
     rate_limit_policies: dict.Dict(public_action.PublicAction, RateLimitPolicy),
   )
 }
@@ -50,6 +51,10 @@ pub type AuthConfig {
 
 pub type DockerRunConfig {
   DockerRunConfig(base_url: String, access_token: String)
+}
+
+pub type CloudflareConfig {
+  CloudflareConfig(account_id: String, api_token: String)
 }
 
 pub type CleanupConfig {
@@ -111,6 +116,7 @@ pub fn empty() -> DynamicConfig {
     log_worker: default_log_worker_config(),
     language_version_cache_worker: default_language_version_cache_worker_config(),
     docker_run: option.None,
+    cloudflare: option.None,
     rate_limit_policies: dict.new(),
   )
 }
@@ -136,6 +142,12 @@ pub fn docker_run_config(
   config: DynamicConfig,
 ) -> option.Option(DockerRunConfig) {
   config.docker_run
+}
+
+pub fn cloudflare_config(
+  config: DynamicConfig,
+) -> option.Option(CloudflareConfig) {
+  config.cloudflare
 }
 
 pub fn auth_config(config: DynamicConfig) -> AuthConfig {
@@ -207,6 +219,7 @@ fn apply_entry(
     "language_version_cache_worker" ->
       decode_language_version_cache_worker_config_entry(config, entry)
     "docker_run" -> decode_docker_run_entry(config, entry)
+    "cloudflare" -> decode_cloudflare_entry(config, entry)
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
   }
@@ -533,6 +546,33 @@ fn decode_rate_limit_policy_entry(
           Error("Invalid rate limit action in app_config key: " <> entry.key)
       }
   }
+}
+
+fn decode_cloudflare_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  use value <- result.try(decode_string_entry("cloudflare", entry))
+
+  let cloudflare = case entry.key, config.cloudflare {
+    "account_id", option.Some(cloudflare) ->
+      option.Some(CloudflareConfig(
+        account_id: value,
+        api_token: cloudflare.api_token,
+      ))
+    "account_id", option.None ->
+      option.Some(CloudflareConfig(account_id: value, api_token: ""))
+    "api_token", option.Some(cloudflare) ->
+      option.Some(CloudflareConfig(
+        account_id: cloudflare.account_id,
+        api_token: value,
+      ))
+    "api_token", option.None ->
+      option.Some(CloudflareConfig(account_id: "", api_token: value))
+    _, _ -> config.cloudflare
+  }
+
+  Ok(DynamicConfig(..config, cloudflare: cloudflare))
 }
 
 fn decode_string_entry(

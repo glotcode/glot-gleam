@@ -19,6 +19,7 @@ import glot_backend/domain/admin/get_api_logs_domain
 import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_availability_config_domain
 import glot_backend/domain/admin/get_cleanup_config_domain
+import glot_backend/domain/admin/get_cloudflare_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
 import glot_backend/domain/admin/get_email_template_domain
@@ -45,6 +46,7 @@ import glot_backend/domain/admin/update_user_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_availability_config_domain
 import glot_backend/domain/admin/upsert_cleanup_config_domain
+import glot_backend/domain/admin/upsert_cloudflare_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_job_type_policy_domain
@@ -83,6 +85,7 @@ import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto
 import glot_core/admin/availability_config_dto
 import glot_core/admin/cleanup_config_dto
+import glot_core/admin/cloudflare_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/email_template_dto
@@ -516,6 +519,16 @@ fn handle_admin_api_request(
       upsert_docker_run_config_domain.upsert_docker_run_config(ctx, request)
       |> program.map(DockerRunConfigResponse)
     }
+    admin_action.GetAdminCloudflareConfigAction ->
+      get_cloudflare_config_domain.get_cloudflare_config(ctx)
+      |> program.map(CloudflareConfigResponse)
+    admin_action.UpsertAdminCloudflareConfigAction -> {
+      use request <- program.and_then(
+        upsert_cloudflare_config_domain.request_from_dynamic(data),
+      )
+      upsert_cloudflare_config_domain.upsert_cloudflare_config(ctx, request)
+      |> program.map(CloudflareConfigResponse)
+    }
   }
 }
 
@@ -605,6 +618,7 @@ type ApiResult {
   JobTypePoliciesResponse(job_type_policy_dto.ListJobTypePoliciesResponse)
   JobTypePolicyResponse(job_type_policy_dto.JobTypePolicyResponse)
   DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
+  CloudflareConfigResponse(cloudflare_config_dto.CloudflareConfigResponse)
   LoginResponse(login_domain.LoginResult)
   RefreshSessionResponse(refresh_session_domain.RefreshSessionResult)
   LogoutResponse
@@ -690,6 +704,8 @@ fn api_result_to_response(
       success_response(job_type_policy_dto.encode_policy_response(response))
     DockerRunConfigResponse(response) ->
       success_response(docker_run_config_dto.encode_response(response))
+    CloudflareConfigResponse(response) ->
+      success_response(cloudflare_config_dto.encode_response(response))
     LoginResponse(login_result) -> {
       set_session_cookie(
         success_response(json.null()),

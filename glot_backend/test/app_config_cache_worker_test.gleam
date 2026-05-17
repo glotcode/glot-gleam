@@ -313,6 +313,7 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
       base_url: "http://docker-run",
       access_token: "test-token",
     )),
+    cloudflare: option.None,
     rate_limit_policies: dict.from_list([
       #(
         public_action.RunAction,
@@ -380,6 +381,7 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
       base_url: "http://docker-run-2",
       access_token: "updated-token",
     )),
+    cloudflare: option.None,
     rate_limit_policies: dict.from_list([
       #(
         public_action.RunAction,

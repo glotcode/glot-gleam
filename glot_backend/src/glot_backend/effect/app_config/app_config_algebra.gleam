@@ -50,6 +50,11 @@ pub type AppConfigEffect(next) {
     updated_at: Timestamp,
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
   )
+  UpsertCloudflareConfig(
+    config: dynamic_config.CloudflareConfig,
+    updated_at: Timestamp,
+    next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
+  )
 }
 
 pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
@@ -101,6 +106,12 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
         updated_at: updated_at,
         next: fn(value) { f(next(value)) },
       )
+    UpsertCloudflareConfig(config:, updated_at:, next:) ->
+      UpsertCloudflareConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(value) { f(next(value)) },
+      )
   }
 }
 
@@ -114,6 +125,7 @@ pub type EffectName {
   UpsertLanguageVersionCacheWorkerConfigEffectName
   UpsertRateLimitPolicyEffectName
   UpsertDockerRunConfigEffectName
+  UpsertCloudflareConfigEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
@@ -128,5 +140,6 @@ pub fn effect_name_to_string(name: EffectName) -> String {
       "upsert_language_version_cache_worker_config"
     UpsertRateLimitPolicyEffectName -> "upsert_rate_limit_policy"
     UpsertDockerRunConfigEffectName -> "upsert_docker_run_config"
+    UpsertCloudflareConfigEffectName -> "upsert_cloudflare_config"
   }
 }
