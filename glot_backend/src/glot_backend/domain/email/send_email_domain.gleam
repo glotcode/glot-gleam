@@ -1,7 +1,9 @@
 import glot_backend/context
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/email/email_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
+import glot_backend/log
 import glot_core/email/email_model
 
 pub fn send_email(
@@ -11,7 +13,24 @@ pub fn send_email(
   use send_result <- program.and_then(email_effect.send_email(email))
 
   case send_result {
-    Ok(_) -> program.succeed(Nil)
+    Ok(result) -> {
+      use _ <- program.and_then(
+        basic_effect.info(
+          log.from_list([
+            log.object("send_email_result", [
+              log.string_list("delivered", result.delivered),
+              log.string_list(
+                "permanent_bounces",
+                result.permanent_bounces,
+              ),
+              log.string_list("queued", result.queued),
+            ]),
+          ]),
+        ),
+      )
+
+      program.succeed(Nil)
+    }
     Error(err) -> program.fail(err)
   }
 }

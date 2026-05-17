@@ -12,7 +12,7 @@ import wisp
 pub type EmailHandlers {
   EmailHandlers(
     send_email: fn(dynamic_config.CloudflareConfig, email_model.Email, Int) ->
-      Result(Nil, error.Error),
+      Result(email_model.SendEmailResult, error.Error),
   )
 }
 
@@ -24,7 +24,7 @@ pub fn send_email(
   cfg: dynamic_config.CloudflareConfig,
   message: email_model.Email,
   timeout_ms: Int,
-) -> Result(Nil, error.Error) {
+) -> Result(email_model.SendEmailResult, error.Error) {
   let request = cloudflare_email.request_from_email(message)
   let response_result =
     http_client.post_json(
@@ -40,7 +40,7 @@ pub fn send_email(
   case response_result {
     Ok(response) ->
       case response.success {
-        True -> Ok(Nil)
+        True -> Ok(send_result_from_cloudflare(response.result))
         False -> {
           let detail = cloudflare_email.response_message(response)
           wisp.log_error("Cloudflare email send failed: " <> detail)
@@ -58,6 +58,22 @@ pub fn send_email(
       Error(error_from_http_error(err))
     }
   }
+}
+
+fn send_result_from_cloudflare(
+  result: cloudflare_email.SendEmailResult,
+) -> email_model.SendEmailResult {
+  let cloudflare_email.SendEmailResult(
+    delivered: delivered,
+    permanent_bounces: permanent_bounces,
+    queued: queued,
+  ) = result
+
+  email_model.SendEmailResult(
+    delivered: delivered,
+    permanent_bounces: permanent_bounces,
+    queued: queued,
+  )
 }
 
 fn error_from_http_error(err: http_client.HttpError) -> error.Error {

@@ -1,8 +1,8 @@
 import glot_backend/effect/error
-import glot_core/email/email_model
+import glot_core/email/email_model.{type Email, type SendEmailResult}
 
 pub type EmailEffect(next) {
-  SendEmail(email_model.Email, fn(Result(Nil, error.Error)) -> next)
+  SendEmail(Email, fn(Result(SendEmailResult, error.Error)) -> next)
 }
 
 pub fn map(effect: EmailEffect(a), f: fn(a) -> b) -> EmailEffect(b) {

@@ -18,6 +18,14 @@ pub type Email {
   )
 }
 
+pub type SendEmailResult {
+  SendEmailResult(
+    delivered: List(String),
+    permanent_bounces: List(String),
+    queued: List(String),
+  )
+}
+
 pub fn recipient_string(message: Email) -> String {
   case message {
     Email(to:, ..) -> email_address_model.to_string(to)

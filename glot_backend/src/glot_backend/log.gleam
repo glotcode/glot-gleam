@@ -38,6 +38,10 @@ pub fn string(key: String, value: String) -> #(String, Value) {
   #(key, String(value))
 }
 
+pub fn string_list(key: String, values: List(String)) -> #(String, Value) {
+  #(key, List(list.map(values, String)))
+}
+
 pub fn optional_string(key: String, value: Option(String)) -> #(String, Value) {
   case value {
     option.Some(v) -> #(key, String(v))
