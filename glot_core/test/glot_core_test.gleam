@@ -9,6 +9,7 @@ import glot_core/helpers/timestamp_helpers
 import glot_core/language
 import glot_core/pagination_model
 import glot_core/public_action
+import glot_core/server_timing_policy
 import glot_core/snippet/snippet_model
 
 pub fn main() -> Nil {
@@ -73,6 +74,30 @@ pub fn api_action_from_string_wraps_public_and_admin_actions_test() {
 
 pub fn api_action_from_string_rejects_unknown_values_test() {
   assert api_action.from_string("not_a_real_action") == option.None
+}
+
+pub fn api_action_server_timing_policy_suppresses_account_related_actions_test() {
+  assert api_action.server_timing_policy(
+      api_action.public(public_action.GetSessionAction),
+    )
+    == server_timing_policy.SuppressServerTiming
+  assert api_action.server_timing_policy(
+      api_action.public(public_action.LoginAction),
+    )
+    == server_timing_policy.SuppressServerTiming
+  assert api_action.server_timing_policy(
+      api_action.public(public_action.UpdateAccountAction),
+    )
+    == server_timing_policy.SuppressServerTiming
+}
+
+pub fn api_action_server_timing_policy_exposes_non_account_actions_test() {
+  assert api_action.server_timing_policy(api_action.public(public_action.RunAction))
+    == server_timing_policy.ExposeServerTiming
+  assert api_action.server_timing_policy(
+      api_action.admin(admin_action.GetAdminDebugConfigAction),
+    )
+    == server_timing_policy.ExposeServerTiming
 }
 
 pub fn validate_username_accepts_valid_values_test() {

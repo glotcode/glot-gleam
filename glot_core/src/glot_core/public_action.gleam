@@ -1,6 +1,7 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option
+import glot_core/server_timing_policy
 
 pub type PublicAction {
   TrackPageviewAction
@@ -102,5 +103,30 @@ pub fn from_string(action: String) -> option.Option(PublicAction) {
     "send_login_token" -> option.Some(SendLoginTokenAction)
     "login" -> option.Some(LoginAction)
     _ -> option.None
+  }
+}
+
+pub fn server_timing_policy(
+  action: PublicAction,
+) -> server_timing_policy.ServerTimingPolicy {
+  case action {
+    TrackPageviewAction
+    | RunAction
+    | GetLanguageVersionAction
+    | GetSnippetAction
+    | ListPublicSnippetsAction
+    | ListSessionSnippetsAction
+    | CreateSnippetAction
+    | UpdateSnippetAction
+    | DeleteSnippetAction -> server_timing_policy.ExposeServerTiming
+    GetSessionAction
+    | RefreshSessionAction
+    | LogoutAction
+    | GetAccountAction
+    | UpdateAccountAction
+    | ScheduleDeleteAccountAction
+    | CancelDeleteAccountAction
+    | SendLoginTokenAction
+    | LoginAction -> server_timing_policy.SuppressServerTiming
   }
 }

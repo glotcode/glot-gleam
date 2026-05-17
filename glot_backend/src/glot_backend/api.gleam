@@ -105,6 +105,7 @@ import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
 import glot_core/public_action
 import glot_core/run
+import glot_core/server_timing_policy
 import glot_core/snippet/snippet_dto
 import pog
 import wisp
@@ -139,6 +140,7 @@ pub fn handle_request(
   result_to_response(
     ctx,
     req,
+    api_request.action,
     state.effect_measurements,
     total_duration_ns,
     api_result,
@@ -833,17 +835,24 @@ fn prepare_log_entry(
 fn result_to_response(
   ctx: context.Context,
   request: wisp.Request,
+  action: api_action.ApiAction,
   effects: List(effect_trace.EffectMeasurement),
   total_duration_ns: Int,
   result: Result(ApiResult, error.Error),
 ) -> wisp.Response {
   case result {
-    Ok(response) ->
-      api_result_to_response(ctx, request, response)
-      |> wisp.set_header(
-        "Server-Timing",
-        server_timing.prepare(effects, total_duration_ns),
-      )
+    Ok(response) -> {
+      let response = api_result_to_response(ctx, request, response)
+      case api_action.server_timing_policy(action) {
+        server_timing_policy.ExposeServerTiming ->
+          wisp.set_header(
+            response,
+            "Server-Timing",
+            server_timing.prepare(effects, total_duration_ns),
+          )
+        server_timing_policy.SuppressServerTiming -> response
+      }
+    }
     Error(err) -> error_to_response(err)
   }
 }

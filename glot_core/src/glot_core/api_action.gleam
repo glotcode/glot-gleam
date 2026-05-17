@@ -4,6 +4,7 @@ import gleam/list
 import gleam/option
 import glot_core/admin_action
 import glot_core/public_action
+import glot_core/server_timing_policy
 
 pub type ApiAction {
   PublicAction(public_action.PublicAction)
@@ -50,5 +51,14 @@ pub fn from_string(action: String) -> option.Option(ApiAction) {
     option.None ->
       admin_action.from_string(action)
       |> option.map(admin)
+  }
+}
+
+pub fn server_timing_policy(
+  action: ApiAction,
+) -> server_timing_policy.ServerTimingPolicy {
+  case action {
+    PublicAction(action) -> public_action.server_timing_policy(action)
+    AdminAction(action) -> admin_action.server_timing_policy(action)
   }
 }

@@ -1,6 +1,7 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option
+import glot_core/server_timing_policy
 
 pub type AdminAction {
   GetAdminDebugConfigAction
@@ -204,4 +205,10 @@ pub fn from_string(action: String) -> option.Option(AdminAction) {
       option.Some(UpsertAdminDockerRunConfigAction)
     _ -> option.None
   }
+}
+
+pub fn server_timing_policy(
+  _action: AdminAction,
+) -> server_timing_policy.ServerTimingPolicy {
+  server_timing_policy.ExposeServerTiming
 }
