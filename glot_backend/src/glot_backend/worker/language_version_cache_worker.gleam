@@ -19,19 +19,12 @@ import wisp
 
 const call_timeout_ms = 5000
 
-const refresh_interval_ms = 3_600_000
-
-const refresh_step_delay_ms = 1000
-
-const refresh_step_jitter_ms = 500
-
-const default_timeout_ms = 60_000
-
 pub type Message {
   GetLanguageVersion(
     language: language_module.Language,
     reply: process.Subject(Result(run.RunResult, error.RunRequestError)),
   )
+  RefreshConfig
   Tick
   RefreshNext
   FetchCompleted(
@@ -53,7 +46,11 @@ pub type FetchHandlers {
     fetch_language_version: fn(
       process.Subject(app_config_cache_worker.Message),
       language_module.Language,
+      Int,
     ) -> Result(run.RunResult, error.RunRequestError),
+    get_config: fn(
+      process.Subject(app_config_cache_worker.Message),
+    ) -> Result(dynamic_config.DynamicConfig, error.DbQueryError),
     now_ns: fn() -> Int,
     supported_languages: fn() -> List(language_module.Language),
   )
@@ -69,6 +66,7 @@ type State {
     app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
     server_mode_subject: process.Subject(server_mode.Message),
     fetch_handlers: FetchHandlers,
+    config: dynamic_config.LanguageVersionCacheWorkerConfig,
     cached_versions: dict.Dict(language_module.Language, CacheEntry),
     in_flight: dict.Dict(language_module.Language, InFlight),
     refresh_queue: List(language_module.Language),
@@ -105,11 +103,15 @@ pub fn start_with_handlers(
         app_config_cache_subject: app_config_cache_subject,
         server_mode_subject: server_mode_subject,
         fetch_handlers: fetch_handlers,
+        config: dynamic_config.language_version_cache_worker_config(
+          dynamic_config.empty(),
+        ),
         cached_versions: dict.new(),
         in_flight: dict.new(),
         refresh_queue: [],
         refresh_language: option.None,
       )
+    let _ = process.send(subject, RefreshConfig)
     let _ = process.send(subject, Tick)
     let initialised = actor.initialised(initial_state)
     Ok(actor.returning(initialised, Nil))
@@ -142,6 +144,7 @@ pub fn get_language_version(
 fn default_fetch_handlers() -> FetchHandlers {
   FetchHandlers(
     fetch_language_version: fetch_language_version,
+    get_config: app_config_cache_worker.get_config,
     now_ns: erlang.perf_counter_ns,
     supported_languages: language_module.list,
   )
@@ -165,14 +168,17 @@ fn handle_message(
         Error(Nil) -> actor.continue(next_state)
       }
     }
+    RefreshConfig -> actor.continue(refresh_config(state))
     Tick -> {
-      let _ = process.send_after(state.subject, refresh_interval_ms, Tick)
+      let state = refresh_config(state)
+      let _ =
+        process.send_after(state.subject, state.config.refresh_interval_ms, Tick)
       case should_schedule_refreshes(state) {
         True ->
           actor.continue(
             state
             |> enqueue_due_refreshes()
-            |> schedule_refresh_if_idle(-refresh_step_delay_ms),
+            |> schedule_refresh_if_idle(-state.config.refresh_step_delay_ms),
           )
         False -> actor.continue(state)
       }
@@ -195,7 +201,7 @@ fn lookup_language_version(
 ) -> #(State, Result(run.RunResult, Nil)) {
   case dict.get(state.cached_versions, language) {
     Ok(entry) -> {
-      let next_state = case is_stale(entry, now_ns) {
+      let next_state = case is_stale(state, entry, now_ns) {
         True -> maybe_start_stale_refresh(state, language)
         False -> state
       }
@@ -231,7 +237,7 @@ fn enqueue_due_refreshes(state: State) -> State {
   list.fold(supported_languages, state, fn(state, language) {
     case dict.get(state.cached_versions, language) {
       Ok(entry) ->
-        case is_stale(entry, now_ns) {
+        case is_stale(state, entry, now_ns) {
           True -> enqueue_refresh(state, language)
           False -> state
         }
@@ -288,6 +294,7 @@ fn ensure_fetch_started(
             fetch_handlers.fetch_language_version(
               app_config_cache_subject,
               language,
+              state.config.default_timeout_ms,
             )
           let fetched_at_ns = fetch_handlers.now_ns()
           process.send(
@@ -311,6 +318,7 @@ fn ensure_fetch_started(
 fn fetch_language_version(
   app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   language: language_module.Language,
+  timeout_ms: Int,
 ) -> Result(run.RunResult, error.RunRequestError) {
   app_config_cache_worker.get_config(app_config_cache_subject)
   |> result.map_error(map_query_error)
@@ -320,7 +328,7 @@ fn fetch_language_version(
         docker_run_handlers.run_code(
           docker_run,
           run_request(language),
-          default_timeout_ms,
+          timeout_ms,
         )
       option.None ->
         Error(error.InternalRunRequestError("Missing docker_run app_config"))
@@ -344,14 +352,31 @@ fn map_query_error(err: error.DbQueryError) -> error.RunRequestError {
   error.InternalRunRequestError(message)
 }
 
+fn refresh_config(state: State) -> State {
+  case state.fetch_handlers.get_config(state.app_config_cache_subject) {
+    Ok(config) ->
+      State(
+        ..state,
+        config: dynamic_config.language_version_cache_worker_config(config),
+      )
+    Error(err) -> {
+      let error.DbQueryError(message: message) = err
+      wisp.log_warning(
+        "Failed to refresh language version cache worker config: " <> message,
+      )
+      state
+    }
+  }
+}
+
 fn schedule_refresh_if_idle(state: State, base_delay_ms: Int) -> State {
   case state.refresh_language, state.refresh_queue {
     option.None, [_first, ..] -> {
-      let jitter_ms = int.random(refresh_step_jitter_ms + 1)
+      let jitter_ms = int.random(state.config.refresh_step_jitter_ms + 1)
       let _ =
         process.send_after(
           state.subject,
-          base_delay_ms + refresh_step_delay_ms + jitter_ms,
+          base_delay_ms + state.config.refresh_step_delay_ms + jitter_ms,
           RefreshNext,
         )
       state
@@ -460,8 +485,8 @@ fn reply_waiters(
   list.each(waiters, fn(reply) { process.send(reply, result) })
 }
 
-fn is_stale(entry: CacheEntry, now_ns: Int) -> Bool {
-  now_ns - entry.refreshed_at_ns >= ms_to_ns(refresh_interval_ms)
+fn is_stale(state: State, entry: CacheEntry, now_ns: Int) -> Bool {
+  now_ns - entry.refreshed_at_ns >= ms_to_ns(state.config.refresh_interval_ms)
 }
 
 fn ms_to_ns(value_ms: Int) -> Int {

@@ -4,6 +4,7 @@ import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
+import glot_backend/dynamic_config
 import glot_backend/effect/error
 import glot_backend/server_mode
 import glot_backend/worker/language_version_cache_worker
@@ -137,7 +138,7 @@ fn start_worker(
 
   let handlers =
     language_version_cache_worker.FetchHandlers(
-      fetch_language_version: fn(_, requested_language) {
+      fetch_language_version: fn(_, requested_language, _timeout_ms) {
         let response_subject = process.new_subject()
         process.send(
           control_subject,
@@ -145,6 +146,7 @@ fn start_worker(
         )
         process.receive_forever(response_subject)
       },
+      get_config: fn(_) { Ok(dynamic_config.empty()) },
       now_ns: fn() { process.call(control_subject, 100, GetNow) },
       supported_languages: fn() { supported_languages },
     )

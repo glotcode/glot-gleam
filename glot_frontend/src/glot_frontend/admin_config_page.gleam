@@ -7,6 +7,7 @@ import glot_core/admin/cleanup_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
 import glot_core/admin/log_worker_config_dto
+import glot_core/admin/language_version_cache_worker_config_dto
 import glot_core/availability_mode
 import glot_frontend/admin_format
 import glot_frontend/admin_ui
@@ -26,12 +27,14 @@ pub type Model {
     auth: AuthSection,
     cleanup: CleanupSection,
     log_worker: LogWorkerSection,
+    language_version_cache_worker: LanguageVersionCacheWorkerSection,
     docker_run: DockerRunSection,
     debug_loaded: Bool,
     availability_loaded: Bool,
     auth_loaded: Bool,
     cleanup_loaded: Bool,
     log_worker_loaded: Bool,
+    language_version_cache_worker_loaded: Bool,
     docker_run_loaded: Bool,
   )
 }
@@ -139,6 +142,23 @@ pub type LogWorkerFields {
   )
 }
 
+pub type LanguageVersionCacheWorkerSection {
+  LanguageVersionCacheWorkerSection(
+    saved: LanguageVersionCacheWorkerFields,
+    draft: LanguageVersionCacheWorkerFields,
+    state: mutation.MutationState,
+  )
+}
+
+pub type LanguageVersionCacheWorkerFields {
+  LanguageVersionCacheWorkerFields(
+    refresh_interval_ms: String,
+    refresh_step_delay_ms: String,
+    refresh_step_jitter_ms: String,
+    default_timeout_ms: String,
+  )
+}
+
 pub type Msg {
   DebugLoaded(api.ApiResponse(debug_config_dto.DebugConfigResponse))
   DebugToggleClicked
@@ -187,6 +207,22 @@ pub type Msg {
   LogWorkerSaveFinished(
     api.ApiResponse(log_worker_config_dto.LogWorkerConfigResponse),
   )
+  LanguageVersionCacheWorkerLoaded(
+    api.ApiResponse(
+      language_version_cache_worker_config_dto.LanguageVersionCacheWorkerConfigResponse,
+    ),
+  )
+  LanguageVersionCacheWorkerRefreshIntervalMsChanged(String)
+  LanguageVersionCacheWorkerRefreshStepDelayMsChanged(String)
+  LanguageVersionCacheWorkerRefreshStepJitterMsChanged(String)
+  LanguageVersionCacheWorkerDefaultTimeoutMsChanged(String)
+  LanguageVersionCacheWorkerResetClicked
+  LanguageVersionCacheWorkerSaveClicked
+  LanguageVersionCacheWorkerSaveFinished(
+    api.ApiResponse(
+      language_version_cache_worker_config_dto.LanguageVersionCacheWorkerConfigResponse,
+    ),
+  )
   DockerRunLoaded(
     api.ApiResponse(docker_run_config_dto.DockerRunConfigResponse),
   )
@@ -208,12 +244,14 @@ pub fn init() -> #(Model, Effect(Msg)) {
       auth: empty_auth_section(),
       cleanup: empty_cleanup_section(),
       log_worker: empty_log_worker_section(),
+      language_version_cache_worker: empty_language_version_cache_worker_section(),
       docker_run: empty_docker_run_section(),
       debug_loaded: False,
       availability_loaded: False,
       auth_loaded: False,
       cleanup_loaded: False,
       log_worker_loaded: False,
+      language_version_cache_worker_loaded: False,
       docker_run_loaded: False,
     ),
     effect.none(),
@@ -230,6 +268,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
         load_auth_config(),
         load_cleanup_config(),
         load_log_worker_config(),
+        load_language_version_cache_worker_config(),
         load_docker_run_config(),
       ]),
     )
@@ -1042,6 +1081,186 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         )
       }
 
+    LanguageVersionCacheWorkerLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = language_version_cache_worker_fields_from_response(
+            response,
+          )
+          let next_model =
+            Model(
+              ..model,
+              language_version_cache_worker: LanguageVersionCacheWorkerSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
+              language_version_cache_worker_loaded: True,
+            )
+
+          #(
+            Model(..next_model, status: loaded_status(next_model)),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(..model, status: LoadError(error.message)),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            status: LoadError(
+              "Could not load language version cache worker config.",
+            ),
+          ),
+          effect.none(),
+        )
+      }
+
+    LanguageVersionCacheWorkerRefreshIntervalMsChanged(value) -> #(
+      Model(
+        ..model,
+        language_version_cache_worker: LanguageVersionCacheWorkerSection(
+          ..model.language_version_cache_worker,
+          draft: LanguageVersionCacheWorkerFields(
+            ..model.language_version_cache_worker.draft,
+            refresh_interval_ms: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LanguageVersionCacheWorkerRefreshStepDelayMsChanged(value) -> #(
+      Model(
+        ..model,
+        language_version_cache_worker: LanguageVersionCacheWorkerSection(
+          ..model.language_version_cache_worker,
+          draft: LanguageVersionCacheWorkerFields(
+            ..model.language_version_cache_worker.draft,
+            refresh_step_delay_ms: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LanguageVersionCacheWorkerRefreshStepJitterMsChanged(value) -> #(
+      Model(
+        ..model,
+        language_version_cache_worker: LanguageVersionCacheWorkerSection(
+          ..model.language_version_cache_worker,
+          draft: LanguageVersionCacheWorkerFields(
+            ..model.language_version_cache_worker.draft,
+            refresh_step_jitter_ms: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LanguageVersionCacheWorkerDefaultTimeoutMsChanged(value) -> #(
+      Model(
+        ..model,
+        language_version_cache_worker: LanguageVersionCacheWorkerSection(
+          ..model.language_version_cache_worker,
+          draft: LanguageVersionCacheWorkerFields(
+            ..model.language_version_cache_worker.draft,
+            default_timeout_ms: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LanguageVersionCacheWorkerResetClicked -> #(
+      Model(
+        ..model,
+        language_version_cache_worker: LanguageVersionCacheWorkerSection(
+          ..model.language_version_cache_worker,
+          draft: model.language_version_cache_worker.saved,
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    LanguageVersionCacheWorkerSaveClicked ->
+      case validate_language_version_cache_worker_fields(
+        model.language_version_cache_worker.draft,
+      ) {
+        Error(message) -> #(
+          Model(
+            ..model,
+            language_version_cache_worker: LanguageVersionCacheWorkerSection(
+              ..model.language_version_cache_worker,
+              state: mutation.SaveError(message),
+            ),
+          ),
+          effect.none(),
+        )
+        Ok(request) -> #(
+          Model(
+            ..model,
+            language_version_cache_worker: LanguageVersionCacheWorkerSection(
+              ..model.language_version_cache_worker,
+              state: mutation.Saving,
+            ),
+          ),
+          api.upsert_admin_language_version_cache_worker_config(
+            request,
+            LanguageVersionCacheWorkerSaveFinished,
+          ),
+        )
+      }
+
+    LanguageVersionCacheWorkerSaveFinished(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = language_version_cache_worker_fields_from_response(
+            response,
+          )
+          #(
+            Model(
+              ..model,
+              language_version_cache_worker: LanguageVersionCacheWorkerSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Saved,
+              ),
+            ),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            language_version_cache_worker: LanguageVersionCacheWorkerSection(
+              ..model.language_version_cache_worker,
+              state: mutation.SaveError(error.message),
+            ),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            language_version_cache_worker: LanguageVersionCacheWorkerSection(
+              ..model.language_version_cache_worker,
+              state: mutation.SaveError(
+                "Could not save language version cache worker config.",
+              ),
+            ),
+          ),
+          effect.none(),
+        )
+      }
+
     DockerRunLoaded(result) ->
       case result {
         api.ApiSuccess(response) -> {
@@ -1198,6 +1417,10 @@ pub fn view(model: Model) -> Element(Msg) {
         auth_section_view(model.auth, model.status),
         cleanup_section_view(model.cleanup, model.status),
         log_worker_section_view(model.log_worker, model.status),
+        language_version_cache_worker_section_view(
+          model.language_version_cache_worker,
+          model.status,
+        ),
         docker_run_section_view(model.docker_run, model.status),
       ]),
     ]),
@@ -1385,6 +1608,57 @@ fn log_worker_section_view(
       message: section_state_message(section.state, option.None),
       reset_msg: LogWorkerResetClicked,
       save_msg: LogWorkerSaveClicked,
+    ),
+  )
+}
+
+fn language_version_cache_worker_section_view(
+  section: LanguageVersionCacheWorkerSection,
+  status: Status,
+) -> Element(Msg) {
+  let dirty = is_dirty_language_version_cache_worker(section)
+
+  config_section(
+    title: "Language version cache worker",
+    subtitle: "Controls cache freshness, refresh pacing, and docker-run timeout for language version lookups.",
+    badge: section_badge(section.state, dirty, option.None),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      admin_ui.text_input(
+        label: "Refresh interval",
+        help: "Milliseconds before a cached language version is considered stale.",
+        value: section.draft.refresh_interval_ms,
+        placeholder: "",
+        on_input: LanguageVersionCacheWorkerRefreshIntervalMsChanged,
+      ),
+      admin_ui.text_input(
+        label: "Refresh step delay",
+        help: "Base milliseconds between scheduled background refreshes.",
+        value: section.draft.refresh_step_delay_ms,
+        placeholder: "",
+        on_input: LanguageVersionCacheWorkerRefreshStepDelayMsChanged,
+      ),
+      admin_ui.text_input(
+        label: "Refresh step jitter",
+        help: "Additional random milliseconds added to stagger refreshes. Can be 0.",
+        value: section.draft.refresh_step_jitter_ms,
+        placeholder: "",
+        on_input: LanguageVersionCacheWorkerRefreshStepJitterMsChanged,
+      ),
+      admin_ui.text_input(
+        label: "Default timeout",
+        help: "Milliseconds to wait for the docker-run version check.",
+        value: section.draft.default_timeout_ms,
+        placeholder: "",
+        on_input: LanguageVersionCacheWorkerDefaultTimeoutMsChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(section.state, option.None),
+      reset_msg: LanguageVersionCacheWorkerResetClicked,
+      save_msg: LanguageVersionCacheWorkerSaveClicked,
     ),
   )
 }
@@ -1746,6 +2020,12 @@ fn load_log_worker_config() -> Effect(Msg) {
   api.get_admin_log_worker_config(LogWorkerLoaded)
 }
 
+fn load_language_version_cache_worker_config() -> Effect(Msg) {
+  api.get_admin_language_version_cache_worker_config(
+    LanguageVersionCacheWorkerLoaded,
+  )
+}
+
 fn load_docker_run_config() -> Effect(Msg) {
   api.get_admin_docker_run_config(DockerRunLoaded)
 }
@@ -1814,6 +2094,17 @@ fn log_worker_fields_from_response(
     flush_interval_ms: int.to_string(response.flush_interval_ms),
     max_batch_size: int.to_string(response.max_batch_size),
     max_buffer_size: int.to_string(response.max_buffer_size),
+  )
+}
+
+fn language_version_cache_worker_fields_from_response(
+  response: language_version_cache_worker_config_dto.LanguageVersionCacheWorkerConfigResponse,
+) -> LanguageVersionCacheWorkerFields {
+  LanguageVersionCacheWorkerFields(
+    refresh_interval_ms: int.to_string(response.refresh_interval_ms),
+    refresh_step_delay_ms: int.to_string(response.refresh_step_delay_ms),
+    refresh_step_jitter_ms: int.to_string(response.refresh_step_jitter_ms),
+    default_timeout_ms: int.to_string(response.default_timeout_ms),
   )
 }
 
@@ -1887,6 +2178,12 @@ fn is_dirty_cleanup(section: CleanupSection) -> Bool {
 }
 
 fn is_dirty_log_worker(section: LogWorkerSection) -> Bool {
+  section.saved != section.draft
+}
+
+fn is_dirty_language_version_cache_worker(
+  section: LanguageVersionCacheWorkerSection,
+) -> Bool {
   section.saved != section.draft
 }
 
@@ -2040,6 +2337,50 @@ fn validate_log_worker_fields(
   }
 }
 
+fn validate_language_version_cache_worker_fields(
+  fields: LanguageVersionCacheWorkerFields,
+) -> Result(
+  language_version_cache_worker_config_dto.UpsertLanguageVersionCacheWorkerConfigRequest,
+  String,
+) {
+  use refresh_interval_ms <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.refresh_interval_ms,
+      "Refresh interval must be a positive integer.",
+    ),
+  )
+  use refresh_step_delay_ms <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.refresh_step_delay_ms,
+      "Refresh step delay must be a positive integer.",
+    ),
+  )
+  let refresh_step_jitter_ms = case fields.refresh_step_jitter_ms {
+    "0" -> Ok(0)
+    value ->
+      admin_format.parse_positive_int_with_error(
+        value,
+        "Refresh step jitter must be 0 or a positive integer.",
+      )
+  }
+  use refresh_step_jitter_ms <- result.try(refresh_step_jitter_ms)
+  use default_timeout_ms <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.default_timeout_ms,
+      "Default timeout must be a positive integer.",
+    ),
+  )
+
+  Ok(
+    language_version_cache_worker_config_dto.UpsertLanguageVersionCacheWorkerConfigRequest(
+      refresh_interval_ms: refresh_interval_ms,
+      refresh_step_delay_ms: refresh_step_delay_ms,
+      refresh_step_jitter_ms: refresh_step_jitter_ms,
+      default_timeout_ms: default_timeout_ms,
+    ),
+  )
+}
+
 fn empty_auth_section() -> AuthSection {
   let fields = empty_auth_fields()
   AuthSection(saved: fields, draft: fields, state: mutation.Idle)
@@ -2109,6 +2450,26 @@ fn empty_log_worker_fields() -> LogWorkerFields {
   )
 }
 
+fn empty_language_version_cache_worker_section(
+) -> LanguageVersionCacheWorkerSection {
+  let fields = empty_language_version_cache_worker_fields()
+  LanguageVersionCacheWorkerSection(
+    saved: fields,
+    draft: fields,
+    state: mutation.Idle,
+  )
+}
+
+fn empty_language_version_cache_worker_fields(
+) -> LanguageVersionCacheWorkerFields {
+  LanguageVersionCacheWorkerFields(
+    refresh_interval_ms: "",
+    refresh_step_delay_ms: "",
+    refresh_step_jitter_ms: "",
+    default_timeout_ms: "",
+  )
+}
+
 fn empty_docker_run_section() -> DockerRunSection {
   let fields = empty_docker_run_fields()
   DockerRunSection(saved: fields, draft: fields, state: mutation.Idle)
@@ -2125,6 +2486,7 @@ fn loaded_status(model: Model) -> Status {
     && model.auth_loaded
     && model.cleanup_loaded
     && model.log_worker_loaded
+    && model.language_version_cache_worker_loaded
     && model.docker_run_loaded
   {
     True -> Ready

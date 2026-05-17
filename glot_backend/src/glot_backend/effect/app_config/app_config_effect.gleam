@@ -130,6 +130,26 @@ pub fn upsert_log_worker_config(
   )
 }
 
+pub fn upsert_language_version_cache_worker_config(
+  config: dynamic_config.LanguageVersionCacheWorkerConfig,
+  updated_at: Timestamp,
+) -> program_types.Program(dynamic_config.DynamicConfig) {
+  program_types.Impure(
+    program_types.AppConfigEffect(
+      app_config_algebra.UpsertLanguageVersionCacheWorkerConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(result) {
+          case result {
+            Ok(config) -> program_types.Pure(config)
+            Error(err) -> program_types.Fail(err)
+          }
+        },
+      ),
+    ),
+  )
+}
+
 pub fn upsert_rate_limit_policy(
   action: PublicAction,
   policy: dynamic_config.RateLimitPolicy,

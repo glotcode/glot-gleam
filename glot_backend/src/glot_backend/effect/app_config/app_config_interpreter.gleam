@@ -317,6 +317,61 @@ pub fn run(
         ),
       )
     }
+    app_config_algebra.UpsertLanguageVersionCacheWorkerConfig(
+      config:,
+      updated_at:,
+      next:,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        runtime.handlers.app_config.upsert_entry(
+          "language_version_cache_worker",
+          "refresh_interval_ms",
+          json.int(config.refresh_interval_ms) |> json.to_string(),
+          updated_at,
+        )
+        |> result.map_error(error.CommandError)
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "language_version_cache_worker",
+            "refresh_step_delay_ms",
+            json.int(config.refresh_step_delay_ms) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "language_version_cache_worker",
+            "refresh_step_jitter_ms",
+            json.int(config.refresh_step_jitter_ms) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "language_version_cache_worker",
+            "default_timeout_ms",
+            json.int(config.default_timeout_ms) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.CommandError)
+        })
+        |> result.try(fn(_) { refresh_dynamic_config(runtime) })
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.UpsertLanguageVersionCacheWorkerConfigEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     app_config_algebra.UpsertRateLimitPolicy(
       action:,
       policy:,

@@ -299,6 +299,12 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
       max_batch_size: 100,
       max_buffer_size: 1000,
     ),
+    language_version_cache_worker: dynamic_config.LanguageVersionCacheWorkerConfig(
+      refresh_interval_ms: 3_600_000,
+      refresh_step_delay_ms: 1000,
+      refresh_step_jitter_ms: 500,
+      default_timeout_ms: 60_000,
+    ),
     docker_run: option.Some(dynamic_config.DockerRunConfig(
       base_url: "http://docker-run",
       access_token: "test-token",
@@ -359,6 +365,12 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
       flush_interval_ms: 2500,
       max_batch_size: 200,
       max_buffer_size: 1500,
+    ),
+    language_version_cache_worker: dynamic_config.LanguageVersionCacheWorkerConfig(
+      refresh_interval_ms: 1_800_000,
+      refresh_step_delay_ms: 750,
+      refresh_step_jitter_ms: 250,
+      default_timeout_ms: 45_000,
     ),
     docker_run: option.Some(dynamic_config.DockerRunConfig(
       base_url: "http://docker-run-2",

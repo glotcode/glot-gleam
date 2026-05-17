@@ -29,6 +29,7 @@ import glot_backend/domain/admin/get_job_log_domain
 import glot_backend/domain/admin/get_job_logs_domain
 import glot_backend/domain/admin/get_job_type_policies_domain
 import glot_backend/domain/admin/get_jobs_domain
+import glot_backend/domain/admin/get_language_version_cache_worker_config_domain
 import glot_backend/domain/admin/get_log_worker_config_domain
 import glot_backend/domain/admin/get_periodic_job_domain
 import glot_backend/domain/admin/get_periodic_jobs_domain
@@ -48,6 +49,7 @@ import glot_backend/domain/admin/upsert_cleanup_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
 import glot_backend/domain/admin/upsert_job_type_policy_domain
+import glot_backend/domain/admin/upsert_language_version_cache_worker_config_domain
 import glot_backend/domain/admin/upsert_log_worker_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/auth/get_session_domain
@@ -88,6 +90,7 @@ import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/job_type_policy_dto
+import glot_core/admin/language_version_cache_worker_config_dto
 import glot_core/admin/log_worker_config_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
@@ -325,6 +328,23 @@ fn handle_admin_api_request(
       upsert_log_worker_config_domain.upsert_log_worker_config(ctx, request)
       |> program.map(LogWorkerConfigResponse)
     }
+    admin_action.GetAdminLanguageVersionCacheWorkerConfigAction ->
+      get_language_version_cache_worker_config_domain.get_language_version_cache_worker_config(
+        ctx,
+      )
+      |> program.map(LanguageVersionCacheWorkerConfigResponse)
+    admin_action.UpsertAdminLanguageVersionCacheWorkerConfigAction -> {
+      use request <- program.and_then(
+        upsert_language_version_cache_worker_config_domain.request_from_dynamic(
+          data,
+        ),
+      )
+      upsert_language_version_cache_worker_config_domain.upsert_language_version_cache_worker_config(
+        ctx,
+        request,
+      )
+      |> program.map(LanguageVersionCacheWorkerConfigResponse)
+    }
     admin_action.GetAdminPeriodicJobsAction ->
       get_periodic_jobs_domain.get_periodic_jobs(ctx)
       |> program.map(AdminPeriodicJobsResponse)
@@ -548,6 +568,9 @@ type ApiResult {
   AuthConfigResponse(auth_config_dto.AuthConfigResponse)
   CleanupConfigResponse(cleanup_config_dto.CleanupConfigResponse)
   LogWorkerConfigResponse(log_worker_config_dto.LogWorkerConfigResponse)
+  LanguageVersionCacheWorkerConfigResponse(
+    language_version_cache_worker_config_dto.LanguageVersionCacheWorkerConfigResponse,
+  )
   AdminPeriodicJobsResponse(periodic_job_dto.ListPeriodicJobsResponse)
   AdminPeriodicJobDetailResponse(periodic_job_dto.GetPeriodicJobResponse)
   AdminPeriodicJobResponse(periodic_job_dto.UpdatePeriodicJobResponse)
@@ -607,6 +630,10 @@ fn api_result_to_response(
       success_response(cleanup_config_dto.encode_response(response))
     LogWorkerConfigResponse(response) ->
       success_response(log_worker_config_dto.encode_response(response))
+    LanguageVersionCacheWorkerConfigResponse(response) ->
+      success_response(
+        language_version_cache_worker_config_dto.encode_response(response),
+      )
     AdminPeriodicJobsResponse(response) ->
       success_response(periodic_job_dto.encode_list_response(response))
     AdminPeriodicJobDetailResponse(response) ->

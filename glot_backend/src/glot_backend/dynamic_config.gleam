@@ -19,6 +19,7 @@ pub type DynamicConfig {
     auth: AuthConfig,
     cleanup: CleanupConfig,
     log_worker: LogWorkerConfig,
+    language_version_cache_worker: LanguageVersionCacheWorkerConfig,
     docker_run: option.Option(DockerRunConfig),
     rate_limit_policies: dict.Dict(public_action.PublicAction, RateLimitPolicy),
   )
@@ -72,6 +73,15 @@ pub type LogWorkerConfig {
   )
 }
 
+pub type LanguageVersionCacheWorkerConfig {
+  LanguageVersionCacheWorkerConfig(
+    refresh_interval_ms: Int,
+    refresh_step_delay_ms: Int,
+    refresh_step_jitter_ms: Int,
+    default_timeout_ms: Int,
+  )
+}
+
 pub type RateLimitPolicy {
   RateLimitPolicy(rules: List(RateLimitRule))
 }
@@ -99,6 +109,7 @@ pub fn empty() -> DynamicConfig {
     auth: default_auth_config(),
     cleanup: default_cleanup_config(),
     log_worker: default_log_worker_config(),
+    language_version_cache_worker: default_language_version_cache_worker_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),
   )
@@ -133,6 +144,12 @@ pub fn auth_config(config: DynamicConfig) -> AuthConfig {
 
 pub fn log_worker_config(config: DynamicConfig) -> LogWorkerConfig {
   config.log_worker
+}
+
+pub fn language_version_cache_worker_config(
+  config: DynamicConfig,
+) -> LanguageVersionCacheWorkerConfig {
+  config.language_version_cache_worker
 }
 
 pub fn debug_config(config: DynamicConfig) -> DebugConfig {
@@ -187,6 +204,8 @@ fn apply_entry(
     "auth" -> decode_auth_config_entry(config, entry)
     "cleanup" -> decode_cleanup_config_entry(config, entry)
     "log_worker" -> decode_log_worker_config_entry(config, entry)
+    "language_version_cache_worker" ->
+      decode_language_version_cache_worker_config_entry(config, entry)
     "docker_run" -> decode_docker_run_entry(config, entry)
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
@@ -330,6 +349,16 @@ fn default_log_worker_config() -> LogWorkerConfig {
   )
 }
 
+fn default_language_version_cache_worker_config(
+) -> LanguageVersionCacheWorkerConfig {
+  LanguageVersionCacheWorkerConfig(
+    refresh_interval_ms: 3_600_000,
+    refresh_step_delay_ms: 1000,
+    refresh_step_jitter_ms: 500,
+    default_timeout_ms: 60_000,
+  )
+}
+
 fn decode_cleanup_config_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
@@ -376,6 +405,46 @@ fn decode_log_worker_config_entry(
   }
 
   Ok(DynamicConfig(..config, log_worker: log_worker))
+}
+
+fn decode_language_version_cache_worker_config_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  use value <- result.try(
+    decode_int_entry("language_version_cache_worker", entry),
+  )
+
+  let language_version_cache_worker = case entry.key {
+    "refresh_interval_ms" ->
+      LanguageVersionCacheWorkerConfig(
+        ..config.language_version_cache_worker,
+        refresh_interval_ms: value,
+      )
+    "refresh_step_delay_ms" ->
+      LanguageVersionCacheWorkerConfig(
+        ..config.language_version_cache_worker,
+        refresh_step_delay_ms: value,
+      )
+    "refresh_step_jitter_ms" ->
+      LanguageVersionCacheWorkerConfig(
+        ..config.language_version_cache_worker,
+        refresh_step_jitter_ms: value,
+      )
+    "default_timeout_ms" ->
+      LanguageVersionCacheWorkerConfig(
+        ..config.language_version_cache_worker,
+        default_timeout_ms: value,
+      )
+    _ -> config.language_version_cache_worker
+  }
+
+  Ok(
+    DynamicConfig(
+      ..config,
+      language_version_cache_worker: language_version_cache_worker,
+    ),
+  )
 }
 
 fn decode_int_entry(

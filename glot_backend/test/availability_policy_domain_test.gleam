@@ -197,6 +197,12 @@ fn run_app_config_effect(
             max_batch_size: 100,
             max_buffer_size: 1000,
           ),
+          language_version_cache_worker: dynamic_config.LanguageVersionCacheWorkerConfig(
+            refresh_interval_ms: 3_600_000,
+            refresh_step_delay_ms: 1000,
+            refresh_step_jitter_ms: 500,
+            default_timeout_ms: 60_000,
+          ),
           docker_run: option.None,
           rate_limit_policies: dict.new(),
         )),

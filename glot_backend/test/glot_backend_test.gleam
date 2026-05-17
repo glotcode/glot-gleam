@@ -1953,6 +1953,8 @@ fn run_test_app_config_effect(
             ),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
+            language_version_cache_worker:
+              test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -1980,6 +1982,8 @@ fn run_test_app_config_effect(
             ),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
+            language_version_cache_worker:
+              test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -2000,6 +2004,8 @@ fn run_test_app_config_effect(
             auth: config,
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
+            language_version_cache_worker:
+              test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -2027,6 +2033,8 @@ fn run_test_app_config_effect(
             ),
             cleanup: config,
             log_worker: test_log_worker_config(),
+            language_version_cache_worker:
+              test_language_version_cache_worker_config(),
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -2054,6 +2062,36 @@ fn run_test_app_config_effect(
             ),
             cleanup: test_cleanup_config(),
             log_worker: config,
+            language_version_cache_worker:
+              test_language_version_cache_worker_config(),
+            docker_run: option.None,
+            rate_limit_policies: dict.new(),
+          )),
+        ),
+        ctx,
+        db,
+      )
+    app_config_algebra.UpsertLanguageVersionCacheWorkerConfig(
+      config: config,
+      updated_at: _,
+      next: next,
+    ) ->
+      run_test_program(
+        next(
+          Ok(dynamic_config.DynamicConfig(
+            debug: dynamic_config.DebugConfig(enabled: False),
+            availability: test_availability_config(),
+            auth: dynamic_config.AuthConfig(
+              login_token_max_age: 900,
+              session_token_max_age: 86_400,
+              session_cookie_max_age: 86_400,
+              session_refresh_interval_seconds: 300,
+              session_previous_token_grace_seconds: 60,
+              session_heartbeat_interval_seconds: 60,
+            ),
+            cleanup: test_cleanup_config(),
+            log_worker: test_log_worker_config(),
+            language_version_cache_worker: config,
             docker_run: option.None,
             rate_limit_policies: dict.new(),
           )),
@@ -2087,6 +2125,8 @@ fn run_test_app_config_effect(
             ),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
+            language_version_cache_worker:
+              test_language_version_cache_worker_config(),
             docker_run: option.Some(config),
             rate_limit_policies: dict.new(),
           )),
@@ -2104,6 +2144,7 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
     auth: test_auth_config(),
     cleanup: test_cleanup_config(),
     log_worker: test_log_worker_config(),
+    language_version_cache_worker: test_language_version_cache_worker_config(),
     docker_run: option.None,
     rate_limit_policies: dict.new(),
   )
@@ -2114,6 +2155,16 @@ fn test_log_worker_config() -> dynamic_config.LogWorkerConfig {
     flush_interval_ms: 5000,
     max_batch_size: 100,
     max_buffer_size: 1000,
+  )
+}
+
+fn test_language_version_cache_worker_config(
+) -> dynamic_config.LanguageVersionCacheWorkerConfig {
+  dynamic_config.LanguageVersionCacheWorkerConfig(
+    refresh_interval_ms: 3_600_000,
+    refresh_step_delay_ms: 1000,
+    refresh_step_jitter_ms: 500,
+    default_timeout_ms: 60_000,
   )
 }
 

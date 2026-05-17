@@ -16,6 +16,7 @@ import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
 import glot_core/admin/job_type_policy_dto
+import glot_core/admin/language_version_cache_worker_config_dto
 import glot_core/admin/log_worker_config_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
@@ -475,6 +476,27 @@ pub fn get_admin_log_worker_config(
   )
 }
 
+pub fn get_admin_language_version_cache_worker_config(
+  to_msg: fn(
+    ApiResponse(
+      language_version_cache_worker_config_dto.LanguageVersionCacheWorkerConfigResponse,
+    ),
+  ) -> msg,
+) -> effect.Effect(msg) {
+  let req =
+    AdminApiRequest(
+      admin_action.GetAdminLanguageVersionCacheWorkerConfigAction,
+      Nil,
+    )
+
+  send_admin_api_request(
+    req,
+    fn(_) { json.null() },
+    language_version_cache_worker_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn get_admin_periodic_jobs(
   to_msg: fn(ApiResponse(periodic_job_dto.ListPeriodicJobsResponse)) -> msg,
 ) -> effect.Effect(msg) {
@@ -812,6 +834,28 @@ pub fn upsert_admin_log_worker_config(
     req,
     log_worker_config_dto.encode_request,
     log_worker_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_language_version_cache_worker_config(
+  request: language_version_cache_worker_config_dto.UpsertLanguageVersionCacheWorkerConfigRequest,
+  to_msg: fn(
+    ApiResponse(
+      language_version_cache_worker_config_dto.LanguageVersionCacheWorkerConfigResponse,
+    ),
+  ) -> msg,
+) -> effect.Effect(msg) {
+  let req =
+    AdminApiRequest(
+      admin_action.UpsertAdminLanguageVersionCacheWorkerConfigAction,
+      request,
+    )
+
+  send_admin_api_request(
+    req,
+    language_version_cache_worker_config_dto.encode_request,
+    language_version_cache_worker_config_dto.response_decoder(),
     to_msg,
   )
 }

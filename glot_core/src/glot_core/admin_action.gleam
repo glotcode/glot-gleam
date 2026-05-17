@@ -13,6 +13,8 @@ pub type AdminAction {
   UpsertAdminCleanupConfigAction
   GetAdminLogWorkerConfigAction
   UpsertAdminLogWorkerConfigAction
+  GetAdminLanguageVersionCacheWorkerConfigAction
+  UpsertAdminLanguageVersionCacheWorkerConfigAction
   GetAdminPeriodicJobsAction
   GetAdminPeriodicJobAction
   UpdateAdminPeriodicJobAction
@@ -55,6 +57,8 @@ pub fn list() -> List(AdminAction) {
     UpsertAdminCleanupConfigAction,
     GetAdminLogWorkerConfigAction,
     UpsertAdminLogWorkerConfigAction,
+    GetAdminLanguageVersionCacheWorkerConfigAction,
+    UpsertAdminLanguageVersionCacheWorkerConfigAction,
     GetAdminPeriodicJobsAction,
     GetAdminPeriodicJobAction,
     UpdateAdminPeriodicJobAction,
@@ -111,6 +115,10 @@ pub fn to_string(action: AdminAction) -> String {
     UpsertAdminCleanupConfigAction -> "upsert_admin_cleanup_config"
     GetAdminLogWorkerConfigAction -> "get_admin_log_worker_config"
     UpsertAdminLogWorkerConfigAction -> "upsert_admin_log_worker_config"
+    GetAdminLanguageVersionCacheWorkerConfigAction ->
+      "get_admin_language_version_cache_worker_config"
+    UpsertAdminLanguageVersionCacheWorkerConfigAction ->
+      "upsert_admin_language_version_cache_worker_config"
     GetAdminPeriodicJobsAction -> "get_admin_periodic_jobs"
     GetAdminPeriodicJobAction -> "get_admin_periodic_job"
     UpdateAdminPeriodicJobAction -> "update_admin_periodic_job"
@@ -158,6 +166,10 @@ pub fn from_string(action: String) -> option.Option(AdminAction) {
       option.Some(GetAdminLogWorkerConfigAction)
     "upsert_admin_log_worker_config" ->
       option.Some(UpsertAdminLogWorkerConfigAction)
+    "get_admin_language_version_cache_worker_config" ->
+      option.Some(GetAdminLanguageVersionCacheWorkerConfigAction)
+    "upsert_admin_language_version_cache_worker_config" ->
+      option.Some(UpsertAdminLanguageVersionCacheWorkerConfigAction)
     "get_admin_periodic_jobs" -> option.Some(GetAdminPeriodicJobsAction)
     "get_admin_periodic_job" -> option.Some(GetAdminPeriodicJobAction)
     "update_admin_periodic_job" -> option.Some(UpdateAdminPeriodicJobAction)
