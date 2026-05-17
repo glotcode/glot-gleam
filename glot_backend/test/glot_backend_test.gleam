@@ -2023,9 +2023,11 @@ fn run_test_email_effect(
       run_test_program(
         next(
           Error(
-            error.infra(infra_error.EmailError(
-              infra_error.EmailDeliveryFailed("test_delivery_failure"),
-            )),
+            error.infra(
+              infra_error.EmailError(infra_error.EmailDeliveryFailed(
+                "test_delivery_failure",
+              )),
+            ),
           ),
         ),
         ctx,

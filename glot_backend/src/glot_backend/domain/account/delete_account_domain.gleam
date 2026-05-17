@@ -4,8 +4,8 @@ import gleam/result
 import glot_backend/context
 import glot_backend/domain/job/job_type_policy_domain
 import glot_backend/dynamic_config
-import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/app_config/app_config_effect
+import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/email_template/email_template_effect
 import glot_backend/effect/error
@@ -86,9 +86,9 @@ fn sender_from_config(
       ctx.regexes.is_email,
       email_config.from_address,
     )
-    |> option.to_result(
-      infra_error.EmailDeliveryFailed("invalid_sender_address"),
-    ),
+    |> option.to_result(infra_error.EmailDeliveryFailed(
+      "invalid_sender_address",
+    )),
   ))
 
   program.succeed(email_model.EmailSender(

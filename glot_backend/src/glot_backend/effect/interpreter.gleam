@@ -69,13 +69,7 @@ fn run_effect(
     program_types.BasicEffect(effect) ->
       basic_interpreter.run(effect, ctx, effect_runtime, state, continue)
     program_types.EmailEffect(effect) ->
-      email_interpreter.run(
-        effect,
-        ctx,
-        effect_runtime,
-        state,
-        continue,
-      )
+      email_interpreter.run(effect, ctx, effect_runtime, state, continue)
     program_types.DockerRunEffect(effect) ->
       docker_run_interpreter.run(effect, effect_runtime, ctx, state, continue)
     program_types.GetLanguageVersionEffect(effect) ->

@@ -5,10 +5,7 @@ import gleam/regexp
 import glot_core/email/email_address_model
 
 pub type EmailSender {
-  EmailSender(
-    address: email_address_model.EmailAddress,
-    name: Option(String),
-  )
+  EmailSender(address: email_address_model.EmailAddress, name: Option(String))
 }
 
 pub type Email {
@@ -94,7 +91,9 @@ fn sender_decoder(is_email: regexp.Regexp) -> decode.Decoder(EmailSender) {
   )
 }
 
-fn sender_object_decoder(is_email: regexp.Regexp) -> decode.Decoder(EmailSender) {
+fn sender_object_decoder(
+  is_email: regexp.Regexp,
+) -> decode.Decoder(EmailSender) {
   use address <- decode.field("address", email_address_model.decoder(is_email))
   use name <- decode.field("name", decode.string)
   decode.success(EmailSender(address: address, name: option.Some(name)))

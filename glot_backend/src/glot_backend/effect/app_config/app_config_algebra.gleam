@@ -118,11 +118,9 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
         next: fn(value) { f(next(value)) },
       )
     UpsertEmailConfig(config:, updated_at:, next:) ->
-      UpsertEmailConfig(
-        config: config,
-        updated_at: updated_at,
-        next: fn(value) { f(next(value)) },
-      )
+      UpsertEmailConfig(config: config, updated_at: updated_at, next: fn(value) {
+        f(next(value))
+      })
   }
 }
 

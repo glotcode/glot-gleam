@@ -1,5 +1,6 @@
 import gleam/dynamic/decode
 import gleam/json
+
 pub type CloudflareConfigResponse {
   CloudflareConfigResponse(account_id: String, api_token: String)
 }

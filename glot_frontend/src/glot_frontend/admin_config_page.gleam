@@ -1681,10 +1681,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         Ok(request) -> #(
           Model(
             ..model,
-            email: EmailSection(
-              ..model.email,
-              state: mutation.Saving,
-            ),
+            email: EmailSection(..model.email, state: mutation.Saving),
           ),
           api.upsert_admin_email_config(request, EmailSaveFinished),
         )
@@ -2217,10 +2214,7 @@ fn cloudflare_section_view(
   )
 }
 
-fn email_section_view(
-  section: EmailSection,
-  status: Status,
-) -> Element(Msg) {
+fn email_section_view(section: EmailSection, status: Status) -> Element(Msg) {
   let dirty = is_dirty_email(section)
   let is_empty = section.saved == empty_email_fields()
 
@@ -2598,13 +2592,15 @@ fn validate_email_fields(
   case fields.from_address {
     "" -> Error("From address must not be empty.")
     _ ->
-      Ok(email_config_dto.UpsertEmailConfigRequest(
-        from_address: fields.from_address,
-        from_name: case fields.from_name {
-          "" -> option.None
-          value -> option.Some(value)
-        },
-      ))
+      Ok(
+        email_config_dto.UpsertEmailConfigRequest(
+          from_address: fields.from_address,
+          from_name: case fields.from_name {
+            "" -> option.None
+            value -> option.Some(value)
+          },
+        ),
+      )
   }
 }
 

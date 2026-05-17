@@ -3,10 +3,7 @@ import gleam/json
 import gleam/option
 
 pub type EmailConfigResponse {
-  EmailConfigResponse(
-    from_address: String,
-    from_name: option.Option(String),
-  )
+  EmailConfigResponse(from_address: String, from_name: option.Option(String))
 }
 
 pub type UpsertEmailConfigRequest {

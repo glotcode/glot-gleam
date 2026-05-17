@@ -28,15 +28,11 @@ pub fn send_email(
   let request = cloudflare_email.request_from_email(message)
   let response_result =
     http_client.post_json(
-      url:
-        "https://api.cloudflare.com/client/v4/accounts/"
+      url: "https://api.cloudflare.com/client/v4/accounts/"
         <> cfg.account_id
         <> "/email/sending/send",
       body: cloudflare_email.encode_request(request),
-      headers: dict.from_list([#(
-        "authorization",
-        "Bearer " <> cfg.api_token,
-      )]),
+      headers: dict.from_list([#("authorization", "Bearer " <> cfg.api_token)]),
       timeout_ms: timeout_ms,
       decoder: cloudflare_email.response_decoder(),
     )
@@ -47,9 +43,7 @@ pub fn send_email(
         True -> Ok(Nil)
         False -> {
           let detail = cloudflare_email.response_message(response)
-          wisp.log_error(
-            "Cloudflare email send failed: " <> detail,
-          )
+          wisp.log_error("Cloudflare email send failed: " <> detail)
           Error(
             error.infra(
               infra_error.EmailError(infra_error.EmailDeliveryFailed(
@@ -72,33 +66,41 @@ fn error_from_http_error(err: http_client.HttpError) -> error.Error {
       case json.parse(body, cloudflare_email.response_decoder()) {
         Ok(response) -> {
           let detail = cloudflare_email.response_message(response)
-          wisp.log_error(
-            "Cloudflare email bad status: " <> detail,
+          wisp.log_error("Cloudflare email bad status: " <> detail)
+          error.infra(
+            infra_error.EmailError(infra_error.EmailDeliveryFailed(
+              "cloudflare:" <> detail,
+            )),
           )
-          error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed(
-            "cloudflare:" <> detail,
-          )))
         }
         Error(_) ->
-          error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed(
-            "http_bad_status:" <> string.inspect(err),
-          )))
+          error.infra(
+            infra_error.EmailError(infra_error.EmailDeliveryFailed(
+              "http_bad_status:" <> string.inspect(err),
+            )),
+          )
       }
     http_client.Timeout ->
-      error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed(
-        "http_timeout",
-      )))
+      error.infra(
+        infra_error.EmailError(infra_error.EmailDeliveryFailed("http_timeout")),
+      )
     http_client.NetworkError ->
-      error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed(
-        "http_network_error",
-      )))
+      error.infra(
+        infra_error.EmailError(infra_error.EmailDeliveryFailed(
+          "http_network_error",
+        )),
+      )
     http_client.BadUrl(url) ->
-      error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed(
-        "bad_url:" <> url,
-      )))
+      error.infra(
+        infra_error.EmailError(infra_error.EmailDeliveryFailed(
+          "bad_url:" <> url,
+        )),
+      )
     http_client.BadBody(message) ->
-      error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed(
-        "bad_response_body:" <> message,
-      )))
+      error.infra(
+        infra_error.EmailError(infra_error.EmailDeliveryFailed(
+          "bad_response_body:" <> message,
+        )),
+      )
   }
 }

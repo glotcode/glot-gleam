@@ -237,10 +237,7 @@ fn apply_entry(
 }
 
 fn default_email_config() -> EmailConfig {
-  EmailConfig(
-    from_address: "glot@glot.io",
-    from_name: option.Some("glot"),
-  )
+  EmailConfig(from_address: "glot@glot.io", from_name: option.Some("glot"))
 }
 
 fn decode_debug_config_entry(
