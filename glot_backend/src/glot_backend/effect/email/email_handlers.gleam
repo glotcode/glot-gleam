@@ -87,10 +87,7 @@ fn error_from_http_error(err: http_client.HttpError) -> error.Error {
           wisp.log_error("Cloudflare email bad status: " <> detail)
           error.infra(
             infra_error.EmailError(infra_error.EmailDeliveryFailed(
-              "cloudflare_status_"
-                <> int.to_string(status)
-                <> ":"
-                <> detail,
+              "cloudflare_status_" <> int.to_string(status) <> ":" <> detail,
               retryability_from_http_status(status),
             )),
           )

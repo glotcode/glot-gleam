@@ -101,7 +101,9 @@ pub fn validate_request(
   validate_payload(request.payload)
 }
 
-fn validate_image(image: String) -> Result(Nil, validation_error.ValidationError) {
+fn validate_image(
+  image: String,
+) -> Result(Nil, validation_error.ValidationError) {
   case language.from_container_image(image) {
     option.Some(_) -> Ok(Nil)
     option.None -> Error(validation_error.UnknownRunLanguage(image))

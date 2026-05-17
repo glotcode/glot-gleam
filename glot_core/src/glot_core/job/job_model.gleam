@@ -339,7 +339,11 @@ pub fn reschedule(
   )
 }
 
-pub fn fail(job: Job, last_error: Option(String), updated_at: Timestamp) -> Job {
+pub fn fail(
+  job: Job,
+  last_error: Option(String),
+  updated_at: Timestamp,
+) -> Job {
   Job(
     ..job,
     status: Failed,

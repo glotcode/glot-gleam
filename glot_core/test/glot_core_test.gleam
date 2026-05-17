@@ -143,11 +143,9 @@ pub fn email_address_accepts_hyphenated_domains_test() {
       is_email,
       "hardbounce@bounce-testing.postmarkapp.com",
     )
-    == option.Some(
-      email_address_model.EmailAddress(
-        "hardbounce@bounce-testing.postmarkapp.com",
-      ),
-    )
+    == option.Some(email_address_model.EmailAddress(
+      "hardbounce@bounce-testing.postmarkapp.com",
+    ))
 }
 
 pub fn validate_snippet_fields_rejects_empty_files_test() {
@@ -247,9 +245,9 @@ pub fn validate_run_request_rejects_unknown_image_test() {
         stdin: option.None,
       ),
     ))
-    == Error(
-      validation_error.UnknownRunLanguage("ghcr.io/example/unknown:latest"),
-    )
+    == Error(validation_error.UnknownRunLanguage(
+      "ghcr.io/example/unknown:latest",
+    ))
 }
 
 pub fn validate_run_request_rejects_empty_file_name_test() {

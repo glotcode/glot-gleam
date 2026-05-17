@@ -34,7 +34,8 @@ pub fn run(
     |> program.from_result,
   )
 
-  let assert option.Some(language) = language.from_container_image(request.image)
+  let assert option.Some(language) =
+    language.from_container_image(request.image)
 
   use _ <- program.and_then(
     basic_effect.info(

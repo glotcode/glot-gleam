@@ -19,10 +19,7 @@ pub fn send_email(
           log.from_list([
             log.object("send_email_result", [
               log.string_list("delivered", result.delivered),
-              log.string_list(
-                "permanent_bounces",
-                result.permanent_bounces,
-              ),
+              log.string_list("permanent_bounces", result.permanent_bounces),
               log.string_list("queued", result.queued),
             ]),
           ]),
