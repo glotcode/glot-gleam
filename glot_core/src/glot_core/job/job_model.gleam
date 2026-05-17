@@ -339,6 +339,18 @@ pub fn reschedule(
   )
 }
 
+pub fn fail(job: Job, last_error: Option(String), updated_at: Timestamp) -> Job {
+  Job(
+    ..job,
+    status: Failed,
+    started_at: option.None,
+    lease_expires_at: option.None,
+    completed_at: option.None,
+    last_error: last_error,
+    updated_at: updated_at,
+  )
+}
+
 pub fn timed_out(job: Job, run_at: Timestamp, updated_at: Timestamp) -> Job {
   let status = case job.attempts >= job.max_attempts {
     True -> Failed

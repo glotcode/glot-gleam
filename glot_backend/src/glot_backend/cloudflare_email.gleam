@@ -38,6 +38,14 @@ pub type SendEmailResponse {
   )
 }
 
+pub type SendEmailErrorResponse {
+  SendEmailErrorResponse(
+    success: Bool,
+    errors: List(CloudflareMessage),
+    messages: List(CloudflareMessage),
+  )
+}
+
 pub fn request_from_email(email: email_model.Email) -> SendEmailRequest {
   SendEmailRequest(
     from: email.from,
@@ -74,9 +82,27 @@ pub fn response_decoder() -> decode.Decoder(SendEmailResponse) {
 }
 
 pub fn response_message(response: SendEmailResponse) -> String {
-  case response.errors {
+  response_messages_to_string(response.errors, response.messages)
+}
+
+pub fn error_response_decoder() -> decode.Decoder(SendEmailErrorResponse) {
+  use success <- decode.field("success", decode.bool)
+  use errors <- decode.field("errors", decode.list(message_decoder()))
+  use messages <- decode.field("messages", decode.list(message_decoder()))
+  decode.success(SendEmailErrorResponse(success:, errors:, messages:))
+}
+
+pub fn error_response_message(response: SendEmailErrorResponse) -> String {
+  response_messages_to_string(response.errors, response.messages)
+}
+
+fn response_messages_to_string(
+  errors: List(CloudflareMessage),
+  messages: List(CloudflareMessage),
+) -> String {
+  case errors {
     [] ->
-      case response.messages {
+      case messages {
         [] -> "Cloudflare email request failed"
         messages -> join_messages(messages)
       }

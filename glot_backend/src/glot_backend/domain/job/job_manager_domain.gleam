@@ -77,7 +77,7 @@ pub fn process_job(
   use _ <- program.and_then(
     delegate_job(ctx, job)
     |> program.attempt(fn(err) {
-      use _ <- program.and_then(reschedule_job(job, err))
+      use _ <- program.and_then(handle_failed_job(job, err))
       program.fail(err)
     }),
   )
@@ -157,6 +157,25 @@ fn reschedule_job(
       now,
     )
   job_effect.update_job(rescheduled_job)
+}
+
+fn handle_failed_job(
+  job: job_model.Job,
+  err: error.Error,
+) -> program_types.Program(Nil) {
+  case error.retryable(err) {
+    True -> reschedule_job(job, err)
+    False -> fail_job(job, err)
+  }
+}
+
+fn fail_job(
+  job: job_model.Job,
+  err: error.Error,
+) -> program_types.Program(Nil) {
+  use now <- program.and_then(basic_effect.system_time())
+  let failed_job = job_model.fail(job, option.Some(error.to_string(err)), now)
+  job_effect.update_job(failed_job)
 }
 
 fn backoff_seconds(job: job_model.Job) -> Int {

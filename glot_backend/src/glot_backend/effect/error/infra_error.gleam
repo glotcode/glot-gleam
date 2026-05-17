@@ -7,10 +7,15 @@ pub type DatabaseOperation {
   TransactionOperation
 }
 
+pub type Retryability {
+  Retryable
+  NonRetryable
+}
+
 pub type EmailError {
   EmailTemplateMissing(name: String)
   EmailTemplateRenderFailed(message: String)
-  EmailDeliveryFailed(detail: String)
+  EmailDeliveryFailed(detail: String, retryability: Retryability)
 }
 
 pub type InfraError {
@@ -76,7 +81,8 @@ pub fn to_string(err: InfraError) -> String {
         EmailTemplateMissing(name) -> "send_email_missing_template:" <> name
         EmailTemplateRenderFailed(message) ->
           "send_email_render_failed:" <> message
-        EmailDeliveryFailed(detail) -> "send_email_delivery_failed:" <> detail
+        EmailDeliveryFailed(detail, _) ->
+          "send_email_delivery_failed:" <> detail
       }
     JobTimeoutExceeded -> "job_timeout_exceeded"
     JobPayloadMissing(job_type) ->
@@ -97,4 +103,27 @@ pub fn from_command_error(err: db_error.DbCommandError) -> InfraError {
 pub fn from_transaction_error(err: db_error.DbTransactionError) -> InfraError {
   let db_error.DbTransactionError(message: message) = err
   DatabaseError(TransactionOperation, message)
+}
+
+pub fn retryable(err: InfraError) -> Bool {
+  case err {
+    DatabaseError(_, _) -> True
+    RunRequestClientError(_) -> False
+    RunRequestServerError -> True
+    EmailError(email_error) -> email_error_retryable(email_error)
+    JobTimeoutExceeded -> True
+    JobPayloadMissing(_) -> False
+  }
+}
+
+fn email_error_retryable(err: EmailError) -> Bool {
+  case err {
+    EmailTemplateMissing(_) -> False
+    EmailTemplateRenderFailed(_) -> False
+    EmailDeliveryFailed(_, retryability) ->
+      case retryability {
+        Retryable -> True
+        NonRetryable -> False
+      }
+  }
 }

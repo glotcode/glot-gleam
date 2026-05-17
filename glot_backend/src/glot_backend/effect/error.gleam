@@ -29,6 +29,16 @@ pub fn to_string(err: Error) -> String {
   }
 }
 
+pub fn retryable(err: Error) -> Bool {
+  case err {
+    RequestError(_) -> False
+    ResourceError(_) -> False
+    AuthError(_) -> False
+    PolicyError(_) -> False
+    InfraError(infra_error) -> infra_error.retryable(infra_error)
+  }
+}
+
 pub fn json_parse_error(err: json.DecodeError) -> Error {
   RequestError(request_error.JsonParseError(err))
 }

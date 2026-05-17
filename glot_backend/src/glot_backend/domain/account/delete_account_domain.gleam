@@ -88,6 +88,7 @@ fn sender_from_config(
     )
     |> option.to_result(infra_error.EmailDeliveryFailed(
       "invalid_sender_address",
+      infra_error.NonRetryable,
     )),
   ))
 
