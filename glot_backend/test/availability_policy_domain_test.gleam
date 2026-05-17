@@ -204,6 +204,7 @@ fn run_app_config_effect(
           ),
           docker_run: option.None,
           cloudflare: option.None,
+          email: option.None,
           rate_limit_policies: dict.new(),
         )),
       )

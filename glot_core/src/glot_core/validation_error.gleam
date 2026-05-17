@@ -20,6 +20,7 @@ pub type ValidationError {
   UnsupportedEmailTemplateTokens(template_name: String, supported: List(String))
   UnclosedEmailTemplateToken
   UnknownRunLanguage(image: String)
+  InvalidEmail(field: String)
   MustBeGreaterThan(field: String, min: Int)
   MustBeGreaterThanOrEqual(field: String, min: Int)
   MustBeLessThanOrEqual(field: String, max: Int)
@@ -44,6 +45,7 @@ pub fn code(err: ValidationError) -> String {
       "validation_email_template_tokens_unsupported"
     UnclosedEmailTemplateToken -> "validation_email_template_token_unclosed"
     UnknownRunLanguage(_) -> "validation_unknown_run_language"
+    InvalidEmail(field) -> "validation_" <> field_slug(field) <> "_invalid"
     MustBeGreaterThan(field, _) ->
       "validation_" <> field_slug(field) <> "_too_small"
     MustBeGreaterThanOrEqual(field, _) ->
@@ -78,6 +80,7 @@ pub fn message(err: ValidationError) -> String {
       <> string.join(supported, with: ", ")
     UnclosedEmailTemplateToken -> "Unclosed template token in email template"
     UnknownRunLanguage(image) -> "Unknown run language for image: " <> image
+    InvalidEmail(field) -> field <> " must be a valid email address"
     MustBeGreaterThan(field, min) ->
       field <> " must be greater than " <> int.to_string(min)
     MustBeGreaterThanOrEqual(field, min) ->

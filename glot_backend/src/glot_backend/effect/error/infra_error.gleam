@@ -10,7 +10,7 @@ pub type DatabaseOperation {
 pub type EmailError {
   EmailTemplateMissing(name: String)
   EmailTemplateRenderFailed(message: String)
-  EmailDeliveryFailed
+  EmailDeliveryFailed(detail: String)
 }
 
 pub type InfraError {
@@ -76,7 +76,7 @@ pub fn to_string(err: InfraError) -> String {
         EmailTemplateMissing(name) -> "send_email_missing_template:" <> name
         EmailTemplateRenderFailed(message) ->
           "send_email_render_failed:" <> message
-        EmailDeliveryFailed -> "send_email_internal"
+        EmailDeliveryFailed(detail) -> "send_email_delivery_failed:" <> detail
       }
     JobTimeoutExceeded -> "job_timeout_exceeded"
     JobPayloadMissing(job_type) ->

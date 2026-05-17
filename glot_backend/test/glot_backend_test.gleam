@@ -14,12 +14,14 @@ import glot_backend/domain/admin/get_auth_config_domain
 import glot_backend/domain/admin/get_availability_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/get_email_config_domain
 import glot_backend/domain/admin/get_rate_limit_policies_domain
 import glot_backend/domain/admin/upsert_auth_config_domain
 import glot_backend/domain/admin/upsert_availability_config_domain
 import glot_backend/domain/admin/upsert_cloudflare_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
+import glot_backend/domain/admin/upsert_email_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/refresh_session_domain
@@ -67,6 +69,7 @@ import glot_core/admin/availability_config_dto
 import glot_core/admin/cloudflare_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/email_config_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/api_action
 import glot_core/auth/account_model
@@ -418,6 +421,38 @@ pub fn app_config_decodes_cloudflare_config_test() {
     ))
 }
 
+pub fn app_config_decodes_email_config_test() {
+  let assert Ok(config) =
+    dynamic_config.from_entries([
+      app_config.AppConfigEntry(
+        namespace: "email",
+        key: "from_address",
+        value: "\"sender@example.com\"",
+      ),
+      app_config.AppConfigEntry(
+        namespace: "email",
+        key: "from_name",
+        value: "\"Sender\"",
+      ),
+    ])
+
+  assert dynamic_config.email_config(config)
+    == dynamic_config.EmailConfig(
+      from_address: "sender@example.com",
+      from_name: option.Some("Sender"),
+    )
+}
+
+pub fn app_config_uses_default_email_config_test() {
+  let assert Ok(config) = dynamic_config.from_entries([])
+
+  assert dynamic_config.email_config(config)
+    == dynamic_config.EmailConfig(
+      from_address: "glot@glot.io",
+      from_name: option.Some("glot"),
+    )
+}
+
 pub fn app_config_uses_default_auth_config_test() {
   let assert Ok(config) = dynamic_config.from_entries([])
 
@@ -512,6 +547,24 @@ pub fn get_docker_run_config_requires_admin_role_test() {
   let #(run_result, _) =
     run_test_program(
       get_docker_run_config_domain.get_docker_run_config(fixture.ctx),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result == Error(error.auth(auth_error.AdminRequired))
+}
+
+pub fn get_email_config_requires_admin_role_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+
+  let #(run_result, _) =
+    run_test_program(
+      get_email_config_domain.get_email_config(fixture.ctx),
       fixture.ctx,
       fixture.db,
     )
@@ -697,6 +750,29 @@ pub fn upsert_cloudflare_config_allows_admin_role_test() {
     == Ok(cloudflare_config_dto.CloudflareConfigResponse(
       account_id: request.account_id,
       api_token: request.api_token,
+    ))
+  assert updated_db.user_action_count == 1
+}
+
+pub fn upsert_email_config_allows_admin_role_test() {
+  let fixture = admin_integration_fixture()
+  let request =
+    email_config_dto.UpsertEmailConfigRequest(
+      from_address: "sender@example.com",
+      from_name: option.Some("Sender"),
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      upsert_email_config_domain.upsert_email_config(fixture.ctx, request),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  assert run_result
+    == Ok(email_config_dto.EmailConfigResponse(
+      from_address: request.from_address,
+      from_name: request.from_name,
     ))
   assert updated_db.user_action_count == 1
 }
@@ -1947,7 +2023,9 @@ fn run_test_email_effect(
       run_test_program(
         next(
           Error(
-            error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed)),
+            error.infra(infra_error.EmailError(
+              infra_error.EmailDeliveryFailed("test_delivery_failure"),
+            )),
           ),
         ),
         ctx,
@@ -2013,6 +2091,7 @@ fn run_test_app_config_effect(
             language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             cloudflare: option.None,
+            email: option.None,
             rate_limit_policies: dict.new(),
           )),
         ),
@@ -2042,6 +2121,7 @@ fn run_test_app_config_effect(
             language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             cloudflare: option.None,
+            email: option.None,
             rate_limit_policies: dict.new(),
           )),
         ),
@@ -2064,6 +2144,7 @@ fn run_test_app_config_effect(
             language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             cloudflare: option.None,
+            email: option.None,
             rate_limit_policies: dict.new(),
           )),
         ),
@@ -2093,6 +2174,7 @@ fn run_test_app_config_effect(
             language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             cloudflare: option.None,
+            email: option.None,
             rate_limit_policies: dict.new(),
           )),
         ),
@@ -2122,6 +2204,7 @@ fn run_test_app_config_effect(
             language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             cloudflare: option.None,
+            email: option.None,
             rate_limit_policies: dict.new(),
           )),
         ),
@@ -2151,6 +2234,7 @@ fn run_test_app_config_effect(
             language_version_cache_worker: config,
             docker_run: option.None,
             cloudflare: option.None,
+            email: option.None,
             rate_limit_policies: dict.new(),
           )),
         ),
@@ -2186,6 +2270,7 @@ fn run_test_app_config_effect(
             language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.Some(config),
             cloudflare: option.None,
+            email: option.None,
             rate_limit_policies: dict.new(),
           )),
         ),
@@ -2215,6 +2300,37 @@ fn run_test_app_config_effect(
             language_version_cache_worker: test_language_version_cache_worker_config(),
             docker_run: option.None,
             cloudflare: option.Some(config),
+            email: option.None,
+            rate_limit_policies: dict.new(),
+          )),
+        ),
+        ctx,
+        db,
+      )
+    app_config_algebra.UpsertEmailConfig(
+      config: config,
+      updated_at: _,
+      next: next,
+    ) ->
+      run_test_program(
+        next(
+          Ok(dynamic_config.DynamicConfig(
+            debug: dynamic_config.DebugConfig(enabled: False),
+            availability: test_availability_config(),
+            auth: dynamic_config.AuthConfig(
+              login_token_max_age: 900,
+              session_token_max_age: 86_400,
+              session_cookie_max_age: 86_400,
+              session_refresh_interval_seconds: 300,
+              session_previous_token_grace_seconds: 60,
+              session_heartbeat_interval_seconds: 60,
+            ),
+            cleanup: test_cleanup_config(),
+            log_worker: test_log_worker_config(),
+            language_version_cache_worker: test_language_version_cache_worker_config(),
+            docker_run: option.None,
+            cloudflare: option.None,
+            email: option.Some(config),
             rate_limit_policies: dict.new(),
           )),
         ),
@@ -2233,8 +2349,23 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
     log_worker: test_log_worker_config(),
     language_version_cache_worker: test_language_version_cache_worker_config(),
     docker_run: option.None,
-    cloudflare: option.None,
+    cloudflare: option.Some(test_cloudflare_config()),
+    email: option.Some(test_email_config()),
     rate_limit_policies: dict.new(),
+  )
+}
+
+fn test_cloudflare_config() -> dynamic_config.CloudflareConfig {
+  dynamic_config.CloudflareConfig(
+    account_id: "cf-account-id",
+    api_token: "cf-api-token",
+  )
+}
+
+fn test_email_config() -> dynamic_config.EmailConfig {
+  dynamic_config.EmailConfig(
+    from_address: "sender@example.com",
+    from_name: option.Some("Sender"),
   )
 }
 

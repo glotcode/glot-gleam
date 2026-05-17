@@ -7,6 +7,7 @@ import glot_core/admin/cleanup_config_dto
 import glot_core/admin/cloudflare_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/email_config_dto
 import glot_core/admin/language_version_cache_worker_config_dto
 import glot_core/admin/log_worker_config_dto
 import glot_core/availability_mode
@@ -31,6 +32,7 @@ pub type Model {
     language_version_cache_worker: LanguageVersionCacheWorkerSection,
     docker_run: DockerRunSection,
     cloudflare: CloudflareSection,
+    email: EmailSection,
     debug_loaded: Bool,
     availability_loaded: Bool,
     auth_loaded: Bool,
@@ -39,6 +41,7 @@ pub type Model {
     language_version_cache_worker_loaded: Bool,
     docker_run_loaded: Bool,
     cloudflare_loaded: Bool,
+    email_loaded: Bool,
   )
 }
 
@@ -71,6 +74,18 @@ pub type CloudflareSection {
 
 pub type CloudflareFields {
   CloudflareFields(account_id: String, api_token: String)
+}
+
+pub type EmailSection {
+  EmailSection(
+    saved: EmailFields,
+    draft: EmailFields,
+    state: mutation.MutationState,
+  )
+}
+
+pub type EmailFields {
+  EmailFields(from_address: String, from_name: String)
 }
 
 pub type DebugSection {
@@ -260,6 +275,12 @@ pub type Msg {
   CloudflareSaveFinished(
     api.ApiResponse(cloudflare_config_dto.CloudflareConfigResponse),
   )
+  EmailLoaded(api.ApiResponse(email_config_dto.EmailConfigResponse))
+  EmailFromAddressChanged(String)
+  EmailFromNameChanged(String)
+  EmailResetClicked
+  EmailSaveClicked
+  EmailSaveFinished(api.ApiResponse(email_config_dto.EmailConfigResponse))
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
@@ -274,6 +295,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       language_version_cache_worker: empty_language_version_cache_worker_section(),
       docker_run: empty_docker_run_section(),
       cloudflare: empty_cloudflare_section(),
+      email: empty_email_section(),
       debug_loaded: False,
       availability_loaded: False,
       auth_loaded: False,
@@ -282,6 +304,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       language_version_cache_worker_loaded: False,
       docker_run_loaded: False,
       cloudflare_loaded: False,
+      email_loaded: False,
     ),
     effect.none(),
   )
@@ -300,6 +323,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
         load_language_version_cache_worker_config(),
         load_docker_run_config(),
         load_cloudflare_config(),
+        load_email_config(),
       ]),
     )
     Loading | Ready | LoadError(_) -> #(model, effect.none())
@@ -1575,6 +1599,134 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           effect.none(),
         )
       }
+
+    EmailLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = email_fields_from_response(response)
+          let next_model =
+            Model(
+              ..model,
+              email: EmailSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
+              email_loaded: True,
+            )
+
+          #(
+            Model(..next_model, status: loaded_status(next_model)),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(..model, status: LoadError(api.error_message(error))),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(..model, status: LoadError("Could not load email config.")),
+          effect.none(),
+        )
+      }
+
+    EmailFromAddressChanged(value) -> #(
+      Model(
+        ..model,
+        email: EmailSection(
+          ..model.email,
+          draft: EmailFields(..model.email.draft, from_address: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    EmailFromNameChanged(value) -> #(
+      Model(
+        ..model,
+        email: EmailSection(
+          ..model.email,
+          draft: EmailFields(..model.email.draft, from_name: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    EmailResetClicked -> #(
+      Model(
+        ..model,
+        email: EmailSection(
+          ..model.email,
+          draft: model.email.saved,
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    EmailSaveClicked ->
+      case validate_email_fields(model.email.draft) {
+        Error(message) -> #(
+          Model(
+            ..model,
+            email: EmailSection(
+              ..model.email,
+              state: mutation.SaveError(message),
+            ),
+          ),
+          effect.none(),
+        )
+        Ok(request) -> #(
+          Model(
+            ..model,
+            email: EmailSection(
+              ..model.email,
+              state: mutation.Saving,
+            ),
+          ),
+          api.upsert_admin_email_config(request, EmailSaveFinished),
+        )
+      }
+
+    EmailSaveFinished(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = email_fields_from_response(response)
+          #(
+            Model(
+              ..model,
+              email: EmailSection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Saved,
+              ),
+            ),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            email: EmailSection(
+              ..model.email,
+              state: mutation.SaveError(api.error_message(error)),
+            ),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            email: EmailSection(
+              ..model.email,
+              state: mutation.SaveError("Could not save email config."),
+            ),
+          ),
+          effect.none(),
+        )
+      }
   }
 }
 
@@ -1594,6 +1746,7 @@ pub fn view(model: Model) -> Element(Msg) {
         ),
         docker_run_section_view(model.docker_run, model.status),
         cloudflare_section_view(model.cloudflare, model.status),
+        email_section_view(model.email, model.status),
       ]),
     ]),
   ])
@@ -2029,7 +2182,7 @@ fn cloudflare_section_view(
 
   config_section(
     title: "Cloudflare",
-    subtitle: "Stores the Cloudflare account ID and API token used by backend integrations.",
+    subtitle: "Stores the Cloudflare account and API token used for outbound email delivery.",
     badge: section_badge(section.state, dirty, idle_text(is_empty)),
     fields: html.div([attribute.class("admin-page__field-grid")], [
       admin_ui.text_input(
@@ -2060,6 +2213,50 @@ fn cloudflare_section_view(
       ),
       reset_msg: CloudflareResetClicked,
       save_msg: CloudflareSaveClicked,
+    ),
+  )
+}
+
+fn email_section_view(
+  section: EmailSection,
+  status: Status,
+) -> Element(Msg) {
+  let dirty = is_dirty_email(section)
+  let is_empty = section.saved == empty_email_fields()
+
+  config_section(
+    title: "Email",
+    subtitle: "Stores the sender address and optional sender name used for outbound email.",
+    badge: section_badge(section.state, dirty, idle_text(is_empty)),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      admin_ui.text_input(
+        label: "From address",
+        help: "Sender email address used for outbound email.",
+        value: section.draft.from_address,
+        placeholder: "",
+        on_input: EmailFromAddressChanged,
+      ),
+      admin_ui.text_input(
+        label: "From name",
+        help: "Optional sender display name.",
+        value: section.draft.from_name,
+        placeholder: "",
+        on_input: EmailFromNameChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(
+        section.state,
+        idle_message(
+          is_empty,
+          "This section is empty until you save initial values.",
+        ),
+      ),
+      reset_msg: EmailResetClicked,
+      save_msg: EmailSaveClicked,
     ),
   )
 }
@@ -2250,6 +2447,10 @@ fn load_cloudflare_config() -> Effect(Msg) {
   api.get_admin_cloudflare_config(CloudflareLoaded)
 }
 
+fn load_email_config() -> Effect(Msg) {
+  api.get_admin_email_config(EmailLoaded)
+}
+
 fn auth_fields_from_response(
   response: auth_config_dto.AuthConfigResponse,
 ) -> AuthFields {
@@ -2346,6 +2547,15 @@ fn cloudflare_fields_from_response(
   )
 }
 
+fn email_fields_from_response(
+  response: email_config_dto.EmailConfigResponse,
+) -> EmailFields {
+  EmailFields(
+    from_address: response.from_address,
+    from_name: option.unwrap(response.from_name, ""),
+  )
+}
+
 fn validate_docker_run_fields(
   fields: DockerRunFields,
 ) -> Result(docker_run_config_dto.UpsertDockerRunConfigRequest, String) {
@@ -2379,6 +2589,26 @@ fn validate_cloudflare_fields(
 }
 
 fn is_dirty_cloudflare(section: CloudflareSection) -> Bool {
+  section.saved != section.draft
+}
+
+fn validate_email_fields(
+  fields: EmailFields,
+) -> Result(email_config_dto.UpsertEmailConfigRequest, String) {
+  case fields.from_address {
+    "" -> Error("From address must not be empty.")
+    _ ->
+      Ok(email_config_dto.UpsertEmailConfigRequest(
+        from_address: fields.from_address,
+        from_name: case fields.from_name {
+          "" -> option.None
+          value -> option.Some(value)
+        },
+      ))
+  }
+}
+
+fn is_dirty_email(section: EmailSection) -> Bool {
   section.saved != section.draft
 }
 
@@ -2727,6 +2957,15 @@ fn empty_cloudflare_fields() -> CloudflareFields {
   CloudflareFields(account_id: "", api_token: "")
 }
 
+fn empty_email_section() -> EmailSection {
+  let fields = empty_email_fields()
+  EmailSection(saved: fields, draft: fields, state: mutation.Idle)
+}
+
+fn empty_email_fields() -> EmailFields {
+  EmailFields(from_address: "", from_name: "")
+}
+
 fn loaded_status(model: Model) -> Status {
   case
     model.debug_loaded
@@ -2737,6 +2976,7 @@ fn loaded_status(model: Model) -> Status {
     && model.language_version_cache_worker_loaded
     && model.docker_run_loaded
     && model.cloudflare_loaded
+    && model.email_loaded
   {
     True -> Ready
     False -> Loading

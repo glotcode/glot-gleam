@@ -212,3 +212,23 @@ pub fn upsert_cloudflare_config(
     ),
   )
 }
+
+pub fn upsert_email_config(
+  config: dynamic_config.EmailConfig,
+  updated_at: Timestamp,
+) -> program_types.Program(dynamic_config.DynamicConfig) {
+  program_types.Impure(
+    program_types.AppConfigEffect(
+      app_config_algebra.UpsertEmailConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(result) {
+          case result {
+            Ok(config) -> program_types.Pure(config)
+            Error(err) -> program_types.Fail(err)
+          }
+        },
+      ),
+    ),
+  )
+}

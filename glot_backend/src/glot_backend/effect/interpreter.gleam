@@ -72,7 +72,7 @@ fn run_effect(
       email_interpreter.run(
         effect,
         ctx,
-        effect_runtime.handlers,
+        effect_runtime,
         state,
         continue,
       )

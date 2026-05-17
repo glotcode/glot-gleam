@@ -22,6 +22,7 @@ import glot_backend/domain/admin/get_cleanup_config_domain
 import glot_backend/domain/admin/get_cloudflare_config_domain
 import glot_backend/domain/admin/get_debug_config_domain
 import glot_backend/domain/admin/get_docker_run_config_domain
+import glot_backend/domain/admin/get_email_config_domain
 import glot_backend/domain/admin/get_email_template_domain
 import glot_backend/domain/admin/get_email_templates_domain
 import glot_backend/domain/admin/get_job_domain
@@ -49,6 +50,7 @@ import glot_backend/domain/admin/upsert_cleanup_config_domain
 import glot_backend/domain/admin/upsert_cloudflare_config_domain
 import glot_backend/domain/admin/upsert_debug_config_domain
 import glot_backend/domain/admin/upsert_docker_run_config_domain
+import glot_backend/domain/admin/upsert_email_config_domain
 import glot_backend/domain/admin/upsert_job_type_policy_domain
 import glot_backend/domain/admin/upsert_language_version_cache_worker_config_domain
 import glot_backend/domain/admin/upsert_log_worker_config_domain
@@ -88,6 +90,7 @@ import glot_core/admin/cleanup_config_dto
 import glot_core/admin/cloudflare_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/email_config_dto
 import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
@@ -529,6 +532,16 @@ fn handle_admin_api_request(
       upsert_cloudflare_config_domain.upsert_cloudflare_config(ctx, request)
       |> program.map(CloudflareConfigResponse)
     }
+    admin_action.GetAdminEmailConfigAction ->
+      get_email_config_domain.get_email_config(ctx)
+      |> program.map(EmailConfigResponse)
+    admin_action.UpsertAdminEmailConfigAction -> {
+      use request <- program.and_then(
+        upsert_email_config_domain.request_from_dynamic(data),
+      )
+      upsert_email_config_domain.upsert_email_config(ctx, request)
+      |> program.map(EmailConfigResponse)
+    }
   }
 }
 
@@ -619,6 +632,7 @@ type ApiResult {
   JobTypePolicyResponse(job_type_policy_dto.JobTypePolicyResponse)
   DockerRunConfigResponse(docker_run_config_dto.DockerRunConfigResponse)
   CloudflareConfigResponse(cloudflare_config_dto.CloudflareConfigResponse)
+  EmailConfigResponse(email_config_dto.EmailConfigResponse)
   LoginResponse(login_domain.LoginResult)
   RefreshSessionResponse(refresh_session_domain.RefreshSessionResult)
   LogoutResponse
@@ -706,6 +720,8 @@ fn api_result_to_response(
       success_response(docker_run_config_dto.encode_response(response))
     CloudflareConfigResponse(response) ->
       success_response(cloudflare_config_dto.encode_response(response))
+    EmailConfigResponse(response) ->
+      success_response(email_config_dto.encode_response(response))
     LoginResponse(login_result) -> {
       set_session_cookie(
         success_response(json.null()),

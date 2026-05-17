@@ -4,10 +4,12 @@ import gleam/option
 import gleam/result
 import glot_backend/context
 import glot_backend/crypto_token
+import glot_backend/dynamic_config
 import glot_backend/domain/job/job_type_policy_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
+import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/email_template/email_template_effect
 import glot_backend/effect/error
 import glot_backend/effect/error/infra_error
@@ -21,6 +23,8 @@ import glot_backend/log
 import glot_core/api_action
 import glot_core/auth/login_token_dto
 import glot_core/auth/login_token_model
+import glot_core/email/email_address_model
+import glot_core/email/email_model
 import glot_core/job/job_model
 import glot_core/public_action
 
@@ -59,6 +63,7 @@ pub fn send_login_token(
       email_template.LoginTokenTemplate,
     ),
   )
+  use sender <- program.and_then(sender_from_config(ctx))
   let assert_template = case maybe_template {
     option.Some(template) -> Ok(template)
     option.None ->
@@ -74,6 +79,7 @@ pub fn send_login_token(
   use login_email <- program.and_then(
     email_template.render_email_template(
       template,
+      sender,
       request.email,
       dict.from_list([#("token", token)]),
     )
@@ -107,6 +113,27 @@ pub fn send_login_token(
     job_effect.create_job_tx(send_email_job),
     user_action_effect.create_user_action_tx(user_action),
   ])
+}
+
+fn sender_from_config(
+  ctx: context.Context,
+) -> program_types.Program(email_model.EmailSender) {
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  let email_config = dynamic_config.email_config(config)
+  use address <- program.and_then(log_send_email_internal_error(
+    email_address_model.from_string(
+      ctx.regexes.is_email,
+      email_config.from_address,
+    )
+    |> option.to_result(
+      infra_error.EmailDeliveryFailed("invalid_sender_address"),
+    ),
+  ))
+
+  program.succeed(email_model.EmailSender(
+    address: address,
+    name: email_config.from_name,
+  ))
 }
 
 pub fn request_from_dynamic(

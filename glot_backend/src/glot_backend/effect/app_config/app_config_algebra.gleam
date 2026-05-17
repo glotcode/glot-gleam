@@ -55,6 +55,11 @@ pub type AppConfigEffect(next) {
     updated_at: Timestamp,
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
   )
+  UpsertEmailConfig(
+    config: dynamic_config.EmailConfig,
+    updated_at: Timestamp,
+    next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
+  )
 }
 
 pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
@@ -112,6 +117,12 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
         updated_at: updated_at,
         next: fn(value) { f(next(value)) },
       )
+    UpsertEmailConfig(config:, updated_at:, next:) ->
+      UpsertEmailConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(value) { f(next(value)) },
+      )
   }
 }
 
@@ -126,6 +137,7 @@ pub type EffectName {
   UpsertRateLimitPolicyEffectName
   UpsertDockerRunConfigEffectName
   UpsertCloudflareConfigEffectName
+  UpsertEmailConfigEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
@@ -141,5 +153,6 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     UpsertRateLimitPolicyEffectName -> "upsert_rate_limit_policy"
     UpsertDockerRunConfigEffectName -> "upsert_docker_run_config"
     UpsertCloudflareConfigEffectName -> "upsert_cloudflare_config"
+    UpsertEmailConfigEffectName -> "upsert_email_config"
   }
 }

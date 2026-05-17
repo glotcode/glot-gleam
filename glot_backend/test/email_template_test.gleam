@@ -1,5 +1,7 @@
 import gleam/dict
+import gleam/json
 import gleam/option
+import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/email_template
@@ -23,16 +25,42 @@ pub fn render_email_template_replaces_tokens_test() {
   let assert Ok(rendered) =
     email_template.render_email_template(
       template,
+      email_model.EmailSender(
+        address: email_model.default_from_address(),
+        name: option.Some("glot.io"),
+      ),
       email_address_model.EmailAddress("user@example.com"),
       dict.from_list([#("token", "123456")]),
     )
 
   assert rendered
     == email_model.Email(
+      from: email_model.EmailSender(
+        address: email_model.default_from_address(),
+        name: option.Some("glot.io"),
+      ),
       to: email_address_model.EmailAddress("user@example.com"),
       subject: "Your login token",
       text_body: "Your login token is: 123456",
       html_body: option.Some("<p>123456</p>"),
+    )
+}
+
+pub fn email_decoder_defaults_from_address_for_legacy_jobs_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let assert Ok(decoded) =
+    json.parse(
+      "{\"to\":\"user@example.com\",\"subject\":\"Hello\",\"text_body\":\"Body\",\"html_body\":null}",
+      email_model.decoder(is_email),
+    )
+
+  assert decoded
+    == email_model.Email(
+      from: email_model.default_from_sender(),
+      to: email_address_model.EmailAddress("user@example.com"),
+      subject: "Hello",
+      text_body: "Body",
+      html_body: option.None,
     )
 }
 
@@ -49,6 +77,7 @@ pub fn render_email_template_rejects_missing_tokens_test() {
   let assert Error(message) =
     email_template.render_email_template(
       template,
+      email_model.default_from_sender(),
       email_address_model.EmailAddress("user@example.com"),
       dict.new(),
     )
@@ -69,6 +98,7 @@ pub fn render_email_template_rejects_unsupported_tokens_test() {
   let assert Error(message) =
     email_template.render_email_template(
       template,
+      email_model.default_from_sender(),
       email_address_model.EmailAddress("user@example.com"),
       dict.from_list([#("token", "123456")]),
     )

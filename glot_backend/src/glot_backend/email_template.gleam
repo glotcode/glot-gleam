@@ -61,6 +61,7 @@ pub fn are_supported_tokens(
 
 pub fn render_email_template(
   template: EmailTemplate,
+  from: email_model.EmailSender,
   to: email_address_model.EmailAddress,
   variables: Dict(String, String),
 ) -> Result(email_model.Email, String) {
@@ -85,6 +86,7 @@ pub fn render_email_template(
   })
 
   Ok(email_model.Email(
+    from: from,
     to: to,
     subject: subject,
     text_body: text_body,

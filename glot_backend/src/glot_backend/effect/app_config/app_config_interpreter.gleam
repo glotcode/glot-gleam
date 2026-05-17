@@ -468,6 +468,39 @@ pub fn run(
         ),
       )
     }
+    app_config_algebra.UpsertEmailConfig(config:, updated_at:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        runtime.handlers.app_config.upsert_entry(
+          "email",
+          "from_address",
+          json.string(config.from_address) |> json.to_string(),
+          updated_at,
+        )
+        |> result.map_error(error.database_command_error)
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "email",
+            "from_name",
+            json.nullable(config.from_name, json.string) |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.database_command_error)
+        })
+        |> result.try(fn(_) { refresh_dynamic_config(runtime) })
+
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AppConfigEffectName(
+            app_config_algebra.UpsertEmailConfigEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
   }
 }
 

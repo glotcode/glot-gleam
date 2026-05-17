@@ -13,6 +13,7 @@ import glot_core/admin/cleanup_config_dto
 import glot_core/admin/cloudflare_config_dto
 import glot_core/admin/debug_config_dto
 import glot_core/admin/docker_run_config_dto
+import glot_core/admin/email_config_dto
 import glot_core/admin/email_template_dto
 import glot_core/admin/job_dto
 import glot_core/admin/job_log_dto
@@ -932,6 +933,33 @@ pub fn upsert_admin_cloudflare_config(
     req,
     cloudflare_config_dto.encode_request,
     cloudflare_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn get_admin_email_config(
+  to_msg: fn(ApiResponse(email_config_dto.EmailConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = AdminApiRequest(admin_action.GetAdminEmailConfigAction, Nil)
+
+  send_admin_api_request(
+    req,
+    fn(_) { json.null() },
+    email_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_email_config(
+  request: email_config_dto.UpsertEmailConfigRequest,
+  to_msg: fn(ApiResponse(email_config_dto.EmailConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = AdminApiRequest(admin_action.UpsertAdminEmailConfigAction, request)
+
+  send_admin_api_request(
+    req,
+    email_config_dto.encode_request,
+    email_config_dto.response_decoder(),
     to_msg,
   )
 }

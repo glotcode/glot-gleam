@@ -22,6 +22,7 @@ pub type DynamicConfig {
     language_version_cache_worker: LanguageVersionCacheWorkerConfig,
     docker_run: option.Option(DockerRunConfig),
     cloudflare: option.Option(CloudflareConfig),
+    email: option.Option(EmailConfig),
     rate_limit_policies: dict.Dict(public_action.PublicAction, RateLimitPolicy),
   )
 }
@@ -55,6 +56,10 @@ pub type DockerRunConfig {
 
 pub type CloudflareConfig {
   CloudflareConfig(account_id: String, api_token: String)
+}
+
+pub type EmailConfig {
+  EmailConfig(from_address: String, from_name: option.Option(String))
 }
 
 pub type CleanupConfig {
@@ -117,6 +122,7 @@ pub fn empty() -> DynamicConfig {
     language_version_cache_worker: default_language_version_cache_worker_config(),
     docker_run: option.None,
     cloudflare: option.None,
+    email: option.None,
     rate_limit_policies: dict.new(),
   )
 }
@@ -148,6 +154,10 @@ pub fn cloudflare_config(
   config: DynamicConfig,
 ) -> option.Option(CloudflareConfig) {
   config.cloudflare
+}
+
+pub fn email_config(config: DynamicConfig) -> EmailConfig {
+  option.unwrap(config.email, default_email_config())
 }
 
 pub fn auth_config(config: DynamicConfig) -> AuthConfig {
@@ -220,9 +230,17 @@ fn apply_entry(
       decode_language_version_cache_worker_config_entry(config, entry)
     "docker_run" -> decode_docker_run_entry(config, entry)
     "cloudflare" -> decode_cloudflare_entry(config, entry)
+    "email" -> decode_email_entry(config, entry)
     "rate_limit" -> decode_rate_limit_policy_entry(config, entry)
     _ -> Ok(config)
   }
+}
+
+fn default_email_config() -> EmailConfig {
+  EmailConfig(
+    from_address: "glot@glot.io",
+    from_name: option.Some("glot"),
+  )
 }
 
 fn decode_debug_config_entry(
@@ -490,6 +508,21 @@ fn decode_optional_int_entry(
   })
 }
 
+fn decode_optional_string_entry(
+  namespace: String,
+  entry: app_config.AppConfigEntry,
+) -> Result(option.Option(String), String) {
+  json.parse(entry.value, decode.optional(decode.string))
+  |> result.map_error(fn(err) {
+    "Failed to decode "
+    <> namespace
+    <> " app_config for "
+    <> entry.key
+    <> ": "
+    <> string.inspect(err)
+  })
+}
+
 fn decode_docker_run_entry(
   config: DynamicConfig,
   entry: app_config.AppConfigEntry,
@@ -573,6 +606,43 @@ fn decode_cloudflare_entry(
   }
 
   Ok(DynamicConfig(..config, cloudflare: cloudflare))
+}
+
+fn decode_email_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  case entry.key {
+    "from_address" -> {
+      use value <- result.try(decode_string_entry("email", entry))
+      let email = case config.email {
+        option.Some(email) ->
+          option.Some(EmailConfig(
+            from_address: value,
+            from_name: email.from_name,
+          ))
+        option.None ->
+          option.Some(EmailConfig(from_address: value, from_name: option.None))
+      }
+
+      Ok(DynamicConfig(..config, email: email))
+    }
+    "from_name" -> {
+      use from_name <- result.try(decode_optional_string_entry("email", entry))
+      let email = case config.email {
+        option.Some(email) ->
+          option.Some(EmailConfig(
+            from_address: email.from_address,
+            from_name: from_name,
+          ))
+        option.None ->
+          option.Some(EmailConfig(from_address: "", from_name: from_name))
+      }
+
+      Ok(DynamicConfig(..config, email: email))
+    }
+    _ -> Ok(config)
+  }
 }
 
 fn decode_string_entry(

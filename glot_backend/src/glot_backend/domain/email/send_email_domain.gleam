@@ -1,7 +1,5 @@
 import glot_backend/context
 import glot_backend/effect/email/email_effect
-import glot_backend/effect/error
-import glot_backend/effect/error/infra_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_core/email/email_model
@@ -14,10 +12,7 @@ pub fn send_email(
 
   case send_result {
     Ok(_) -> program.succeed(Nil)
-    Error(_) ->
-      program.fail(
-        error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed)),
-      )
+    Error(err) -> program.fail(err)
   }
 }
 

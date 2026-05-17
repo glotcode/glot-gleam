@@ -3,7 +3,9 @@ import gleam/option
 import gleam/result
 import glot_backend/context
 import glot_backend/domain/job/job_type_policy_domain
+import glot_backend/dynamic_config
 import glot_backend/effect/auth/auth_effect
+import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/email_template/email_template_effect
 import glot_backend/effect/error
@@ -15,6 +17,8 @@ import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/email_template
 import glot_backend/log
+import glot_core/email/email_address_model
+import glot_core/email/email_model
 import glot_core/job/job_model
 
 pub fn delete_account(
@@ -27,6 +31,7 @@ pub fn delete_account(
       email_template.AccountDeletedTemplate,
     ),
   )
+  use sender <- program.and_then(sender_from_config(ctx))
   let assert_template = case maybe_template {
     option.Some(template) -> Ok(template)
     option.None ->
@@ -40,7 +45,12 @@ pub fn delete_account(
     assert_template,
   ))
   use account_deleted_email <- program.and_then(
-    email_template.render_email_template(template, payload.email, dict.new())
+    email_template.render_email_template(
+      template,
+      sender,
+      payload.email,
+      dict.new(),
+    )
     |> result.map_error(infra_error.EmailTemplateRenderFailed)
     |> log_send_email_internal_error,
   )
@@ -64,6 +74,27 @@ pub fn delete_account(
     auth_effect.delete_account_tx(payload.account_id),
     job_effect.create_job_tx(send_email_job),
   ])
+}
+
+fn sender_from_config(
+  ctx: context.Context,
+) -> program_types.Program(email_model.EmailSender) {
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  let email_config = dynamic_config.email_config(config)
+  use address <- program.and_then(log_send_email_internal_error(
+    email_address_model.from_string(
+      ctx.regexes.is_email,
+      email_config.from_address,
+    )
+    |> option.to_result(
+      infra_error.EmailDeliveryFailed("invalid_sender_address"),
+    ),
+  ))
+
+  program.succeed(email_model.EmailSender(
+    address: address,
+    name: email_config.from_name,
+  ))
 }
 
 pub fn payload_from_json(

@@ -46,6 +46,8 @@ pub type AdminAction {
   UpsertAdminDockerRunConfigAction
   GetAdminCloudflareConfigAction
   UpsertAdminCloudflareConfigAction
+  GetAdminEmailConfigAction
+  UpsertAdminEmailConfigAction
 }
 
 pub fn list() -> List(AdminAction) {
@@ -92,6 +94,8 @@ pub fn list() -> List(AdminAction) {
     UpsertAdminDockerRunConfigAction,
     GetAdminCloudflareConfigAction,
     UpsertAdminCloudflareConfigAction,
+    GetAdminEmailConfigAction,
+    UpsertAdminEmailConfigAction,
   ]
 }
 
@@ -154,6 +158,8 @@ pub fn to_string(action: AdminAction) -> String {
     UpsertAdminDockerRunConfigAction -> "upsert_admin_docker_run_config"
     GetAdminCloudflareConfigAction -> "get_admin_cloudflare_config"
     UpsertAdminCloudflareConfigAction -> "upsert_admin_cloudflare_config"
+    GetAdminEmailConfigAction -> "get_admin_email_config"
+    UpsertAdminEmailConfigAction -> "upsert_admin_email_config"
   }
 }
 
@@ -211,6 +217,8 @@ pub fn from_string(action: String) -> option.Option(AdminAction) {
     "get_admin_cloudflare_config" -> option.Some(GetAdminCloudflareConfigAction)
     "upsert_admin_cloudflare_config" ->
       option.Some(UpsertAdminCloudflareConfigAction)
+    "get_admin_email_config" -> option.Some(GetAdminEmailConfigAction)
+    "upsert_admin_email_config" -> option.Some(UpsertAdminEmailConfigAction)
     _ -> option.None
   }
 }

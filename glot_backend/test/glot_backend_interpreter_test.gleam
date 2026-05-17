@@ -269,9 +269,11 @@ fn test_handlers() -> handlers.Handlers {
       system_time: timestamp.system_time,
       uuid_v7: fn(_) { uuid.nil },
     ),
-    email: email_handlers.EmailHandlers(send_email: fn(_) {
+    email: email_handlers.EmailHandlers(send_email: fn(_, _, _) {
       Error(
-        error.infra(infra_error.EmailError(infra_error.EmailDeliveryFailed)),
+        error.infra(infra_error.EmailError(
+          infra_error.EmailDeliveryFailed("test_delivery_failure"),
+        )),
       )
     }),
     email_template: email_template_handlers.EmailTemplateHandlers(
