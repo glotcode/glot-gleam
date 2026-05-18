@@ -27,6 +27,7 @@ import glot_backend/worker/db_monitor
 import glot_backend/worker/job_worker
 import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/log_worker
+import glot_backend/worker/migration_worker
 import glot_core/email/email_address_model
 import mist
 import pog
@@ -49,6 +50,7 @@ pub fn main() {
 
   let assert Ok(priv_directory) = wisp.priv_directory("glot_backend")
   let static_directory = priv_directory <> "/static"
+  let migrations_directory = priv_directory <> "/db/migrations"
 
   let default_env =
     dict.from_list([
@@ -58,6 +60,10 @@ pub fn main() {
   let env_values = dict.merge(default_env, envoy.all())
 
   let assert Ok(cfg) = context.config_from_dict(env_values)
+  let seeds_directory =
+    priv_directory
+    <> "/db/seeds/"
+    <> context.app_env_to_string(cfg.app_env)
   let postgres_pool_name = process.new_name("postgres_pool")
   let postgres_cfg = postgres_config(cfg, postgres_pool_name)
   let db = pog.named_connection(postgres_pool_name)
@@ -116,6 +122,8 @@ pub fn main() {
     start_supervisor_tree(
       postgres_cfg,
       db,
+      migrations_directory,
+      seeds_directory,
       cfg,
       regexes,
       log_worker_name,
@@ -331,6 +339,8 @@ fn maintenance_response() -> wisp.Response {
 fn start_supervisor_tree(
   pog_config: pog.Config,
   db: pog.Connection,
+  migrations_directory: String,
+  seeds_directory: String,
   config: context.Config,
   regexes: context.Regexes,
   log_worker_name: process.Name(log_worker.Message),
@@ -345,9 +355,18 @@ fn start_supervisor_tree(
 ) {
   static_supervisor.new(static_supervisor.OneForAll)
   |> static_supervisor.add(pog.supervised(pog_config))
-  |> static_supervisor.add(server_mode.supervised(server_mode_name))
+  |> static_supervisor.add(server_mode.supervised_in(
+    server_mode_name,
+    server_mode.Maintenance,
+  ))
   |> static_supervisor.add(db_monitor.supervised(
     db,
+    process.named_subject(server_mode_name),
+  ))
+  |> static_supervisor.add(migration_worker.supervised(
+    db,
+    migrations_directory,
+    seeds_directory,
     process.named_subject(server_mode_name),
   ))
   |> static_supervisor.add(app_config_cache_worker.supervised(

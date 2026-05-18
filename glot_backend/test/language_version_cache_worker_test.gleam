@@ -307,6 +307,7 @@ fn test_context() -> context.Context {
 
   context.Context(
     config: context.Config(
+      app_env: context.Dev,
       encryption_key: "test",
       static_base_path: "/tmp",
       postgres: context.PostgresConfig(

@@ -10,7 +10,5 @@
     do
         sleep 1
     done
-
-    docker exec -i glot_backend-postgres-1 psql -U glot -d glot < ../seed.sql
 )
 

@@ -37,20 +37,31 @@ pub fn remaining_timeout_ms(ctx: Context) -> Option(Int) {
 
 pub type Config {
   Config(
+    app_env: AppEnv,
     encryption_key: String,
     static_base_path: String,
     postgres: PostgresConfig,
   )
 }
 
+pub type AppEnv {
+  Dev
+  Prod
+}
+
 pub fn config_from_dict(
   values: Dict(String, String),
 ) -> Result(Config, String) {
+  use app_env <- result.try(
+    lookup(values, "APP_ENV")
+    |> result.try(app_env_from_string),
+  )
   use encryption_key <- result.try(lookup(values, "ENCRYPTION_KEY"))
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))
 
   Ok(Config(
+    app_env: app_env,
     encryption_key: encryption_key,
     static_base_path: static_base_path,
     postgres: postgres,
@@ -102,6 +113,21 @@ fn lookup(dict: Dict(String, String), key: String) -> Result(String, String) {
 fn string_to_int(s: String) -> Result(Int, String) {
   int.parse(s)
   |> result.map_error(fn(_) { "Invalid integer: " <> s })
+}
+
+pub fn app_env_to_string(app_env: AppEnv) -> String {
+  case app_env {
+    Dev -> "dev"
+    Prod -> "prod"
+  }
+}
+
+pub fn app_env_from_string(s: String) -> Result(AppEnv, String) {
+  case s {
+    "dev" -> Ok(Dev)
+    "prod" -> Ok(Prod)
+    _ -> Error("Invalid APP_ENV: " <> s)
+  }
 }
 
 pub type Regexes {

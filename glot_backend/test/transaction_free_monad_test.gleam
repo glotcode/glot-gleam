@@ -313,6 +313,7 @@ fn successful_run(stdout: String) -> run.RunResult {
 
 fn test_config() -> context.Config {
   context.Config(
+    app_env: context.Dev,
     encryption_key: "test",
     static_base_path: "/tmp",
     postgres: context.PostgresConfig(

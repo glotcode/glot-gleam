@@ -29,7 +29,10 @@ Repository instructions for future agent sessions.
 
 ## Database
 
-- `glot_backend/init.sql` is the schema source of truth in this repo.
+- `glot_backend/priv/db/migrations` is the schema source of truth used by the backend at startup.
+- `glot_backend/priv/db/seeds/<APP_ENV>` contains environment-specific startup seeds tracked in `schema_seeds`.
+- `0000_bootstrap.sql` is the reserved bootstrap migration and must remain first in `glot_backend/priv/db/migrations`.
+- The backend starts in maintenance mode and only enters running mode after startup migrations and environment-specific seeds complete successfully.
 
 ## Validation
 

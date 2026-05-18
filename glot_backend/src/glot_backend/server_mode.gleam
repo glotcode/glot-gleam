@@ -20,7 +20,11 @@ type State {
 const call_timeout_ms = 100
 
 pub fn start(name: process.Name(Message)) {
-  actor.new(State(mode: Running))
+  start_in(name, Running)
+}
+
+pub fn start_in(name: process.Name(Message), mode: Mode) {
+  actor.new(State(mode: mode))
   |> actor.named(name)
   |> actor.on_message(handle_message)
   |> actor.start
@@ -30,12 +34,20 @@ pub fn supervised(name: process.Name(Message)) {
   supervision.worker(fn() { start(name) })
 }
 
+pub fn supervised_in(name: process.Name(Message), mode: Mode) {
+  supervision.worker(fn() { start_in(name, mode) })
+}
+
 pub fn get_mode(subject: process.Subject(Message)) -> Mode {
   process.call(subject, call_timeout_ms, GetMode)
 }
 
 pub fn enter_maintenance(subject: process.Subject(Message)) -> Nil {
   process.send(subject, SetMode(Maintenance))
+}
+
+pub fn enter_running(subject: process.Subject(Message)) -> Nil {
+  process.send(subject, SetMode(Running))
 }
 
 pub fn enter_shutting_down(subject: process.Subject(Message)) -> Nil {
