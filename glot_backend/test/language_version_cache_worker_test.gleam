@@ -32,13 +32,16 @@ type ControlMessage {
       ),
     ),
   )
+  GetConfig(reply: process.Subject(dynamic_config.DynamicConfig))
   GetFetchCount(reply: process.Subject(Int))
+  SetConfig(dynamic_config.DynamicConfig)
   SetNow(Int)
   GetNow(reply: process.Subject(Int))
 }
 
 type ControlState {
   ControlState(
+    config: dynamic_config.DynamicConfig,
     fetch_count: Int,
     now_ns: Int,
     pending_fetches: List(
@@ -158,6 +161,27 @@ pub fn maintenance_mode_does_not_schedule_refreshes_test() {
   assert wait_for_fetch_count(control_subject, 1, 30) == 1
 }
 
+pub fn missing_docker_run_config_polls_until_config_exists_test() {
+  let control_name = process.new_name("language_cache_control")
+  let worker_name = process.new_name("language_cache_worker")
+  let control_subject = start_control(control_name)
+  let _ =
+    start_worker_with_config(
+      worker_name,
+      control_subject,
+      [language.Python],
+      server_mode.Running,
+      dynamic_config.empty(),
+    )
+
+  process.sleep(20)
+  assert process.call(control_subject, 100, GetFetchCount) == 0
+
+  process.send(control_subject, SetConfig(config_with_docker_run()))
+
+  assert wait_for_fetch_count(control_subject, 1, 30) == 1
+}
+
 fn start_worker(
   worker_name: process.Name(language_version_cache_worker.Message),
   control_subject: process.Subject(ControlMessage),
@@ -167,9 +191,29 @@ fn start_worker(
   process.Subject(language_version_cache_worker.Message),
   process.Subject(server_mode.Message),
 ) {
+  start_worker_with_config(
+    worker_name,
+    control_subject,
+    supported_languages,
+    mode,
+    config_with_docker_run(),
+  )
+}
+
+fn start_worker_with_config(
+  worker_name: process.Name(language_version_cache_worker.Message),
+  control_subject: process.Subject(ControlMessage),
+  supported_languages: List(language.Language),
+  mode: server_mode.Mode,
+  initial_config: dynamic_config.DynamicConfig,
+) -> #(
+  process.Subject(language_version_cache_worker.Message),
+  process.Subject(server_mode.Message),
+) {
   let server_mode_name = process.new_name("language_cache_server_mode")
   let assert Ok(_) = server_mode.start_in(server_mode_name, mode)
   let server_mode_subject = process.named_subject(server_mode_name)
+  process.send(control_subject, SetConfig(initial_config))
 
   let handlers =
     language_version_cache_worker.FetchHandlers(
@@ -181,7 +225,7 @@ fn start_worker(
         )
         process.receive_forever(response_subject)
       },
-      get_config: fn(_) { Ok(dynamic_config.empty()) },
+      get_config: fn(_) { Ok(process.call(control_subject, 100, GetConfig)) },
       now_ns: fn() { process.call(control_subject, 100, GetNow) },
       supported_languages: fn() { supported_languages },
     )
@@ -206,7 +250,12 @@ fn start_control(
       let assert Ok(Nil) = process.register(process.self(), name)
       control_loop(
         subject,
-        ControlState(fetch_count: 0, now_ns: 0, pending_fetches: []),
+        ControlState(
+          config: dynamic_config.empty(),
+          fetch_count: 0,
+          now_ns: 0,
+          pending_fetches: [],
+        ),
       )
     })
   subject
@@ -237,10 +286,16 @@ fn control_loop(
         ControlState(..state, pending_fetches: pending_fetches),
       )
     }
+    GetConfig(reply) -> {
+      process.send(reply, state.config)
+      control_loop(subject, state)
+    }
     GetFetchCount(reply) -> {
       process.send(reply, state.fetch_count)
       control_loop(subject, state)
     }
+    SetConfig(config) ->
+      control_loop(subject, ControlState(..state, config: config))
     SetNow(now_ns) ->
       control_loop(subject, ControlState(..state, now_ns: now_ns))
     GetNow(reply) -> {
@@ -334,6 +389,17 @@ fn expect_result(
 
 fn successful_run(stdout: String) -> run.RunResult {
   Ok(run.SuccessfulRun(duration: 1, stdout: stdout, stderr: "", error: ""))
+}
+
+fn config_with_docker_run() -> dynamic_config.DynamicConfig {
+  dynamic_config.DynamicConfig(
+    ..dynamic_config.empty(),
+    docker_run: option.Some(dynamic_config.DockerRunConfig(
+      base_url: "http://docker-run",
+      access_token: "token",
+      default_timeout_ms: 60_000,
+    )),
+  )
 }
 
 fn test_context() -> context.Context {

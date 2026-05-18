@@ -72,6 +72,7 @@ type State {
     server_mode_subject: process.Subject(server_mode.Message),
     fetch_handlers: FetchHandlers,
     config: dynamic_config.LanguageVersionCacheWorkerConfig,
+    docker_run_configured: Bool,
     cached_versions: dict.Dict(language_module.Language, CacheEntry),
     in_flight: dict.Dict(language_module.Language, InFlight),
     refresh_queue: List(language_module.Language),
@@ -111,6 +112,7 @@ pub fn start_with_handlers(
         config: dynamic_config.language_version_cache_worker_config(
           dynamic_config.empty(),
         ),
+        docker_run_configured: False,
         cached_versions: dict.new(),
         in_flight: dict.new(),
         refresh_queue: [],
@@ -389,6 +391,8 @@ fn refresh_config(state: State) -> State {
       State(
         ..state,
         config: dynamic_config.language_version_cache_worker_config(config),
+        docker_run_configured:
+          dynamic_config.docker_run_config(config) != option.None,
       )
     Error(err) -> {
       let db_error.DbQueryError(message: message) = err
@@ -503,11 +507,15 @@ fn is_refresh_in_flight(
 }
 
 fn should_schedule_refreshes(state: State) -> Bool {
-  can_fetch(state)
+  can_update_languages(state)
 }
 
 fn can_fetch(state: State) -> Bool {
   server_mode.get_mode(state.server_mode_subject) == server_mode.Running
+}
+
+fn can_update_languages(state: State) -> Bool {
+  can_fetch(state) && state.docker_run_configured
 }
 
 fn should_start_initial_refresh_immediately(state: State) -> Bool {
@@ -518,7 +526,7 @@ fn should_start_initial_refresh_immediately(state: State) -> Bool {
 }
 
 fn next_tick_delay_ms(state: State) -> Int {
-  case can_fetch(state) {
+  case can_update_languages(state) {
     True -> state.config.refresh_interval_ms
     False -> bootstrap_poll_interval_ms
   }
