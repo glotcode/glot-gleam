@@ -5,7 +5,7 @@
   "main": "js/main.ts",
   "scripts": {
     "dev": "concurrently -k \"bun run watch:build\" \"vite\"",
-    "watch:build": "watchexec --watch src --watch ../glot_core/src --watch gleam.toml --watch ../glot_core/gleam.toml --exts gleam,toml -- ../build_frontend.sh",
+    "watch:build": "watchexec --watch src --watch ../glot_core/src --watch gleam.toml --watch ../glot_core/gleam.toml --exts gleam,toml,mjs -- ../build_frontend.sh",
     "build": "vite build"
   },
   "type": "module",
