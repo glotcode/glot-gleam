@@ -19,6 +19,7 @@ import glot_core/run
 import wisp
 
 const call_timeout_ms = 5000
+const bootstrap_poll_interval_ms = 100
 
 pub type Message {
   GetLanguageVersion(
@@ -165,11 +166,11 @@ fn handle_message(
         lookup_language_version(state, language, now_ns, reply)
 
       case maybe_result {
-        Ok(run_result) -> {
-          process.send(reply, Ok(run_result))
+        option.Some(result) -> {
+          process.send(reply, result)
           actor.continue(next_state)
         }
-        Error(Nil) -> actor.continue(next_state)
+        option.None -> actor.continue(next_state)
       }
     }
     RefreshConfig -> actor.continue(refresh_config(state))
@@ -178,16 +179,12 @@ fn handle_message(
       let _ =
         process.send_after(
           state.subject,
-          state.config.refresh_interval_ms,
+          next_tick_delay_ms(state),
           Tick,
         )
       case should_schedule_refreshes(state) {
         True ->
-          actor.continue(
-            state
-            |> enqueue_due_refreshes()
-            |> schedule_refresh_if_idle(-state.config.refresh_step_delay_ms),
-          )
+          actor.continue(schedule_due_refreshes(state))
         False -> actor.continue(state)
       }
     }
@@ -208,24 +205,31 @@ fn lookup_language_version(
   reply: process.Subject(
     Result(run.RunResult, run_request_error.RunRequestError),
   ),
-) -> #(State, Result(run.RunResult, Nil)) {
+) -> #(State, option.Option(Result(run.RunResult, run_request_error.RunRequestError))) {
   case dict.get(state.cached_versions, language) {
     Ok(entry) -> {
       let next_state = case is_stale(state, entry, now_ns) {
         True -> maybe_start_stale_refresh(state, language)
         False -> state
       }
-      #(next_state, Ok(entry.run_result))
+      #(next_state, option.Some(Ok(entry.run_result)))
     }
     Error(_) ->
       case dict.has_key(state.in_flight, language) {
-        True -> #(enqueue_waiter(state, language, reply), Error(Nil))
-        False -> #(
-          state
-            |> ensure_fetch_started(language, False)
-            |> enqueue_waiter(language, reply),
-          Error(Nil),
-        )
+        True -> #(enqueue_waiter(state, language, reply), option.None)
+        False ->
+          case can_fetch(state) {
+            True -> #(
+              state
+                |> ensure_fetch_started(language, False)
+                |> enqueue_waiter(language, reply),
+              option.None,
+            )
+            False -> #(
+              state,
+              option.Some(Error(run_request_error.ServerRunRequestError)),
+            )
+          }
       }
   }
 }
@@ -254,6 +258,16 @@ fn enqueue_due_refreshes(state: State) -> State {
       Error(_) -> enqueue_refresh(state, language)
     }
   })
+}
+
+fn schedule_due_refreshes(state: State) -> State {
+  let state = enqueue_due_refreshes(state)
+
+  case should_start_initial_refresh_immediately(state) {
+    True -> start_next_refresh(state)
+    False ->
+      schedule_refresh_if_idle(state, -state.config.refresh_step_delay_ms)
+  }
 }
 
 fn enqueue_refresh(state: State, language: language_module.Language) -> State {
@@ -293,7 +307,7 @@ fn ensure_fetch_started(
   language: language_module.Language,
   refresh: Bool,
 ) -> State {
-  case dict.has_key(state.in_flight, language) {
+  case dict.has_key(state.in_flight, language) || !can_fetch(state) {
     True -> state
     False -> {
       let subject = state.subject
@@ -489,9 +503,24 @@ fn is_refresh_in_flight(
 }
 
 fn should_schedule_refreshes(state: State) -> Bool {
-  case server_mode.get_mode(state.server_mode_subject) {
-    server_mode.ShuttingDown -> False
-    _ -> True
+  can_fetch(state)
+}
+
+fn can_fetch(state: State) -> Bool {
+  server_mode.get_mode(state.server_mode_subject) == server_mode.Running
+}
+
+fn should_start_initial_refresh_immediately(state: State) -> Bool {
+  dict.is_empty(state.cached_versions)
+    && dict.is_empty(state.in_flight)
+    && state.refresh_queue != []
+    && state.refresh_language == option.None
+}
+
+fn next_tick_delay_ms(state: State) -> Int {
+  case can_fetch(state) {
+    True -> state.config.refresh_interval_ms
+    False -> bootstrap_poll_interval_ms
   }
 }
 

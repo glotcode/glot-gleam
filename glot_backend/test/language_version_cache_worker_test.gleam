@@ -51,7 +51,8 @@ pub fn concurrent_cold_misses_are_deduped_test() {
   let control_name = process.new_name("language_cache_control")
   let worker_name = process.new_name("language_cache_worker")
   let control_subject = start_control(control_name)
-  let worker_subject = start_worker(worker_name, control_subject, [])
+  let #(worker_subject, _) =
+    start_worker(worker_name, control_subject, [], server_mode.Running)
   let result_subject = process.new_subject()
 
   request_language_version(worker_subject, result_subject)
@@ -73,7 +74,8 @@ pub fn stale_value_is_served_while_refresh_runs_test() {
   let control_name = process.new_name("language_cache_control")
   let worker_name = process.new_name("language_cache_worker")
   let control_subject = start_control(control_name)
-  let worker_subject = start_worker(worker_name, control_subject, [])
+  let #(worker_subject, _) =
+    start_worker(worker_name, control_subject, [], server_mode.Running)
   let result_subject = process.new_subject()
 
   request_language_version(worker_subject, result_subject)
@@ -101,7 +103,8 @@ pub fn failed_refresh_keeps_stale_value_test() {
   let control_name = process.new_name("language_cache_control")
   let worker_name = process.new_name("language_cache_worker")
   let control_subject = start_control(control_name)
-  let worker_subject = start_worker(worker_name, control_subject, [])
+  let #(worker_subject, _) =
+    start_worker(worker_name, control_subject, [], server_mode.Running)
   let result_subject = process.new_subject()
 
   request_language_version(worker_subject, result_subject)
@@ -128,13 +131,44 @@ pub fn failed_refresh_keeps_stale_value_test() {
     == Ok(successful_run("Python 3.13"))
 }
 
+pub fn maintenance_mode_does_not_schedule_refreshes_test() {
+  let control_name = process.new_name("language_cache_control")
+  let worker_name = process.new_name("language_cache_worker")
+  let control_subject = start_control(control_name)
+  let #(worker_subject, server_mode_subject) =
+    start_worker(
+      worker_name,
+      control_subject,
+      [language.Python],
+      server_mode.Maintenance,
+    )
+
+  process.sleep(20)
+
+  assert process.call(control_subject, 100, GetFetchCount) == 0
+  assert language_version_cache_worker.get_language_version(
+      worker_subject,
+      language.Python,
+    )
+    == Error(run_request_error.ServerRunRequestError)
+  assert process.call(control_subject, 100, GetFetchCount) == 0
+
+  server_mode.enter_running(server_mode_subject)
+
+  assert wait_for_fetch_count(control_subject, 1, 30) == 1
+}
+
 fn start_worker(
   worker_name: process.Name(language_version_cache_worker.Message),
   control_subject: process.Subject(ControlMessage),
   supported_languages: List(language.Language),
-) -> process.Subject(language_version_cache_worker.Message) {
+  mode: server_mode.Mode,
+) -> #(
+  process.Subject(language_version_cache_worker.Message),
+  process.Subject(server_mode.Message),
+) {
   let server_mode_name = process.new_name("language_cache_server_mode")
-  let assert Ok(_) = server_mode.start(server_mode_name)
+  let assert Ok(_) = server_mode.start_in(server_mode_name, mode)
   let server_mode_subject = process.named_subject(server_mode_name)
 
   let handlers =
@@ -160,7 +194,7 @@ fn start_worker(
       server_mode_subject,
       handlers,
     )
-  process.named_subject(worker_name)
+  #(process.named_subject(worker_name), server_mode_subject)
 }
 
 fn start_control(

@@ -142,11 +142,11 @@ fn handle_message(
       let #(next_state, maybe_result) = lookup_config(state, now_ns, reply)
 
       case maybe_result {
-        Ok(config) -> {
-          process.send(reply, Ok(config))
+        option.Some(result) -> {
+          process.send(reply, result)
           actor.continue(next_state)
         }
-        Error(Nil) -> actor.continue(next_state)
+        option.None -> actor.continue(next_state)
       }
     }
     Refresh(reply) ->
@@ -179,24 +179,28 @@ fn lookup_config(
   reply: process.Subject(
     Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
   ),
-) -> #(State, Result(dynamic_config.DynamicConfig, Nil)) {
+) -> #(State, option.Option(Result(dynamic_config.DynamicConfig, db_error.DbQueryError))) {
   case state.cache_entry {
     option.Some(cache_entry) -> {
       let next_state = case is_stale(cache_entry, now_ns) {
         True -> maybe_start_stale_refresh(state)
         False -> state
       }
-      #(next_state, Ok(cache_entry.config))
+      #(next_state, option.Some(Ok(cache_entry.config)))
     }
     option.None ->
       case state.in_flight {
-        option.Some(_) -> #(enqueue_waiter(state, reply), Error(Nil))
-        option.None -> #(
-          state
-            |> ensure_fetch_started()
-            |> enqueue_waiter(reply),
-          Error(Nil),
-        )
+        option.Some(_) -> #(enqueue_waiter(state, reply), option.None)
+        option.None ->
+          case can_fetch(state) {
+            True -> #(
+              state
+                |> ensure_fetch_started()
+                |> enqueue_waiter(reply),
+              option.None,
+            )
+            False -> #(state, option.Some(Ok(dynamic_config.empty())))
+          }
       }
   }
 }
@@ -216,9 +220,10 @@ fn cache_is_stale(state: State, now_ns: Int) -> Bool {
 }
 
 fn ensure_fetch_started(state: State) -> State {
-  case state.in_flight {
-    option.Some(_) -> state
-    option.None -> {
+  case state.in_flight, can_fetch(state) {
+    _, False -> state
+    option.Some(_), True -> state
+    option.None, True -> {
       let subject = state.subject
       let fetch_handlers = state.fetch_handlers
 
@@ -290,10 +295,11 @@ fn complete_fetch(
 }
 
 fn should_schedule_refreshes(state: State) -> Bool {
-  case server_mode.get_mode(state.server_mode_subject) {
-    server_mode.ShuttingDown -> False
-    _ -> True
-  }
+  can_fetch(state)
+}
+
+fn can_fetch(state: State) -> Bool {
+  server_mode.get_mode(state.server_mode_subject) == server_mode.Running
 }
 
 fn reply_waiters(
