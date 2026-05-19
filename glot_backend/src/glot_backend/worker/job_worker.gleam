@@ -59,6 +59,7 @@ type State {
     language_version_cache_subject: process.Subject(
       language_version_cache_worker.Message,
     ),
+    tick_timer: Option(process.Timer),
     active_attempt: Option(ActiveAttempt),
   )
 }
@@ -85,6 +86,7 @@ pub fn start(
         server_mode_subject: server_mode_subject,
         app_config_cache_subject: app_config_cache_subject,
         language_version_cache_subject: language_version_cache_subject,
+        tick_timer: option.None,
         active_attempt: option.None,
       )
     let _ = process.send(subject, Tick)
@@ -124,16 +126,20 @@ fn handle_message(
   message: Message,
 ) -> actor.Next(State, Message) {
   case message {
-    Tick ->
+    Tick -> {
       case server_mode.get_mode(state.server_mode_subject) {
-        server_mode.Maintenance -> actor.continue(state)
+        // The worker starts before startup migrations finish. Keep polling so
+        // it can begin draining jobs once the server switches to Running.
+        server_mode.Maintenance -> {
+          actor.continue(schedule_tick_after(state, idle_poll_ms))
+        }
         server_mode.ShuttingDown -> actor.continue(state)
         server_mode.Running -> {
           let #(next_state, maybe_delay) = run_once(state)
-          schedule_next_tick(next_state.subject, maybe_delay)
-          actor.continue(next_state)
+          actor.continue(schedule_tick_for_running(next_state, maybe_delay))
         }
       }
+    }
     AttemptCompleted(pid, log_entry) -> {
       let next_state = finish_attempt(state, pid, log_entry)
       actor.continue(next_state)
@@ -145,13 +151,30 @@ fn handle_message(
   }
 }
 
-fn schedule_next_tick(
-  subject: process.Subject(Message),
-  maybe_delay: Option(Int),
-) -> Nil {
+fn schedule_tick_for_running(state: State, maybe_delay: Option(Int)) -> State {
   case maybe_delay {
-    option.Some(delay) -> {
-      let _ = process.send_after(subject, delay, Tick)
+    option.Some(delay) if delay <= 0 -> trigger_tick_now(state)
+    option.Some(delay) -> schedule_tick_after(state, delay)
+    option.None -> state
+  }
+}
+
+fn schedule_tick_after(state: State, delay: Int) -> State {
+  clear_tick_timer(state.tick_timer)
+  let timer = process.send_after(state.subject, delay, Tick)
+  State(..state, tick_timer: option.Some(timer))
+}
+
+fn trigger_tick_now(state: State) -> State {
+  clear_tick_timer(state.tick_timer)
+  let _ = process.send(state.subject, Tick)
+  State(..state, tick_timer: option.None)
+}
+
+fn clear_tick_timer(timer: Option(process.Timer)) -> Nil {
+  case timer {
+    option.Some(timer) -> {
+      let _ = process.cancel_timer(timer)
       Nil
     }
     option.None -> Nil
@@ -288,8 +311,8 @@ fn finish_attempt(
       let _ = process.cancel_timer(active.timer)
       job_tracker.job_finished(state.job_tracker_subject)
       insert_job_log(state.db, log_entry)
-      let _ = process.send(state.subject, Tick)
       State(..state, active_attempt: option.None)
+      |> trigger_tick_now()
     }
     _ -> state
   }
@@ -319,8 +342,8 @@ fn timeout_attempt(state: State, pid: process.Pid) -> State {
 
       job_tracker.job_finished(state.job_tracker_subject)
       insert_job_log(state.db, timeout_log_entry)
-      let _ = process.send(state.subject, Tick)
       State(..state, active_attempt: option.None)
+      |> trigger_tick_now()
     }
     _ -> state
   }
