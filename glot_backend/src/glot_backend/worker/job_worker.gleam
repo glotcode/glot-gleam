@@ -1,10 +1,13 @@
 import gleam/erlang/process
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option.{type Option}
 import gleam/otp/actor
 import gleam/otp/supervision
+import gleam/result
 import gleam/string
+import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
@@ -38,18 +41,38 @@ pub type Message {
   AttemptTimedOut(pid: process.Pid)
 }
 
+pub type Deps {
+  Deps(
+    enqueue_next_due_periodic_job: fn(context.Context) -> Result(Bool, String),
+    recover_next_expired_job: fn(context.Context) ->
+      Result(Option(job_model.Job), String),
+    claim_next_job: fn(context.Context) -> Result(Option(job_model.Job), String),
+    process_job: fn(
+      context.Context,
+      job_model.Job,
+    ) -> #(Result(Nil, error.Error), program_state.State),
+    timeout_job: fn(context.Context, job_model.Job) -> Result(Nil, String),
+    insert_job_log: fn(core.JobLogEntry) -> Nil,
+    job_started: fn() -> Nil,
+    job_finished: fn() -> Nil,
+    spawn_attempt: fn(fn() -> Nil) -> process.Pid,
+    send_after: fn(process.Subject(Message), Int, Message) -> process.Timer,
+    cancel_timer: fn(process.Timer) -> Nil,
+    kill: fn(process.Pid) -> Nil,
+    now_timestamp: fn() -> Timestamp,
+    now_monotonic_ns: fn() -> Int,
+    random_int: fn(Int) -> Int,
+    log_error: fn(String) -> Nil,
+  )
+}
+
 type State {
   State(
     subject: process.Subject(Message),
-    db: pog.Connection,
     config: context.Config,
     regexes: context.Regexes,
-    job_tracker_subject: process.Subject(job_tracker.Message),
     server_mode_subject: process.Subject(server_mode.Message),
-    app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
-    language_version_cache_subject: process.Subject(
-      language_version_cache_worker.Message,
-    ),
+    deps: Deps,
     tick_timer: Option(process.Timer),
     core: core.State,
   )
@@ -66,26 +89,72 @@ pub fn start(
     language_version_cache_worker.Message,
   ),
 ) {
-  actor.new_with_initialiser(1000, fn(subject) {
-    let initial_state =
-      State(
-        subject: subject,
-        db: db,
-        config: config,
-        regexes: regexes,
-        job_tracker_subject: job_tracker_subject,
-        server_mode_subject: server_mode_subject,
-        app_config_cache_subject: app_config_cache_subject,
-        language_version_cache_subject: language_version_cache_subject,
-        tick_timer: option.None,
-        core: core.new(),
-      )
-    let _ = process.send(subject, Tick)
-    let initialised = actor.initialised(initial_state)
-    Ok(actor.returning(initialised, Nil))
-  })
-  |> actor.on_message(handle_message)
-  |> actor.start
+  let deps =
+    default_deps(
+      db,
+      job_tracker_subject,
+      app_config_cache_subject,
+      language_version_cache_subject,
+    )
+  start_with_deps(config, regexes, server_mode_subject, deps)
+}
+
+pub fn start_with_deps(
+  config: context.Config,
+  regexes: context.Regexes,
+  server_mode_subject: process.Subject(server_mode.Message),
+  deps: Deps,
+) {
+  start_with_optional_name(option.None, config, regexes, server_mode_subject, deps)
+}
+
+pub fn start_named_with_deps(
+  name: process.Name(Message),
+  config: context.Config,
+  regexes: context.Regexes,
+  server_mode_subject: process.Subject(server_mode.Message),
+  deps: Deps,
+) {
+  start_with_optional_name(
+    option.Some(name),
+    config,
+    regexes,
+    server_mode_subject,
+    deps,
+  )
+}
+
+fn start_with_optional_name(
+  maybe_name: Option(process.Name(Message)),
+  config: context.Config,
+  regexes: context.Regexes,
+  server_mode_subject: process.Subject(server_mode.Message),
+  deps: Deps,
+) {
+  let actor =
+    actor.new_with_initialiser(1000, fn(subject) {
+      let initial_state =
+        State(
+          subject: subject,
+          config: config,
+          regexes: regexes,
+          server_mode_subject: server_mode_subject,
+          deps: deps,
+          tick_timer: option.None,
+          core: core.new(),
+        )
+      let _ = process.send(subject, Tick)
+      let initialised = actor.initialised(initial_state)
+      Ok(actor.returning(initialised, Nil))
+    })
+    |> actor.on_message(handle_message)
+
+  let actor = case maybe_name {
+    option.Some(name) -> actor.named(actor, name)
+    option.None -> actor
+  }
+
+  actor |> actor.start
 }
 
 pub fn supervised(
@@ -100,14 +169,18 @@ pub fn supervised(
   ),
 ) {
   supervision.worker(fn() {
-    start(
-      db,
+    let deps =
+      default_deps(
+        db,
+        job_tracker_subject,
+        app_config_cache_subject,
+        language_version_cache_subject,
+      )
+    start_with_deps(
       config,
       regexes,
-      job_tracker_subject,
       server_mode_subject,
-      app_config_cache_subject,
-      language_version_cache_subject,
+      deps,
     )
   })
 }
@@ -155,8 +228,8 @@ fn handle_message(
 }
 
 fn schedule_tick_after(state: State, delay: Int) -> State {
-  let timer =
-    tick_worker_support.reschedule(state.tick_timer, state.subject, delay, Tick)
+  let _ = tick_worker_support.cancel(state.tick_timer)
+  let timer = state.deps.send_after(state.subject, delay, Tick)
   State(..state, tick_timer: option.Some(timer))
 }
 
@@ -169,26 +242,15 @@ fn run_once(state: State) -> #(State, Option(Int)) {
   case core.active_attempt(state.core) {
     option.Some(_) -> #(state, option.None)
     option.None -> {
-      let effect_runtime =
-        runtime.new(
-          state.db,
-          state.app_config_cache_subject,
-          state.language_version_cache_subject,
-        )
       let ctx = context_from_state(state, option.None, option.None)
-
-      let #(periodic_result, _) =
-        periodic_job_manager_domain.enqueue_next_due_periodic_job(ctx)
-        |> interpreter.run(effect_runtime, ctx)
+      let periodic_result = state.deps.enqueue_next_due_periodic_job(ctx)
 
       case periodic_result {
         Ok(True) -> #(state, option.Some(0))
-        Ok(False) -> recover_or_claim_job(state, effect_runtime, ctx)
+        Ok(False) -> recover_or_claim_job(state, ctx)
         Error(err) -> {
-          wisp.log_error(
-            "Failed to enqueue periodic job: " <> string.inspect(err),
-          )
-          recover_or_claim_job(state, effect_runtime, ctx)
+          state.deps.log_error("Failed to enqueue periodic job: " <> err)
+          recover_or_claim_job(state, ctx)
         }
       }
     }
@@ -197,37 +259,28 @@ fn run_once(state: State) -> #(State, Option(Int)) {
 
 fn recover_or_claim_job(
   state: State,
-  effect_runtime: runtime.Runtime,
   ctx: context.Context,
 ) -> #(State, Option(Int)) {
-  let #(recovery_result, _) =
-    job_manager_domain.recover_next_expired_job(ctx)
-    |> interpreter.run(effect_runtime, ctx)
+  let recovery_result = state.deps.recover_next_expired_job(ctx)
 
   case recovery_result {
     Ok(option.Some(recovered_job)) -> {
-      insert_job_log(
-        state.db,
-        prepare_recovered_timeout_log_entry(ctx, recovered_job),
-      )
+      state.deps.insert_job_log(prepare_recovered_timeout_log_entry(ctx, recovered_job))
       #(state, option.Some(0))
     }
-    Ok(option.None) -> claim_and_process_job(state, effect_runtime, ctx)
+    Ok(option.None) -> claim_and_process_job(state, ctx)
     Error(err) -> {
-      wisp.log_error("Failed to recover expired job: " <> string.inspect(err))
-      claim_and_process_job(state, effect_runtime, ctx)
+      state.deps.log_error("Failed to recover expired job: " <> err)
+      claim_and_process_job(state, ctx)
     }
   }
 }
 
 fn claim_and_process_job(
   state: State,
-  effect_runtime: runtime.Runtime,
   ctx: context.Context,
 ) -> #(State, Option(Int)) {
-  let #(result, _) =
-    job_manager_domain.claim_next_job(ctx)
-    |> interpreter.run(effect_runtime, ctx)
+  let result = state.deps.claim_next_job(ctx)
 
   case result {
     Ok(maybe_job) ->
@@ -236,7 +289,7 @@ fn claim_and_process_job(
         option.None -> #(state, option.Some(core.idle_poll_ms))
       }
     Error(err) -> {
-      wisp.log_error("Failed to claim job: " <> string.inspect(err))
+      state.deps.log_error("Failed to claim job: " <> err)
       #(state, option.Some(core.idle_poll_ms))
     }
   }
@@ -246,23 +299,11 @@ fn start_attempt(state: State, job: job_model.Job) -> State {
   let ctx =
     context_from_state(state, job.request_id, option.Some(job.timeout_seconds))
   let subject = state.subject
-  let db = state.db
-  let app_config_cache_subject = state.app_config_cache_subject
-  let language_version_cache_subject = state.language_version_cache_subject
-  job_tracker.job_started(state.job_tracker_subject)
+  let deps = state.deps
 
   let pid =
-    process.spawn_unlinked(fn() {
-      let effect_runtime =
-        runtime.new(
-          db,
-          app_config_cache_subject,
-          language_version_cache_subject,
-        )
-      let #(result, program_state) =
-        job_manager_domain.process_job(ctx, job)
-        |> interpreter.run(effect_runtime, ctx)
-
+    deps.spawn_attempt(fn() {
+      let #(result, program_state) = deps.process_job(ctx, job)
       process.send(
         subject,
         AttemptCompleted(
@@ -273,11 +314,7 @@ fn start_attempt(state: State, job: job_model.Job) -> State {
     })
 
   let timeout_timer =
-    process.send_after(
-      subject,
-      job.timeout_seconds * 1000,
-      AttemptTimedOut(pid),
-    )
+    deps.send_after(subject, job.timeout_seconds * 1000, AttemptTimedOut(pid))
 
   let #(next_core, commands) =
     core.on_attempt_started(state.core, pid, timeout_timer, job, ctx)
@@ -344,8 +381,8 @@ fn context_from_state(
   request_id: option.Option(Uuid),
   timeout_seconds: option.Option(Int),
 ) -> context.Context {
-  let now = basic_handlers.system_time()
-  let started_at = erlang.perf_counter_ns()
+  let now = state.deps.now_timestamp()
+  let started_at = state.deps.now_monotonic_ns()
 
   context.Context(
     config: state.config,
@@ -414,44 +451,93 @@ fn run_commands(state: State, commands: List(core.Command)) -> State {
       core.ScheduleTick(delay_ms) -> schedule_tick_after(state, delay_ms)
       core.TriggerTickNow -> trigger_tick_now(state)
       core.JobStarted -> {
-        job_tracker.job_started(state.job_tracker_subject)
+        state.deps.job_started()
         state
       }
       core.JobFinished -> {
-        job_tracker.job_finished(state.job_tracker_subject)
+        state.deps.job_finished()
         state
       }
       core.CancelTimer(timer) -> {
-        let _ = process.cancel_timer(timer)
+        state.deps.cancel_timer(timer)
         state
       }
       core.KillAttempt(pid) -> {
-        process.kill(pid)
+        state.deps.kill(pid)
         state
       }
       core.TimeoutJob(ctx, job) -> {
-        let effect_runtime =
-          runtime.new(
-            state.db,
-            state.app_config_cache_subject,
-            state.language_version_cache_subject,
-          )
-        let #(result, _) =
-          job_manager_domain.timeout_job(ctx, job)
-          |> interpreter.run(effect_runtime, ctx)
-
-        case result {
+        case state.deps.timeout_job(ctx, job) {
           Ok(_) -> state
           Error(err) -> {
-            wisp.log_error("Failed to time out job: " <> string.inspect(err))
+            state.deps.log_error("Failed to time out job: " <> err)
             state
           }
         }
       }
       core.InsertJobLog(entry) -> {
-        insert_job_log(state.db, entry)
+        state.deps.insert_job_log(entry)
         state
       }
     }
   })
+}
+
+fn default_deps(
+  db: pog.Connection,
+  job_tracker_subject: process.Subject(job_tracker.Message),
+  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
+  language_version_cache_subject: process.Subject(
+    language_version_cache_worker.Message,
+  ),
+) -> Deps {
+  let effect_runtime =
+    runtime.new(db, app_config_cache_subject, language_version_cache_subject)
+
+  Deps(
+    enqueue_next_due_periodic_job: fn(ctx) {
+      let #(outcome, _) =
+        periodic_job_manager_domain.enqueue_next_due_periodic_job(ctx)
+        |> interpreter.run(effect_runtime, ctx)
+      outcome |> result.map_error(string.inspect)
+    },
+    recover_next_expired_job: fn(ctx) {
+      let #(outcome, _) =
+        job_manager_domain.recover_next_expired_job(ctx)
+        |> interpreter.run(effect_runtime, ctx)
+      outcome |> result.map_error(string.inspect)
+    },
+    claim_next_job: fn(ctx) {
+      let #(outcome, _) =
+        job_manager_domain.claim_next_job(ctx)
+        |> interpreter.run(effect_runtime, ctx)
+      outcome |> result.map_error(string.inspect)
+    },
+    process_job: fn(ctx, job) {
+      job_manager_domain.process_job(ctx, job)
+      |> interpreter.run(effect_runtime, ctx)
+    },
+    timeout_job: fn(ctx, job) {
+      let #(outcome, _) =
+        job_manager_domain.timeout_job(ctx, job)
+        |> interpreter.run(effect_runtime, ctx)
+      outcome |> result.map_error(string.inspect)
+    },
+    insert_job_log: fn(entry) { insert_job_log(db, entry) },
+    job_started: fn() { job_tracker.job_started(job_tracker_subject) },
+    job_finished: fn() { job_tracker.job_finished(job_tracker_subject) },
+    spawn_attempt: process.spawn_unlinked,
+    send_after: fn(subject, delay, message) {
+      process.send_after(subject, delay, message)
+    },
+    cancel_timer: fn(timer) {
+      let _ = process.cancel_timer(timer)
+      Nil
+    },
+    kill: process.kill,
+    now_timestamp: basic_handlers.system_time,
+    now_monotonic_ns: erlang.perf_counter_ns,
+    random_int: int.random,
+    log_error: wisp.log_error,
+  )
 }
