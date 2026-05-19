@@ -24,9 +24,9 @@ import glot_backend/job_tracker
 import glot_backend/log
 import glot_backend/server_mode
 import glot_backend/sql
-import glot_backend/worker/app_config_cache_worker
-import glot_backend/worker/job_worker_core as core
-import glot_backend/worker/language_version_cache_worker
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/job_worker/core as core
+import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/tick_worker_support
 import glot_core/helpers/dict_helpers
 import glot_core/helpers/list_helpers

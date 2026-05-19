@@ -10,8 +10,8 @@ import glot_backend/dynamic_config
 import glot_backend/effect/error/run_request_error
 import glot_backend/server_mode
 import glot_backend/worker/cache_worker_support
-import glot_backend/worker/language_version_cache_worker
-import glot_backend/worker/language_version_cache_worker_core
+import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
+import glot_backend/worker/language_version_cache_worker/core as language_version_cache_worker_core
 import glot_core/language
 import glot_core/run
 import youid/uuid

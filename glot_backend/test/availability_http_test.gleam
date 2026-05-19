@@ -12,7 +12,7 @@ import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/page
 import glot_backend/server_mode
-import glot_backend/worker/app_config_cache_worker
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_core/availability_mode
 import pog
 import wisp/simulate

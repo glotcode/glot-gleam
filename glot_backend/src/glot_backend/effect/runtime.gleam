@@ -2,8 +2,8 @@ import gleam/erlang/process
 import gleam/option.{type Option}
 import glot_backend/effect/handlers
 import glot_backend/helpers/db_helpers
-import glot_backend/worker/app_config_cache_worker
-import glot_backend/worker/language_version_cache_worker
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import pog
 
 pub type Runtime {

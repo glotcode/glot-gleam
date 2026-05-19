@@ -12,8 +12,8 @@ import glot_backend/effect/error/db_error
 import glot_backend/effect/error/run_request_error
 import glot_backend/erlang
 import glot_backend/server_mode
-import glot_backend/worker/app_config_cache_worker
-import glot_backend/worker/language_version_cache_worker_core as core
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/language_version_cache_worker/core as core
 import glot_core/language as language_module
 import glot_core/run
 import wisp

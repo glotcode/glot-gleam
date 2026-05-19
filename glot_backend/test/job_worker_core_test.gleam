@@ -6,7 +6,7 @@ import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
-import glot_backend/worker/job_worker_core
+import glot_backend/worker/job_worker/core as job_worker_core
 import glot_backend/server_mode
 import glot_core/job/job_model
 import youid/uuid

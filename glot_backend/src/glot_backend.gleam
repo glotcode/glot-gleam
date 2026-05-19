@@ -22,10 +22,10 @@ import glot_backend/job_tracker
 import glot_backend/page
 import glot_backend/request_tracker
 import glot_backend/server_mode
-import glot_backend/worker/app_config_cache_worker
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_backend/worker/db_monitor
-import glot_backend/worker/job_worker
-import glot_backend/worker/language_version_cache_worker
+import glot_backend/worker/job_worker/worker as job_worker
+import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_backend/worker/migration_worker
 import glot_core/email/email_address_model

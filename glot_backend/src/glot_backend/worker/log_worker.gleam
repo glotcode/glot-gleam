@@ -14,7 +14,7 @@ import glot_backend/effect/error
 import glot_backend/helpers/db_helpers
 import glot_backend/log
 import glot_backend/sql
-import glot_backend/worker/app_config_cache_worker
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_core/api_action.{type ApiAction}
 import glot_core/helpers/dict_helpers
 import glot_core/helpers/list_helpers

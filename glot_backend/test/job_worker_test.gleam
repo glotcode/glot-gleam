@@ -6,7 +6,7 @@ import gleeunit
 import glot_backend/context
 import glot_backend/effect/program_state
 import glot_backend/server_mode
-import glot_backend/worker/job_worker
+import glot_backend/worker/job_worker/worker as job_worker
 import glot_core/job/job_model
 import youid/uuid
 

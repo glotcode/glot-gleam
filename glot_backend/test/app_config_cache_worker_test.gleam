@@ -6,8 +6,8 @@ import gleeunit
 import glot_backend/dynamic_config
 import glot_backend/effect/error/db_error
 import glot_backend/server_mode
-import glot_backend/worker/app_config_cache_worker
-import glot_backend/worker/app_config_cache_worker_core
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/app_config_cache_worker/core as app_config_cache_worker_core
 import glot_backend/worker/cache_worker_support
 import glot_core/auth/account_model
 import glot_core/availability_mode

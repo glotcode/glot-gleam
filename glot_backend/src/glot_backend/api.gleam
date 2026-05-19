@@ -80,8 +80,8 @@ import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/server_timing
-import glot_backend/worker/app_config_cache_worker
-import glot_backend/worker/language_version_cache_worker
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_core/admin/api_log_dto
 import glot_core/admin/auth_config_dto

@@ -11,7 +11,7 @@ import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
-import glot_backend/worker/app_config_cache_worker
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import wisp
 
 pub fn run(

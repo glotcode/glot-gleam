@@ -20,8 +20,8 @@ import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/server_timing
 import glot_backend/snippets_page
-import glot_backend/worker/app_config_cache_worker
-import glot_backend/worker/language_version_cache_worker
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/log_worker
 import glot_core/route
 import lustre/attribute

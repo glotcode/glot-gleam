@@ -10,7 +10,7 @@ import glot_backend/effect/error/db_error
 import glot_backend/erlang
 import glot_backend/helpers/db_helpers
 import glot_backend/server_mode
-import glot_backend/worker/app_config_cache_worker_core as core
+import glot_backend/worker/app_config_cache_worker/core as core
 import pog
 import wisp
 
