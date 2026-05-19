@@ -1,10 +1,10 @@
 import gleam/erlang/process
 import gleam/json
+import gleam/list
 import gleam/option.{type Option}
 import gleam/otp/actor
 import gleam/otp/supervision
 import gleam/string
-import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
@@ -22,6 +22,7 @@ import glot_backend/log
 import glot_backend/server_mode
 import glot_backend/sql
 import glot_backend/worker/app_config_cache_worker
+import glot_backend/worker/job_worker_core as core
 import glot_backend/worker/language_version_cache_worker
 import glot_backend/worker/tick_worker_support
 import glot_core/helpers/dict_helpers
@@ -31,21 +32,10 @@ import pog
 import wisp
 import youid/uuid.{type Uuid}
 
-const idle_poll_ms = 1000
-
 pub type Message {
   Tick
-  AttemptCompleted(pid: process.Pid, log_entry: JobLogEntry)
+  AttemptCompleted(pid: process.Pid, log_entry: core.JobLogEntry)
   AttemptTimedOut(pid: process.Pid)
-}
-
-type ActiveAttempt {
-  ActiveAttempt(
-    pid: process.Pid,
-    timer: process.Timer,
-    job: job_model.Job,
-    ctx: context.Context,
-  )
 }
 
 type State {
@@ -61,7 +51,7 @@ type State {
       language_version_cache_worker.Message,
     ),
     tick_timer: Option(process.Timer),
-    active_attempt: Option(ActiveAttempt),
+    core: core.State,
   )
 }
 
@@ -88,7 +78,7 @@ pub fn start(
         app_config_cache_subject: app_config_cache_subject,
         language_version_cache_subject: language_version_cache_subject,
         tick_timer: option.None,
-        active_attempt: option.None,
+        core: core.new(),
       )
     let _ = process.send(subject, Tick)
     let initialised = actor.initialised(initial_state)
@@ -128,35 +118,39 @@ fn handle_message(
 ) -> actor.Next(State, Message) {
   case message {
     Tick -> {
-      case server_mode.get_mode(state.server_mode_subject) {
+      let mode = server_mode.get_mode(state.server_mode_subject)
+      case mode {
         // The worker starts before startup migrations finish. Keep polling so
         // it can begin draining jobs once the server switches to Running.
         server_mode.Maintenance -> {
-          actor.continue(schedule_tick_after(state, idle_poll_ms))
+          let #(next_core, commands) = core.on_tick(state.core, mode, option.None)
+          actor.continue(run_commands(State(..state, core: next_core), commands))
         }
         server_mode.ShuttingDown -> actor.continue(state)
         server_mode.Running -> {
           let #(next_state, maybe_delay) = run_once(state)
-          actor.continue(schedule_tick_for_running(next_state, maybe_delay))
+          let #(next_core, commands) =
+            core.on_tick(next_state.core, mode, maybe_delay)
+          actor.continue(run_commands(State(..next_state, core: next_core), commands))
         }
       }
     }
     AttemptCompleted(pid, log_entry) -> {
-      let next_state = finish_attempt(state, pid, log_entry)
-      actor.continue(next_state)
+      let #(next_core, commands) =
+        core.on_attempt_completed(state.core, pid, log_entry)
+      actor.continue(run_commands(State(..state, core: next_core), commands))
     }
     AttemptTimedOut(pid) -> {
-      let next_state = timeout_attempt(state, pid)
-      actor.continue(next_state)
+      case core.active_attempt(state.core) {
+        option.Some(active) if active.pid == pid -> {
+          let timeout_log_entry = prepare_timeout_log_entry(active.ctx, active.job)
+          let #(next_core, commands) =
+            core.on_attempt_timed_out(state.core, pid, timeout_log_entry)
+          actor.continue(run_commands(State(..state, core: next_core), commands))
+        }
+        _ -> actor.continue(state)
+      }
     }
-  }
-}
-
-fn schedule_tick_for_running(state: State, maybe_delay: Option(Int)) -> State {
-  case maybe_delay {
-    option.Some(delay) if delay <= 0 -> trigger_tick_now(state)
-    option.Some(delay) -> schedule_tick_after(state, delay)
-    option.None -> state
   }
 }
 
@@ -172,7 +166,7 @@ fn trigger_tick_now(state: State) -> State {
 }
 
 fn run_once(state: State) -> #(State, Option(Int)) {
-  case state.active_attempt {
+  case core.active_attempt(state.core) {
     option.Some(_) -> #(state, option.None)
     option.None -> {
       let effect_runtime =
@@ -239,11 +233,11 @@ fn claim_and_process_job(
     Ok(maybe_job) ->
       case maybe_job {
         option.Some(job) -> #(start_attempt(state, job), option.None)
-        option.None -> #(state, option.Some(idle_poll_ms))
+        option.None -> #(state, option.Some(core.idle_poll_ms))
       }
     Error(err) -> {
       wisp.log_error("Failed to claim job: " <> string.inspect(err))
-      #(state, option.Some(idle_poll_ms))
+      #(state, option.Some(core.idle_poll_ms))
     }
   }
 }
@@ -285,65 +279,16 @@ fn start_attempt(state: State, job: job_model.Job) -> State {
       AttemptTimedOut(pid),
     )
 
-  State(
-    ..state,
-    active_attempt: option.Some(ActiveAttempt(pid, timeout_timer, job, ctx)),
-  )
-}
-
-fn finish_attempt(
-  state: State,
-  pid: process.Pid,
-  log_entry: JobLogEntry,
-) -> State {
-  case state.active_attempt {
-    option.Some(active) if active.pid == pid -> {
-      let _ = process.cancel_timer(active.timer)
-      job_tracker.job_finished(state.job_tracker_subject)
-      insert_job_log(state.db, log_entry)
-      State(..state, active_attempt: option.None)
-      |> trigger_tick_now()
-    }
-    _ -> state
-  }
-}
-
-fn timeout_attempt(state: State, pid: process.Pid) -> State {
-  case state.active_attempt {
-    option.Some(active) if active.pid == pid -> {
-      process.kill(active.pid)
-      let effect_runtime =
-        runtime.new(
-          state.db,
-          state.app_config_cache_subject,
-          state.language_version_cache_subject,
-        )
-      let #(result, _) =
-        job_manager_domain.timeout_job(active.ctx, active.job)
-        |> interpreter.run(effect_runtime, active.ctx)
-
-      case result {
-        Ok(_) -> Nil
-        Error(err) ->
-          wisp.log_error("Failed to time out job: " <> string.inspect(err))
-      }
-
-      let timeout_log_entry = prepare_timeout_log_entry(active.ctx, active.job)
-
-      job_tracker.job_finished(state.job_tracker_subject)
-      insert_job_log(state.db, timeout_log_entry)
-      State(..state, active_attempt: option.None)
-      |> trigger_tick_now()
-    }
-    _ -> state
-  }
+  let #(next_core, commands) =
+    core.on_attempt_started(state.core, pid, timeout_timer, job, ctx)
+  run_commands(State(..state, core: next_core), commands)
 }
 
 fn prepare_timeout_log_entry(
   ctx: context.Context,
   job: job_model.Job,
-) -> JobLogEntry {
-  JobLogEntry(
+) -> core.JobLogEntry {
+  core.JobLogEntry(
     ..prepare_log_entry(
       ctx,
       program_state.new_state(),
@@ -357,8 +302,11 @@ fn prepare_timeout_log_entry(
 fn prepare_recovered_timeout_log_entry(
   ctx: context.Context,
   job: job_model.Job,
-) -> JobLogEntry {
-  JobLogEntry(..prepare_timeout_log_entry(ctx, job), created_at: ctx.timestamp)
+) -> core.JobLogEntry {
+  core.JobLogEntry(
+    ..prepare_timeout_log_entry(ctx, job),
+    created_at: ctx.timestamp,
+  )
 }
 
 fn prepare_log_entry(
@@ -366,7 +314,7 @@ fn prepare_log_entry(
   state: program_state.State,
   job: job_model.Job,
   result: Result(Nil, error.Error),
-) -> JobLogEntry {
+) -> core.JobLogEntry {
   let id = basic_handlers.uuid_v7(ctx.timestamp)
   let duration_ns = erlang.perf_counter_ns() - ctx.started_at
 
@@ -375,7 +323,7 @@ fn prepare_log_entry(
     Error(err) -> option.Some(err)
   }
 
-  JobLogEntry(
+  core.JobLogEntry(
     id: id,
     request_id: job.request_id,
     job_id: job.id,
@@ -413,24 +361,7 @@ fn context_from_state(
   )
 }
 
-pub type JobLogEntry {
-  JobLogEntry(
-    id: Uuid,
-    request_id: Option(Uuid),
-    job_id: Uuid,
-    job_type: job_model.JobType,
-    attempt: Int,
-    created_at: Timestamp,
-    duration_ns: Int,
-    info: log.Fields,
-    warnings: log.Fields,
-    debug: log.Fields,
-    error: option.Option(error.Error),
-    effects: List(effect_trace.EffectMeasurement),
-  )
-}
-
-fn insert_job_log(db: pog.Connection, entry: JobLogEntry) -> Nil {
+fn insert_job_log(db: pog.Connection, entry: core.JobLogEntry) -> Nil {
   let query =
     sql.insert_job_log(
       id: uuid.to_bit_array(entry.id),
@@ -475,4 +406,52 @@ fn encode_error(err: error.Error) -> json.Json {
   json.object([
     #("message", json.string(error.to_string(err))),
   ])
+}
+
+fn run_commands(state: State, commands: List(core.Command)) -> State {
+  list.fold(commands, state, fn(state: State, command) {
+    case command {
+      core.ScheduleTick(delay_ms) -> schedule_tick_after(state, delay_ms)
+      core.TriggerTickNow -> trigger_tick_now(state)
+      core.JobStarted -> {
+        job_tracker.job_started(state.job_tracker_subject)
+        state
+      }
+      core.JobFinished -> {
+        job_tracker.job_finished(state.job_tracker_subject)
+        state
+      }
+      core.CancelTimer(timer) -> {
+        let _ = process.cancel_timer(timer)
+        state
+      }
+      core.KillAttempt(pid) -> {
+        process.kill(pid)
+        state
+      }
+      core.TimeoutJob(ctx, job) -> {
+        let effect_runtime =
+          runtime.new(
+            state.db,
+            state.app_config_cache_subject,
+            state.language_version_cache_subject,
+          )
+        let #(result, _) =
+          job_manager_domain.timeout_job(ctx, job)
+          |> interpreter.run(effect_runtime, ctx)
+
+        case result {
+          Ok(_) -> state
+          Error(err) -> {
+            wisp.log_error("Failed to time out job: " <> string.inspect(err))
+            state
+          }
+        }
+      }
+      core.InsertJobLog(entry) -> {
+        insert_job_log(state.db, entry)
+        state
+      }
+    }
+  })
 }
