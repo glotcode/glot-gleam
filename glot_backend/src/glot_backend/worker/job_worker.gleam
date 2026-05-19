@@ -23,6 +23,7 @@ import glot_backend/server_mode
 import glot_backend/sql
 import glot_backend/worker/app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker
+import glot_backend/worker/tick_worker_support
 import glot_core/helpers/dict_helpers
 import glot_core/helpers/list_helpers
 import glot_core/job/job_model
@@ -160,25 +161,14 @@ fn schedule_tick_for_running(state: State, maybe_delay: Option(Int)) -> State {
 }
 
 fn schedule_tick_after(state: State, delay: Int) -> State {
-  clear_tick_timer(state.tick_timer)
-  let timer = process.send_after(state.subject, delay, Tick)
+  let timer =
+    tick_worker_support.reschedule(state.tick_timer, state.subject, delay, Tick)
   State(..state, tick_timer: option.Some(timer))
 }
 
 fn trigger_tick_now(state: State) -> State {
-  clear_tick_timer(state.tick_timer)
-  let _ = process.send(state.subject, Tick)
+  tick_worker_support.trigger_now(state.tick_timer, state.subject, Tick)
   State(..state, tick_timer: option.None)
-}
-
-fn clear_tick_timer(timer: Option(process.Timer)) -> Nil {
-  case timer {
-    option.Some(timer) -> {
-      let _ = process.cancel_timer(timer)
-      Nil
-    }
-    option.None -> Nil
-  }
 }
 
 fn run_once(state: State) -> #(State, Option(Int)) {

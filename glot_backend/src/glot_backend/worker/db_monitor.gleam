@@ -7,6 +7,7 @@ import gleam/result
 import gleam/string
 import glot_backend/helpers/db_helpers
 import glot_backend/server_mode
+import glot_backend/worker/tick_worker_support
 import pog
 import wisp
 
@@ -96,7 +97,8 @@ fn continue_monitoring(state: State) -> actor.Next(State, Message) {
     }
   }
 
-  let _ = process.send_after(state.subject, health_check_interval_ms, Tick)
+  let _ =
+    tick_worker_support.schedule(state.subject, health_check_interval_ms, Tick)
   actor.continue(next_state)
 }
 

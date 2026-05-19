@@ -6,6 +6,7 @@ import gleam/otp/supervision
 import gleam/result
 import glot_backend/migration_runner
 import glot_backend/server_mode
+import glot_backend/worker/tick_worker_support
 import pog
 import wisp
 
@@ -135,7 +136,7 @@ fn handle_migration_result(
         <> int.to_string(retry_interval_ms)
         <> "ms",
       )
-      let _ = process.send_after(state.subject, retry_interval_ms, Tick)
+      let _ = tick_worker_support.schedule(state.subject, retry_interval_ms, Tick)
       State(..state, in_flight: False)
     }
   }
