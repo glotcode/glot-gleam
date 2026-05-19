@@ -67,15 +67,17 @@ fn handle_message(
   message: Message,
 ) -> actor.Next(State, Message) {
   case message {
-    Tick ->
-      actor.continue(maybe_start_migrations(state))
+    Tick -> actor.continue(maybe_start_migrations(state))
     StartupDbCompleted(result) ->
       actor.continue(handle_migration_result(state, result))
   }
 }
 
 fn maybe_start_migrations(state: State) -> State {
-  case state.in_flight || server_mode.get_mode(state.server_mode_subject) == server_mode.Running {
+  case
+    state.in_flight
+    || server_mode.get_mode(state.server_mode_subject) == server_mode.Running
+  {
     True -> state
     False -> {
       let subject = state.subject
@@ -89,12 +91,11 @@ fn maybe_start_migrations(state: State) -> State {
             migration_runner.run_pending(db, migrations_dir)
             |> result.try(fn(applied_versions) {
               migration_runner.run_pending_seeds(db, seeds_dir)
-              |> result.map(fn(applied_seeds) { #(applied_versions, applied_seeds) })
+              |> result.map(fn(applied_seeds) {
+                #(applied_versions, applied_seeds)
+              })
             })
-          process.send(
-            subject,
-            StartupDbCompleted(result),
-          )
+          process.send(subject, StartupDbCompleted(result))
         })
 
       State(..state, in_flight: True)

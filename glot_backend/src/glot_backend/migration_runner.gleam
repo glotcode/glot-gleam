@@ -70,23 +70,19 @@ fn decode_sql_files(
   case files {
     [] -> Ok(list.reverse(acc))
     [file, ..rest] -> {
-      use sql <- result.try(file_system.read_file(
-        migration_path(directory, file.filename),
-      ))
-
-      decode_sql_files(
-        directory,
-        rest,
-        [
-          Migration(
-            version: file.version,
-            name: file.name,
-            filename: file.filename,
-            sql: sql,
-          ),
-          ..acc
-        ],
+      use sql <- result.try(
+        file_system.read_file(migration_path(directory, file.filename)),
       )
+
+      decode_sql_files(directory, rest, [
+        Migration(
+          version: file.version,
+          name: file.name,
+          filename: file.filename,
+          sql: sql,
+        ),
+        ..acc
+      ])
     }
   }
 }
@@ -94,9 +90,11 @@ fn decode_sql_files(
 fn ensure_bootstrap_migration_present(
   migrations: List(Migration),
 ) -> Result(Nil, String) {
-  case list.find(migrations, fn(migration) {
-    migration.version == bootstrap_version
-  }) {
+  case
+    list.find(migrations, fn(migration) {
+      migration.version == bootstrap_version
+    })
+  {
     Ok(_) -> Ok(Nil)
     Error(Nil) ->
       Error("Missing required migration: " <> bootstrap_version <> ".sql")
@@ -112,9 +110,11 @@ fn bootstrap_schema_migrations_if_needed(
   case has_schema_migrations {
     True -> Ok(Nil)
     False ->
-      case list.find(migrations, fn(migration) {
-        migration.version == bootstrap_version
-      }) {
+      case
+        list.find(migrations, fn(migration) {
+          migration.version == bootstrap_version
+        })
+      {
         Ok(migration) -> apply_migration(db, migration)
         Error(Nil) ->
           Error("Missing required migration: " <> bootstrap_version <> ".sql")
@@ -153,7 +153,9 @@ fn list_applied_versions(db: pog.Connection) -> Result(List(String), String) {
   |> result.map(fn(returned) { returned.rows })
 }
 
-fn list_applied_seed_versions(db: pog.Connection) -> Result(List(String), String) {
+fn list_applied_seed_versions(
+  db: pog.Connection,
+) -> Result(List(String), String) {
   db_helpers.query(
     db_helpers.new(db),
     #(
@@ -189,37 +191,48 @@ fn apply_migrations(
   }
 }
 
-fn apply_migration(db: pog.Connection, migration: Migration) -> Result(Nil, String) {
+fn apply_migration(
+  db: pog.Connection,
+  migration: Migration,
+) -> Result(Nil, String) {
   pog.transaction(db, fn(tx) {
     let tx_db = db_helpers.new(tx)
     let statements = statements_from_sql(migration.sql)
 
-    use _ <- result.try(result.map_error(
-      configure_statement_timeout(tx),
-      fn(err) {
-        "Failed to configure statement timeout for " <> migration.filename <> ": "
-        <> string.inspect(err)
-      },
-    ))
     use _ <- result.try(
-      execute_statements(tx_db, migration.filename, statements),
+      result.map_error(configure_statement_timeout(tx), fn(err) {
+        "Failed to configure statement timeout for "
+        <> migration.filename
+        <> ": "
+        <> string.inspect(err)
+      }),
     )
+    use _ <- result.try(execute_statements(
+      tx_db,
+      migration.filename,
+      statements,
+    ))
     db_helpers.execute(
       tx_db,
-      #(
-        "INSERT INTO schema_migrations (version, name) VALUES ($1, $2)",
-        [dev.ParamString(migration.version), dev.ParamString(migration.name)],
-      ),
+      #("INSERT INTO schema_migrations (version, name) VALUES ($1, $2)", [
+        dev.ParamString(migration.version),
+        dev.ParamString(migration.name),
+      ]),
       fn(err) {
-        "Failed to record applied migration " <> migration.version <> "_"
-        <> migration.name <> ": "
+        "Failed to record applied migration "
+        <> migration.version
+        <> "_"
+        <> migration.name
+        <> ": "
         <> string.inspect(err)
       },
     )
     |> result.map(fn(_) { Nil })
   })
   |> result.map_error(fn(err) {
-    "Migration transaction failed for " <> migration.filename <> ": "
+    "Migration transaction failed for "
+    <> migration.filename
+    <> ": "
     <> string.inspect(err)
   })
 }
@@ -243,29 +256,36 @@ fn apply_seed(db: pog.Connection, seed: Migration) -> Result(Nil, String) {
     let tx_db = db_helpers.new(tx)
     let statements = statements_from_sql(seed.sql)
 
-    use _ <- result.try(result.map_error(
-      configure_statement_timeout(tx),
-      fn(err) {
-        "Failed to configure statement timeout for seed " <> seed.filename <> ": "
+    use _ <- result.try(
+      result.map_error(configure_statement_timeout(tx), fn(err) {
+        "Failed to configure statement timeout for seed "
+        <> seed.filename
+        <> ": "
         <> string.inspect(err)
-      },
-    ))
+      }),
+    )
     use _ <- result.try(execute_statements(tx_db, seed.filename, statements))
     db_helpers.execute(
       tx_db,
-      #(
-        "INSERT INTO schema_seeds (version, name) VALUES ($1, $2)",
-        [dev.ParamString(seed.version), dev.ParamString(seed.name)],
-      ),
+      #("INSERT INTO schema_seeds (version, name) VALUES ($1, $2)", [
+        dev.ParamString(seed.version),
+        dev.ParamString(seed.name),
+      ]),
       fn(err) {
-        "Failed to record applied seed " <> seed.version <> "_" <> seed.name
-        <> ": " <> string.inspect(err)
+        "Failed to record applied seed "
+        <> seed.version
+        <> "_"
+        <> seed.name
+        <> ": "
+        <> string.inspect(err)
       },
     )
     |> result.map(fn(_) { Nil })
   })
   |> result.map_error(fn(err) {
-    "Seed transaction failed for " <> seed.filename <> ": "
+    "Seed transaction failed for "
+    <> seed.filename
+    <> ": "
     <> string.inspect(err)
   })
 }
@@ -279,13 +299,9 @@ fn execute_statements(
     [] -> Ok(Nil)
     [statement, ..rest] -> {
       use _ <- result.try(
-        db_helpers.execute(
-          db,
-          #(statement, []),
-          fn(err) {
-            "Failed to execute " <> filename <> ": " <> string.inspect(err)
-          },
-        )
+        db_helpers.execute(db, #(statement, []), fn(err) {
+          "Failed to execute " <> filename <> ": " <> string.inspect(err)
+        })
         |> result.map(fn(_) { Nil }),
       )
       execute_statements(db, filename, rest)
@@ -293,9 +309,12 @@ fn execute_statements(
   }
 }
 
-fn configure_statement_timeout(tx: pog.Connection) -> Result(Nil, pog.QueryError) {
+fn configure_statement_timeout(
+  tx: pog.Connection,
+) -> Result(Nil, pog.QueryError) {
   pog.query(
-    "set local statement_timeout = " <> int.to_string(migration_statement_timeout_ms),
+    "set local statement_timeout = "
+    <> int.to_string(migration_statement_timeout_ms),
   )
   |> pog.execute(tx)
   |> result.map(fn(_) { Nil })

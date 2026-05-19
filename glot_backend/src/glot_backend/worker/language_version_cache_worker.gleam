@@ -19,6 +19,7 @@ import glot_core/run
 import wisp
 
 const call_timeout_ms = 5000
+
 const bootstrap_poll_interval_ms = 100
 
 pub type Message {
@@ -178,15 +179,9 @@ fn handle_message(
     RefreshConfig -> actor.continue(refresh_config(state))
     Tick -> {
       let state = refresh_config(state)
-      let _ =
-        process.send_after(
-          state.subject,
-          next_tick_delay_ms(state),
-          Tick,
-        )
+      let _ = process.send_after(state.subject, next_tick_delay_ms(state), Tick)
       case should_schedule_refreshes(state) {
-        True ->
-          actor.continue(schedule_due_refreshes(state))
+        True -> actor.continue(schedule_due_refreshes(state))
         False -> actor.continue(state)
       }
     }
@@ -207,7 +202,10 @@ fn lookup_language_version(
   reply: process.Subject(
     Result(run.RunResult, run_request_error.RunRequestError),
   ),
-) -> #(State, option.Option(Result(run.RunResult, run_request_error.RunRequestError))) {
+) -> #(
+  State,
+  option.Option(Result(run.RunResult, run_request_error.RunRequestError)),
+) {
   case dict.get(state.cached_versions, language) {
     Ok(entry) -> {
       let next_state = case is_stale(state, entry, now_ns) {
@@ -391,8 +389,8 @@ fn refresh_config(state: State) -> State {
       State(
         ..state,
         config: dynamic_config.language_version_cache_worker_config(config),
-        docker_run_configured:
-          dynamic_config.docker_run_config(config) != option.None,
+        docker_run_configured: dynamic_config.docker_run_config(config)
+          != option.None,
       )
     Error(err) -> {
       let db_error.DbQueryError(message: message) = err
@@ -520,9 +518,9 @@ fn can_update_languages(state: State) -> Bool {
 
 fn should_start_initial_refresh_immediately(state: State) -> Bool {
   dict.is_empty(state.cached_versions)
-    && dict.is_empty(state.in_flight)
-    && state.refresh_queue != []
-    && state.refresh_language == option.None
+  && dict.is_empty(state.in_flight)
+  && state.refresh_queue != []
+  && state.refresh_language == option.None
 }
 
 fn next_tick_delay_ms(state: State) -> Int {

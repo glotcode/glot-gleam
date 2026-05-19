@@ -27,10 +27,11 @@ pub fn parse_filename(filename: String) -> Result(#(String, String), String) {
   }
 }
 
-pub fn decode_filenames(filenames: List(String)) -> Result(List(SqlFile), String) {
-  let filenames = list.sort(filenames, by: fn(left, right) {
-    string.compare(left, right)
-  })
+pub fn decode_filenames(
+  filenames: List(String),
+) -> Result(List(SqlFile), String) {
+  let filenames =
+    list.sort(filenames, by: fn(left, right) { string.compare(left, right) })
 
   decode_filename_entries(filenames, [])
 }
@@ -42,17 +43,21 @@ pub fn validate_migrations(
   use _ <- result.try(ensure_unique_versions(files, option.None))
 
   case files {
-    [first, .._] if first.filename == bootstrap_filename -> Ok(files)
-    [first, .._] ->
+    [first, ..] if first.filename == bootstrap_filename -> Ok(files)
+    [first, ..] ->
       Error(
-        "First migration must be " <> bootstrap_filename <> ", got "
+        "First migration must be "
+        <> bootstrap_filename
+        <> ", got "
         <> first.filename,
       )
     [] -> Error("No migrations found")
   }
 }
 
-pub fn validate_seeds(filenames: List(String)) -> Result(List(SqlFile), String) {
+pub fn validate_seeds(
+  filenames: List(String),
+) -> Result(List(SqlFile), String) {
   use files <- result.try(decode_filenames(filenames))
   ensure_unique_versions(files, option.None)
 }
@@ -65,10 +70,7 @@ fn decode_filename_entries(
     [] -> Ok(list.reverse(acc))
     [filename, ..rest] -> {
       use #(version, name) <- result.try(parse_filename(filename))
-      decode_filename_entries(
-        rest,
-        [SqlFile(version:, name:, filename:), ..acc],
-      )
+      decode_filename_entries(rest, [SqlFile(version:, name:, filename:), ..acc])
     }
   }
 }

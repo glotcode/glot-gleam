@@ -61,9 +61,7 @@ pub fn main() {
 
   let assert Ok(cfg) = context.config_from_dict(env_values)
   let seeds_directory =
-    priv_directory
-    <> "/db/seeds/"
-    <> context.app_env_to_string(cfg.app_env)
+    priv_directory <> "/db/seeds/" <> context.app_env_to_string(cfg.app_env)
   let postgres_pool_name = process.new_name("postgres_pool")
   let postgres_cfg = postgres_config(cfg, postgres_pool_name)
   let db = pog.named_connection(postgres_pool_name)

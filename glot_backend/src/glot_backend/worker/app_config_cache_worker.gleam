@@ -179,7 +179,10 @@ fn lookup_config(
   reply: process.Subject(
     Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
   ),
-) -> #(State, option.Option(Result(dynamic_config.DynamicConfig, db_error.DbQueryError))) {
+) -> #(
+  State,
+  option.Option(Result(dynamic_config.DynamicConfig, db_error.DbQueryError)),
+) {
   case state.cache_entry {
     option.Some(cache_entry) -> {
       let next_state = case is_stale(cache_entry, now_ns) {

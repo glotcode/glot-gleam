@@ -15,7 +15,8 @@ pub fn app_env_from_string_accepts_prod_test() {
 }
 
 pub fn app_env_from_string_rejects_unknown_value_test() {
-  assert context.app_env_from_string("staging") == Error("Invalid APP_ENV: staging")
+  assert context.app_env_from_string("staging")
+    == Error("Invalid APP_ENV: staging")
 }
 
 pub fn config_from_dict_rejects_invalid_app_env_test() {
