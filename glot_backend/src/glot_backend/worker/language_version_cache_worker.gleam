@@ -37,8 +37,8 @@ pub type Message {
   )
 }
 
-pub type FetchHandlers {
-  FetchHandlers(
+pub type Deps {
+  Deps(
     fetch_language_version: fn(
       process.Subject(app_config_cache_worker.Message),
       language_module.Language,
@@ -56,7 +56,7 @@ type State {
     subject: process.Subject(Message),
     app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
     server_mode_subject: process.Subject(server_mode.Message),
-    fetch_handlers: FetchHandlers,
+    deps: Deps,
     core: core.State,
   )
 }
@@ -72,7 +72,7 @@ pub fn start(
     config,
     app_config_cache_subject,
     server_mode_subject,
-    default_fetch_handlers(),
+    default_deps(),
   )
 }
 
@@ -81,7 +81,7 @@ pub fn start_with_handlers(
   _config: context.Config,
   app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
   server_mode_subject: process.Subject(server_mode.Message),
-  fetch_handlers: FetchHandlers,
+  deps: Deps,
 ) {
   actor.new_with_initialiser(1000, fn(subject) {
     let initial_state =
@@ -89,7 +89,7 @@ pub fn start_with_handlers(
         subject: subject,
         app_config_cache_subject: app_config_cache_subject,
         server_mode_subject: server_mode_subject,
-        fetch_handlers: fetch_handlers,
+        deps: deps,
         core: core.new(),
       )
     let _ = process.send(subject, RefreshConfig)
@@ -122,8 +122,8 @@ pub fn get_language_version(
   })
 }
 
-fn default_fetch_handlers() -> FetchHandlers {
-  FetchHandlers(
+fn default_deps() -> Deps {
+  Deps(
     fetch_language_version: fetch_language_version,
     get_config: app_config_cache_worker.get_config,
     now_ns: erlang.perf_counter_ns,
@@ -142,7 +142,7 @@ fn handle_message(
           state.core,
           language,
           reply,
-          state.fetch_handlers.now_ns(),
+          state.deps.now_ns(),
           can_fetch(state),
           can_update_languages(state),
         )
@@ -154,8 +154,8 @@ fn handle_message(
       let #(next_core, commands) =
         core.on_tick(
           state.core,
-          state.fetch_handlers.supported_languages(),
-          state.fetch_handlers.now_ns(),
+          state.deps.supported_languages(),
+          state.deps.now_ns(),
           can_update_languages(state),
         )
       actor.continue(run_commands(State(..state, core: next_core), commands))
@@ -216,7 +216,7 @@ fn map_query_error(
 }
 
 fn refresh_config(state: State) -> State {
-  case state.fetch_handlers.get_config(state.app_config_cache_subject) {
+  case state.deps.get_config(state.app_config_cache_subject) {
     Ok(config) ->
       State(..state, core: core.set_config(state.core, config))
     Error(err) -> {
@@ -239,16 +239,16 @@ fn run_commands(state: State, commands: List(core.Command)) -> State {
       core.StartFetch(language, timeout_ms) -> {
         let subject = state.subject
         let app_config_cache_subject = state.app_config_cache_subject
-        let fetch_handlers = state.fetch_handlers
+        let deps = state.deps
         let _ =
           process.spawn_unlinked(fn() {
             let result =
-              fetch_handlers.fetch_language_version(
+              deps.fetch_language_version(
                 app_config_cache_subject,
                 language,
                 timeout_ms,
               )
-            let fetched_at_ns = fetch_handlers.now_ns()
+            let fetched_at_ns = deps.now_ns()
             process.send(
               subject,
               FetchCompleted(language, fetched_at_ns:, result: result),

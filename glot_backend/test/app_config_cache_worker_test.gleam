@@ -235,7 +235,7 @@ fn start_worker(
   let server_mode_subject = process.named_subject(server_mode_name)
 
   let handlers =
-    app_config_cache_worker.FetchHandlers(
+    app_config_cache_worker.Deps(
       fetch_config: fn() {
         let response_subject = process.new_subject()
         process.send(control_subject, RegisterFetch(reply: response_subject))

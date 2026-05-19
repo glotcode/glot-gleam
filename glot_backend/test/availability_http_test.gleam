@@ -105,7 +105,7 @@ fn start_app_config_worker(
     app_config_cache_worker.start_with_handlers(
       worker_name,
       server_mode_subject,
-      app_config_cache_worker.FetchHandlers(
+      app_config_cache_worker.Deps(
         fetch_config: fn() { Ok(test_dynamic_config(availability)) },
         now_ns: fn() { 0 },
       ),

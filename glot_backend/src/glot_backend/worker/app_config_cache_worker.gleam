@@ -34,8 +34,8 @@ pub type Message {
   )
 }
 
-pub type FetchHandlers {
-  FetchHandlers(
+pub type Deps {
+  Deps(
     fetch_config: fn() ->
       Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
     now_ns: fn() -> Int,
@@ -46,7 +46,7 @@ type State {
   State(
     subject: process.Subject(Message),
     server_mode_subject: process.Subject(server_mode.Message),
-    fetch_handlers: FetchHandlers,
+    deps: Deps,
     core: core.State,
   )
 }
@@ -59,7 +59,7 @@ pub fn start(
   start_with_handlers(
     name,
     server_mode_subject,
-    FetchHandlers(
+    Deps(
       fetch_config: fn() {
         app_config_handlers.new(db_helpers.new(db)).list_entries()
         |> result.try(fn(entries) {
@@ -75,14 +75,14 @@ pub fn start(
 pub fn start_with_handlers(
   name: process.Name(Message),
   server_mode_subject: process.Subject(server_mode.Message),
-  fetch_handlers: FetchHandlers,
+  deps: Deps,
 ) {
   actor.new_with_initialiser(1000, fn(subject) {
     let initial_state =
       State(
         subject: subject,
         server_mode_subject: server_mode_subject,
-        fetch_handlers: fetch_handlers,
+        deps: deps,
         core: core.new(),
       )
     let _ = process.send(subject, Tick)
@@ -120,7 +120,7 @@ fn handle_message(
 ) -> actor.Next(State, Message) {
   case message {
     GetConfig(reply) -> {
-      let now_ns = state.fetch_handlers.now_ns()
+      let now_ns = state.deps.now_ns()
       let #(next_core, commands) =
         core.on_get_config(state.core, reply, now_ns, can_fetch(state))
       actor.continue(run_commands(State(..state, core: next_core), commands))
@@ -131,7 +131,7 @@ fn handle_message(
     }
     Tick -> {
       let #(next_core, commands) =
-        core.on_tick(state.core, state.fetch_handlers.now_ns(), can_fetch(state))
+        core.on_tick(state.core, state.deps.now_ns(), can_fetch(state))
       actor.continue(run_commands(State(..state, core: next_core), commands))
     }
     RefreshCompleted(fetched_at_ns, result) -> {
@@ -151,11 +151,11 @@ fn run_commands(state: State, commands: List(core.Command)) -> State {
       }
       core.StartFetch -> {
         let subject = state.subject
-        let fetch_handlers = state.fetch_handlers
+        let deps = state.deps
         let _ =
           process.spawn_unlinked(fn() {
-            let result = fetch_handlers.fetch_config()
-            let fetched_at_ns = fetch_handlers.now_ns()
+            let result = deps.fetch_config()
+            let fetched_at_ns = deps.now_ns()
             process.send(
               subject,
               RefreshCompleted(fetched_at_ns:, result: result),

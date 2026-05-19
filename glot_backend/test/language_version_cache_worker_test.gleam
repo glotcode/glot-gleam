@@ -304,7 +304,7 @@ fn start_worker_with_config(
   process.send(control_subject, SetConfig(initial_config))
 
   let handlers =
-    language_version_cache_worker.FetchHandlers(
+    language_version_cache_worker.Deps(
       fetch_language_version: fn(_, requested_language, _timeout_ms) {
         let response_subject = process.new_subject()
         process.send(
