@@ -6,3 +6,4 @@ improvements.txt
 program_dsl_reference.gleam
 legacy_queries.sql
 /priv/static
+/priv/db/seeds/dev
