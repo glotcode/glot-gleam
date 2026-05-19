@@ -122,12 +122,13 @@ fn handle_page_request_with_runtime(
       let state = empty_page_state()
       page_response.PageResponse(
         response: wisp.html_response(
-          page_layout.document(
-            title: home_page.title(),
-            head_children: [],
-            app_attributes: [],
-            app_children: [home_page.view()],
-          ),
+      page_layout.document(
+        title: home_page.title(),
+        head_children: [],
+        include_frontend: True,
+        app_attributes: [],
+        app_children: [home_page.view()],
+      ),
           200,
         ),
         status_code: 200,
@@ -223,6 +224,7 @@ fn spa_page(title: String) -> page_response.PageResponse {
       page_layout.document(
         title: title,
         head_children: [],
+        include_frontend: True,
         app_attributes: [],
         app_children: [],
       ),
@@ -260,6 +262,7 @@ fn run_page_program(
           page_layout.document(
             title: title(value),
             head_children: head_children(value),
+            include_frontend: True,
             app_attributes: app_attributes(value),
             app_children: [render(value)],
           ),

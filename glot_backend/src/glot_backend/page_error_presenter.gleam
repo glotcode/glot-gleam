@@ -21,35 +21,32 @@ pub fn unavailable_page_response(
       page_layout.document(
         title: "glot.io - unavailable",
         head_children: [],
-        app_attributes: [],
+        include_frontend: False,
+        app_attributes: [attribute.class("maintenance-page")],
         app_children: [
-          html.main([attribute.class("app-shell app-shell--narrow")], [
-            html.section([attribute.class("app-panel")], [
-              html.p([attribute.class("login-page__status")], [
+          html.main([attribute.class("maintenance-page__shell")], [
+            html.section([attribute.class("maintenance-page__panel")], [
+              html.p([attribute.class("maintenance-page__eyebrow")], [
                 html.text("Availability mode"),
               ]),
-              html.h1([attribute.class("login-page__title")], [
+              html.h1([attribute.class("maintenance-page__title")], [
                 html.text("Temporarily unavailable"),
               ]),
-              html.p([attribute.class("login-page__status")], [
+              html.p([attribute.class("maintenance-page__message")], [
                 html.text(message),
               ]),
               availability_retry_after_view(retry_after_seconds),
-              html.div([attribute.class("admin-page__actions")], [
+              html.div([attribute.class("maintenance-page__actions")], [
                 html.a(
                   [
-                    attribute.class(
-                      "admin-page__button admin-page__button--secondary",
-                    ),
+                    attribute.class("maintenance-page__link"),
                     route.href(route.Public(route.Login)),
                   ],
                   [html.text("Login")],
                 ),
                 html.a(
                   [
-                    attribute.class(
-                      "admin-page__button admin-page__button--secondary",
-                    ),
+                    attribute.class("maintenance-page__link"),
                     route.href(route.Admin(route.AdminHome)),
                   ],
                   [html.text("Admin")],
@@ -107,13 +104,13 @@ fn availability_retry_after_view(
 ) -> element.Element(Nil) {
   case retry_after_seconds {
     option.Some(seconds) ->
-      html.p([attribute.class("login-page__status")], [
+      html.p([attribute.class("maintenance-page__message")], [
         html.text(
           "Please try again in about " <> retry_after_text(seconds) <> ".",
         ),
       ])
     option.None ->
-      html.p([attribute.class("login-page__status")], [
+      html.p([attribute.class("maintenance-page__message")], [
         html.text("Please try again shortly."),
       ])
   }

@@ -86,6 +86,8 @@ pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
   assert http_response.get_header(response, "retry-after") == Ok("600")
 
   let body = simulate.read_body(response)
+  assert string.contains(body, "maintenance-page__shell")
+  assert string.contains(body, "/static/glot_frontend.js") == False
   assert string.contains(body, "Temporarily unavailable")
   assert string.contains(body, "Scheduled platform maintenance.")
   assert string.contains(body, "Please try again in about 10 minute(s).")
