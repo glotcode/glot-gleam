@@ -1,5 +1,4 @@
 import gleam/erlang/process
-import gleam/list
 import gleam/option
 import gleam/otp/actor
 import gleam/otp/supervision
@@ -11,6 +10,7 @@ import glot_backend/effect/error/db_error
 import glot_backend/erlang
 import glot_backend/helpers/db_helpers
 import glot_backend/server_mode
+import glot_backend/worker/cache_worker_support
 import pog
 import wisp
 
@@ -36,16 +36,6 @@ pub type Message {
   )
 }
 
-type InFlight {
-  InFlight(
-    waiters: List(
-      process.Subject(
-        Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
-      ),
-    ),
-  )
-}
-
 pub type FetchHandlers {
   FetchHandlers(
     fetch_config: fn() ->
@@ -54,17 +44,20 @@ pub type FetchHandlers {
   )
 }
 
-type CacheEntry {
-  CacheEntry(config: dynamic_config.DynamicConfig, refreshed_at_ns: Int)
-}
-
 type State {
   State(
     subject: process.Subject(Message),
     server_mode_subject: process.Subject(server_mode.Message),
     fetch_handlers: FetchHandlers,
-    cache_entry: option.Option(CacheEntry),
-    in_flight: option.Option(InFlight),
+    cache_entry: option.Option(
+      cache_worker_support.CacheEntry(dynamic_config.DynamicConfig),
+    ),
+    in_flight: option.Option(
+      cache_worker_support.InFlight(
+        Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+        Nil,
+      ),
+    ),
   )
 }
 
@@ -183,28 +176,39 @@ fn lookup_config(
   State,
   option.Option(Result(dynamic_config.DynamicConfig, db_error.DbQueryError)),
 ) {
-  case state.cache_entry {
-    option.Some(cache_entry) -> {
-      let next_state = case is_stale(cache_entry, now_ns) {
+  case
+    cache_worker_support.single_lookup(
+      state.cache_entry,
+      state.in_flight,
+      reply,
+      now_ns,
+      refresh_interval_ms,
+      can_fetch(state),
+      Ok,
+      Ok(dynamic_config.empty()),
+      Nil,
+    )
+  {
+    cache_worker_support.ReplyNow(result, start_refresh) -> {
+      let next_state = case start_refresh {
         True -> maybe_start_stale_refresh(state)
         False -> state
       }
-      #(next_state, option.Some(Ok(cache_entry.config)))
+      #(next_state, option.Some(result))
     }
-    option.None ->
-      case state.in_flight {
-        option.Some(_) -> #(enqueue_waiter(state, reply), option.None)
-        option.None ->
-          case can_fetch(state) {
-            True -> #(
-              state
-                |> ensure_fetch_started()
-                |> enqueue_waiter(reply),
-              option.None,
-            )
-            False -> #(state, option.Some(Ok(dynamic_config.empty())))
-          }
+    cache_worker_support.AwaitFetch(in_flight, start_fetch) -> {
+      case start_fetch {
+        True -> #(
+          state
+          |> ensure_fetch_started()
+          |> fn(next_state) {
+            State(..next_state, in_flight: option.Some(in_flight))
+          },
+          option.None,
+        )
+        False -> #(State(..state, in_flight: option.Some(in_flight)), option.None)
       }
+    }
   }
 }
 
@@ -240,7 +244,10 @@ fn ensure_fetch_started(state: State) -> State {
           )
         })
 
-      State(..state, in_flight: option.Some(InFlight(waiters: [])))
+      State(
+        ..state,
+        in_flight: option.Some(cache_worker_support.new_in_flight(Nil)),
+      )
     }
   }
 }
@@ -251,14 +258,11 @@ fn enqueue_waiter(
     Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
   ),
 ) -> State {
-  let in_flight = case state.in_flight {
-    option.Some(in_flight) -> in_flight
-    option.None -> InFlight(waiters: [])
-  }
+  let in_flight = cache_worker_support.single_in_flight(state.in_flight, Nil)
 
   State(
     ..state,
-    in_flight: option.Some(InFlight(waiters: [reply, ..in_flight.waiters])),
+    in_flight: option.Some(cache_worker_support.with_waiter(in_flight, reply)),
   )
 }
 
@@ -267,31 +271,27 @@ fn complete_fetch(
   fetched_at_ns: Int,
   result: Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
 ) -> State {
-  let in_flight = case state.in_flight {
-    option.Some(in_flight) -> in_flight
-    option.None -> InFlight(waiters: [])
-  }
+  let in_flight = cache_worker_support.single_in_flight(state.in_flight, Nil)
 
   let next_state = State(..state, in_flight: option.None)
 
   case result {
     Ok(config) -> {
+      let assert option.Some(cache_entry) =
+        cache_worker_support.cache_result(fetched_at_ns, result)
       let next_state =
         State(
           ..next_state,
-          cache_entry: option.Some(CacheEntry(
-            config:,
-            refreshed_at_ns: fetched_at_ns,
-          )),
+          cache_entry: option.Some(cache_entry),
         )
-      reply_waiters(in_flight.waiters, Ok(config))
+      cache_worker_support.reply_waiters(in_flight.waiters, Ok(config))
       next_state
     }
     Error(err) -> {
       wisp.log_warning(
         "Failed to refresh app config cache: " <> string.inspect(err),
       )
-      reply_waiters(in_flight.waiters, Error(err))
+      cache_worker_support.reply_waiters(in_flight.waiters, Error(err))
       next_state
     }
   }
@@ -305,19 +305,9 @@ fn can_fetch(state: State) -> Bool {
   server_mode.get_mode(state.server_mode_subject) == server_mode.Running
 }
 
-fn reply_waiters(
-  waiters: List(
-    process.Subject(Result(dynamic_config.DynamicConfig, db_error.DbQueryError)),
-  ),
-  result: Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
-) -> Nil {
-  list.each(waiters, fn(reply) { process.send(reply, result) })
-}
-
-fn is_stale(entry: CacheEntry, now_ns: Int) -> Bool {
-  now_ns - entry.refreshed_at_ns >= ms_to_ns(refresh_interval_ms)
-}
-
-fn ms_to_ns(value_ms: Int) -> Int {
-  value_ms * 1_000_000
+fn is_stale(
+  entry: cache_worker_support.CacheEntry(dynamic_config.DynamicConfig),
+  now_ns: Int,
+) -> Bool {
+  cache_worker_support.is_stale(entry, now_ns, refresh_interval_ms)
 }

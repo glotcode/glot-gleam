@@ -14,6 +14,7 @@ import glot_backend/effect/error/run_request_error
 import glot_backend/erlang
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker
+import glot_backend/worker/cache_worker_support
 import glot_core/language as language_module
 import glot_core/run
 import wisp
@@ -39,15 +40,6 @@ pub type Message {
   )
 }
 
-type InFlight {
-  InFlight(
-    waiters: List(
-      process.Subject(Result(run.RunResult, run_request_error.RunRequestError)),
-    ),
-    refresh: Bool,
-  )
-}
-
 pub type FetchHandlers {
   FetchHandlers(
     fetch_language_version: fn(
@@ -62,10 +54,6 @@ pub type FetchHandlers {
   )
 }
 
-type CacheEntry {
-  CacheEntry(run_result: run.RunResult, refreshed_at_ns: Int)
-}
-
 type State {
   State(
     subject: process.Subject(Message),
@@ -74,8 +62,17 @@ type State {
     fetch_handlers: FetchHandlers,
     config: dynamic_config.LanguageVersionCacheWorkerConfig,
     docker_run_configured: Bool,
-    cached_versions: dict.Dict(language_module.Language, CacheEntry),
-    in_flight: dict.Dict(language_module.Language, InFlight),
+    cached_versions: dict.Dict(
+      language_module.Language,
+      cache_worker_support.CacheEntry(run.RunResult),
+    ),
+    in_flight: dict.Dict(
+      language_module.Language,
+      cache_worker_support.InFlight(
+        Result(run.RunResult, run_request_error.RunRequestError),
+        Bool,
+      ),
+    ),
     refresh_queue: List(language_module.Language),
     refresh_language: option.Option(language_module.Language),
   )
@@ -206,31 +203,49 @@ fn lookup_language_version(
   State,
   option.Option(Result(run.RunResult, run_request_error.RunRequestError)),
 ) {
-  case dict.get(state.cached_versions, language) {
-    Ok(entry) -> {
-      let next_state = case is_stale(state, entry, now_ns) {
+  case
+    cache_worker_support.keyed_lookup(
+      state.cached_versions,
+      state.in_flight,
+      language,
+      reply,
+      now_ns,
+      state.config.refresh_interval_ms,
+      can_fetch(state),
+      Ok,
+      Error(run_request_error.ServerRunRequestError),
+      False,
+    )
+  {
+    cache_worker_support.ReplyNow(result, start_refresh) -> {
+      let next_state = case start_refresh {
         True -> maybe_start_stale_refresh(state, language)
         False -> state
       }
-      #(next_state, option.Some(Ok(entry.run_result)))
+      #(next_state, option.Some(result))
     }
-    Error(_) ->
-      case dict.has_key(state.in_flight, language) {
-        True -> #(enqueue_waiter(state, language, reply), option.None)
-        False ->
-          case can_fetch(state) {
-            True -> #(
-              state
-                |> ensure_fetch_started(language, False)
-                |> enqueue_waiter(language, reply),
-              option.None,
+    cache_worker_support.AwaitFetch(in_flight, start_fetch) -> {
+      case start_fetch {
+        True -> #(
+          state
+          |> ensure_fetch_started(language, False)
+          |> fn(next_state) {
+            State(
+              ..next_state,
+              in_flight: dict.insert(next_state.in_flight, language, in_flight),
             )
-            False -> #(
-              state,
-              option.Some(Error(run_request_error.ServerRunRequestError)),
-            )
-          }
+          },
+          option.None,
+        )
+        False -> #(
+          State(
+            ..state,
+            in_flight: dict.insert(state.in_flight, language, in_flight),
+          ),
+          option.None,
+        )
       }
+    }
   }
 }
 
@@ -283,25 +298,6 @@ fn enqueue_refresh(state: State, language: language_module.Language) -> State {
   }
 }
 
-fn enqueue_waiter(
-  state: State,
-  language: language_module.Language,
-  reply: process.Subject(
-    Result(run.RunResult, run_request_error.RunRequestError),
-  ),
-) -> State {
-  let in_flight = case dict.get(state.in_flight, language) {
-    Ok(in_flight) ->
-      InFlight(
-        waiters: [reply, ..in_flight.waiters],
-        refresh: in_flight.refresh,
-      )
-    Error(_) -> InFlight(waiters: [reply], refresh: False)
-  }
-
-  State(..state, in_flight: dict.insert(state.in_flight, language, in_flight))
-}
-
 fn ensure_fetch_started(
   state: State,
   language: language_module.Language,
@@ -334,7 +330,7 @@ fn ensure_fetch_started(
         in_flight: dict.insert(
           state.in_flight,
           language,
-          InFlight(waiters: [], refresh: refresh),
+          cache_worker_support.new_in_flight(refresh),
         ),
       )
     }
@@ -438,10 +434,8 @@ fn complete_fetch(
   fetched_at_ns: Int,
   result: Result(run.RunResult, run_request_error.RunRequestError),
 ) -> State {
-  let in_flight = case dict.get(state.in_flight, language) {
-    Ok(in_flight) -> in_flight
-    Error(_) -> InFlight(waiters: [], refresh: False)
-  }
+  let in_flight =
+    cache_worker_support.keyed_in_flight(state.in_flight, language, False)
 
   let next_state = {
     let refresh_language = case state.refresh_language {
@@ -458,16 +452,18 @@ fn complete_fetch(
 
   case result {
     Ok(run_result) -> {
+      let assert option.Some(cache_entry) =
+        cache_worker_support.cache_result(fetched_at_ns, result)
       let next_state =
         State(
           ..next_state,
           cached_versions: dict.insert(
             next_state.cached_versions,
             language,
-            CacheEntry(run_result:, refreshed_at_ns: fetched_at_ns),
+            cache_entry,
           ),
         )
-      reply_waiters(in_flight.waiters, Ok(run_result))
+      cache_worker_support.reply_waiters(in_flight.waiters, Ok(run_result))
       next_state
       |> schedule_refresh_if_idle(0)
     }
@@ -478,7 +474,7 @@ fn complete_fetch(
         <> ": "
         <> string_from_run_request_error(err),
       )
-      reply_waiters(in_flight.waiters, Error(err))
+      cache_worker_support.reply_waiters(in_flight.waiters, Error(err))
       next_state
       |> schedule_refresh_if_idle(0)
     }
@@ -530,21 +526,16 @@ fn next_tick_delay_ms(state: State) -> Int {
   }
 }
 
-fn reply_waiters(
-  waiters: List(
-    process.Subject(Result(run.RunResult, run_request_error.RunRequestError)),
-  ),
-  result: Result(run.RunResult, run_request_error.RunRequestError),
-) -> Nil {
-  list.each(waiters, fn(reply) { process.send(reply, result) })
-}
-
-fn is_stale(state: State, entry: CacheEntry, now_ns: Int) -> Bool {
-  now_ns - entry.refreshed_at_ns >= ms_to_ns(state.config.refresh_interval_ms)
-}
-
-fn ms_to_ns(value_ms: Int) -> Int {
-  value_ms * 1_000_000
+fn is_stale(
+  state: State,
+  entry: cache_worker_support.CacheEntry(run.RunResult),
+  now_ns: Int,
+) -> Bool {
+  cache_worker_support.is_stale(
+    entry,
+    now_ns,
+    state.config.refresh_interval_ms,
+  )
 }
 
 fn string_from_run_request_error(
