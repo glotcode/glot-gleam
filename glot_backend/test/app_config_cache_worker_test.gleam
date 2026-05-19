@@ -1,11 +1,14 @@
 import gleam/dict
 import gleam/erlang/process
+import gleam/list
 import gleam/option
 import gleeunit
 import glot_backend/dynamic_config
 import glot_backend/effect/error/db_error
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker
+import glot_backend/worker/app_config_cache_worker_core
+import glot_backend/worker/cache_worker_support
 import glot_core/auth/account_model
 import glot_core/availability_mode
 import glot_core/public_action
@@ -134,9 +137,89 @@ pub fn maintenance_mode_uses_empty_config_without_fetching_test() {
   assert process.call(control_subject, 100, GetFetchCount) == 0
 
   server_mode.enter_running(server_mode_subject)
-  request_config(worker_subject, process.new_subject())
+  let result_subject = process.new_subject()
+  request_config(worker_subject, result_subject)
 
   assert wait_for_fetch_count(control_subject, 1, 20) == 1
+  let fetch_reply = expect_fetch(control_subject, 20)
+  process.send(fetch_reply, Ok(test_dynamic_config()))
+  assert expect_result(result_subject) == Ok(test_dynamic_config())
+}
+
+pub fn core_cold_miss_starts_fetch_and_waits_test() {
+  let reply = process.new_subject()
+  let #(state, commands) =
+    app_config_cache_worker_core.on_get_config(
+      app_config_cache_worker_core.new(),
+      reply,
+      0,
+      True,
+    )
+
+  assert count_start_fetch(commands) == 1
+  assert count_reply(commands) == 0
+  let app_config_cache_worker_core.State(in_flight:, ..) = state
+  assert in_flight != option.None
+}
+
+pub fn core_stale_hit_replies_immediately_and_refreshes_test() {
+  let reply = process.new_subject()
+  let state =
+    app_config_cache_worker_core.State(
+      cache_entry: option.Some(cache_worker_support.CacheEntry(
+        value: test_dynamic_config(),
+        refreshed_at_ns: 0,
+      )),
+      in_flight: option.None,
+    )
+  let #(next_state, commands) =
+    app_config_cache_worker_core.on_get_config(
+      state,
+      reply,
+      60_000_000_001,
+      True,
+    )
+
+  assert count_start_fetch(commands) == 1
+  run_core_commands(commands)
+  assert process.receive_forever(reply) == Ok(test_dynamic_config())
+  let app_config_cache_worker_core.State(in_flight:, ..) = next_state
+  assert in_flight != option.None
+}
+
+pub fn core_failed_refresh_keeps_stale_cache_test() {
+  let reply = process.new_subject()
+  let waiter = process.new_subject()
+  let state =
+    app_config_cache_worker_core.State(
+      cache_entry: option.Some(cache_worker_support.CacheEntry(
+        value: test_dynamic_config(),
+        refreshed_at_ns: 0,
+      )),
+      in_flight: option.Some(
+        cache_worker_support.new_in_flight(Nil)
+        |> cache_worker_support.with_waiter(waiter),
+      ),
+    )
+  let #(next_state, commands) =
+    app_config_cache_worker_core.on_refresh_completed(
+      state,
+      1,
+      Error(db_error.DbQueryError("refresh failed")),
+    )
+
+  run_core_commands(commands)
+  assert process.receive_forever(waiter)
+    == Error(db_error.DbQueryError("refresh failed"))
+  let app_config_cache_worker_core.State(cache_entry:, in_flight:) = next_state
+  assert in_flight == option.None
+  assert cache_entry != option.None
+  let #(lookup_state, lookup_commands) =
+    app_config_cache_worker_core.on_get_config(next_state, reply, 1, True)
+  assert count_reply(lookup_commands) == 1
+  run_core_commands(lookup_commands)
+  assert process.receive_forever(reply) == Ok(test_dynamic_config())
+  assert lookup_state == next_state
 }
 
 fn start_worker(
@@ -297,6 +380,34 @@ fn expect_result(
   ),
 ) -> Result(dynamic_config.DynamicConfig, db_error.DbQueryError) {
   process.receive_forever(result_subject)
+}
+
+fn count_start_fetch(commands: List(app_config_cache_worker_core.Command)) -> Int {
+  list.length(list.filter(commands, fn(command) {
+    case command {
+      app_config_cache_worker_core.StartFetch -> True
+      _ -> False
+    }
+  }))
+}
+
+fn count_reply(commands: List(app_config_cache_worker_core.Command)) -> Int {
+  list.length(list.filter(commands, fn(command) {
+    case command {
+      app_config_cache_worker_core.Reply(_, _) -> True
+      _ -> False
+    }
+  }))
+}
+
+fn run_core_commands(commands: List(app_config_cache_worker_core.Command)) -> Nil {
+  list.each(commands, fn(command) {
+    case command {
+      app_config_cache_worker_core.Reply(reply, result) ->
+        process.send(reply, result)
+      _ -> Nil
+    }
+  })
 }
 
 fn test_dynamic_config() -> dynamic_config.DynamicConfig {

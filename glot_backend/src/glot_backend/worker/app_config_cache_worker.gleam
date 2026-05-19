@@ -1,5 +1,5 @@
 import gleam/erlang/process
-import gleam/option
+import gleam/list
 import gleam/otp/actor
 import gleam/otp/supervision
 import gleam/result
@@ -10,13 +10,11 @@ import glot_backend/effect/error/db_error
 import glot_backend/erlang
 import glot_backend/helpers/db_helpers
 import glot_backend/server_mode
-import glot_backend/worker/cache_worker_support
+import glot_backend/worker/app_config_cache_worker_core as core
 import pog
 import wisp
 
 const call_timeout_ms = 5000
-
-const refresh_interval_ms = 60_000
 
 pub type Message {
   GetConfig(
@@ -49,15 +47,7 @@ type State {
     subject: process.Subject(Message),
     server_mode_subject: process.Subject(server_mode.Message),
     fetch_handlers: FetchHandlers,
-    cache_entry: option.Option(
-      cache_worker_support.CacheEntry(dynamic_config.DynamicConfig),
-    ),
-    in_flight: option.Option(
-      cache_worker_support.InFlight(
-        Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
-        Nil,
-      ),
-    ),
+    core: core.State,
   )
 }
 
@@ -93,8 +83,7 @@ pub fn start_with_handlers(
         subject: subject,
         server_mode_subject: server_mode_subject,
         fetch_handlers: fetch_handlers,
-        cache_entry: option.None,
-        in_flight: option.None,
+        core: core.new(),
       )
     let _ = process.send(subject, Tick)
     let initialised = actor.initialised(initial_state)
@@ -132,182 +121,62 @@ fn handle_message(
   case message {
     GetConfig(reply) -> {
       let now_ns = state.fetch_handlers.now_ns()
-      let #(next_state, maybe_result) = lookup_config(state, now_ns, reply)
-
-      case maybe_result {
-        option.Some(result) -> {
-          process.send(reply, result)
-          actor.continue(next_state)
-        }
-        option.None -> actor.continue(next_state)
-      }
+      let #(next_core, commands) =
+        core.on_get_config(state.core, reply, now_ns, can_fetch(state))
+      actor.continue(run_commands(State(..state, core: next_core), commands))
     }
-    Refresh(reply) ->
-      actor.continue(
-        state
-        |> ensure_fetch_started()
-        |> enqueue_waiter(reply),
-      )
+    Refresh(reply) -> {
+      let #(next_core, commands) = core.on_refresh(state.core, reply, can_fetch(state))
+      actor.continue(run_commands(State(..state, core: next_core), commands))
+    }
     Tick -> {
-      let _ = process.send_after(state.subject, refresh_interval_ms, Tick)
-      case should_schedule_refreshes(state) {
-        True ->
-          actor.continue(
-            case cache_is_stale(state, state.fetch_handlers.now_ns()) {
-              True -> ensure_fetch_started(state)
-              False -> state
-            },
-          )
-        False -> actor.continue(state)
-      }
+      let #(next_core, commands) =
+        core.on_tick(state.core, state.fetch_handlers.now_ns(), can_fetch(state))
+      actor.continue(run_commands(State(..state, core: next_core), commands))
     }
-    RefreshCompleted(fetched_at_ns, result) ->
-      actor.continue(complete_fetch(state, fetched_at_ns, result))
+    RefreshCompleted(fetched_at_ns, result) -> {
+      let #(next_core, commands) =
+        core.on_refresh_completed(state.core, fetched_at_ns, result)
+      actor.continue(run_commands(State(..state, core: next_core), commands))
+    }
   }
 }
 
-fn lookup_config(
-  state: State,
-  now_ns: Int,
-  reply: process.Subject(
-    Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
-  ),
-) -> #(
-  State,
-  option.Option(Result(dynamic_config.DynamicConfig, db_error.DbQueryError)),
-) {
-  case
-    cache_worker_support.single_lookup(
-      state.cache_entry,
-      state.in_flight,
-      reply,
-      now_ns,
-      refresh_interval_ms,
-      can_fetch(state),
-      Ok,
-      Ok(dynamic_config.empty()),
-      Nil,
-    )
-  {
-    cache_worker_support.ReplyNow(result, start_refresh) -> {
-      let next_state = case start_refresh {
-        True -> maybe_start_stale_refresh(state)
-        False -> state
+fn run_commands(state: State, commands: List(core.Command)) -> State {
+  list.fold(commands, state, fn(state: State, command) {
+    case command {
+      core.ScheduleTick(delay_ms) -> {
+        let _ = process.send_after(state.subject, delay_ms, Tick)
+        state
       }
-      #(next_state, option.Some(result))
-    }
-    cache_worker_support.AwaitFetch(in_flight, start_fetch) -> {
-      case start_fetch {
-        True -> #(
-          state
-          |> ensure_fetch_started()
-          |> fn(next_state) {
-            State(..next_state, in_flight: option.Some(in_flight))
-          },
-          option.None,
+      core.StartFetch -> {
+        let subject = state.subject
+        let fetch_handlers = state.fetch_handlers
+        let _ =
+          process.spawn_unlinked(fn() {
+            let result = fetch_handlers.fetch_config()
+            let fetched_at_ns = fetch_handlers.now_ns()
+            process.send(
+              subject,
+              RefreshCompleted(fetched_at_ns:, result: result),
+            )
+          })
+        state
+      }
+      core.Reply(reply, result) -> {
+        process.send(reply, result)
+        state
+      }
+      core.LogRefreshError(err) -> {
+        wisp.log_warning(
+          "Failed to refresh app config cache: " <> string.inspect(err),
         )
-        False -> #(State(..state, in_flight: option.Some(in_flight)), option.None)
+        state
       }
     }
-  }
-}
-
-fn maybe_start_stale_refresh(state: State) -> State {
-  case should_schedule_refreshes(state) {
-    True -> ensure_fetch_started(state)
-    False -> state
-  }
-}
-
-fn cache_is_stale(state: State, now_ns: Int) -> Bool {
-  case state.cache_entry {
-    option.Some(cache_entry) -> is_stale(cache_entry, now_ns)
-    option.None -> True
-  }
-}
-
-fn ensure_fetch_started(state: State) -> State {
-  case state.in_flight, can_fetch(state) {
-    _, False -> state
-    option.Some(_), True -> state
-    option.None, True -> {
-      let subject = state.subject
-      let fetch_handlers = state.fetch_handlers
-
-      let _ =
-        process.spawn_unlinked(fn() {
-          let result = fetch_handlers.fetch_config()
-          let fetched_at_ns = fetch_handlers.now_ns()
-          process.send(
-            subject,
-            RefreshCompleted(fetched_at_ns:, result: result),
-          )
-        })
-
-      State(
-        ..state,
-        in_flight: option.Some(cache_worker_support.new_in_flight(Nil)),
-      )
-    }
-  }
-}
-
-fn enqueue_waiter(
-  state: State,
-  reply: process.Subject(
-    Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
-  ),
-) -> State {
-  let in_flight = cache_worker_support.single_in_flight(state.in_flight, Nil)
-
-  State(
-    ..state,
-    in_flight: option.Some(cache_worker_support.with_waiter(in_flight, reply)),
-  )
-}
-
-fn complete_fetch(
-  state: State,
-  fetched_at_ns: Int,
-  result: Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
-) -> State {
-  let in_flight = cache_worker_support.single_in_flight(state.in_flight, Nil)
-
-  let next_state = State(..state, in_flight: option.None)
-
-  case result {
-    Ok(config) -> {
-      let assert option.Some(cache_entry) =
-        cache_worker_support.cache_result(fetched_at_ns, result)
-      let next_state =
-        State(
-          ..next_state,
-          cache_entry: option.Some(cache_entry),
-        )
-      cache_worker_support.reply_waiters(in_flight.waiters, Ok(config))
-      next_state
-    }
-    Error(err) -> {
-      wisp.log_warning(
-        "Failed to refresh app config cache: " <> string.inspect(err),
-      )
-      cache_worker_support.reply_waiters(in_flight.waiters, Error(err))
-      next_state
-    }
-  }
-}
-
-fn should_schedule_refreshes(state: State) -> Bool {
-  can_fetch(state)
+  })
 }
 
 fn can_fetch(state: State) -> Bool {
   server_mode.get_mode(state.server_mode_subject) == server_mode.Running
-}
-
-fn is_stale(
-  entry: cache_worker_support.CacheEntry(dynamic_config.DynamicConfig),
-  now_ns: Int,
-) -> Bool {
-  cache_worker_support.is_stale(entry, now_ns, refresh_interval_ms)
 }
