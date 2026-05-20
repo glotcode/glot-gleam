@@ -13,7 +13,7 @@ import glot_backend/effect/error/run_request_error
 import glot_backend/erlang
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
-import glot_backend/worker/language_version_cache_worker/core as core
+import glot_backend/worker/language_version_cache_worker/core
 import glot_core/language as language_module
 import glot_core/run
 import wisp
@@ -217,8 +217,7 @@ fn map_query_error(
 
 fn refresh_config(state: State) -> State {
   case state.deps.get_config(state.app_config_cache_subject) {
-    Ok(config) ->
-      State(..state, core: core.set_config(state.core, config))
+    Ok(config) -> State(..state, core: core.set_config(state.core, config))
     Error(err) -> {
       let db_error.DbQueryError(message: message) = err
       wisp.log_warning(

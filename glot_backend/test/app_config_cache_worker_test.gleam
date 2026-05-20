@@ -6,9 +6,9 @@ import gleeunit
 import glot_backend/dynamic_config
 import glot_backend/effect/error/db_error
 import glot_backend/server_mode
-import glot_backend/worker/cache_worker_state
-import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_backend/worker/app_config_cache_worker/core as app_config_cache_worker_core
+import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/cache_worker_state
 import glot_backend/worker/cache_worker_support
 import glot_core/auth/account_model
 import glot_core/availability_mode
@@ -166,22 +166,15 @@ pub fn core_cold_miss_starts_fetch_and_waits_test() {
 pub fn core_stale_hit_replies_immediately_and_refreshes_test() {
   let reply = process.new_subject()
   let state =
-    app_config_cache_worker_core.State(
-      cache: cache_worker_state.Single(
-        cache_entry: option.Some(cache_worker_support.CacheEntry(
-          value: test_dynamic_config(),
-          refreshed_at_ns: 0,
-        )),
-        in_flight: option.None,
-      ),
-    )
+    app_config_cache_worker_core.State(cache: cache_worker_state.Single(
+      cache_entry: option.Some(cache_worker_support.CacheEntry(
+        value: test_dynamic_config(),
+        refreshed_at_ns: 0,
+      )),
+      in_flight: option.None,
+    ))
   let #(next_state, commands) =
-    app_config_cache_worker_core.on_get(
-      state,
-      reply,
-      60_000_000_001,
-      True,
-    )
+    app_config_cache_worker_core.on_get(state, reply, 60_000_000_001, True)
 
   assert count_start_fetch(commands) == 1
   run_core_commands(commands)
@@ -194,18 +187,16 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
   let reply = process.new_subject()
   let waiter = process.new_subject()
   let state =
-    app_config_cache_worker_core.State(
-      cache: cache_worker_state.Single(
-        cache_entry: option.Some(cache_worker_support.CacheEntry(
-          value: test_dynamic_config(),
-          refreshed_at_ns: 0,
-        )),
-        in_flight: option.Some(
-          cache_worker_support.new_in_flight(Nil)
-          |> cache_worker_support.with_waiter(waiter),
-        ),
+    app_config_cache_worker_core.State(cache: cache_worker_state.Single(
+      cache_entry: option.Some(cache_worker_support.CacheEntry(
+        value: test_dynamic_config(),
+        refreshed_at_ns: 0,
+      )),
+      in_flight: option.Some(
+        cache_worker_support.new_in_flight(Nil)
+        |> cache_worker_support.with_waiter(waiter),
       ),
-    )
+    ))
   let #(next_state, commands) =
     app_config_cache_worker_core.on_fetch_completed(
       state,
@@ -387,25 +378,33 @@ fn expect_result(
   process.receive_forever(result_subject)
 }
 
-fn count_start_fetch(commands: List(app_config_cache_worker_core.Command)) -> Int {
-  list.length(list.filter(commands, fn(command) {
-    case command {
-      app_config_cache_worker_core.StartFetch -> True
-      _ -> False
-    }
-  }))
+fn count_start_fetch(
+  commands: List(app_config_cache_worker_core.Command),
+) -> Int {
+  list.length(
+    list.filter(commands, fn(command) {
+      case command {
+        app_config_cache_worker_core.StartFetch -> True
+        _ -> False
+      }
+    }),
+  )
 }
 
 fn count_reply(commands: List(app_config_cache_worker_core.Command)) -> Int {
-  list.length(list.filter(commands, fn(command) {
-    case command {
-      app_config_cache_worker_core.Reply(_, _) -> True
-      _ -> False
-    }
-  }))
+  list.length(
+    list.filter(commands, fn(command) {
+      case command {
+        app_config_cache_worker_core.Reply(_, _) -> True
+        _ -> False
+      }
+    }),
+  )
 }
 
-fn run_core_commands(commands: List(app_config_cache_worker_core.Command)) -> Nil {
+fn run_core_commands(
+  commands: List(app_config_cache_worker_core.Command),
+) -> Nil {
   list.each(commands, fn(command) {
     case command {
       app_config_cache_worker_core.Reply(reply, result) ->

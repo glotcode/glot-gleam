@@ -47,11 +47,10 @@ pub fn on_get(
 
   case decision {
     cache_worker_support.ReplyNow(result, start_refresh) -> {
-      let #(next_state, refresh_commands) =
-        case start_refresh && can_fetch {
-          True -> start_fetch_if_idle(state)
-          False -> #(state, [])
-        }
+      let #(next_state, refresh_commands) = case start_refresh && can_fetch {
+        True -> start_fetch_if_idle(state)
+        False -> #(state, [])
+      }
 
       #(next_state, [Reply(reply, result), ..refresh_commands])
     }
@@ -88,11 +87,14 @@ pub fn on_tick(
 ) -> #(State, List(Command)) {
   let commands = [ScheduleTick(refresh_interval_ms)]
 
-  case can_fetch && cache_worker_state.single_is_stale(
-    state.cache,
-    now_ns,
-    refresh_interval_ms,
-  ) {
+  case
+    can_fetch
+    && cache_worker_state.single_is_stale(
+      state.cache,
+      now_ns,
+      refresh_interval_ms,
+    )
+  {
     True -> {
       let #(next_state, refresh_commands) = start_fetch_if_idle(state)
       #(next_state, list.append(refresh_commands, commands))
@@ -117,16 +119,15 @@ pub fn on_fetch_completed(
   let waiters = cache_worker_support.fetch_outcome_waiters(fetch_outcome)
 
   case result {
-    Ok(config) ->
-      #(next_state, list.map(waiters, fn(reply) { Reply(reply, Ok(config)) }))
+    Ok(config) -> #(
+      next_state,
+      list.map(waiters, fn(reply) { Reply(reply, Ok(config)) }),
+    )
     Error(err) -> {
-      #(
-        next_state,
-        [
-          LogRefreshError(err),
-          ..list.map(waiters, fn(reply) { Reply(reply, Error(err)) }),
-        ],
-      )
+      #(next_state, [
+        LogRefreshError(err),
+        ..list.map(waiters, fn(reply) { Reply(reply, Error(err)) })
+      ])
     }
   }
 }

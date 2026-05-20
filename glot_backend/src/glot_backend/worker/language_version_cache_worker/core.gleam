@@ -37,7 +37,10 @@ pub type Command {
     step_delay_ms: Int,
     max_jitter_ms: Int,
   )
-  LogRefreshError(language: language_module.Language, err: run_request_error.RunRequestError)
+  LogRefreshError(
+    language: language_module.Language,
+    err: run_request_error.RunRequestError,
+  )
 }
 
 pub fn new() -> State {
@@ -52,10 +55,7 @@ pub fn new() -> State {
   )
 }
 
-pub fn set_config(
-  state: State,
-  config: dynamic_config.DynamicConfig,
-) -> State {
+pub fn set_config(state: State, config: dynamic_config.DynamicConfig) -> State {
   State(
     ..state,
     config: dynamic_config.language_version_cache_worker_config(config),
@@ -91,11 +91,10 @@ pub fn on_get(
 
   case decision {
     cache_worker_support.ReplyNow(result, start_refresh) -> {
-      let #(next_state, refresh_commands) =
-        case start_refresh && can_update {
-          True -> start_fetch_if_idle(state, language, True)
-          False -> #(state, [])
-        }
+      let #(next_state, refresh_commands) = case start_refresh && can_update {
+        True -> start_fetch_if_idle(state, language, True)
+        False -> #(state, [])
+      }
       #(next_state, [Reply(reply, result), ..refresh_commands])
     }
     cache_worker_support.AwaitFetch(_, start_fetch_now) -> {
@@ -114,22 +113,23 @@ pub fn on_tick(
   now_ns: Int,
   can_update: Bool,
 ) -> #(State, List(Command)) {
-  let tick_delay_ms =
-    case can_update {
-      True -> state.config.refresh_interval_ms
-      False -> bootstrap_poll_interval_ms
-    }
+  let tick_delay_ms = case can_update {
+    True -> state.config.refresh_interval_ms
+    False -> bootstrap_poll_interval_ms
+  }
   let commands = [ScheduleTick(tick_delay_ms)]
 
   case can_update {
     False -> #(state, commands)
     True -> {
       let state = enqueue_due_refreshes(state, supported_languages, now_ns)
-      let #(next_state, refresh_commands) =
-        case should_start_initial_refresh_immediately(state) {
-          True -> start_next_refresh(state)
-          False -> schedule_refresh_if_idle(state, -state.config.refresh_step_delay_ms)
-        }
+      let #(next_state, refresh_commands) = case
+        should_start_initial_refresh_immediately(state)
+      {
+        True -> start_next_refresh(state)
+        False ->
+          schedule_refresh_if_idle(state, -state.config.refresh_step_delay_ms)
+      }
       #(next_state, list.append(commands, refresh_commands))
     }
   }
@@ -166,11 +166,7 @@ pub fn on_fetch_completed(
       _ -> state.refresh_language
     }
 
-    State(
-      ..state,
-      cache: cache,
-      refresh_language: refresh_language,
-    )
+    State(..state, cache: cache, refresh_language: refresh_language)
   }
 
   let waiters = cache_worker_support.fetch_outcome_waiters(fetch_outcome)
@@ -178,15 +174,17 @@ pub fn on_fetch_completed(
 
   case result {
     Ok(_run_result) -> {
-      let #(next_state, refresh_commands) = schedule_refresh_if_idle(next_state, 0)
+      let #(next_state, refresh_commands) =
+        schedule_refresh_if_idle(next_state, 0)
       #(next_state, list.append(reply_commands, refresh_commands))
     }
     Error(err) -> {
-      let #(next_state, refresh_commands) = schedule_refresh_if_idle(next_state, 0)
-      #(
-        next_state,
-        [LogRefreshError(language, err), ..list.append(reply_commands, refresh_commands)],
-      )
+      let #(next_state, refresh_commands) =
+        schedule_refresh_if_idle(next_state, 0)
+      #(next_state, [
+        LogRefreshError(language, err),
+        ..list.append(reply_commands, refresh_commands)
+      ])
     }
   }
 }
@@ -212,7 +210,9 @@ fn enqueue_due_refreshes(
 }
 
 fn enqueue_refresh(state: State, language: language_module.Language) -> State {
-  case is_refresh_pending(state, language) || is_refresh_in_flight(state, language) {
+  case
+    is_refresh_pending(state, language) || is_refresh_in_flight(state, language)
+  {
     True -> state
     False ->
       State(
@@ -227,15 +227,16 @@ fn start_fetch(
   language: language_module.Language,
   refresh: Bool,
 ) -> #(State, List(Command)) {
-  let next_state = State(
-    ..state,
-    cache: cache_worker_state.prepare_keyed_fetch(
-      state.cache,
-      language,
-      False,
-      fn(meta) { meta || refresh },
-    ),
-  )
+  let next_state =
+    State(
+      ..state,
+      cache: cache_worker_state.prepare_keyed_fetch(
+        state.cache,
+        language,
+        False,
+        fn(meta) { meta || refresh },
+      ),
+    )
   #(next_state, [StartFetch(language, state.config.default_timeout_ms)])
 }
 
@@ -244,16 +245,13 @@ fn schedule_refresh_if_idle(
   base_delay_ms: Int,
 ) -> #(State, List(Command)) {
   case state.refresh_language, state.refresh_queue {
-    option.None, [_first, ..] -> #(
-      state,
-      [
-        ScheduleRefreshNext(
-          base_delay_ms: base_delay_ms,
-          step_delay_ms: state.config.refresh_step_delay_ms,
-          max_jitter_ms: state.config.refresh_step_jitter_ms,
-        ),
-      ],
-    )
+    option.None, [_first, ..] -> #(state, [
+      ScheduleRefreshNext(
+        base_delay_ms: base_delay_ms,
+        step_delay_ms: state.config.refresh_step_delay_ms,
+        max_jitter_ms: state.config.refresh_step_jitter_ms,
+      ),
+    ])
     _, _ -> #(state, [])
   }
 }
@@ -277,13 +275,19 @@ fn start_next_refresh(state: State) -> #(State, List(Command)) {
   }
 }
 
-fn is_refresh_pending(state: State, language: language_module.Language) -> Bool {
+fn is_refresh_pending(
+  state: State,
+  language: language_module.Language,
+) -> Bool {
   list.any(state.refresh_queue, fn(queued_language) {
     queued_language == language
   })
 }
 
-fn is_refresh_in_flight(state: State, language: language_module.Language) -> Bool {
+fn is_refresh_in_flight(
+  state: State,
+  language: language_module.Language,
+) -> Bool {
   case state.refresh_language {
     option.Some(refresh_language) -> refresh_language == language
     option.None -> False
@@ -311,7 +315,9 @@ fn start_fetch_if_idle(
   let next_state = State(..state, cache: cache)
 
   case should_start_fetch {
-    True -> #(next_state, [StartFetch(language, state.config.default_timeout_ms)])
+    True -> #(next_state, [
+      StartFetch(language, state.config.default_timeout_ms),
+    ])
     False -> #(next_state, [])
   }
 }

@@ -4,9 +4,9 @@ import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
-import glot_core/job/job_model
-import glot_backend/server_mode
 import glot_backend/log
+import glot_backend/server_mode
+import glot_core/job/job_model
 import youid/uuid.{type Uuid}
 
 pub const idle_poll_ms = 1000
@@ -60,10 +60,11 @@ pub fn active_attempt(state: State) -> option.Option(ActiveAttempt) {
   state.active_attempt
 }
 
-pub fn on_tick(state: State, mode: server_mode.Mode, maybe_delay: option.Option(Int)) -> #(
-  State,
-  List(Command),
-) {
+pub fn on_tick(
+  state: State,
+  mode: server_mode.Mode,
+  maybe_delay: option.Option(Int),
+) -> #(State, List(Command)) {
   case mode {
     server_mode.Maintenance -> #(state, [ScheduleTick(idle_poll_ms)])
     server_mode.ShuttingDown -> #(state, [])
@@ -83,10 +84,9 @@ pub fn on_attempt_started(
   job: job_model.Job,
   ctx: context.Context,
 ) -> #(State, List(Command)) {
-  #(
-    State(active_attempt: option.Some(ActiveAttempt(pid, timer, job, ctx))),
-    [JobStarted],
-  )
+  #(State(active_attempt: option.Some(ActiveAttempt(pid, timer, job, ctx))), [
+    JobStarted,
+  ])
 }
 
 pub fn on_attempt_completed(

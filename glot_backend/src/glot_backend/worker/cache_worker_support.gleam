@@ -32,10 +32,7 @@ pub fn with_waiter(
   in_flight: InFlight(reply, meta),
   reply: process.Subject(reply),
 ) -> InFlight(reply, meta) {
-  InFlight(
-    waiters: [reply, ..in_flight.waiters],
-    meta: in_flight.meta,
-  )
+  InFlight(waiters: [reply, ..in_flight.waiters], meta: in_flight.meta)
 }
 
 pub fn ensure_in_flight(
@@ -124,7 +121,7 @@ pub fn single_lookup(
             True ->
               AwaitFetch(
                 new_in_flight(default_meta)
-                |> with_waiter(reply),
+                  |> with_waiter(reply),
                 start_fetch: True,
               )
             False -> ReplyNow(on_miss_unavailable, start_refresh: False)

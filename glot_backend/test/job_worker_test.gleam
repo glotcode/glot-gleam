@@ -74,8 +74,12 @@ pub fn maintenance_to_running_resumes_claiming_test() {
 
   server_mode.enter_running(server_mode_subject)
 
-  assert wait_for_snapshot(control_subject, fn(state) { state.claim_count >= 1 }, 50)
-    .claim_count >= 1
+  assert wait_for_snapshot(
+      control_subject,
+      fn(state) { state.claim_count >= 1 },
+      50,
+    ).claim_count
+    >= 1
 }
 
 pub fn claimed_job_starts_attempt_and_schedules_timeout_test() {
@@ -96,11 +100,15 @@ pub fn claimed_job_starts_attempt_and_schedules_timeout_test() {
     )
 
   let state =
-    wait_for_snapshot(control_subject, fn(state) {
-      state.claim_count >= 1
-      && state.started_count >= 1
-      && state.timeout_scheduled_count >= 1
-    }, 50)
+    wait_for_snapshot(
+      control_subject,
+      fn(state) {
+        state.claim_count >= 1
+        && state.started_count >= 1
+        && state.timeout_scheduled_count >= 1
+      },
+      50,
+    )
 
   assert state.claim_count == 1
   assert state.started_count == 1
@@ -127,12 +135,16 @@ pub fn timed_out_attempt_finishes_and_retries_tick_test() {
     )
 
   let state =
-    wait_for_snapshot(control_subject, fn(state) {
-      state.timeout_job_count >= 1
-      && state.finished_count >= 1
-      && state.insert_log_count >= 1
-      && state.kill_count >= 1
-    }, 80)
+    wait_for_snapshot(
+      control_subject,
+      fn(state) {
+        state.timeout_job_count >= 1
+        && state.finished_count >= 1
+        && state.insert_log_count >= 1
+        && state.kill_count >= 1
+      },
+      80,
+    )
 
   assert state.started_count >= 1
   assert state.timeout_job_count == 1
@@ -280,15 +292,18 @@ fn control_loop(
       control_loop(subject, ControlState(..state, claim_jobs: claim_jobs))
     }
     GetSnapshot(reply) -> {
-      process.send(reply, ControlSnapshot(
-        claim_count: state.claim_count,
-        started_count: state.started_count,
-        finished_count: state.finished_count,
-        timeout_job_count: state.timeout_job_count,
-        insert_log_count: state.insert_log_count,
-        kill_count: state.kill_count,
-        timeout_scheduled_count: state.timeout_scheduled_count,
-      ))
+      process.send(
+        reply,
+        ControlSnapshot(
+          claim_count: state.claim_count,
+          started_count: state.started_count,
+          finished_count: state.finished_count,
+          timeout_job_count: state.timeout_job_count,
+          insert_log_count: state.insert_log_count,
+          kill_count: state.kill_count,
+          timeout_scheduled_count: state.timeout_scheduled_count,
+        ),
+      )
       control_loop(subject, state)
     }
   }
@@ -310,7 +325,9 @@ fn wait_for_snapshot(
   }
 }
 
-fn snapshot(control_subject: process.Subject(ControlMessage)) -> ControlSnapshot {
+fn snapshot(
+  control_subject: process.Subject(ControlMessage),
+) -> ControlSnapshot {
   process.call(control_subject, 100, GetSnapshot)
 }
 

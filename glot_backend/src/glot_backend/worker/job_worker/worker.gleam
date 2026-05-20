@@ -25,7 +25,7 @@ import glot_backend/log
 import glot_backend/server_mode
 import glot_backend/sql
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
-import glot_backend/worker/job_worker/core as core
+import glot_backend/worker/job_worker/core
 import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/tick_worker_support
 import glot_core/helpers/dict_helpers
@@ -47,10 +47,8 @@ pub type Deps {
     recover_next_expired_job: fn(context.Context) ->
       Result(Option(job_model.Job), String),
     claim_next_job: fn(context.Context) -> Result(Option(job_model.Job), String),
-    process_job: fn(
-      context.Context,
-      job_model.Job,
-    ) -> #(Result(Nil, error.Error), program_state.State),
+    process_job: fn(context.Context, job_model.Job) ->
+      #(Result(Nil, error.Error), program_state.State),
     timeout_job: fn(context.Context, job_model.Job) -> Result(Nil, String),
     insert_job_log: fn(core.JobLogEntry) -> Nil,
     job_started: fn() -> Nil,
@@ -105,7 +103,13 @@ pub fn start_with_deps(
   server_mode_subject: process.Subject(server_mode.Message),
   deps: Deps,
 ) {
-  start_with_optional_name(option.None, config, regexes, server_mode_subject, deps)
+  start_with_optional_name(
+    option.None,
+    config,
+    regexes,
+    server_mode_subject,
+    deps,
+  )
 }
 
 pub fn start_named_with_deps(
@@ -176,12 +180,7 @@ pub fn supervised(
         app_config_cache_subject,
         language_version_cache_subject,
       )
-    start_with_deps(
-      config,
-      regexes,
-      server_mode_subject,
-      deps,
-    )
+    start_with_deps(config, regexes, server_mode_subject, deps)
   })
 }
 
@@ -196,7 +195,8 @@ fn handle_message(
         // The worker starts before startup migrations finish. Keep polling so
         // it can begin draining jobs once the server switches to Running.
         server_mode.Maintenance -> {
-          let #(next_core, commands) = core.on_tick(state.core, mode, option.None)
+          let #(next_core, commands) =
+            core.on_tick(state.core, mode, option.None)
           actor.continue(run_commands(State(..state, core: next_core), commands))
         }
         server_mode.ShuttingDown -> actor.continue(state)
@@ -204,7 +204,10 @@ fn handle_message(
           let #(next_state, maybe_delay) = run_once(state)
           let #(next_core, commands) =
             core.on_tick(next_state.core, mode, maybe_delay)
-          actor.continue(run_commands(State(..next_state, core: next_core), commands))
+          actor.continue(run_commands(
+            State(..next_state, core: next_core),
+            commands,
+          ))
         }
       }
     }
@@ -216,7 +219,8 @@ fn handle_message(
     AttemptTimedOut(pid) -> {
       case core.active_attempt(state.core) {
         option.Some(active) if active.pid == pid -> {
-          let timeout_log_entry = prepare_timeout_log_entry(active.ctx, active.job)
+          let timeout_log_entry =
+            prepare_timeout_log_entry(active.ctx, active.job)
           let #(next_core, commands) =
             core.on_attempt_timed_out(state.core, pid, timeout_log_entry)
           actor.continue(run_commands(State(..state, core: next_core), commands))
@@ -265,7 +269,10 @@ fn recover_or_claim_job(
 
   case recovery_result {
     Ok(option.Some(recovered_job)) -> {
-      state.deps.insert_job_log(prepare_recovered_timeout_log_entry(ctx, recovered_job))
+      state.deps.insert_job_log(prepare_recovered_timeout_log_entry(
+        ctx,
+        recovered_job,
+      ))
       #(state, option.Some(0))
     }
     Ok(option.None) -> claim_and_process_job(state, ctx)

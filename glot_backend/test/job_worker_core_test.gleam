@@ -6,8 +6,8 @@ import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/context
-import glot_backend/worker/job_worker/core as job_worker_core
 import glot_backend/server_mode
+import glot_backend/worker/job_worker/core as job_worker_core
 import glot_core/job/job_model
 import youid/uuid
 
@@ -24,7 +24,8 @@ pub fn maintenance_tick_schedules_idle_poll_test() {
     )
 
   assert state == job_worker_core.new()
-  assert commands == [job_worker_core.ScheduleTick(job_worker_core.idle_poll_ms)]
+  assert commands
+    == [job_worker_core.ScheduleTick(job_worker_core.idle_poll_ms)]
 }
 
 pub fn completed_attempt_clears_active_attempt_and_finishes_test() {
@@ -60,10 +61,19 @@ pub fn timed_out_attempt_requests_timeout_and_followup_test() {
   assert count_command(commands, is_trigger_now) == 1
 }
 
-fn active_state(pid: process.Pid, timer: process.Timer) -> job_worker_core.State {
+fn active_state(
+  pid: process.Pid,
+  timer: process.Timer,
+) -> job_worker_core.State {
   let #(job, ctx) = test_job_and_context()
   let #(state, _) =
-    job_worker_core.on_attempt_started(job_worker_core.new(), pid, timer, job, ctx)
+    job_worker_core.on_attempt_started(
+      job_worker_core.new(),
+      pid,
+      timer,
+      job,
+      ctx,
+    )
   state
 }
 

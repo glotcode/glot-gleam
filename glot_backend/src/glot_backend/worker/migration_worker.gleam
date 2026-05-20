@@ -136,7 +136,8 @@ fn handle_migration_result(
         <> int.to_string(retry_interval_ms)
         <> "ms",
       )
-      let _ = tick_worker_support.schedule(state.subject, retry_interval_ms, Tick)
+      let _ =
+        tick_worker_support.schedule(state.subject, retry_interval_ms, Tick)
       State(..state, in_flight: False)
     }
   }

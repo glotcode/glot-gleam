@@ -11,8 +11,8 @@ import glot_backend/effect/error/run_request_error
 import glot_backend/server_mode
 import glot_backend/worker/cache_worker_state
 import glot_backend/worker/cache_worker_support
-import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/language_version_cache_worker/core as language_version_cache_worker_core
+import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_core/language
 import glot_core/run
 import youid/uuid
@@ -222,7 +222,8 @@ pub fn core_tick_enqueues_initial_refresh_immediately_test() {
 
   assert count_start_fetch(commands) == 1
   assert count_schedule_tick(commands) == 1
-  let language_version_cache_worker_core.State(refresh_language:, ..) = next_state
+  let language_version_cache_worker_core.State(refresh_language:, ..) =
+    next_state
   assert refresh_language == option.Some(language.Python)
 }
 
@@ -235,18 +236,22 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
       ),
       docker_run_configured: True,
       cache: cache_worker_state.Keyed(
-        cache_entries: dict.from_list([#(
-          language.Python,
-          cache_worker_support.CacheEntry(
-            value: successful_run("Python 3.13"),
-            refreshed_at_ns: 0,
+        cache_entries: dict.from_list([
+          #(
+            language.Python,
+            cache_worker_support.CacheEntry(
+              value: successful_run("Python 3.13"),
+              refreshed_at_ns: 0,
+            ),
           ),
-        )]),
-        in_flights: dict.from_list([#(
-          language.Python,
-          cache_worker_support.new_in_flight(True)
-          |> cache_worker_support.with_waiter(waiter),
-        )]),
+        ]),
+        in_flights: dict.from_list([
+          #(
+            language.Python,
+            cache_worker_support.new_in_flight(True)
+              |> cache_worker_support.with_waiter(waiter),
+          ),
+        ]),
       ),
       refresh_queue: [],
       refresh_language: option.Some(language.Python),
@@ -446,36 +451,48 @@ fn wait_for_fetch_count(
   }
 }
 
-fn count_start_fetch(commands: List(language_version_cache_worker_core.Command)) -> Int {
-  list.length(list.filter(commands, fn(command) {
-    case command {
-      language_version_cache_worker_core.StartFetch(_, _) -> True
-      _ -> False
-    }
-  }))
+fn count_start_fetch(
+  commands: List(language_version_cache_worker_core.Command),
+) -> Int {
+  list.length(
+    list.filter(commands, fn(command) {
+      case command {
+        language_version_cache_worker_core.StartFetch(_, _) -> True
+        _ -> False
+      }
+    }),
+  )
 }
 
-fn count_reply(commands: List(language_version_cache_worker_core.Command)) -> Int {
-  list.length(list.filter(commands, fn(command) {
-    case command {
-      language_version_cache_worker_core.Reply(_, _) -> True
-      _ -> False
-    }
-  }))
+fn count_reply(
+  commands: List(language_version_cache_worker_core.Command),
+) -> Int {
+  list.length(
+    list.filter(commands, fn(command) {
+      case command {
+        language_version_cache_worker_core.Reply(_, _) -> True
+        _ -> False
+      }
+    }),
+  )
 }
 
 fn count_schedule_tick(
   commands: List(language_version_cache_worker_core.Command),
 ) -> Int {
-  list.length(list.filter(commands, fn(command) {
-    case command {
-      language_version_cache_worker_core.ScheduleTick(_) -> True
-      _ -> False
-    }
-  }))
+  list.length(
+    list.filter(commands, fn(command) {
+      case command {
+        language_version_cache_worker_core.ScheduleTick(_) -> True
+        _ -> False
+      }
+    }),
+  )
 }
 
-fn run_core_commands(commands: List(language_version_cache_worker_core.Command)) -> Nil {
+fn run_core_commands(
+  commands: List(language_version_cache_worker_core.Command),
+) -> Nil {
   list.each(commands, fn(command) {
     case command {
       language_version_cache_worker_core.Reply(reply, result) ->
