@@ -2,6 +2,9 @@ pub type AuthError {
   InvalidLoginToken
   LoginTokenUsed
   LoginTokenExpired
+  PasskeyChallengeNotFound
+  PasskeyChallengeExpired
+  InvalidPasskeyAssertion
   MissingSessionToken
   SessionNotFound
   SessionExpired
@@ -15,6 +18,9 @@ pub fn status(err: AuthError) -> Int {
   case err {
     InvalidLoginToken
     | LoginTokenExpired
+    | PasskeyChallengeNotFound
+    | PasskeyChallengeExpired
+    | InvalidPasskeyAssertion
     | MissingSessionToken
     | SessionNotFound
     | SessionExpired
@@ -30,6 +36,9 @@ pub fn code(err: AuthError) -> String {
     InvalidLoginToken -> "login_invalid_token"
     LoginTokenUsed -> "login_token_used"
     LoginTokenExpired -> "login_token_expired"
+    PasskeyChallengeNotFound -> "passkey_challenge_not_found"
+    PasskeyChallengeExpired -> "passkey_challenge_expired"
+    InvalidPasskeyAssertion -> "passkey_invalid_assertion"
     MissingSessionToken -> "session_missing_token"
     SessionNotFound -> "session_not_found"
     SessionExpired -> "session_expired"
@@ -45,6 +54,9 @@ pub fn message(err: AuthError) -> String {
     InvalidLoginToken -> "Invalid login token"
     LoginTokenUsed -> "Login token already used"
     LoginTokenExpired -> "Login token expired"
+    PasskeyChallengeNotFound -> "Passkey challenge not found"
+    PasskeyChallengeExpired -> "Passkey challenge expired"
+    InvalidPasskeyAssertion -> "Invalid passkey assertion"
     MissingSessionToken -> "Missing session token"
     SessionNotFound -> "Session not found"
     SessionExpired -> "Session expired"
@@ -60,6 +72,9 @@ pub fn to_string(err: AuthError) -> String {
     InvalidLoginToken -> "login_error:invalid_token"
     LoginTokenUsed -> "login_error:token_used"
     LoginTokenExpired -> "login_error:token_expired"
+    PasskeyChallengeNotFound -> "passkey_error:challenge_not_found"
+    PasskeyChallengeExpired -> "passkey_error:challenge_expired"
+    InvalidPasskeyAssertion -> "passkey_error:invalid_assertion"
     MissingSessionToken -> "session_error:missing_session_token"
     SessionNotFound -> "session_error:session_not_found"
     SessionExpired -> "session_error:session_expired"

@@ -5,6 +5,8 @@ import glot_backend/effect/error
 import glot_backend/effect/error/db_error
 import glot_backend/effect/program_types
 import glot_core/auth/account_model
+import glot_core/auth/passkey_challenge_model
+import glot_core/auth/passkey_credential_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
@@ -49,6 +51,43 @@ pub fn list_login_tokens_by_email(
     program_types.DbEffect(list_login_tokens_by_email_effect(
       email,
       limit,
+      program_types.Pure,
+    )),
+  )
+}
+
+pub fn get_passkey_credential_by_credential_id(
+  credential_id credential_id: BitArray,
+) -> program_types.Program(
+  option.Option(passkey_credential_model.PasskeyCredential),
+) {
+  program_types.Impure(
+    program_types.DbEffect(get_passkey_credential_by_credential_id_effect(
+      credential_id,
+      program_types.Pure,
+    )),
+  )
+}
+
+pub fn list_passkey_credentials_by_user_id(
+  user_id user_id: Uuid,
+) -> program_types.Program(List(passkey_credential_model.PasskeyCredential)) {
+  program_types.Impure(
+    program_types.DbEffect(list_passkey_credentials_by_user_id_effect(
+      user_id,
+      program_types.Pure,
+    )),
+  )
+}
+
+pub fn get_passkey_challenge_by_id(
+  id id: Uuid,
+) -> program_types.Program(
+  option.Option(passkey_challenge_model.PasskeyChallenge),
+) {
+  program_types.Impure(
+    program_types.DbEffect(get_passkey_challenge_by_id_effect(
+      id,
       program_types.Pure,
     )),
   )
@@ -167,11 +206,44 @@ pub fn create_login_token(
   )
 }
 
+pub fn create_passkey_credential(
+  passkey_credential passkey_credential: passkey_credential_model.PasskeyCredential,
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(create_passkey_credential_effect(
+      passkey_credential,
+      command_next,
+    )),
+  )
+}
+
+pub fn create_passkey_challenge(
+  passkey_challenge passkey_challenge: passkey_challenge_model.PasskeyChallenge,
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(create_passkey_challenge_effect(
+      passkey_challenge,
+      command_next,
+    )),
+  )
+}
+
 pub fn update_login_token(
   login_token login_token: login_token_model.LoginToken,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(update_login_token_effect(login_token, command_next)),
+  )
+}
+
+pub fn update_passkey_credential(
+  passkey_credential passkey_credential: passkey_credential_model.PasskeyCredential,
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(update_passkey_credential_effect(
+      passkey_credential,
+      command_next,
+    )),
   )
 }
 
@@ -183,6 +255,12 @@ pub fn delete_login_tokens_before(
       before,
       command_next,
     )),
+  )
+}
+
+pub fn delete_passkey_challenge(id id: Uuid) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_passkey_challenge_effect(id, command_next)),
   )
 }
 
@@ -216,6 +294,37 @@ pub fn list_login_tokens_by_email_tx(
   program_types.TxImpure(list_login_tokens_by_email_effect(
     email,
     limit,
+    program_types.TxPure,
+  ))
+}
+
+pub fn get_passkey_credential_by_credential_id_tx(
+  credential_id credential_id: BitArray,
+) -> program_types.TransactionProgram(
+  option.Option(passkey_credential_model.PasskeyCredential),
+) {
+  program_types.TxImpure(get_passkey_credential_by_credential_id_effect(
+    credential_id,
+    program_types.TxPure,
+  ))
+}
+
+pub fn list_passkey_credentials_by_user_id_tx(
+  user_id user_id: Uuid,
+) -> program_types.TransactionProgram(List(passkey_credential_model.PasskeyCredential)) {
+  program_types.TxImpure(list_passkey_credentials_by_user_id_effect(
+    user_id,
+    program_types.TxPure,
+  ))
+}
+
+pub fn get_passkey_challenge_by_id_tx(
+  id id: Uuid,
+) -> program_types.TransactionProgram(
+  option.Option(passkey_challenge_model.PasskeyChallenge),
+) {
+  program_types.TxImpure(get_passkey_challenge_by_id_effect(
+    id,
     program_types.TxPure,
   ))
 }
@@ -296,10 +405,37 @@ pub fn create_login_token_tx(
   program_types.TxImpure(create_login_token_effect(login_token, tx_command_next))
 }
 
+pub fn create_passkey_credential_tx(
+  passkey_credential passkey_credential: passkey_credential_model.PasskeyCredential,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(create_passkey_credential_effect(
+    passkey_credential,
+    tx_command_next,
+  ))
+}
+
+pub fn create_passkey_challenge_tx(
+  passkey_challenge passkey_challenge: passkey_challenge_model.PasskeyChallenge,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(create_passkey_challenge_effect(
+    passkey_challenge,
+    tx_command_next,
+  ))
+}
+
 pub fn update_login_token_tx(
   login_token login_token: login_token_model.LoginToken,
 ) -> program_types.TransactionProgram(Nil) {
   program_types.TxImpure(update_login_token_effect(login_token, tx_command_next))
+}
+
+pub fn update_passkey_credential_tx(
+  passkey_credential passkey_credential: passkey_credential_model.PasskeyCredential,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(update_passkey_credential_effect(
+    passkey_credential,
+    tx_command_next,
+  ))
 }
 
 pub fn delete_login_tokens_before_tx(
@@ -309,6 +445,12 @@ pub fn delete_login_tokens_before_tx(
     before,
     tx_command_next,
   ))
+}
+
+pub fn delete_passkey_challenge_tx(
+  id id: Uuid,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_passkey_challenge_effect(id, tx_command_next))
 }
 
 fn command_next(
@@ -363,6 +505,36 @@ fn list_login_tokens_by_email_effect(
   program_types.AuthEffect(auth_algebra.ListLoginTokensByEmail(
     email:,
     limit:,
+    next: next,
+  ))
+}
+
+fn get_passkey_credential_by_credential_id_effect(
+  credential_id: BitArray,
+  next: fn(option.Option(passkey_credential_model.PasskeyCredential)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.GetPasskeyCredentialByCredentialId(
+    credential_id: credential_id,
+    next: next,
+  ))
+}
+
+fn list_passkey_credentials_by_user_id_effect(
+  user_id: Uuid,
+  next: fn(List(passkey_credential_model.PasskeyCredential)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.ListPasskeyCredentialsByUserId(
+    user_id: user_id,
+    next: next,
+  ))
+}
+
+fn get_passkey_challenge_by_id_effect(
+  id: Uuid,
+  next: fn(option.Option(passkey_challenge_model.PasskeyChallenge)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.GetPasskeyChallengeById(
+    id: id,
     next: next,
   ))
 }
@@ -496,6 +668,26 @@ fn create_login_token_effect(
   ))
 }
 
+fn create_passkey_credential_effect(
+  passkey_credential: passkey_credential_model.PasskeyCredential,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.CreatePasskeyCredential(
+    passkey_credential: passkey_credential,
+    next: next,
+  ))
+}
+
+fn create_passkey_challenge_effect(
+  passkey_challenge: passkey_challenge_model.PasskeyChallenge,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.CreatePasskeyChallenge(
+    passkey_challenge: passkey_challenge,
+    next: next,
+  ))
+}
+
 fn update_login_token_effect(
   login_token: login_token_model.LoginToken,
   next: fn(Result(Nil, db_error.DbCommandError)) -> next,
@@ -506,12 +698,32 @@ fn update_login_token_effect(
   ))
 }
 
+fn update_passkey_credential_effect(
+  passkey_credential: passkey_credential_model.PasskeyCredential,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.UpdatePasskeyCredential(
+    passkey_credential: passkey_credential,
+    next: next,
+  ))
+}
+
 fn delete_login_tokens_before_effect(
   before: Timestamp,
   next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.DeleteLoginTokensBefore(
     before: before,
+    next: next,
+  ))
+}
+
+fn delete_passkey_challenge_effect(
+  id: Uuid,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.DeletePasskeyChallenge(
+    id: id,
     next: next,
   ))
 }

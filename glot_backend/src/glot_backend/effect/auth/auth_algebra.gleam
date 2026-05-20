@@ -2,6 +2,8 @@ import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error/db_error
 import glot_core/auth/account_model
+import glot_core/auth/passkey_challenge_model
+import glot_core/auth/passkey_credential_model
 import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
@@ -38,6 +40,18 @@ pub type AuthEffect(next) {
     email: email_address_model.EmailAddress,
     limit: Int,
     next: fn(List(login_token_model.LoginToken)) -> next,
+  )
+  GetPasskeyCredentialByCredentialId(
+    credential_id: BitArray,
+    next: fn(option.Option(passkey_credential_model.PasskeyCredential)) -> next,
+  )
+  ListPasskeyCredentialsByUserId(
+    user_id: Uuid,
+    next: fn(List(passkey_credential_model.PasskeyCredential)) -> next,
+  )
+  GetPasskeyChallengeById(
+    id: Uuid,
+    next: fn(option.Option(passkey_challenge_model.PasskeyChallenge)) -> next,
   )
   GetSessionByToken(
     token: String,
@@ -99,12 +113,28 @@ pub type AuthEffect(next) {
     login_token: login_token_model.LoginToken,
     next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
+  CreatePasskeyCredential(
+    passkey_credential: passkey_credential_model.PasskeyCredential,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+  )
+  CreatePasskeyChallenge(
+    passkey_challenge: passkey_challenge_model.PasskeyChallenge,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+  )
   UpdateLoginToken(
     login_token: login_token_model.LoginToken,
     next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
+  UpdatePasskeyCredential(
+    passkey_credential: passkey_credential_model.PasskeyCredential,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+  )
   DeleteLoginTokensBefore(
     before: Timestamp,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+  )
+  DeletePasskeyChallenge(
+    id: Uuid,
     next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
 }
@@ -123,6 +153,17 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       ListLoginTokensByEmail(email: email, limit: limit, next: fn(value) {
         f(next(value))
       })
+    GetPasskeyCredentialByCredentialId(credential_id:, next:) ->
+      GetPasskeyCredentialByCredentialId(
+        credential_id: credential_id,
+        next: fn(value) { f(next(value)) },
+      )
+    ListPasskeyCredentialsByUserId(user_id:, next:) ->
+      ListPasskeyCredentialsByUserId(user_id: user_id, next: fn(value) {
+        f(next(value))
+      })
+    GetPasskeyChallengeById(id:, next:) ->
+      GetPasskeyChallengeById(id: id, next: fn(value) { f(next(value)) })
     GetSessionByToken(token:, next:) ->
       GetSessionByToken(token: token, next: fn(value) { f(next(value)) })
     GetSessionByTokenForUpdate(token:, next:) ->
@@ -163,12 +204,29 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       CreateLoginToken(login_token: login_token, next: fn(value) {
         f(next(value))
       })
+    CreatePasskeyCredential(passkey_credential: passkey_credential, next: next) ->
+      CreatePasskeyCredential(
+        passkey_credential: passkey_credential,
+        next: fn(value) { f(next(value)) },
+      )
+    CreatePasskeyChallenge(passkey_challenge: passkey_challenge, next: next) ->
+      CreatePasskeyChallenge(
+        passkey_challenge: passkey_challenge,
+        next: fn(value) { f(next(value)) },
+      )
     UpdateLoginToken(login_token: login_token, next: next) ->
       UpdateLoginToken(login_token: login_token, next: fn(value) {
         f(next(value))
       })
+    UpdatePasskeyCredential(passkey_credential: passkey_credential, next: next) ->
+      UpdatePasskeyCredential(
+        passkey_credential: passkey_credential,
+        next: fn(value) { f(next(value)) },
+      )
     DeleteLoginTokensBefore(before: before, next: next) ->
       DeleteLoginTokensBefore(before: before, next: fn(value) { f(next(value)) })
+    DeletePasskeyChallenge(id: id, next: next) ->
+      DeletePasskeyChallenge(id: id, next: fn(value) { f(next(value)) })
   }
 }
 
@@ -177,6 +235,9 @@ pub type EffectName {
   GetUserByIdEffectName
   ListUsersEffectName
   ListLoginTokensByEmailEffectName
+  GetPasskeyCredentialByCredentialIdEffectName
+  ListPasskeyCredentialsByUserIdEffectName
+  GetPasskeyChallengeByIdEffectName
   GetSessionByTokenEffectName
   GetSessionByTokenForUpdateEffectName
   GetSessionByPreviousTokenEffectName
@@ -192,8 +253,12 @@ pub type EffectName {
   UpdateSessionEffectName
   DeleteSessionEffectName
   CreateLoginTokenEffectName
+  CreatePasskeyCredentialEffectName
+  CreatePasskeyChallengeEffectName
   UpdateLoginTokenEffectName
+  UpdatePasskeyCredentialEffectName
   DeleteLoginTokensBeforeEffectName
+  DeletePasskeyChallengeEffectName
 }
 
 pub fn effect_name_to_string(name: EffectName) -> String {
@@ -202,6 +267,11 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     GetUserByIdEffectName -> "get_user_by_id"
     ListUsersEffectName -> "list_users"
     ListLoginTokensByEmailEffectName -> "list_login_tokens_by_email"
+    GetPasskeyCredentialByCredentialIdEffectName ->
+      "get_passkey_credential_by_credential_id"
+    ListPasskeyCredentialsByUserIdEffectName ->
+      "list_passkey_credentials_by_user_id"
+    GetPasskeyChallengeByIdEffectName -> "get_passkey_challenge_by_id"
     GetSessionByTokenEffectName -> "get_session_by_token"
     GetSessionByTokenForUpdateEffectName -> "get_session_by_token_for_update"
     GetSessionByPreviousTokenEffectName -> "get_session_by_previous_token"
@@ -218,7 +288,11 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     UpdateSessionEffectName -> "update_session"
     DeleteSessionEffectName -> "delete_session"
     CreateLoginTokenEffectName -> "create_login_token"
+    CreatePasskeyCredentialEffectName -> "create_passkey_credential"
+    CreatePasskeyChallengeEffectName -> "create_passkey_challenge"
     UpdateLoginTokenEffectName -> "update_login_token"
+    UpdatePasskeyCredentialEffectName -> "update_passkey_credential"
     DeleteLoginTokensBeforeEffectName -> "delete_login_tokens_before"
+    DeletePasskeyChallengeEffectName -> "delete_passkey_challenge"
   }
 }

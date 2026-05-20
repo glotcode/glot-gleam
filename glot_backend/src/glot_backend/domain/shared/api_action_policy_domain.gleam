@@ -242,6 +242,20 @@ fn public_policy(action: public_action.PublicAction) -> ApiActionPolicy {
           account_model.ReadOnly,
         ]),
       )
+    public_action.BeginPasskeyLoginAction ->
+      public_action_policy(
+        AllowedAccountStates([
+          account_model.Active,
+          account_model.ReadOnly,
+        ]),
+      )
+    public_action.FinishPasskeyLoginAction ->
+      public_action_policy(
+        AllowedAccountStates([
+          account_model.Active,
+          account_model.ReadOnly,
+        ]),
+      )
     public_action.GetSessionAction ->
       public_action_policy(
         AllowedAccountStates([
@@ -274,6 +288,10 @@ fn public_policy(action: public_action.PublicAction) -> ApiActionPolicy {
         ]),
       )
     public_action.UpdateAccountAction ->
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
+    public_action.BeginPasskeyRegistrationAction ->
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
+    public_action.FinishPasskeyRegistrationAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
     public_action.ScheduleDeleteAccountAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))

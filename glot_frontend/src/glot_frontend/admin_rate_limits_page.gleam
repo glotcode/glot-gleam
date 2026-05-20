@@ -874,5 +874,11 @@ fn action_label(action: public_action.PublicAction) -> String {
     public_action.DeleteSnippetAction -> "Delete snippet"
     public_action.SendLoginTokenAction -> "Send login token"
     public_action.LoginAction -> "Login"
+    public_action.BeginPasskeyRegistrationAction ->
+      "Begin passkey registration"
+    public_action.FinishPasskeyRegistrationAction ->
+      "Finish passkey registration"
+    public_action.BeginPasskeyLoginAction -> "Begin passkey login"
+    public_action.FinishPasskeyLoginAction -> "Finish passkey login"
   }
 }

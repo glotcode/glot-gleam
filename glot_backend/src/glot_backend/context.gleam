@@ -41,6 +41,15 @@ pub type Config {
     encryption_key: String,
     static_base_path: String,
     postgres: PostgresConfig,
+    passkey: PasskeyConfig,
+  )
+}
+
+pub type PasskeyConfig {
+  PasskeyConfig(
+    origin: String,
+    rp_id: String,
+    challenge_timeout_seconds: Int,
   )
 }
 
@@ -59,12 +68,14 @@ pub fn config_from_dict(
   use encryption_key <- result.try(lookup(values, "ENCRYPTION_KEY"))
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))
+  let passkey = passkey_config_from_dict(values)
 
   Ok(Config(
     app_env: app_env,
     encryption_key: encryption_key,
     static_base_path: static_base_path,
     postgres: postgres,
+    passkey: passkey,
   ))
 }
 
@@ -103,6 +114,38 @@ fn postgres_config_from_dict(
     pass: pass,
     pool_size: pool_size,
   ))
+}
+
+fn passkey_config_from_dict(values: Dict(String, String)) -> PasskeyConfig {
+  let defaults = default_passkey_config()
+  let origin =
+    dict.get(values, "PASSKEY_ORIGIN")
+    |> option.from_result()
+    |> option.unwrap(defaults.origin)
+  let rp_id =
+    dict.get(values, "PASSKEY_RP_ID")
+    |> option.from_result()
+    |> option.unwrap(defaults.rp_id)
+  let challenge_timeout_seconds =
+    dict.get(values, "PASSKEY_CHALLENGE_TIMEOUT_SECONDS")
+    |> option.from_result()
+    |> option.map(string_to_int)
+    |> option.unwrap(Ok(defaults.challenge_timeout_seconds))
+    |> result.unwrap(defaults.challenge_timeout_seconds)
+
+  PasskeyConfig(
+    origin: origin,
+    rp_id: rp_id,
+    challenge_timeout_seconds: challenge_timeout_seconds,
+  )
+}
+
+pub fn default_passkey_config() -> PasskeyConfig {
+  PasskeyConfig(
+    origin: "http://localhost:5173",
+    rp_id: "localhost",
+    challenge_timeout_seconds: 120,
+  )
 }
 
 fn lookup(dict: Dict(String, String), key: String) -> Result(String, String) {

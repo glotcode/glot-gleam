@@ -120,6 +120,94 @@ pub fn run(
         )
       }
     }
+    auth_algebra.GetPasskeyCredentialByCredentialId(credential_id:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result =
+        handlers.auth.get_passkey_credential_by_credential_id(credential_id)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(
+                auth_algebra.GetPasskeyCredentialByCredentialIdEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.database_query_error(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(
+              auth_algebra.GetPasskeyCredentialByCredentialIdEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    auth_algebra.ListPasskeyCredentialsByUserId(user_id:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.list_passkey_credentials_by_user_id(user_id)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(
+                auth_algebra.ListPasskeyCredentialsByUserIdEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.database_query_error(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(
+              auth_algebra.ListPasskeyCredentialsByUserIdEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
+    auth_algebra.GetPasskeyChallengeById(id:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.get_passkey_challenge_by_id(id)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(
+                auth_algebra.GetPasskeyChallengeByIdEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.database_query_error(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(
+              auth_algebra.GetPasskeyChallengeByIdEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     auth_algebra.GetSessionByToken(token:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
@@ -385,6 +473,42 @@ pub fn run(
         ),
       )
     }
+    auth_algebra.CreatePasskeyCredential(
+      passkey_credential: passkey_credential,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.create_passkey_credential(passkey_credential)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.CreatePasskeyCredentialEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    auth_algebra.CreatePasskeyChallenge(
+      passkey_challenge: passkey_challenge,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.create_passkey_challenge(passkey_challenge)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.CreatePasskeyChallengeEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     auth_algebra.UpdateLoginToken(login_token: login_token, next: next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.auth.update_login_token(login_token)
@@ -393,6 +517,24 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.UpdateLoginTokenEffectName),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    auth_algebra.UpdatePasskeyCredential(
+      passkey_credential: passkey_credential,
+      next: next,
+    ) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.update_passkey_credential(passkey_credential)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.UpdatePasskeyCredentialEffectName,
+          ),
           effect_trace.DbWriteEffectCategory,
           started_at,
         ),
@@ -407,6 +549,21 @@ pub fn run(
           state,
           effect_trace.AuthEffectName(
             auth_algebra.DeleteLoginTokensBeforeEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
+    auth_algebra.DeletePasskeyChallenge(id: id, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.delete_passkey_challenge(id)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.DeletePasskeyChallengeEffectName,
           ),
           effect_trace.DbWriteEffectCategory,
           started_at,

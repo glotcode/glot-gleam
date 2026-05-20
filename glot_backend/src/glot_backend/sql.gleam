@@ -2814,6 +2814,173 @@ pub fn list_login_tokens_by_email_decoder() -> decode.Decoder(
   ))
 }
 
+pub type GetPasskeyCredentialByCredentialId {
+  GetPasskeyCredentialByCredentialId(
+    id: BitArray,
+    user_id: BitArray,
+    credential_id: BitArray,
+    cose_key: BitArray,
+    sign_count: Int,
+    aaguid: BitArray,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    last_used_at: Option(Timestamp),
+  )
+}
+
+pub fn get_passkey_credential_by_credential_id(
+  credential_id credential_id: BitArray,
+) {
+  let sql =
+    "SELECT
+  id,
+  user_id,
+  credential_id,
+  cose_key,
+  sign_count,
+  aaguid,
+  created_at,
+  updated_at,
+  last_used_at
+FROM passkey_credentials
+WHERE credential_id = $1"
+  #(
+    sql,
+    [dev.ParamBitArray(credential_id)],
+    get_passkey_credential_by_credential_id_decoder(),
+  )
+}
+
+pub fn get_passkey_credential_by_credential_id_decoder() -> decode.Decoder(
+  GetPasskeyCredentialByCredentialId,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use user_id <- decode.field(1, decode.bit_array)
+  use credential_id <- decode.field(2, decode.bit_array)
+  use cose_key <- decode.field(3, decode.bit_array)
+  use sign_count <- decode.field(4, decode.int)
+  use aaguid <- decode.field(5, decode.bit_array)
+  use created_at <- decode.field(6, dev.datetime_decoder())
+  use updated_at <- decode.field(7, dev.datetime_decoder())
+  use last_used_at <- decode.field(8, decode.optional(dev.datetime_decoder()))
+  decode.success(GetPasskeyCredentialByCredentialId(
+    id:,
+    user_id:,
+    credential_id:,
+    cose_key:,
+    sign_count:,
+    aaguid:,
+    created_at:,
+    updated_at:,
+    last_used_at:,
+  ))
+}
+
+pub type ListPasskeyCredentialsByUserId {
+  ListPasskeyCredentialsByUserId(
+    id: BitArray,
+    user_id: BitArray,
+    credential_id: BitArray,
+    cose_key: BitArray,
+    sign_count: Int,
+    aaguid: BitArray,
+    created_at: Timestamp,
+    updated_at: Timestamp,
+    last_used_at: Option(Timestamp),
+  )
+}
+
+pub fn list_passkey_credentials_by_user_id(user_id user_id: BitArray) {
+  let sql =
+    "SELECT
+  id,
+  user_id,
+  credential_id,
+  cose_key,
+  sign_count,
+  aaguid,
+  created_at,
+  updated_at,
+  last_used_at
+FROM passkey_credentials
+WHERE user_id = $1
+ORDER BY created_at ASC"
+  #(
+    sql,
+    [dev.ParamBitArray(user_id)],
+    list_passkey_credentials_by_user_id_decoder(),
+  )
+}
+
+pub fn list_passkey_credentials_by_user_id_decoder() -> decode.Decoder(
+  ListPasskeyCredentialsByUserId,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use user_id <- decode.field(1, decode.bit_array)
+  use credential_id <- decode.field(2, decode.bit_array)
+  use cose_key <- decode.field(3, decode.bit_array)
+  use sign_count <- decode.field(4, decode.int)
+  use aaguid <- decode.field(5, decode.bit_array)
+  use created_at <- decode.field(6, dev.datetime_decoder())
+  use updated_at <- decode.field(7, dev.datetime_decoder())
+  use last_used_at <- decode.field(8, decode.optional(dev.datetime_decoder()))
+  decode.success(ListPasskeyCredentialsByUserId(
+    id:,
+    user_id:,
+    credential_id:,
+    cose_key:,
+    sign_count:,
+    aaguid:,
+    created_at:,
+    updated_at:,
+    last_used_at:,
+  ))
+}
+
+pub type GetPasskeyChallengeById {
+  GetPasskeyChallengeById(
+    id: BitArray,
+    user_id: Option(BitArray),
+    flow: String,
+    challenge_state: BitArray,
+    created_at: Timestamp,
+    expires_at: Timestamp,
+  )
+}
+
+pub fn get_passkey_challenge_by_id(id id: BitArray) {
+  let sql =
+    "SELECT
+  id,
+  user_id,
+  flow,
+  challenge_state,
+  created_at,
+  expires_at
+FROM passkey_challenges
+WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)], get_passkey_challenge_by_id_decoder())
+}
+
+pub fn get_passkey_challenge_by_id_decoder() -> decode.Decoder(
+  GetPasskeyChallengeById,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use user_id <- decode.field(1, decode.optional(decode.bit_array))
+  use flow <- decode.field(2, decode.string)
+  use challenge_state <- decode.field(3, decode.bit_array)
+  use created_at <- decode.field(4, dev.datetime_decoder())
+  use expires_at <- decode.field(5, dev.datetime_decoder())
+  decode.success(GetPasskeyChallengeById(
+    id:,
+    user_id:,
+    flow:,
+    challenge_state:,
+    created_at:,
+    expires_at:,
+  ))
+}
+
 pub type GetSessionByToken {
   GetSessionByToken(
     id: BitArray,
@@ -3292,6 +3459,52 @@ pub fn insert_session(
   ])
 }
 
+pub fn insert_passkey_credential(
+  id id: BitArray,
+  user_id user_id: BitArray,
+  credential_id credential_id: BitArray,
+  cose_key cose_key: BitArray,
+  sign_count sign_count: Int,
+  aaguid aaguid: BitArray,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+  last_used_at last_used_at: Option(Timestamp),
+) {
+  let sql =
+    "INSERT INTO passkey_credentials (id, user_id, credential_id, cose_key, sign_count, aaguid, created_at, updated_at, last_used_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamBitArray(user_id),
+    dev.ParamBitArray(credential_id),
+    dev.ParamBitArray(cose_key),
+    dev.ParamInt(sign_count),
+    dev.ParamBitArray(aaguid),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+    dev.ParamNullable(option.map(last_used_at, fn(v) { dev.ParamTimestamp(v) })),
+  ])
+}
+
+pub fn insert_passkey_challenge(
+  id id: BitArray,
+  user_id user_id: Option(BitArray),
+  flow flow: String,
+  challenge_state challenge_state: BitArray,
+  created_at created_at: Timestamp,
+  expires_at expires_at: Timestamp,
+) {
+  let sql =
+    "INSERT INTO passkey_challenges (id, user_id, flow, challenge_state, created_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6)"
+  #(sql, [
+    dev.ParamBitArray(id),
+    dev.ParamNullable(option.map(user_id, fn(v) { dev.ParamBitArray(v) })),
+    dev.ParamString(flow),
+    dev.ParamBitArray(challenge_state),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(expires_at),
+  ])
+}
+
 pub fn update_session(
   user_id user_id: BitArray,
   token token: String,
@@ -3411,8 +3624,50 @@ pub fn update_login_token(
   ])
 }
 
+pub fn update_passkey_credential(
+  user_id user_id: BitArray,
+  credential_id credential_id: BitArray,
+  cose_key cose_key: BitArray,
+  sign_count sign_count: Int,
+  aaguid aaguid: BitArray,
+  created_at created_at: Timestamp,
+  updated_at updated_at: Timestamp,
+  last_used_at last_used_at: Option(Timestamp),
+  id id: BitArray,
+) {
+  let sql =
+    "UPDATE passkey_credentials
+SET user_id = $1,
+    credential_id = $2,
+    cose_key = $3,
+    sign_count = $4,
+    aaguid = $5,
+    created_at = $6,
+    updated_at = $7,
+    last_used_at = $8
+WHERE id = $9"
+  #(sql, [
+    dev.ParamBitArray(user_id),
+    dev.ParamBitArray(credential_id),
+    dev.ParamBitArray(cose_key),
+    dev.ParamInt(sign_count),
+    dev.ParamBitArray(aaguid),
+    dev.ParamTimestamp(created_at),
+    dev.ParamTimestamp(updated_at),
+    dev.ParamNullable(option.map(last_used_at, fn(v) { dev.ParamTimestamp(v) })),
+    dev.ParamBitArray(id),
+  ])
+}
+
 pub fn delete_session(id id: BitArray) {
   let sql = "DELETE FROM sessions WHERE id = $1"
+  #(sql, [dev.ParamBitArray(id)])
+}
+
+pub fn delete_passkey_challenge(id id: BitArray) {
+  let sql =
+    "DELETE FROM passkey_challenges
+WHERE id = $1"
   #(sql, [dev.ParamBitArray(id)])
 }
 

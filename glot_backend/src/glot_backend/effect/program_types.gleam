@@ -18,6 +18,7 @@ import glot_backend/effect/periodic_job/periodic_job_algebra
 import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
+import glot_backend/effect/webauthn/webauthn_algebra
 
 pub type Program(a) {
   Pure(a)
@@ -36,6 +37,7 @@ pub type Effect(next) {
   AppConfigEffect(app_config_algebra.AppConfigEffect(next))
   BasicEffect(basic_algebra.BasicEffect(next))
   EmailEffect(email_algebra.EmailEffect(next))
+  WebauthnEffect(webauthn_algebra.WebauthnEffect(next))
   DockerRunEffect(docker_run_algebra.DockerRunEffect(next))
   GetLanguageVersionEffect(
     get_language_version_algebra.GetLanguageVersionEffect(next),

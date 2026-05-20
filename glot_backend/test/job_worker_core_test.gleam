@@ -120,6 +120,7 @@ fn test_job_and_context() -> #(job_model.Job, context.Context) {
           pass: "glot",
           pool_size: 1,
         ),
+        passkey: context.default_passkey_config(),
       ),
       regexes: context.Regexes(is_email: email_regex),
       request_id: request_id,

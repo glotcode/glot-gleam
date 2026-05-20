@@ -9,6 +9,8 @@ import glot_backend/helpers/db_helpers
 import glot_backend/sql
 import glot_core/auth/account_model
 import glot_core/auth/login_token_model
+import glot_core/auth/passkey_challenge_model
+import glot_core/auth/passkey_credential_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
@@ -29,6 +31,18 @@ pub type AuthHandlers {
     ) -> Result(List(user_model.HydratedUser), db_error.DbQueryError),
     list_login_tokens_by_email: fn(email_address_model.EmailAddress, Int) ->
       Result(List(login_token_model.LoginToken), db_error.DbQueryError),
+    get_passkey_credential_by_credential_id: fn(BitArray) ->
+      Result(
+        option.Option(passkey_credential_model.PasskeyCredential),
+        db_error.DbQueryError,
+      ),
+    list_passkey_credentials_by_user_id: fn(uuid.Uuid) ->
+      Result(List(passkey_credential_model.PasskeyCredential), db_error.DbQueryError),
+    get_passkey_challenge_by_id: fn(uuid.Uuid) ->
+      Result(
+        option.Option(passkey_challenge_model.PasskeyChallenge),
+        db_error.DbQueryError,
+      ),
     get_session_by_token: fn(regexp.Regexp, String) ->
       Result(
         option.Option(session_model.HydratedSession),
@@ -61,9 +75,17 @@ pub type AuthHandlers {
     delete_session: fn(uuid.Uuid) -> Result(Nil, db_error.DbCommandError),
     create_login_token: fn(login_token_model.LoginToken) ->
       Result(Nil, db_error.DbCommandError),
+    create_passkey_credential: fn(passkey_credential_model.PasskeyCredential) ->
+      Result(Nil, db_error.DbCommandError),
+    create_passkey_challenge: fn(passkey_challenge_model.PasskeyChallenge) ->
+      Result(Nil, db_error.DbCommandError),
     update_login_token: fn(login_token_model.LoginToken) ->
       Result(Nil, db_error.DbCommandError),
+    update_passkey_credential: fn(passkey_credential_model.PasskeyCredential) ->
+      Result(Nil, db_error.DbCommandError),
     delete_login_tokens_before: fn(Timestamp) ->
+      Result(Nil, db_error.DbCommandError),
+    delete_passkey_challenge: fn(uuid.Uuid) ->
       Result(Nil, db_error.DbCommandError),
   )
 }
@@ -80,6 +102,13 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     list_login_tokens_by_email: fn(email, limit) {
       list_login_tokens_by_email(db, email, limit)
     },
+    get_passkey_credential_by_credential_id: fn(credential_id) {
+      get_passkey_credential_by_credential_id(db, credential_id)
+    },
+    list_passkey_credentials_by_user_id: fn(user_id) {
+      list_passkey_credentials_by_user_id(db, user_id)
+    },
+    get_passkey_challenge_by_id: fn(id) { get_passkey_challenge_by_id(db, id) },
     get_session_by_token: fn(is_email, token) {
       get_session_by_token(db, is_email, token)
     },
@@ -107,10 +136,20 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     update_session: fn(session) { update_session(db, session) },
     delete_session: fn(id) { delete_session(db, id) },
     create_login_token: fn(login_token) { create_login_token(db, login_token) },
+    create_passkey_credential: fn(passkey_credential) {
+      create_passkey_credential(db, passkey_credential)
+    },
+    create_passkey_challenge: fn(passkey_challenge) {
+      create_passkey_challenge(db, passkey_challenge)
+    },
     update_login_token: fn(login_token) { update_login_token(db, login_token) },
+    update_passkey_credential: fn(passkey_credential) {
+      update_passkey_credential(db, passkey_credential)
+    },
     delete_login_tokens_before: fn(before) {
       delete_login_tokens_before(db, before)
     },
+    delete_passkey_challenge: fn(id) { delete_passkey_challenge(db, id) },
   )
 }
 
@@ -226,6 +265,50 @@ pub fn list_login_tokens_by_email(
     fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { login_tokens_from_rows(returned.rows) })
+}
+
+pub fn get_passkey_credential_by_credential_id(
+  db: db_helpers.Db,
+  credential_id: BitArray,
+) -> Result(
+  option.Option(passkey_credential_model.PasskeyCredential),
+  db_error.DbQueryError,
+) {
+  db_helpers.query(
+    db,
+    sql.get_passkey_credential_by_credential_id(credential_id),
+    fn(err) { db_error.DbQueryError(string.inspect(err)) },
+  )
+  |> result.try(fn(returned) {
+    passkey_credential_from_lookup_rows(returned.rows)
+  })
+}
+
+pub fn list_passkey_credentials_by_user_id(
+  db: db_helpers.Db,
+  user_id: uuid.Uuid,
+) -> Result(List(passkey_credential_model.PasskeyCredential), db_error.DbQueryError) {
+  db_helpers.query(
+    db,
+    sql.list_passkey_credentials_by_user_id(uuid.to_bit_array(user_id)),
+    fn(err) { db_error.DbQueryError(string.inspect(err)) },
+  )
+  |> result.try(fn(returned) {
+    passkey_credentials_from_rows(returned.rows)
+  })
+}
+
+pub fn get_passkey_challenge_by_id(
+  db: db_helpers.Db,
+  id: uuid.Uuid,
+) -> Result(
+  option.Option(passkey_challenge_model.PasskeyChallenge),
+  db_error.DbQueryError,
+) {
+  db_helpers.query(db, sql.get_passkey_challenge_by_id(uuid.to_bit_array(id)), fn(err) {
+    db_error.DbQueryError(string.inspect(err))
+  })
+  |> result.try(fn(returned) { passkey_challenge_from_rows(returned.rows) })
 }
 
 pub fn get_session_by_token(
@@ -392,6 +475,51 @@ pub fn create_login_token(
   |> result.map(fn(_) { Nil })
 }
 
+pub fn create_passkey_credential(
+  db: db_helpers.Db,
+  passkey_credential: passkey_credential_model.PasskeyCredential,
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.insert_passkey_credential(
+      id: uuid.to_bit_array(passkey_credential.id),
+      user_id: uuid.to_bit_array(passkey_credential.user_id),
+      credential_id: passkey_credential.credential_id,
+      cose_key: passkey_credential.cose_key,
+      sign_count: passkey_credential.sign_count,
+      aaguid: passkey_credential.aaguid,
+      created_at: passkey_credential.created_at,
+      updated_at: passkey_credential.updated_at,
+      last_used_at: passkey_credential.last_used_at,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn create_passkey_challenge(
+  db: db_helpers.Db,
+  passkey_challenge: passkey_challenge_model.PasskeyChallenge,
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.insert_passkey_challenge(
+      id: uuid.to_bit_array(passkey_challenge.id),
+      user_id: option.map(passkey_challenge.user_id, uuid.to_bit_array),
+      flow: passkey_challenge_model.flow_to_string(passkey_challenge.flow),
+      challenge_state: passkey_challenge.challenge_state,
+      created_at: passkey_challenge.created_at,
+      expires_at: passkey_challenge.expires_at,
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
 pub fn create_session(
   db: db_helpers.Db,
   session: session_model.Session,
@@ -512,6 +640,30 @@ pub fn update_login_token(
   |> result.map(fn(_) { Nil })
 }
 
+pub fn update_passkey_credential(
+  db: db_helpers.Db,
+  passkey_credential: passkey_credential_model.PasskeyCredential,
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.update_passkey_credential(
+      user_id: uuid.to_bit_array(passkey_credential.user_id),
+      credential_id: passkey_credential.credential_id,
+      cose_key: passkey_credential.cose_key,
+      sign_count: passkey_credential.sign_count,
+      aaguid: passkey_credential.aaguid,
+      created_at: passkey_credential.created_at,
+      updated_at: passkey_credential.updated_at,
+      last_used_at: passkey_credential.last_used_at,
+      id: uuid.to_bit_array(passkey_credential.id),
+    ),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
 pub fn delete_login_tokens_before(
   db: db_helpers.Db,
   before: Timestamp,
@@ -519,6 +671,20 @@ pub fn delete_login_tokens_before(
   let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
   db_helpers.execute(db, sql.delete_login_tokens_before(before), to_error)
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_passkey_challenge(
+  db: db_helpers.Db,
+  id: uuid.Uuid,
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_passkey_challenge(uuid.to_bit_array(id)),
+    to_error,
+  )
   |> result.map(fn(_) { Nil })
 }
 
@@ -768,6 +934,97 @@ fn login_token_from_row(
         "Invalid email format in login token row: " <> row.email,
       ))
   }
+}
+
+fn passkey_credential_from_lookup_rows(
+  rows: List(sql.GetPasskeyCredentialByCredentialId),
+) -> Result(option.Option(passkey_credential_model.PasskeyCredential), db_error.DbQueryError) {
+  case rows {
+    [] -> Ok(option.None)
+    [first] -> passkey_credential_from_lookup_row(first) |> result.map(option.Some)
+    _ ->
+      Error(db_error.DbQueryError(
+        "Expected at most one passkey credential row",
+      ))
+  }
+}
+
+fn passkey_credentials_from_rows(
+  rows: List(sql.ListPasskeyCredentialsByUserId),
+) -> Result(List(passkey_credential_model.PasskeyCredential), db_error.DbQueryError) {
+  case rows {
+    [] -> Ok([])
+    [first, ..rest] -> {
+      use credential <- result.try(passkey_credential_from_row(first))
+      use credentials <- result.try(passkey_credentials_from_rows(rest))
+      Ok([credential, ..credentials])
+    }
+  }
+}
+
+fn passkey_credential_from_lookup_row(
+  row: sql.GetPasskeyCredentialByCredentialId,
+) -> Result(passkey_credential_model.PasskeyCredential, db_error.DbQueryError) {
+  Ok(passkey_credential_model.PasskeyCredential(
+    id: uuid_helpers.from_bit_array(row.id),
+    user_id: uuid_helpers.from_bit_array(row.user_id),
+    credential_id: row.credential_id,
+    cose_key: row.cose_key,
+    sign_count: row.sign_count,
+    aaguid: row.aaguid,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    last_used_at: row.last_used_at,
+  ))
+}
+
+fn passkey_credential_from_row(
+  row: sql.ListPasskeyCredentialsByUserId,
+) -> Result(passkey_credential_model.PasskeyCredential, db_error.DbQueryError) {
+  Ok(passkey_credential_model.PasskeyCredential(
+    id: uuid_helpers.from_bit_array(row.id),
+    user_id: uuid_helpers.from_bit_array(row.user_id),
+    credential_id: row.credential_id,
+    cose_key: row.cose_key,
+    sign_count: row.sign_count,
+    aaguid: row.aaguid,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    last_used_at: row.last_used_at,
+  ))
+}
+
+fn passkey_challenge_from_rows(
+  rows: List(sql.GetPasskeyChallengeById),
+) -> Result(option.Option(passkey_challenge_model.PasskeyChallenge), db_error.DbQueryError) {
+  case rows {
+    [] -> Ok(option.None)
+    [first] -> passkey_challenge_from_row(first) |> result.map(option.Some)
+    _ ->
+      Error(db_error.DbQueryError(
+        "Expected at most one passkey challenge row",
+      ))
+  }
+}
+
+fn passkey_challenge_from_row(
+  row: sql.GetPasskeyChallengeById,
+) -> Result(passkey_challenge_model.PasskeyChallenge, db_error.DbQueryError) {
+  use flow <- result.try(
+    passkey_challenge_model.flow_from_string(row.flow)
+    |> option.to_result(db_error.DbQueryError(
+      "Invalid passkey challenge flow: " <> row.flow,
+    )),
+  )
+
+  Ok(passkey_challenge_model.PasskeyChallenge(
+    id: uuid_helpers.from_bit_array(row.id),
+    user_id: option.map(row.user_id, uuid_helpers.from_bit_array),
+    flow: flow,
+    challenge_state: row.challenge_state,
+    created_at: row.created_at,
+    expires_at: row.expires_at,
+  ))
 }
 
 fn session_from_rows(

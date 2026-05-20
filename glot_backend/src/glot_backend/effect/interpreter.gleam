@@ -11,6 +11,7 @@ import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/effect/transaction/transaction_interpreter
+import glot_backend/effect/webauthn/webauthn_interpreter
 
 pub fn run(
   effect: program_types.Program(a),
@@ -70,6 +71,8 @@ fn run_effect(
       basic_interpreter.run(effect, ctx, effect_runtime, state, continue)
     program_types.EmailEffect(effect) ->
       email_interpreter.run(effect, ctx, effect_runtime, state, continue)
+    program_types.WebauthnEffect(effect) ->
+      webauthn_interpreter.run(effect, effect_runtime, ctx, state, continue)
     program_types.DockerRunEffect(effect) ->
       docker_run_interpreter.run(effect, effect_runtime, ctx, state, continue)
     program_types.GetLanguageVersionEffect(effect) ->

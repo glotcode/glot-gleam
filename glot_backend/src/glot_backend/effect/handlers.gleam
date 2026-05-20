@@ -18,6 +18,7 @@ import glot_backend/effect/run_log/run_log_handlers
 import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
+import glot_backend/effect/webauthn/webauthn_handlers
 import glot_backend/helpers/db_helpers
 
 pub type Handlers {
@@ -28,6 +29,7 @@ pub type Handlers {
     analytics: analytics_handlers.AnalyticsHandlers,
     basic: basic_handlers.BasicHandlers,
     email: email_handlers.EmailHandlers,
+    webauthn: webauthn_handlers.WebauthnHandlers,
     email_template: email_template_handlers.EmailTemplateHandlers,
     get_language_version: get_language_version_handlers.GetLanguageVersionHandlers,
     job: job_handlers.JobHandlers,
@@ -53,6 +55,7 @@ pub fn new(db: db_helpers.Db) -> Handlers {
     analytics: analytics_handlers.new(db),
     basic: basic_handlers.new(),
     email: email_handlers.new(),
+    webauthn: webauthn_handlers.new(),
     email_template: email_template_handlers.new(db),
     get_language_version: get_language_version_handlers.new(),
     job: job_handlers.new(db),

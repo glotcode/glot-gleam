@@ -55,11 +55,16 @@ import glot_backend/domain/admin/upsert_job_type_policy_domain
 import glot_backend/domain/admin/upsert_language_version_cache_worker_config_domain
 import glot_backend/domain/admin/upsert_log_worker_config_domain
 import glot_backend/domain/admin/upsert_rate_limit_policy_domain
+import glot_backend/domain/auth/begin_passkey_login_domain
+import glot_backend/domain/auth/begin_passkey_registration_domain
+import glot_backend/domain/auth/finish_passkey_login_domain
+import glot_backend/domain/auth/finish_passkey_registration_domain
 import glot_backend/domain/auth/get_session_domain
 import glot_backend/domain/auth/login_domain
 import glot_backend/domain/auth/logout_domain
 import glot_backend/domain/auth/refresh_session_domain
 import glot_backend/domain/auth/send_login_token_domain
+import glot_backend/domain/auth/session_issue_domain
 import glot_backend/domain/navigation/track_pageview_domain
 import glot_backend/domain/run_code/get_language_version_domain
 import glot_backend/domain/run_code/run_domain
@@ -106,6 +111,7 @@ import glot_core/admin_action
 import glot_core/api_action
 import glot_core/api_error_dto
 import glot_core/auth/account_dto
+import glot_core/auth/passkey_dto
 import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
 import glot_core/public_action
@@ -275,6 +281,33 @@ fn handle_public_api_request(
       ))
       login_domain.login(ctx, request)
       |> program.map(LoginResponse)
+    }
+    public_action.BeginPasskeyRegistrationAction ->
+      begin_passkey_registration_domain.begin_passkey_registration(ctx)
+      |> program.map(BeginPasskeyRegistrationResponse)
+    public_action.FinishPasskeyRegistrationAction -> {
+      use request <- program.and_then(
+        finish_passkey_registration_domain.request_from_dynamic(data),
+      )
+      finish_passkey_registration_domain.finish_passkey_registration(
+        ctx,
+        request,
+      )
+      |> program.map(fn(_) { NoContentResponse })
+    }
+    public_action.BeginPasskeyLoginAction -> {
+      use request <- program.and_then(
+        begin_passkey_login_domain.request_from_dynamic(ctx, data),
+      )
+      begin_passkey_login_domain.begin_passkey_login(ctx, request)
+      |> program.map(BeginPasskeyLoginResponse)
+    }
+    public_action.FinishPasskeyLoginAction -> {
+      use request <- program.and_then(
+        finish_passkey_login_domain.request_from_dynamic(data),
+      )
+      finish_passkey_login_domain.finish_passkey_login(ctx, request)
+      |> program.map(FinishPasskeyLoginResponse)
     }
   }
 }
@@ -634,6 +667,11 @@ type ApiResult {
   CloudflareConfigResponse(cloudflare_config_dto.CloudflareConfigResponse)
   EmailConfigResponse(email_config_dto.EmailConfigResponse)
   LoginResponse(login_domain.LoginResult)
+  BeginPasskeyRegistrationResponse(
+    passkey_dto.BeginPasskeyRegistrationResponse,
+  )
+  BeginPasskeyLoginResponse(passkey_dto.BeginPasskeyLoginResponse)
+  FinishPasskeyLoginResponse(session_issue_domain.SessionIssueResult)
   RefreshSessionResponse(refresh_session_domain.RefreshSessionResult)
   LogoutResponse
   NoContentResponse
@@ -730,6 +768,17 @@ fn api_result_to_response(
         login_result.session_cookie_max_age,
       )
     }
+    BeginPasskeyRegistrationResponse(response) ->
+      success_response(passkey_dto.encode_begin_registration_response(response))
+    BeginPasskeyLoginResponse(response) ->
+      success_response(passkey_dto.encode_begin_login_response(response))
+    FinishPasskeyLoginResponse(login_result) ->
+      set_session_cookie(
+        success_response(json.null()),
+        req,
+        login_result.session_token,
+        login_result.session_cookie_max_age,
+      )
     RefreshSessionResponse(refresh_result) ->
       set_session_cookie(
         success_response(refresh_session_dto.encode(refresh_result.response)),

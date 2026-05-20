@@ -151,6 +151,12 @@ fn auth_log_message(err: auth_error.AuthError) -> String {
     auth_error.InvalidLoginToken -> "Login error: invalid token"
     auth_error.LoginTokenUsed -> "Login error: token used"
     auth_error.LoginTokenExpired -> "Login error: token expired"
+    auth_error.PasskeyChallengeNotFound ->
+      "Passkey error: challenge not found"
+    auth_error.PasskeyChallengeExpired ->
+      "Passkey error: challenge expired"
+    auth_error.InvalidPasskeyAssertion ->
+      "Passkey error: invalid assertion"
     auth_error.MissingSessionToken -> "Session error: missing session token"
     auth_error.SessionNotFound -> "Session error: session not found"
     auth_error.SessionExpired -> "Session error: session expired"

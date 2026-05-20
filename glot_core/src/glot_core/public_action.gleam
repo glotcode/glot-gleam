@@ -22,6 +22,10 @@ pub type PublicAction {
   DeleteSnippetAction
   SendLoginTokenAction
   LoginAction
+  BeginPasskeyRegistrationAction
+  FinishPasskeyRegistrationAction
+  BeginPasskeyLoginAction
+  FinishPasskeyLoginAction
 }
 
 pub fn list() -> List(PublicAction) {
@@ -44,6 +48,10 @@ pub fn list() -> List(PublicAction) {
     DeleteSnippetAction,
     SendLoginTokenAction,
     LoginAction,
+    BeginPasskeyRegistrationAction,
+    FinishPasskeyRegistrationAction,
+    BeginPasskeyLoginAction,
+    FinishPasskeyLoginAction,
   ]
 }
 
@@ -79,6 +87,10 @@ pub fn to_string(action: PublicAction) -> String {
     DeleteSnippetAction -> "delete_snippet"
     SendLoginTokenAction -> "send_login_token"
     LoginAction -> "login"
+    BeginPasskeyRegistrationAction -> "begin_passkey_registration"
+    FinishPasskeyRegistrationAction -> "finish_passkey_registration"
+    BeginPasskeyLoginAction -> "begin_passkey_login"
+    FinishPasskeyLoginAction -> "finish_passkey_login"
   }
 }
 
@@ -102,6 +114,11 @@ pub fn from_string(action: String) -> option.Option(PublicAction) {
     "delete_snippet" -> option.Some(DeleteSnippetAction)
     "send_login_token" -> option.Some(SendLoginTokenAction)
     "login" -> option.Some(LoginAction)
+    "begin_passkey_registration" -> option.Some(BeginPasskeyRegistrationAction)
+    "finish_passkey_registration" ->
+      option.Some(FinishPasskeyRegistrationAction)
+    "begin_passkey_login" -> option.Some(BeginPasskeyLoginAction)
+    "finish_passkey_login" -> option.Some(FinishPasskeyLoginAction)
     _ -> option.None
   }
 }
@@ -127,6 +144,10 @@ pub fn server_timing_policy(
     | ScheduleDeleteAccountAction
     | CancelDeleteAccountAction
     | SendLoginTokenAction
-    | LoginAction -> server_timing_policy.SuppressServerTiming
+    | LoginAction
+    | BeginPasskeyRegistrationAction
+    | FinishPasskeyRegistrationAction
+    | BeginPasskeyLoginAction
+    | FinishPasskeyLoginAction -> server_timing_policy.SuppressServerTiming
   }
 }

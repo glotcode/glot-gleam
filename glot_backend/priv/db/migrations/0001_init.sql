@@ -122,6 +122,38 @@ CREATE UNIQUE INDEX idx_sessions_previous_token
   ON sessions(previous_token)
   WHERE previous_token IS NOT NULL;
 
+-- PASSKEYS
+
+CREATE TABLE IF NOT EXISTS passkey_credentials (
+  id UUID PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  credential_id BYTEA NOT NULL UNIQUE,
+  cose_key BYTEA NOT NULL,
+  sign_count BIGINT NOT NULL,
+  aaguid BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL,
+  last_used_at TIMESTAMPTZ NULL
+);
+
+CREATE INDEX idx_passkey_credentials_user_id
+  ON passkey_credentials(user_id);
+
+CREATE TABLE IF NOT EXISTS passkey_challenges (
+  id UUID PRIMARY KEY,
+  user_id UUID NULL REFERENCES users(id) ON DELETE CASCADE,
+  flow TEXT NOT NULL,
+  challenge_state BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_passkey_challenges_user_id
+  ON passkey_challenges(user_id);
+
+CREATE INDEX idx_passkey_challenges_expires_at
+  ON passkey_challenges(expires_at);
+
 -- SNIPPETS
 
 CREATE TABLE IF NOT EXISTS snippets (

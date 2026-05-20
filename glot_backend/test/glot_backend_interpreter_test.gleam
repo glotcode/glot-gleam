@@ -41,6 +41,7 @@ import glot_backend/effect/snippet/snippet_handlers
 import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/transaction/transaction_handlers
 import glot_backend/effect/user_action/user_action_handlers
+import glot_backend/effect/webauthn/webauthn_handlers
 import glot_backend/log
 import glot_backend/server_timing
 import glot_core/job/job_model
@@ -279,6 +280,14 @@ fn test_handlers() -> handlers.Handlers {
         ),
       )
     }),
+    webauthn: webauthn_handlers.WebauthnHandlers(
+      new_registration_challenge: fn(_, _, _) { Error("not implemented") },
+      register: fn(_, _, _) { Error("not implemented") },
+      new_authentication_challenge: fn(_, _, _, _) {
+        Error("not implemented")
+      },
+      authenticate: fn(_, _, _, _, _, _) { Error("not implemented") },
+    ),
     email_template: email_template_handlers.EmailTemplateHandlers(
       list_email_templates: fn() { Ok([]) },
       get_email_template_by_name: fn(_) { Ok(option.None) },
@@ -339,6 +348,9 @@ fn test_handlers() -> handlers.Handlers {
       get_user_by_id: fn(_, _) { Ok(option.None) },
       list_users: fn(_, _, _) { Ok([]) },
       list_login_tokens_by_email: fn(_, _) { Ok([]) },
+      get_passkey_credential_by_credential_id: fn(_) { Ok(option.None) },
+      list_passkey_credentials_by_user_id: fn(_) { Ok([]) },
+      get_passkey_challenge_by_id: fn(_) { Ok(option.None) },
       get_session_by_token: fn(_, _) { Ok(option.None) },
       get_session_by_token_for_update: fn(_) { Ok(option.None) },
       get_session_by_previous_token: fn(_, _) { Ok(option.None) },
@@ -354,8 +366,12 @@ fn test_handlers() -> handlers.Handlers {
       update_session: fn(_) { Ok(Nil) },
       delete_session: fn(_) { Ok(Nil) },
       create_login_token: fn(_) { Ok(Nil) },
+      create_passkey_credential: fn(_) { Ok(Nil) },
+      create_passkey_challenge: fn(_) { Ok(Nil) },
       update_login_token: fn(_) { Ok(Nil) },
+      update_passkey_credential: fn(_) { Ok(Nil) },
       delete_login_tokens_before: fn(_) { Ok(Nil) },
+      delete_passkey_challenge: fn(_) { Ok(Nil) },
     ),
     snippet: snippet_handlers.SnippetHandlers(
       get_snippet_by_id: fn(_) { Ok(option.None) },
@@ -404,6 +420,7 @@ fn test_context() -> context.Context {
         pass: "test",
         pool_size: 1,
       ),
+      passkey: context.default_passkey_config(),
     ),
     regexes: context.Regexes(is_email: is_email),
     request_id: uuid.nil,

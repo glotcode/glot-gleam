@@ -20,6 +20,7 @@ import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/user_action/user_action_algebra
+import glot_backend/effect/webauthn/webauthn_algebra
 
 pub type EffectName {
   AppConfigEffectName(app_config_algebra.EffectName)
@@ -28,6 +29,7 @@ pub type EffectName {
   AnalyticsEffectName(analytics_algebra.EffectName)
   BasicEffectName(basic_algebra.EffectName)
   EmailEffectName(email_algebra.EffectName)
+  WebauthnEffectName(webauthn_algebra.EffectName)
   EmailTemplateEffectName(email_template_algebra.EffectName)
   JobEffectName(job_algebra.EffectName)
   JobLogEffectName(job_log_algebra.EffectName)
@@ -56,6 +58,7 @@ pub fn effect_name_to_string(effect_name: EffectName) -> String {
     AnalyticsEffectName(name) -> analytics_algebra.effect_name_to_string(name)
     BasicEffectName(name) -> basic_algebra.effect_name_to_string(name)
     EmailEffectName(name) -> email_algebra.effect_name_to_string(name)
+    WebauthnEffectName(name) -> webauthn_algebra.effect_name_to_string(name)
     EmailTemplateEffectName(name) ->
       email_template_algebra.effect_name_to_string(name)
     JobEffectName(name) -> job_algebra.effect_name_to_string(name)
@@ -88,6 +91,7 @@ pub fn effect_name_to_family(effect_name: EffectName) -> String {
     AnalyticsEffectName(_) -> "analytics"
     BasicEffectName(_) -> "basic"
     EmailEffectName(_) -> "email"
+    WebauthnEffectName(_) -> "webauthn"
     EmailTemplateEffectName(_) -> "email_template"
     JobEffectName(_) -> "job"
     JobLogEffectName(_) -> "job_log"

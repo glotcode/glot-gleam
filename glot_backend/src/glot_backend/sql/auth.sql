@@ -139,6 +139,46 @@ LIMIT sqlc.arg(page_limit);
 -- name: ListLoginTokensByEmail :many
 SELECT id, email, token, created_at, used_at FROM login_tokens WHERE email = $1 ORDER BY created_at DESC LIMIT $2;
 
+-- name: GetPasskeyCredentialByCredentialId :one
+SELECT
+  id,
+  user_id,
+  credential_id,
+  cose_key,
+  sign_count,
+  aaguid,
+  created_at,
+  updated_at,
+  last_used_at
+FROM passkey_credentials
+WHERE credential_id = $1;
+
+-- name: ListPasskeyCredentialsByUserId :many
+SELECT
+  id,
+  user_id,
+  credential_id,
+  cose_key,
+  sign_count,
+  aaguid,
+  created_at,
+  updated_at,
+  last_used_at
+FROM passkey_credentials
+WHERE user_id = $1
+ORDER BY created_at ASC;
+
+-- name: GetPasskeyChallengeById :one
+SELECT
+  id,
+  user_id,
+  flow,
+  challenge_state,
+  created_at,
+  expires_at
+FROM passkey_challenges
+WHERE id = $1;
+
 -- name: GetSessionByToken :one
 SELECT
   sessions.id,
@@ -241,6 +281,12 @@ INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2,
 -- name: InsertSession :exec
 INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, user_agent, created_at, token_updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
+-- name: InsertPasskeyCredential :exec
+INSERT INTO passkey_credentials (id, user_id, credential_id, cose_key, sign_count, aaguid, created_at, updated_at, last_used_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+
+-- name: InsertPasskeyChallenge :exec
+INSERT INTO passkey_challenges (id, user_id, flow, challenge_state, created_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6);
+
 -- name: UpdateSession :exec
 UPDATE sessions
 SET user_id = $1,
@@ -278,8 +324,24 @@ WHERE id = $8;
 -- name: UpdateLoginToken :exec
 UPDATE login_tokens SET email = $1, token = $2, created_at = $3, used_at = $4 WHERE id = $5;
 
+-- name: UpdatePasskeyCredential :exec
+UPDATE passkey_credentials
+SET user_id = $1,
+    credential_id = $2,
+    cose_key = $3,
+    sign_count = $4,
+    aaguid = $5,
+    created_at = $6,
+    updated_at = $7,
+    last_used_at = $8
+WHERE id = $9;
+
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = $1;
+
+-- name: DeletePasskeyChallenge :exec
+DELETE FROM passkey_challenges
+WHERE id = $1;
 
 -- name: DeleteSessionsByAccountId :exec
 DELETE FROM sessions

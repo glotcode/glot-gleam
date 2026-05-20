@@ -25,6 +25,7 @@ import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/transaction/transaction_algebra
 import glot_backend/effect/user_action/user_action_algebra
+import glot_backend/effect/webauthn/webauthn_algebra
 
 pub fn succeed(value: a) -> program_types.Program(a) {
   program_types.Pure(value)
@@ -129,6 +130,8 @@ fn map_effect(
       program_types.BasicEffect(basic_algebra.map(effect, f))
     program_types.EmailEffect(effect) ->
       program_types.EmailEffect(email_algebra.map(effect, f))
+    program_types.WebauthnEffect(effect) ->
+      program_types.WebauthnEffect(webauthn_algebra.map(effect, f))
     program_types.DockerRunEffect(effect) ->
       program_types.DockerRunEffect(docker_run_algebra.map(effect, f))
     program_types.GetLanguageVersionEffect(effect) ->

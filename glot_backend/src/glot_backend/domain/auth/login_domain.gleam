@@ -3,7 +3,7 @@ import gleam/list
 import gleam/option
 import gleam/time/timestamp
 import glot_backend/context
-import glot_backend/crypto_token
+import glot_backend/domain/auth/session_issue_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_effect
@@ -21,15 +21,12 @@ import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_model
-import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/public_action
 import youid/uuid.{type Uuid}
 
-pub type LoginResult {
-  LoginResult(session_token: String, session_cookie_max_age: Int)
-}
+pub type LoginResult = session_issue_domain.SessionIssueResult
 
 pub fn login(
   ctx: context.Context,
@@ -70,12 +67,6 @@ pub fn login(
   let used_login_token =
     login_token_model.mark_as_used(matching_token, ctx.timestamp)
 
-  use session_id <- program.and_then(basic_effect.uuid_v7())
-  use session_token <- program.and_then(basic_effect.new_token(
-    32,
-    crypto_token.AlphaNumeric,
-  ))
-
   use user_outcome <- program.and_then(update_or_create_user(
     maybe_user,
     request.email,
@@ -83,44 +74,30 @@ pub fn login(
   ))
 
   let user = user_outcome.user |> user_model.mark_last_login(ctx.timestamp)
-
-  let session =
-    session_model.Session(
-      id: session_id,
-      user_id: user.id,
-      token: session_token,
-      previous_token: option.None,
-      previous_token_valid_until: option.None,
-      ip: ctx.client_info.ip,
-      user_agent: ctx.client_info.user_agent,
-      created_at: ctx.timestamp,
-      token_updated_at: ctx.timestamp,
-    )
-
   use _ <- program.and_then(
     basic_effect.info(log.singleton(log.uuid("user_id", user.id))),
   )
-
-  use _ <- program.and_then(
-    transaction_effect.run_all([
-      auth_effect.update_login_token_tx(used_login_token),
-      user_outcome.persist_fn(user),
-      auth_effect.create_session_tx(session),
-      user_action_effect.create_user_action_tx(user_action),
-    ]),
-  )
-
+  use session_issue <- program.and_then(session_issue_domain.issue_session_for_user(
+    ctx,
+    user.id,
+  ))
+  use _ <- program.and_then(transaction_effect.run_all([
+    auth_effect.update_login_token_tx(used_login_token),
+    user_outcome.persist_fn(user),
+    auth_effect.create_session_tx(session_issue.session),
+    user_action_effect.create_user_action_tx(user_action),
+  ]))
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
-        log.uuid("session_id", session_id),
+        log.uuid("session_id", session_issue.session.id),
         log.bool("is_first_login", user_outcome.is_new_user),
       ]),
     ),
   )
 
-  program.succeed(LoginResult(
-    session_token: session_token,
+  program.succeed(session_issue_domain.SessionIssueResult(
+    session_token: session_issue.session_token,
     session_cookie_max_age: auth_config.session_cookie_max_age,
   ))
 }

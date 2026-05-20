@@ -344,6 +344,7 @@ fn test_config() -> context.Config {
       pass: "glot",
       pool_size: 1,
     ),
+    passkey: context.default_passkey_config(),
   )
 }
 
