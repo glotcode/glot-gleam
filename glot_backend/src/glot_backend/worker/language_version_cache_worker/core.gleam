@@ -1,9 +1,9 @@
-import gleam/dict
 import gleam/erlang/process
 import gleam/list
 import gleam/option
 import glot_backend/dynamic_config
 import glot_backend/effect/error/run_request_error
+import glot_backend/worker/cache_worker_state
 import glot_backend/worker/cache_worker_support
 import glot_core/language as language_module
 import glot_core/run
@@ -17,13 +17,11 @@ pub type State {
   State(
     config: dynamic_config.LanguageVersionCacheWorkerConfig,
     docker_run_configured: Bool,
-    cached_versions: dict.Dict(
+    cache: cache_worker_state.Keyed(
       language_module.Language,
-      cache_worker_support.CacheEntry(run.RunResult),
-    ),
-    in_flight: dict.Dict(
-      language_module.Language,
-      cache_worker_support.InFlight(Reply, Bool),
+      run.RunResult,
+      Reply,
+      Bool,
     ),
     refresh_queue: List(language_module.Language),
     refresh_language: option.Option(language_module.Language),
@@ -48,8 +46,7 @@ pub fn new() -> State {
       dynamic_config.empty(),
     ),
     docker_run_configured: False,
-    cached_versions: dict.new(),
-    in_flight: dict.new(),
+    cache: cache_worker_state.new_keyed(),
     refresh_queue: [],
     refresh_language: option.None,
   )
@@ -71,7 +68,7 @@ pub fn docker_run_configured(state: State) -> Bool {
   state.docker_run_configured
 }
 
-pub fn on_get_language_version(
+pub fn on_get(
   state: State,
   language: language_module.Language,
   reply: process.Subject(Reply),
@@ -79,10 +76,9 @@ pub fn on_get_language_version(
   can_fetch: Bool,
   can_update: Bool,
 ) -> #(State, List(Command)) {
-  case
-    cache_worker_support.keyed_lookup(
-      state.cached_versions,
-      state.in_flight,
+  let #(cache, decision) =
+    cache_worker_state.keyed_lookup(
+      state.cache,
       language,
       reply,
       now_ns,
@@ -92,18 +88,18 @@ pub fn on_get_language_version(
       Error(run_request_error.ServerRunRequestError),
       False,
     )
-  {
+
+  case decision {
     cache_worker_support.ReplyNow(result, start_refresh) -> {
       let #(next_state, refresh_commands) =
-        case start_refresh && can_update && !dict.has_key(state.in_flight, language) {
-          True -> start_fetch(state, language, True)
+        case start_refresh && can_update {
+          True -> start_fetch_if_idle(state, language, True)
           False -> #(state, [])
         }
       #(next_state, [Reply(reply, result), ..refresh_commands])
     }
-    cache_worker_support.AwaitFetch(in_flight, start_fetch_now) -> {
-      let state =
-        State(..state, in_flight: dict.insert(state.in_flight, language, in_flight))
+    cache_worker_support.AwaitFetch(_, start_fetch_now) -> {
+      let state = State(..state, cache: cache)
       case start_fetch_now {
         True -> start_fetch(state, language, False)
         False -> #(state, [])
@@ -139,7 +135,7 @@ pub fn on_tick(
   }
 }
 
-pub fn on_refresh_next(
+pub fn on_refresh_scheduled(
   state: State,
   can_update: Bool,
 ) -> #(State, List(Command)) {
@@ -155,8 +151,14 @@ pub fn on_fetch_completed(
   fetched_at_ns: Int,
   result: Reply,
 ) -> #(State, List(Command)) {
-  let in_flight =
-    cache_worker_support.keyed_in_flight(state.in_flight, language, False)
+  let #(cache, fetch_outcome) =
+    cache_worker_state.finish_keyed_fetch(
+      state.cache,
+      language,
+      fetched_at_ns,
+      result,
+      False,
+    )
 
   let next_state = {
     let refresh_language = case state.refresh_language {
@@ -166,27 +168,16 @@ pub fn on_fetch_completed(
 
     State(
       ..state,
-      in_flight: dict.delete(state.in_flight, language),
+      cache: cache,
       refresh_language: refresh_language,
     )
   }
 
-  let reply_commands =
-    list.map(in_flight.waiters, fn(reply) { Reply(reply, result) })
+  let waiters = cache_worker_support.fetch_outcome_waiters(fetch_outcome)
+  let reply_commands = list.map(waiters, fn(reply) { Reply(reply, result) })
 
   case result {
     Ok(_run_result) -> {
-      let assert option.Some(cache_entry) =
-        cache_worker_support.cache_result(fetched_at_ns, result)
-      let next_state =
-        State(
-          ..next_state,
-          cached_versions: dict.insert(
-            next_state.cached_versions,
-            language,
-            cache_entry,
-          ),
-        )
       let #(next_state, refresh_commands) = schedule_refresh_if_idle(next_state, 0)
       #(next_state, list.append(reply_commands, refresh_commands))
     }
@@ -206,13 +197,16 @@ fn enqueue_due_refreshes(
   now_ns: Int,
 ) -> State {
   list.fold(supported_languages, state, fn(state, language) {
-    case dict.get(state.cached_versions, language) {
-      Ok(entry) ->
-        case is_stale(state, entry, now_ns) {
-          True -> enqueue_refresh(state, language)
-          False -> state
-        }
-      Error(_) -> enqueue_refresh(state, language)
+    case
+      cache_worker_state.keyed_is_stale_or_missing(
+        state.cache,
+        language,
+        now_ns,
+        state.config.refresh_interval_ms,
+      )
+    {
+      True -> enqueue_refresh(state, language)
+      False -> state
     }
   })
 }
@@ -233,26 +227,16 @@ fn start_fetch(
   language: language_module.Language,
   refresh: Bool,
 ) -> #(State, List(Command)) {
-  let existing_in_flight =
-    cache_worker_support.keyed_in_flight(state.in_flight, language, False)
-  let next_in_flight =
-    cache_worker_support.InFlight(
-      waiters: existing_in_flight.waiters,
-      meta: existing_in_flight.meta || refresh,
-    )
-  let next_state =
-    State(
-      ..state,
-      in_flight: dict.insert(
-        state.in_flight,
-        language,
-        next_in_flight,
-      ),
-    )
-  #(
-    next_state,
-    [StartFetch(language, state.config.default_timeout_ms)],
+  let next_state = State(
+    ..state,
+    cache: cache_worker_state.prepare_keyed_fetch(
+      state.cache,
+      language,
+      False,
+      fn(meta) { meta || refresh },
+    ),
   )
+  #(next_state, [StartFetch(language, state.config.default_timeout_ms)])
 }
 
 fn schedule_refresh_if_idle(
@@ -285,7 +269,7 @@ fn start_next_refresh(state: State) -> #(State, List(Command)) {
           refresh_queue: rest,
           refresh_language: option.Some(language),
         )
-      case dict.has_key(state.in_flight, language) {
+      case cache_worker_state.has_keyed_in_flight(state.cache, language) {
         True -> #(state, [])
         False -> start_fetch(state, language, True)
       }
@@ -307,16 +291,27 @@ fn is_refresh_in_flight(state: State, language: language_module.Language) -> Boo
 }
 
 fn should_start_initial_refresh_immediately(state: State) -> Bool {
-  dict.is_empty(state.cached_versions)
-  && dict.is_empty(state.in_flight)
+  cache_worker_state.keyed_is_empty(state.cache)
   && state.refresh_queue != []
   && state.refresh_language == option.None
 }
 
-fn is_stale(
+fn start_fetch_if_idle(
   state: State,
-  entry: cache_worker_support.CacheEntry(run.RunResult),
-  now_ns: Int,
-) -> Bool {
-  cache_worker_support.is_stale(entry, now_ns, state.config.refresh_interval_ms)
+  language: language_module.Language,
+  refresh: Bool,
+) -> #(State, List(Command)) {
+  let #(cache, should_start_fetch) =
+    cache_worker_state.ensure_keyed_fetch_if_idle(
+      state.cache,
+      language,
+      False,
+      fn(meta) { meta || refresh },
+    )
+  let next_state = State(..state, cache: cache)
+
+  case should_start_fetch {
+    True -> #(next_state, [StartFetch(language, state.config.default_timeout_ms)])
+    False -> #(next_state, [])
+  }
 }

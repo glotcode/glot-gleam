@@ -9,6 +9,7 @@ import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/effect/error/run_request_error
 import glot_backend/server_mode
+import glot_backend/worker/cache_worker_state
 import glot_backend/worker/cache_worker_support
 import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/language_version_cache_worker/core as language_version_cache_worker_core
@@ -192,7 +193,7 @@ pub fn core_cold_miss_starts_fetch_test() {
     language_version_cache_worker_core.new()
     |> language_version_cache_worker_core.set_config(config_with_docker_run())
   let #(next_state, commands) =
-    language_version_cache_worker_core.on_get_language_version(
+    language_version_cache_worker_core.on_get(
       state,
       language.Python,
       reply,
@@ -203,8 +204,8 @@ pub fn core_cold_miss_starts_fetch_test() {
 
   assert count_start_fetch(commands) == 1
   assert count_reply(commands) == 0
-  let language_version_cache_worker_core.State(in_flight:, ..) = next_state
-  assert dict.size(in_flight) == 1
+  let language_version_cache_worker_core.State(cache:, ..) = next_state
+  assert dict.size(cache_worker_state.keyed_in_flights(cache)) == 1
 }
 
 pub fn core_tick_enqueues_initial_refresh_immediately_test() {
@@ -233,18 +234,20 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
         config_with_docker_run(),
       ),
       docker_run_configured: True,
-      cached_versions: dict.from_list([#(
-        language.Python,
-        cache_worker_support.CacheEntry(
-          value: successful_run("Python 3.13"),
-          refreshed_at_ns: 0,
-        ),
-      )]),
-      in_flight: dict.from_list([#(
-        language.Python,
-        cache_worker_support.new_in_flight(True)
-        |> cache_worker_support.with_waiter(waiter),
-      )]),
+      cache: cache_worker_state.Keyed(
+        cache_entries: dict.from_list([#(
+          language.Python,
+          cache_worker_support.CacheEntry(
+            value: successful_run("Python 3.13"),
+            refreshed_at_ns: 0,
+          ),
+        )]),
+        in_flights: dict.from_list([#(
+          language.Python,
+          cache_worker_support.new_in_flight(True)
+          |> cache_worker_support.with_waiter(waiter),
+        )]),
+      ),
       refresh_queue: [],
       refresh_language: option.Some(language.Python),
     )
@@ -259,14 +262,10 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
   run_core_commands(commands)
   assert process.receive_forever(waiter)
     == Error(run_request_error.ServerRunRequestError)
-  let language_version_cache_worker_core.State(
-    cached_versions: cached_versions,
-    in_flight: in_flight,
-    refresh_language: refresh_language,
-    ..
-  ) = next_state
-  assert dict.size(cached_versions) == 1
-  assert dict.is_empty(in_flight)
+  let language_version_cache_worker_core.State(cache:, refresh_language:, ..) =
+    next_state
+  assert dict.size(cache_worker_state.keyed_cache_entries(cache)) == 1
+  assert dict.is_empty(cache_worker_state.keyed_in_flights(cache))
   assert refresh_language == option.None
 }
 

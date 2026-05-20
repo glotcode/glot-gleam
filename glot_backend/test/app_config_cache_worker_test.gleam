@@ -6,6 +6,7 @@ import gleeunit
 import glot_backend/dynamic_config
 import glot_backend/effect/error/db_error
 import glot_backend/server_mode
+import glot_backend/worker/cache_worker_state
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_backend/worker/app_config_cache_worker/core as app_config_cache_worker_core
 import glot_backend/worker/cache_worker_support
@@ -149,7 +150,7 @@ pub fn maintenance_mode_uses_empty_config_without_fetching_test() {
 pub fn core_cold_miss_starts_fetch_and_waits_test() {
   let reply = process.new_subject()
   let #(state, commands) =
-    app_config_cache_worker_core.on_get_config(
+    app_config_cache_worker_core.on_get(
       app_config_cache_worker_core.new(),
       reply,
       0,
@@ -158,22 +159,24 @@ pub fn core_cold_miss_starts_fetch_and_waits_test() {
 
   assert count_start_fetch(commands) == 1
   assert count_reply(commands) == 0
-  let app_config_cache_worker_core.State(in_flight:, ..) = state
-  assert in_flight != option.None
+  let app_config_cache_worker_core.State(cache:) = state
+  assert cache_worker_state.single_in_flight(cache) != option.None
 }
 
 pub fn core_stale_hit_replies_immediately_and_refreshes_test() {
   let reply = process.new_subject()
   let state =
     app_config_cache_worker_core.State(
-      cache_entry: option.Some(cache_worker_support.CacheEntry(
-        value: test_dynamic_config(),
-        refreshed_at_ns: 0,
-      )),
-      in_flight: option.None,
+      cache: cache_worker_state.Single(
+        cache_entry: option.Some(cache_worker_support.CacheEntry(
+          value: test_dynamic_config(),
+          refreshed_at_ns: 0,
+        )),
+        in_flight: option.None,
+      ),
     )
   let #(next_state, commands) =
-    app_config_cache_worker_core.on_get_config(
+    app_config_cache_worker_core.on_get(
       state,
       reply,
       60_000_000_001,
@@ -183,8 +186,8 @@ pub fn core_stale_hit_replies_immediately_and_refreshes_test() {
   assert count_start_fetch(commands) == 1
   run_core_commands(commands)
   assert process.receive_forever(reply) == Ok(test_dynamic_config())
-  let app_config_cache_worker_core.State(in_flight:, ..) = next_state
-  assert in_flight != option.None
+  let app_config_cache_worker_core.State(cache:) = next_state
+  assert cache_worker_state.single_in_flight(cache) != option.None
 }
 
 pub fn core_failed_refresh_keeps_stale_cache_test() {
@@ -192,17 +195,19 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
   let waiter = process.new_subject()
   let state =
     app_config_cache_worker_core.State(
-      cache_entry: option.Some(cache_worker_support.CacheEntry(
-        value: test_dynamic_config(),
-        refreshed_at_ns: 0,
-      )),
-      in_flight: option.Some(
-        cache_worker_support.new_in_flight(Nil)
-        |> cache_worker_support.with_waiter(waiter),
+      cache: cache_worker_state.Single(
+        cache_entry: option.Some(cache_worker_support.CacheEntry(
+          value: test_dynamic_config(),
+          refreshed_at_ns: 0,
+        )),
+        in_flight: option.Some(
+          cache_worker_support.new_in_flight(Nil)
+          |> cache_worker_support.with_waiter(waiter),
+        ),
       ),
     )
   let #(next_state, commands) =
-    app_config_cache_worker_core.on_refresh_completed(
+    app_config_cache_worker_core.on_fetch_completed(
       state,
       1,
       Error(db_error.DbQueryError("refresh failed")),
@@ -211,11 +216,11 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
   run_core_commands(commands)
   assert process.receive_forever(waiter)
     == Error(db_error.DbQueryError("refresh failed"))
-  let app_config_cache_worker_core.State(cache_entry:, in_flight:) = next_state
-  assert in_flight == option.None
-  assert cache_entry != option.None
+  let app_config_cache_worker_core.State(cache:) = next_state
+  assert cache_worker_state.single_in_flight(cache) == option.None
+  assert cache_worker_state.single_cache_entry(cache) != option.None
   let #(lookup_state, lookup_commands) =
-    app_config_cache_worker_core.on_get_config(next_state, reply, 1, True)
+    app_config_cache_worker_core.on_get(next_state, reply, 1, True)
   assert count_reply(lookup_commands) == 1
   run_core_commands(lookup_commands)
   assert process.receive_forever(reply) == Ok(test_dynamic_config())

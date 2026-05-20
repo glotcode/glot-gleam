@@ -122,11 +122,12 @@ fn handle_message(
     GetConfig(reply) -> {
       let now_ns = state.deps.now_ns()
       let #(next_core, commands) =
-        core.on_get_config(state.core, reply, now_ns, can_fetch(state))
+        core.on_get(state.core, reply, now_ns, can_fetch(state))
       actor.continue(run_commands(State(..state, core: next_core), commands))
     }
     Refresh(reply) -> {
-      let #(next_core, commands) = core.on_refresh(state.core, reply, can_fetch(state))
+      let #(next_core, commands) =
+        core.on_refresh_requested(state.core, reply, can_fetch(state))
       actor.continue(run_commands(State(..state, core: next_core), commands))
     }
     Tick -> {
@@ -136,7 +137,7 @@ fn handle_message(
     }
     RefreshCompleted(fetched_at_ns, result) -> {
       let #(next_core, commands) =
-        core.on_refresh_completed(state.core, fetched_at_ns, result)
+        core.on_fetch_completed(state.core, fetched_at_ns, result)
       actor.continue(run_commands(State(..state, core: next_core), commands))
     }
   }

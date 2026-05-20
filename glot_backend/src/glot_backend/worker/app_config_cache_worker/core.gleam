@@ -1,8 +1,8 @@
 import gleam/erlang/process
 import gleam/list
-import gleam/option
 import glot_backend/dynamic_config
 import glot_backend/effect/error/db_error
+import glot_backend/worker/cache_worker_state
 import glot_backend/worker/cache_worker_support
 
 pub const refresh_interval_ms = 60_000
@@ -12,10 +12,7 @@ pub type Reply =
 
 pub type State {
   State(
-    cache_entry: option.Option(
-      cache_worker_support.CacheEntry(dynamic_config.DynamicConfig),
-    ),
-    in_flight: option.Option(cache_worker_support.InFlight(Reply, Nil)),
+    cache: cache_worker_state.Single(dynamic_config.DynamicConfig, Reply, Nil),
   )
 }
 
@@ -27,19 +24,18 @@ pub type Command {
 }
 
 pub fn new() -> State {
-  State(cache_entry: option.None, in_flight: option.None)
+  State(cache: cache_worker_state.new_single())
 }
 
-pub fn on_get_config(
+pub fn on_get(
   state: State,
   reply: process.Subject(Reply),
   now_ns: Int,
   can_fetch: Bool,
 ) -> #(State, List(Command)) {
-  case
-    cache_worker_support.single_lookup(
-      state.cache_entry,
-      state.in_flight,
+  let #(cache, decision) =
+    cache_worker_state.single_lookup(
+      state.cache,
       reply,
       now_ns,
       refresh_interval_ms,
@@ -48,21 +44,19 @@ pub fn on_get_config(
       Ok(dynamic_config.empty()),
       Nil,
     )
-  {
+
+  case decision {
     cache_worker_support.ReplyNow(result, start_refresh) -> {
-      let commands = case start_refresh && can_fetch && state.in_flight == option.None {
-        True -> [StartFetch]
-        False -> []
-      }
-      let next_state = case commands {
-        [StartFetch] ->
-          State(..state, in_flight: option.Some(cache_worker_support.new_in_flight(Nil)))
-        _ -> state
-      }
-      #(next_state, [Reply(reply, result), ..commands])
+      let #(next_state, refresh_commands) =
+        case start_refresh && can_fetch {
+          True -> start_fetch_if_idle(state)
+          False -> #(state, [])
+        }
+
+      #(next_state, [Reply(reply, result), ..refresh_commands])
     }
-    cache_worker_support.AwaitFetch(in_flight, start_fetch) -> {
-      let next_state = State(..state, in_flight: option.Some(in_flight))
+    cache_worker_support.AwaitFetch(_, start_fetch) -> {
+      let next_state = State(cache: cache)
       let commands = case start_fetch {
         True -> [StartFetch]
         False -> []
@@ -72,21 +66,18 @@ pub fn on_get_config(
   }
 }
 
-pub fn on_refresh(
+pub fn on_refresh_requested(
   state: State,
   reply: process.Subject(Reply),
   can_fetch: Bool,
 ) -> #(State, List(Command)) {
-  let in_flight = cache_worker_support.single_in_flight(state.in_flight, Nil)
-  let next_state =
-    State(
-      ..state,
-      in_flight: option.Some(cache_worker_support.with_waiter(in_flight, reply)),
-    )
+  let #(cache, should_start_fetch) =
+    cache_worker_state.ensure_single_fetch_with_waiter(state.cache, reply, Nil)
+  let next_state = State(cache: cache)
 
-  case state.in_flight, can_fetch {
-    option.None, True -> #(next_state, [StartFetch])
-    _, _ -> #(next_state, [])
+  case should_start_fetch && can_fetch {
+    True -> #(next_state, [StartFetch])
+    False -> #(next_state, [])
   }
 }
 
@@ -97,46 +88,60 @@ pub fn on_tick(
 ) -> #(State, List(Command)) {
   let commands = [ScheduleTick(refresh_interval_ms)]
 
-  case can_fetch, state.in_flight, cache_is_stale(state, now_ns) {
-    True, option.None, True -> #(
-      State(..state, in_flight: option.Some(cache_worker_support.new_in_flight(Nil))),
-      [StartFetch, ..commands],
-    )
-    _, _, _ -> #(state, commands)
+  case can_fetch && cache_worker_state.single_is_stale(
+    state.cache,
+    now_ns,
+    refresh_interval_ms,
+  ) {
+    True -> {
+      let #(next_state, refresh_commands) = start_fetch_if_idle(state)
+      #(next_state, list.append(refresh_commands, commands))
+    }
+    False -> #(state, commands)
   }
 }
 
-pub fn on_refresh_completed(
+pub fn on_fetch_completed(
   state: State,
   fetched_at_ns: Int,
   result: Reply,
 ) -> #(State, List(Command)) {
-  let in_flight = cache_worker_support.single_in_flight(state.in_flight, Nil)
-  let next_state = State(..state, in_flight: option.None)
+  let #(cache, fetch_outcome) =
+    cache_worker_state.finish_single_fetch(
+      state.cache,
+      fetched_at_ns,
+      result,
+      Nil,
+    )
+  let next_state = State(cache: cache)
+  let waiters = cache_worker_support.fetch_outcome_waiters(fetch_outcome)
 
   case result {
-    Ok(config) -> {
-      let assert option.Some(cache_entry) =
-        cache_worker_support.cache_result(fetched_at_ns, result)
+    Ok(config) ->
+      #(next_state, list.map(waiters, fn(reply) { Reply(reply, Ok(config)) }))
+    Error(err) -> {
       #(
-        State(..next_state, cache_entry: option.Some(cache_entry)),
-        list.map(in_flight.waiters, fn(reply) { Reply(reply, Ok(config)) }),
+        next_state,
+        [
+          LogRefreshError(err),
+          ..list.map(waiters, fn(reply) { Reply(reply, Error(err)) }),
+        ],
       )
     }
-    Error(err) -> #(
-      next_state,
-      [
-        LogRefreshError(err),
-        ..list.map(in_flight.waiters, fn(reply) { Reply(reply, Error(err)) }),
-      ],
-    )
   }
 }
 
 pub fn cache_is_stale(state: State, now_ns: Int) -> Bool {
-  case state.cache_entry {
-    option.Some(cache_entry) ->
-      cache_worker_support.is_stale(cache_entry, now_ns, refresh_interval_ms)
-    option.None -> True
+  cache_worker_state.single_is_stale(state.cache, now_ns, refresh_interval_ms)
+}
+
+fn start_fetch_if_idle(state: State) -> #(State, List(Command)) {
+  let #(cache, should_start_fetch) =
+    cache_worker_state.ensure_single_fetch_if_idle(state.cache, Nil)
+  let next_state = State(cache: cache)
+
+  case should_start_fetch {
+    True -> #(next_state, [StartFetch])
+    False -> #(next_state, [])
   }
 }

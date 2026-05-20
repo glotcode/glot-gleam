@@ -138,7 +138,7 @@ fn handle_message(
   case message {
     GetLanguageVersion(language, reply) -> {
       let #(next_core, commands) =
-        core.on_get_language_version(
+        core.on_get(
           state.core,
           language,
           reply,
@@ -162,7 +162,7 @@ fn handle_message(
     }
     RefreshNext -> {
       let #(next_core, commands) =
-        core.on_refresh_next(state.core, can_update_languages(state))
+        core.on_refresh_scheduled(state.core, can_update_languages(state))
       actor.continue(run_commands(State(..state, core: next_core), commands))
     }
     FetchCompleted(language, fetched_at_ns, result) -> {

@@ -16,6 +16,14 @@ pub type LookupDecision(reply, immediate, meta) {
   AwaitFetch(in_flight: InFlight(reply, meta), start_fetch: Bool)
 }
 
+pub type FetchOutcome(value, reply, err) {
+  FetchOutcome(
+    cache_entry: option.Option(CacheEntry(value)),
+    waiters: List(process.Subject(reply)),
+    error: option.Option(err),
+  )
+}
+
 pub fn new_in_flight(meta: meta) -> InFlight(reply, meta) {
   InFlight(waiters: [], meta: meta)
 }
@@ -27,6 +35,30 @@ pub fn with_waiter(
   InFlight(
     waiters: [reply, ..in_flight.waiters],
     meta: in_flight.meta,
+  )
+}
+
+pub fn ensure_in_flight(
+  in_flight: option.Option(InFlight(reply, meta)),
+  default_meta: meta,
+) -> #(option.Option(InFlight(reply, meta)), Bool) {
+  case in_flight {
+    option.Some(in_flight) -> #(option.Some(in_flight), False)
+    option.None -> #(option.Some(new_in_flight(default_meta)), True)
+  }
+}
+
+pub fn ensure_in_flight_with_waiter(
+  in_flight: option.Option(InFlight(reply, meta)),
+  reply: process.Subject(reply),
+  default_meta: meta,
+) -> #(option.Option(InFlight(reply, meta)), Bool) {
+  let #(next_in_flight, should_start_fetch) =
+    ensure_in_flight(in_flight, default_meta)
+
+  #(
+    option.map(next_in_flight, fn(in_flight) { with_waiter(in_flight, reply) }),
+    should_start_fetch,
   )
 }
 
@@ -49,6 +81,14 @@ pub fn keyed_in_flight(
     Ok(in_flight) -> in_flight
     Error(_) -> new_in_flight(default_meta)
   }
+}
+
+pub fn put_keyed_in_flight(
+  in_flights: dict.Dict(key, InFlight(reply, meta)),
+  key: key,
+  in_flight: InFlight(reply, meta),
+) -> dict.Dict(key, InFlight(reply, meta)) {
+  dict.insert(in_flights, key, in_flight)
 }
 
 pub fn reply_waiters(
@@ -137,6 +177,49 @@ pub fn cache_result(
   }
 }
 
+pub fn finish_single_fetch(
+  in_flight: option.Option(InFlight(reply, meta)),
+  fetched_at_ns: Int,
+  result: Result(value, err),
+  default_meta: meta,
+) -> FetchOutcome(value, reply, err) {
+  let in_flight = single_in_flight(in_flight, default_meta)
+
+  FetchOutcome(
+    cache_entry: cache_result(fetched_at_ns, result),
+    waiters: in_flight.waiters,
+    error: result |> result_error(),
+  )
+}
+
+pub fn finish_keyed_fetch(
+  in_flights: dict.Dict(key, InFlight(reply, meta)),
+  key: key,
+  fetched_at_ns: Int,
+  result: Result(value, err),
+  default_meta: meta,
+) -> FetchOutcome(value, reply, err) {
+  let in_flight = keyed_in_flight(in_flights, key, default_meta)
+
+  FetchOutcome(
+    cache_entry: cache_result(fetched_at_ns, result),
+    waiters: in_flight.waiters,
+    error: result |> result_error(),
+  )
+}
+
+pub fn fetch_outcome_waiters(
+  outcome: FetchOutcome(value, reply, err),
+) -> List(process.Subject(reply)) {
+  outcome.waiters
+}
+
+pub fn fetch_outcome_cache_entry(
+  outcome: FetchOutcome(value, reply, err),
+) -> option.Option(CacheEntry(value)) {
+  outcome.cache_entry
+}
+
 pub fn is_stale(
   entry: CacheEntry(value),
   now_ns: Int,
@@ -147,4 +230,11 @@ pub fn is_stale(
 
 pub fn ms_to_ns(value_ms: Int) -> Int {
   value_ms * 1_000_000
+}
+
+fn result_error(result: Result(value, err)) -> option.Option(err) {
+  case result {
+    Ok(_) -> option.None
+    Error(err) -> option.Some(err)
+  }
 }
