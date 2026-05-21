@@ -11,7 +11,9 @@ pub type PublicAction {
   RefreshSessionAction
   LogoutAction
   GetAccountAction
+  GetAccountPasskeysAction
   UpdateAccountAction
+  DeleteAccountPasskeyAction
   ScheduleDeleteAccountAction
   CancelDeleteAccountAction
   GetSnippetAction
@@ -37,7 +39,9 @@ pub fn list() -> List(PublicAction) {
     RefreshSessionAction,
     LogoutAction,
     GetAccountAction,
+    GetAccountPasskeysAction,
     UpdateAccountAction,
+    DeleteAccountPasskeyAction,
     ScheduleDeleteAccountAction,
     CancelDeleteAccountAction,
     GetSnippetAction,
@@ -76,7 +80,9 @@ pub fn to_string(action: PublicAction) -> String {
     RefreshSessionAction -> "refresh_session"
     LogoutAction -> "logout"
     GetAccountAction -> "get_account"
+    GetAccountPasskeysAction -> "get_account_passkeys"
     UpdateAccountAction -> "update_account"
+    DeleteAccountPasskeyAction -> "delete_account_passkey"
     ScheduleDeleteAccountAction -> "schedule_delete_account"
     CancelDeleteAccountAction -> "cancel_delete_account"
     GetSnippetAction -> "get_snippet"
@@ -103,7 +109,9 @@ pub fn from_string(action: String) -> option.Option(PublicAction) {
     "refresh_session" -> option.Some(RefreshSessionAction)
     "logout" -> option.Some(LogoutAction)
     "get_account" -> option.Some(GetAccountAction)
+    "get_account_passkeys" -> option.Some(GetAccountPasskeysAction)
     "update_account" -> option.Some(UpdateAccountAction)
+    "delete_account_passkey" -> option.Some(DeleteAccountPasskeyAction)
     "schedule_delete_account" -> option.Some(ScheduleDeleteAccountAction)
     "cancel_delete_account" -> option.Some(CancelDeleteAccountAction)
     "get_snippet" -> option.Some(GetSnippetAction)
@@ -140,7 +148,9 @@ pub fn server_timing_policy(
     | RefreshSessionAction
     | LogoutAction
     | GetAccountAction
+    | GetAccountPasskeysAction
     | UpdateAccountAction
+    | DeleteAccountPasskeyAction
     | ScheduleDeleteAccountAction
     | CancelDeleteAccountAction
     | SendLoginTokenAction

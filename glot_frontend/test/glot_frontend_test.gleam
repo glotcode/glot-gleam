@@ -1,6 +1,10 @@
 import gleam/option
+import gleam/regexp
 import gleeunit
 import glot_core/route
+import glot_core/email/email_address_model
+import glot_frontend/account_page
+import glot_frontend/login_page
 import glot_frontend/string_helpers
 
 pub fn main() -> Nil {
@@ -52,4 +56,37 @@ pub fn admin_route_to_string_test() {
 
 pub fn admin_config_route_to_string_test() {
   assert route.to_string(route.Admin(route.AdminConfig)) == "/admin/config"
+}
+
+pub fn login_page_email_submit_msg_uses_send_token_for_email_step_test() {
+  assert login_page.email_submit_msg(login_page.EnterEmail)
+    == login_page.SendTokenSubmitted
+}
+
+pub fn login_page_email_submit_msg_uses_login_for_token_step_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let assert option.Some(email) =
+    email_address_model.from_string(is_email, "user@example.com")
+
+  assert login_page.email_submit_msg(login_page.EnterToken(email))
+    == login_page.LoginSubmitted
+}
+
+pub fn login_page_show_send_token_button_hides_after_token_sent_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let assert option.Some(email) =
+    email_address_model.from_string(is_email, "user@example.com")
+
+  assert login_page.show_send_token_button(login_page.EnterEmail)
+  assert !login_page.show_send_token_button(login_page.EnterToken(email))
+}
+
+pub fn login_page_show_passkey_section_reflects_browser_support_test() {
+  assert login_page.show_passkey_section(True)
+  assert !login_page.show_passkey_section(False)
+}
+
+pub fn account_page_show_passkey_section_reflects_browser_support_test() {
+  assert account_page.should_show_passkey_section(True)
+  assert !account_page.should_show_passkey_section(False)
 }

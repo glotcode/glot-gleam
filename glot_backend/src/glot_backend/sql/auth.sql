@@ -147,6 +147,9 @@ SELECT
   cose_key,
   sign_count,
   aaguid,
+  os_name,
+  browser_name,
+  raw_user_agent,
   created_at,
   updated_at,
   last_used_at
@@ -161,6 +164,9 @@ SELECT
   cose_key,
   sign_count,
   aaguid,
+  os_name,
+  browser_name,
+  raw_user_agent,
   created_at,
   updated_at,
   last_used_at
@@ -282,7 +288,7 @@ INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2,
 INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, user_agent, created_at, token_updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
 
 -- name: InsertPasskeyCredential :exec
-INSERT INTO passkey_credentials (id, user_id, credential_id, cose_key, sign_count, aaguid, created_at, updated_at, last_used_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+INSERT INTO passkey_credentials (id, user_id, credential_id, cose_key, sign_count, aaguid, os_name, browser_name, raw_user_agent, created_at, updated_at, last_used_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
 
 -- name: InsertPasskeyChallenge :exec
 INSERT INTO passkey_challenges (id, user_id, flow, challenge_state, created_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6);
@@ -331,16 +337,23 @@ SET user_id = $1,
     cose_key = $3,
     sign_count = $4,
     aaguid = $5,
-    created_at = $6,
-    updated_at = $7,
-    last_used_at = $8
-WHERE id = $9;
+    os_name = $6,
+    browser_name = $7,
+    raw_user_agent = $8,
+    created_at = $9,
+    updated_at = $10,
+    last_used_at = $11
+WHERE id = $12;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE id = $1;
 
 -- name: DeletePasskeyChallenge :exec
 DELETE FROM passkey_challenges
+WHERE id = $1;
+
+-- name: DeletePasskeyCredential :exec
+DELETE FROM passkey_credentials
 WHERE id = $1;
 
 -- name: DeleteSessionsByAccountId :exec

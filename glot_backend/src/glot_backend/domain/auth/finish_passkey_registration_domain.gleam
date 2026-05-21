@@ -1,6 +1,7 @@
 import gleam/dynamic
 import gleam/option
 import gleam/result
+import glot_backend/browser_info
 import glot_backend/context
 import glot_backend/domain/auth/passkey_shared_domain
 import glot_backend/domain/shared/api_action_policy_domain
@@ -75,6 +76,7 @@ pub fn finish_passkey_registration(
     option.Some(_) -> program.fail(error.auth(auth_error.InvalidPasskeyAssertion))
   })
   use credential_record_id <- program.and_then(basic_effect.uuid_v7())
+  let browser_info = browser_info.from_user_agent(ctx.client_info.user_agent)
   let credential =
     passkey_credential_model.PasskeyCredential(
       id: credential_record_id,
@@ -83,6 +85,11 @@ pub fn finish_passkey_registration(
       cose_key: cose_key,
       sign_count: sign_count,
       aaguid: aaguid,
+      os_name: browser_info.os_name,
+      browser_name: browser_info.browser_name,
+      raw_user_agent: browser_info.truncate_raw_user_agent(
+        ctx.client_info.user_agent,
+      ),
       created_at: ctx.timestamp,
       updated_at: ctx.timestamp,
       last_used_at: option.None,

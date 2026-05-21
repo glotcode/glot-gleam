@@ -1,9 +1,12 @@
+import gleam/list
 import gleam/option
 import gleam/result
 import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/account_dto
+import glot_core/auth/platform_model
+import glot_core/auth/passkey_dto
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
@@ -11,18 +14,24 @@ import glot_core/route
 import glot_core/validation_error
 import glot_frontend/api
 import glot_frontend/app_event
+import glot_frontend/passkey
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
 import lustre/event
 import modem
+import youid/uuid
 
 pub type Model {
   Model(
     account: option.Option(account_dto.AccountResponse),
     username: String,
     status: Status,
+    passkey_supported: Bool,
+    passkey_setup_status: PasskeySetupStatus,
+    passkeys: List(passkey_dto.AccountPasskeyResponse),
+    passkeys_status: PasskeysStatus,
   )
 }
 
@@ -40,11 +49,39 @@ pub type Status {
   LogoutError(String)
 }
 
+pub type PasskeySetupStatus {
+  PasskeySetupIdle
+  StartingPasskeySetup
+  CreatingPasskey
+  SavingPasskey
+  PasskeySaved
+  PasskeySetupError(String)
+}
+
+pub type PasskeysStatus {
+  LoadingPasskeys
+  IdlePasskeys
+  DeletingPasskey(uuid.Uuid)
+  PasskeysError(String)
+}
+
 pub type Msg {
   AccountLoaded(api.ApiResponse(account_dto.AccountResponse))
+  AccountPasskeysLoaded(api.ApiResponse(passkey_dto.ListAccountPasskeysResponse))
   UsernameChanged(String)
   UsernameSubmitted
   AccountUpdated(api.ApiResponse(account_dto.AccountResponse))
+  BeginPasskeySubmitted
+  BeganPasskeyRegistration(
+    api.ApiResponse(passkey_dto.BeginPasskeyRegistrationResponse),
+  )
+  PasskeyRegistrationCreated(
+    uuid.Uuid,
+    Result(passkey.RegistrationResult, passkey.PasskeyError),
+  )
+  FinishedPasskeyRegistration(api.ApiResponse(Nil))
+  DeletePasskeySubmitted(uuid.Uuid)
+  DeletedPasskey(uuid.Uuid, api.ApiResponse(Nil))
   LogoutSubmitted
   ScheduleDeleteSubmitted
   DeleteScheduled(api.ApiResponse(Nil))
@@ -54,9 +91,29 @@ pub type Msg {
 }
 
 pub fn init() -> #(Model, Effect(Msg)) {
+  let passkey_supported = passkey.is_supported()
+  let effects = case should_show_passkey_section(passkey_supported) {
+    True -> [
+      api.get_account(AccountLoaded),
+      api.get_account_passkeys(AccountPasskeysLoaded),
+    ]
+    False -> [api.get_account(AccountLoaded)]
+  }
+
   #(
-    Model(account: option.None, username: "", status: Loading),
-    api.get_account(AccountLoaded),
+    Model(
+      account: option.None,
+      username: "",
+      status: Loading,
+      passkey_supported: passkey_supported,
+      passkey_setup_status: PasskeySetupIdle,
+      passkeys: [],
+      passkeys_status: case passkey_supported {
+        True -> LoadingPasskeys
+        False -> IdlePasskeys
+      },
+    ),
+    effect.batch(effects),
   )
 }
 
@@ -70,6 +127,7 @@ pub fn update(
         api.ApiSuccess(account) -> {
           #(
             Model(
+              ..model,
               account: option.Some(account),
               username: account.username,
               status: Idle,
@@ -87,6 +145,37 @@ pub fn update(
 
         api.HttpFailure(_) -> #(
           Model(..model, status: LoadError("Could not load account.")),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    AccountPasskeysLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> #(
+          Model(
+            ..model,
+            passkeys: response.passkeys,
+            passkeys_status: IdlePasskeys,
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            passkeys_status: PasskeysError(api.error_message(error)),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            passkeys_status: PasskeysError("Could not load passkeys."),
+          ),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -129,6 +218,169 @@ pub fn update(
         )
       }
     }
+
+    AccountUpdated(result) ->
+      case result {
+        api.ApiSuccess(account) -> {
+          #(
+            Model(
+              ..model,
+              account: option.Some(account),
+              username: account.username,
+              status: Saved,
+            ),
+            effect.none(),
+            app_event.RefreshSession,
+          )
+        }
+
+        api.ApiFailure(error) -> #(
+          Model(..model, status: UsernameError(api.error_message(error))),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(..model, status: UsernameError("Could not update account.")),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    BeginPasskeySubmitted -> #(
+      Model(..model, passkey_setup_status: StartingPasskeySetup),
+      api.begin_passkey_registration(BeganPasskeyRegistration),
+      app_event.NoAppEvent,
+    )
+
+    BeganPasskeyRegistration(result) ->
+      case result {
+        api.ApiSuccess(response) -> #(
+          Model(..model, passkey_setup_status: CreatingPasskey),
+          passkey.begin_registration(response, fn(registration_result) {
+            PasskeyRegistrationCreated(
+              response.challenge_id,
+              registration_result,
+            )
+          }),
+          app_event.NoAppEvent,
+        )
+
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            passkey_setup_status: PasskeySetupError(api.error_message(error)),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            passkey_setup_status: PasskeySetupError(
+              "Could not start passkey setup.",
+            ),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    PasskeyRegistrationCreated(challenge_id, registration_result) ->
+      case registration_result {
+        Ok(registration) -> {
+          let request =
+            passkey_dto.FinishPasskeyRegistrationRequest(
+              challenge_id: challenge_id,
+              attestation_object: registration.attestation_object,
+              client_data_json: registration.client_data_json,
+            )
+          #(
+            Model(..model, passkey_setup_status: SavingPasskey),
+            api.finish_passkey_registration(request, FinishedPasskeyRegistration),
+            app_event.NoAppEvent,
+          )
+        }
+
+        Error(error) -> #(
+          Model(
+            ..model,
+            passkey_setup_status: PasskeySetupError(passkey.error_message(error)),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    FinishedPasskeyRegistration(result) ->
+      case result {
+        api.ApiSuccess(_) -> #(
+          Model(
+            ..model,
+            passkey_setup_status: PasskeySaved,
+            passkeys_status: LoadingPasskeys,
+          ),
+          api.get_account_passkeys(AccountPasskeysLoaded),
+          app_event.NoAppEvent,
+        )
+
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            passkey_setup_status: PasskeySetupError(api.error_message(error)),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            passkey_setup_status: PasskeySetupError(
+              "Could not save the new passkey.",
+            ),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    DeletePasskeySubmitted(id) -> {
+      let request = passkey_dto.DeleteAccountPasskeyRequest(id:)
+      #(
+        Model(..model, passkeys_status: DeletingPasskey(id)),
+        api.delete_account_passkey(request, fn(result) { DeletedPasskey(id, result) }),
+        app_event.NoAppEvent,
+      )
+    }
+
+    DeletedPasskey(_id, result) ->
+      case result {
+        api.ApiSuccess(_) -> #(
+          Model(..model, passkeys_status: LoadingPasskeys),
+          api.get_account_passkeys(AccountPasskeysLoaded),
+          app_event.NoAppEvent,
+        )
+
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            passkeys_status: PasskeysError(api.error_message(error)),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            passkeys_status: PasskeysError("Could not delete passkey."),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
 
     LogoutSubmitted -> #(
       Model(..model, status: LoggingOut),
@@ -191,33 +443,6 @@ pub fn update(
             ..model,
             status: DeleteError("Could not cancel account deletion."),
           ),
-          effect.none(),
-          app_event.NoAppEvent,
-        )
-      }
-
-    AccountUpdated(result) ->
-      case result {
-        api.ApiSuccess(account) -> {
-          #(
-            Model(
-              account: option.Some(account),
-              username: account.username,
-              status: Saved,
-            ),
-            effect.none(),
-            app_event.RefreshSession,
-          )
-        }
-
-        api.ApiFailure(error) -> #(
-          Model(..model, status: UsernameError(api.error_message(error))),
-          effect.none(),
-          app_event.NoAppEvent,
-        )
-
-        api.HttpFailure(_) -> #(
-          Model(..model, status: UsernameError("Could not update account.")),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -321,6 +546,16 @@ fn account_form(
       ]),
       account_settings_form(model),
     ]),
+    case should_show_passkey_section(model.passkey_supported) {
+      True ->
+        html.section([attribute.class("app-panel")], [
+          html.h3([attribute.class("account-page__section-title")], [
+            html.text("Passkeys"),
+          ]),
+          passkey_section(model, now),
+        ])
+      False -> html.text("")
+    },
     html.section([attribute.class("app-panel")], [
       html.h3([attribute.class("account-page__section-title")], [
         html.text("Snippets"),
@@ -340,6 +575,10 @@ fn account_form(
       logout_section(model.status),
     ]),
   ])
+}
+
+pub fn should_show_passkey_section(passkey_supported: Bool) -> Bool {
+  passkey_supported
 }
 
 fn account_settings_form(model: Model) -> Element(Msg) {
@@ -364,20 +603,105 @@ fn account_settings_form(model: Model) -> Element(Msg) {
         attribute.type_("text"),
         attribute.value(model.username),
         event.on_input(UsernameChanged),
-        attribute.disabled(model.status == Saving),
+        attribute.disabled(
+          is_busy(model.status, model.passkey_setup_status, model.passkeys_status),
+        ),
         attribute.class("account-page__input"),
       ]),
       status_view(model.status),
       html.button(
         [
           attribute.type_("submit"),
-          attribute.disabled(is_busy(model.status)),
+          attribute.disabled(
+            is_busy(model.status, model.passkey_setup_status, model.passkeys_status),
+          ),
           attribute.class("account-page__button"),
         ],
         [html.text(button_text(model.status))],
       ),
     ],
   )
+}
+
+fn passkey_section(model: Model, now: Timestamp) -> Element(Msg) {
+  html.div([attribute.class("account-page__empty")], [
+    html.p([attribute.class("account-page__status")], [
+      html.text(
+        "Add and manage passkeys on your account. The device label is based on the browser and OS used when the passkey was registered.",
+      ),
+    ]),
+    passkeys_status_view(model.passkeys_status),
+    passkey_setup_status_view(model.passkey_setup_status),
+    passkeys_list(model.passkeys, model.passkeys_status, now),
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(
+          is_busy(model.status, model.passkey_setup_status, model.passkeys_status),
+        ),
+        attribute.class("account-page__button account-page__button--secondary"),
+        event.on_click(BeginPasskeySubmitted),
+      ],
+      [html.text(passkey_button_text(model.passkey_setup_status))],
+    ),
+  ])
+}
+
+fn passkeys_list(
+  passkeys: List(passkey_dto.AccountPasskeyResponse),
+  passkeys_status: PasskeysStatus,
+  now: Timestamp,
+) -> Element(Msg) {
+  case passkeys_status, passkeys {
+    LoadingPasskeys, [] ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Loading passkeys..."),
+      ])
+
+    _, [] ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("No passkeys added yet."),
+      ])
+
+    _, _ ->
+      html.div(
+        [attribute.class("account-page__passkey-list")],
+        list.map(passkeys, fn(passkey) {
+          passkey_item(passkey, passkeys_status, now)
+        }),
+      )
+  }
+}
+
+fn passkey_item(
+  account_passkey: passkey_dto.AccountPasskeyResponse,
+  passkeys_status: PasskeysStatus,
+  now: Timestamp,
+) -> Element(Msg) {
+  html.div([attribute.class("account-page__passkey-item")], [
+    html.div([attribute.class("account-page__passkey-meta")], [
+      html.p([attribute.class("account-page__row-value")], [
+        html.text(passkey_label(account_passkey)),
+      ]),
+      html.p([attribute.class("account-page__status")], [
+        html.text(
+          "Added " <> timestamp_helpers.relative_label(account_passkey.created_at, now),
+        ),
+      ]),
+      html.p([attribute.class("account-page__status")], [
+        html.text(last_used_label(account_passkey, now)),
+      ]),
+    ]),
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(delete_button_disabled(passkeys_status)),
+        attribute.class("account-page__button account-page__button--danger"),
+        event.on_click(DeletePasskeySubmitted(account_passkey.id)),
+      ],
+      [html.text(delete_passkey_button_text(passkeys_status, account_passkey.id))],
+    ),
+  ])
 }
 
 fn snippets_section() -> Element(Msg) {
@@ -467,13 +791,53 @@ fn delete_account_section(
     html.button(
       [
         attribute.type_("button"),
-        attribute.disabled(is_busy(status)),
+        attribute.disabled(is_busy(status, PasskeySetupIdle, IdlePasskeys)),
         attribute.class(button_class),
         event.on_click(button_msg),
       ],
       [html.text(button_label)],
     ),
   ])
+}
+
+fn passkeys_status_view(passkeys_status: PasskeysStatus) -> Element(Msg) {
+  case passkeys_status {
+    PasskeysError(message) ->
+      html.p(
+        [attribute.class("account-page__status account-page__status--error")],
+        [html.text(message)],
+      )
+    LoadingPasskeys | IdlePasskeys | DeletingPasskey(_) -> html.text("")
+  }
+}
+
+fn passkey_setup_status_view(
+  passkey_setup_status: PasskeySetupStatus,
+) -> Element(Msg) {
+  case passkey_setup_status {
+    PasskeySetupIdle -> html.text("")
+    StartingPasskeySetup ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Preparing passkey setup..."),
+      ])
+    CreatingPasskey ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Complete the passkey prompt from your browser or device."),
+      ])
+    SavingPasskey ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Saving passkey..."),
+      ])
+    PasskeySaved ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Passkey added."),
+      ])
+    PasskeySetupError(message) ->
+      html.p(
+        [attribute.class("account-page__status account-page__status--error")],
+        [html.text(message)],
+      )
+  }
 }
 
 fn delete_status_view(status: Status) -> Element(Msg) {
@@ -527,7 +891,7 @@ fn logout_section(status: Status) -> Element(Msg) {
     html.button(
       [
         attribute.type_("button"),
-        attribute.disabled(is_busy(status)),
+        attribute.disabled(is_busy(status, PasskeySetupIdle, IdlePasskeys)),
         attribute.class("account-page__button account-page__button--logout"),
         event.on_click(LogoutSubmitted),
       ],
@@ -587,7 +951,62 @@ fn delete_button_text(status: Status, delete_scheduled: Bool) -> String {
   }
 }
 
-fn is_busy(status: Status) -> Bool {
+fn passkey_button_text(passkey_setup_status: PasskeySetupStatus) -> String {
+  case passkey_setup_status {
+    StartingPasskeySetup -> "Preparing..."
+    CreatingPasskey -> "Waiting for passkey..."
+    SavingPasskey -> "Saving..."
+    _ -> "Add passkey"
+  }
+}
+
+fn passkey_label(account_passkey: passkey_dto.AccountPasskeyResponse) -> String {
+  case account_passkey.browser_name, account_passkey.os_name {
+    option.Some(browser_name), option.Some(os_name) ->
+      platform_model.browser_label(browser_name)
+      <> " on "
+      <> platform_model.operating_system_label(os_name)
+    option.Some(browser_name), option.None ->
+      platform_model.browser_label(browser_name)
+    option.None, option.Some(os_name) ->
+      platform_model.operating_system_label(os_name)
+    option.None, option.None -> "Unknown device"
+  }
+}
+
+fn last_used_label(
+  account_passkey: passkey_dto.AccountPasskeyResponse,
+  now: Timestamp,
+) -> String {
+  case account_passkey.last_used_at {
+    option.Some(last_used_at) ->
+      "Last used " <> timestamp_helpers.relative_label(last_used_at, now)
+    option.None -> "Never used for sign-in yet."
+  }
+}
+
+fn delete_button_disabled(passkeys_status: PasskeysStatus) -> Bool {
+  case passkeys_status {
+    LoadingPasskeys | DeletingPasskey(_) -> True
+    IdlePasskeys | PasskeysError(_) -> False
+  }
+}
+
+fn delete_passkey_button_text(
+  passkeys_status: PasskeysStatus,
+  passkey_id: uuid.Uuid,
+) -> String {
+  case passkeys_status {
+    DeletingPasskey(id) if id == passkey_id -> "Deleting..."
+    _ -> "Delete"
+  }
+}
+
+fn is_busy(
+  status: Status,
+  passkey_setup_status: PasskeySetupStatus,
+  passkeys_status: PasskeysStatus,
+) -> Bool {
   case status {
     Saving | LoggingOut | SchedulingDelete | CancelingDelete -> True
     Loading
@@ -596,6 +1015,14 @@ fn is_busy(status: Status) -> Bool {
     | LoadError(_)
     | UsernameError(_)
     | DeleteError(_)
-    | LogoutError(_) -> False
+    | LogoutError(_) ->
+      case passkey_setup_status {
+        StartingPasskeySetup | CreatingPasskey | SavingPasskey -> True
+        PasskeySetupIdle | PasskeySaved | PasskeySetupError(_) ->
+          case passkeys_status {
+            LoadingPasskeys | DeletingPasskey(_) -> True
+            IdlePasskeys | PasskeysError(_) -> False
+          }
+      }
   }
 }

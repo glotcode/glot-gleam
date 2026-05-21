@@ -30,6 +30,7 @@ import glot_core/api_error_dto
 import glot_core/auth/account_dto
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
+import glot_core/auth/passkey_dto
 import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
 import glot_core/email/email_address_model.{type EmailAddress}
@@ -288,6 +289,19 @@ pub fn get_account(
   )
 }
 
+pub fn get_account_passkeys(
+  to_msg: fn(ApiResponse(passkey_dto.ListAccountPasskeysResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = PublicApiRequest(public_action.GetAccountPasskeysAction, Nil)
+
+  send_public_api_request(
+    req,
+    fn(_) { json.null() },
+    passkey_dto.list_account_passkeys_response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn logout(to_msg: fn(ApiResponse(Nil)) -> msg) -> effect.Effect(msg) {
   let req = PublicApiRequest(public_action.LogoutAction, Nil)
 
@@ -325,6 +339,75 @@ pub fn update_account(
       ])
     },
     account_dto.decoder(is_email),
+    to_msg,
+  )
+}
+
+pub fn begin_passkey_registration(
+  to_msg: fn(ApiResponse(passkey_dto.BeginPasskeyRegistrationResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = PublicApiRequest(public_action.BeginPasskeyRegistrationAction, Nil)
+
+  send_public_api_request(
+    req,
+    fn(_) { json.null() },
+    passkey_dto.begin_registration_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn begin_passkey_login(
+  to_msg: fn(ApiResponse(passkey_dto.BeginPasskeyLoginResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = PublicApiRequest(public_action.BeginPasskeyLoginAction, Nil)
+
+  send_public_api_request(
+    req,
+    fn(_) { json.null() },
+    passkey_dto.begin_login_response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn delete_account_passkey(
+  request: passkey_dto.DeleteAccountPasskeyRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = PublicApiRequest(public_action.DeleteAccountPasskeyAction, request)
+
+  send_public_api_request(
+    req,
+    passkey_dto.encode_delete_account_passkey_request,
+    nil_decoder(),
+    to_msg,
+  )
+}
+
+pub fn finish_passkey_registration(
+  request: passkey_dto.FinishPasskeyRegistrationRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req =
+    PublicApiRequest(public_action.FinishPasskeyRegistrationAction, request)
+
+  send_public_api_request(
+    req,
+    passkey_dto.encode_finish_registration_request,
+    nil_decoder(),
+    to_msg,
+  )
+}
+
+pub fn finish_passkey_login(
+  request: passkey_dto.FinishPasskeyLoginRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = PublicApiRequest(public_action.FinishPasskeyLoginAction, request)
+
+  send_public_api_request(
+    req,
+    passkey_dto.encode_finish_login_request,
+    nil_decoder(),
     to_msg,
   )
 }

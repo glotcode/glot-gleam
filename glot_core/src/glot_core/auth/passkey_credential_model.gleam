@@ -1,5 +1,6 @@
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/auth/platform_model.{type Browser, type OperatingSystem}
 import youid/uuid.{type Uuid}
 
 pub type PasskeyCredential {
@@ -10,6 +11,9 @@ pub type PasskeyCredential {
     cose_key: BitArray,
     sign_count: Int,
     aaguid: BitArray,
+    os_name: Option(OperatingSystem),
+    browser_name: Option(Browser),
+    raw_user_agent: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
     last_used_at: Option(Timestamp),

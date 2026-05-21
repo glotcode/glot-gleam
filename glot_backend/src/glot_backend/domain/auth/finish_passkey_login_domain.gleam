@@ -57,19 +57,19 @@ pub fn finish_passkey_login(
     challenge,
     ctx.timestamp,
   ))
-  use challenge_user_id <- program.and_then(program.from_option(
-    challenge.user_id,
+  use matched_credential <- program.and_then(program.from_option(
+    maybe_credential,
     error.auth(auth_error.InvalidPasskeyAssertion),
   ))
   use user <- program.and_then(
-    auth_effect.get_user_by_id(challenge_user_id)
+    auth_effect.get_user_by_id(matched_credential.user_id)
     |> program.and_then(program.from_option(
       _,
       error.auth(auth_error.InvalidPasskeyAssertion),
     )),
   )
   use credentials <- program.and_then(
-    auth_effect.list_passkey_credentials_by_user_id(challenge_user_id),
+    auth_effect.list_passkey_credentials_by_user_id(matched_credential.user_id),
   )
   use matched_credential <- program.and_then(program.from_option(
     find_credential(credentials, credential_id),

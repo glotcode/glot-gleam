@@ -8,7 +8,9 @@ import gleam/string
 import glot_backend/api_error_presenter
 import glot_backend/context
 import glot_backend/domain/account/cancel_delete_account_domain
+import glot_backend/domain/account/delete_account_passkey_domain
 import glot_backend/domain/account/get_account_domain
+import glot_backend/domain/account/get_account_passkeys_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/account/update_account_domain
 import glot_backend/domain/admin/create_job_domain
@@ -212,12 +214,23 @@ fn handle_public_api_request(
       get_account_domain.get_account(ctx)
       |> program.map(AccountResponse)
     }
+    public_action.GetAccountPasskeysAction -> {
+      get_account_passkeys_domain.get_account_passkeys(ctx)
+      |> program.map(AccountPasskeysResponse)
+    }
     public_action.UpdateAccountAction -> {
       use request <- program.and_then(
         update_account_domain.request_from_dynamic(data),
       )
       update_account_domain.update_account(ctx, request)
       |> program.map(AccountResponse)
+    }
+    public_action.DeleteAccountPasskeyAction -> {
+      use request <- program.and_then(
+        delete_account_passkey_domain.request_from_dynamic(data),
+      )
+      delete_account_passkey_domain.delete_account_passkey(ctx, request)
+      |> program.map(fn(_) { NoContentResponse })
     }
     public_action.ScheduleDeleteAccountAction ->
       schedule_delete_account_domain.schedule_delete_account(ctx)
@@ -296,10 +309,8 @@ fn handle_public_api_request(
       |> program.map(fn(_) { NoContentResponse })
     }
     public_action.BeginPasskeyLoginAction -> {
-      use request <- program.and_then(
-        begin_passkey_login_domain.request_from_dynamic(ctx, data),
-      )
-      begin_passkey_login_domain.begin_passkey_login(ctx, request)
+      let _ = data
+      begin_passkey_login_domain.begin_passkey_login(ctx)
       |> program.map(BeginPasskeyLoginResponse)
     }
     public_action.FinishPasskeyLoginAction -> {
@@ -628,6 +639,7 @@ type ApiResult {
   RunResultResponse(run.RunResult)
   SessionResponse(option.Option(session_dto.SessionResponse))
   AccountResponse(account_dto.AccountResponse)
+  AccountPasskeysResponse(passkey_dto.ListAccountPasskeysResponse)
   SnippetResponse(snippet_dto.SnippetResponse)
   SnippetsResponse(snippet_dto.ListSnippetsResponse)
   DebugConfigResponse(debug_config_dto.DebugConfigResponse)
@@ -690,6 +702,8 @@ fn api_result_to_response(
     SessionResponse(response) ->
       success_response(json.nullable(response, session_dto.encode))
     AccountResponse(response) -> success_response(account_dto.encode(response))
+    AccountPasskeysResponse(response) ->
+      success_response(passkey_dto.encode_list_account_passkeys_response(response))
     SnippetResponse(response) ->
       success_response(snippet_dto.encode_response(response))
     SnippetsResponse(response) ->

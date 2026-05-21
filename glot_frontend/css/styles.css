@@ -1279,6 +1279,36 @@ a {
   gap: 0.75rem;
 }
 
+.login-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+
+.login-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #d9e5f6;
+  background: #fbfdff;
+}
+
+.login-page__section-title {
+  margin: 0;
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.login-page__section-copy {
+  margin: 0;
+  color: #51627f;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .login-page__label,
 .account-page__label {
   font-size: 0.8rem;
@@ -1397,6 +1427,29 @@ a {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.account-page__passkey-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.account-page__passkey-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #d9e5f6;
+  background: #fbfdff;
+}
+
+.account-page__passkey-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
 .account-page__section-title {

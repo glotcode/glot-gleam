@@ -131,6 +131,9 @@ CREATE TABLE IF NOT EXISTS passkey_credentials (
   cose_key BYTEA NOT NULL,
   sign_count BIGINT NOT NULL,
   aaguid BYTEA NOT NULL,
+  os_name TEXT NULL,
+  browser_name TEXT NULL,
+  raw_user_agent TEXT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL,
   last_used_at TIMESTAMPTZ NULL

@@ -368,6 +368,7 @@ fn test_handlers() -> handlers.Handlers {
       create_login_token: fn(_) { Ok(Nil) },
       create_passkey_credential: fn(_) { Ok(Nil) },
       create_passkey_challenge: fn(_) { Ok(Nil) },
+      delete_passkey_credential: fn(_) { Ok(Nil) },
       update_login_token: fn(_) { Ok(Nil) },
       update_passkey_credential: fn(_) { Ok(Nil) },
       delete_login_tokens_before: fn(_) { Ok(Nil) },

@@ -287,7 +287,16 @@ fn public_policy(action: public_action.PublicAction) -> ApiActionPolicy {
           account_model.ReadOnly,
         ]),
       )
+    public_action.GetAccountPasskeysAction ->
+      authenticated_action_policy(
+        AllowedAccountStates([
+          account_model.Active,
+          account_model.ReadOnly,
+        ]),
+      )
     public_action.UpdateAccountAction ->
+      authenticated_action_policy(AllowedAccountStates([account_model.Active]))
+    public_action.DeleteAccountPasskeyAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))
     public_action.BeginPasskeyRegistrationAction ->
       authenticated_action_policy(AllowedAccountStates([account_model.Active]))

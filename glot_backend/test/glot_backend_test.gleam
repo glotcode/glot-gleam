@@ -1073,6 +1073,9 @@ pub fn begin_passkey_registration_includes_existing_credential_ids_test() {
       cose_key: <<131, 106>>,
       sign_count: 0,
       aaguid: <<>>,
+      os_name: option.None,
+      browser_name: option.None,
+      raw_user_agent: option.None,
       created_at: test_timestamp(),
       updated_at: test_timestamp(),
       last_used_at: option.None,
@@ -1090,25 +1093,142 @@ pub fn begin_passkey_registration_includes_existing_credential_ids_test() {
   assert response.exclude_credential_ids == [base64url.encode(<<1, 2, 3>>)]
 }
 
-pub fn begin_passkey_login_without_credentials_returns_invalid_assertion_test() {
+pub fn begin_passkey_login_without_credentials_creates_anonymous_challenge_test() {
   let fixture =
     integration_fixture(
       next_uuids: [must_uuid("00000000-0000-0000-0000-000000000821")],
       jobs: [],
       account_delete_job_id: option.None,
     )
-  let request = passkey_dto.BeginPasskeyLoginRequest(email: fixture.user.email)
 
   let #(run_result, updated_db) =
     run_test_program(
-      begin_passkey_login_domain.begin_passkey_login(fixture.ctx, request),
+      begin_passkey_login_domain.begin_passkey_login(fixture.ctx),
       fixture.ctx,
       fixture.db,
     )
 
+  let assert Ok(response) = run_result
+  assert response.challenge != ""
+  assert response.rp_id == "localhost"
+  assert response.allow_credential_ids == []
+  assert response.user_verification == "required"
+  assert updated_db.user_action_count == 1
+
+  let assert option.Some(challenge) =
+    find_passkey_challenge_by_id(updated_db, response.challenge_id)
+  assert challenge.user_id == option.None
+  assert challenge.flow == passkey_challenge_model.PasskeyAuthenticationChallenge
+}
+
+pub fn finish_passkey_login_with_valid_credential_and_anonymous_challenge_logs_user_in_test() {
+  let challenge_id = must_uuid("00000000-0000-0000-0000-000000000851")
+  let session_id = must_uuid("00000000-0000-0000-0000-000000000852")
+  let credential =
+    passkey_credential_model.PasskeyCredential(
+      id: must_uuid("00000000-0000-0000-0000-000000000853"),
+      user_id: test_user_id(),
+      credential_id: <<1, 2, 3>>,
+      cose_key: <<131, 106>>,
+      sign_count: 1,
+      aaguid: <<>>,
+      os_name: option.None,
+      browser_name: option.None,
+      raw_user_agent: option.None,
+      created_at: test_timestamp(),
+      updated_at: test_timestamp(),
+      last_used_at: option.None,
+    )
+  let fixture =
+    integration_fixture(
+      next_uuids: [challenge_id, session_id],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let db = upsert_passkey_credential(fixture.db, credential)
+
+  let #(begin_result, challenged_db) =
+    run_test_program(
+      begin_passkey_login_domain.begin_passkey_login(fixture.ctx),
+      fixture.ctx,
+      db,
+    )
+
+  let assert Ok(begin_response) = begin_result
+  let request =
+    passkey_dto.FinishPasskeyLoginRequest(
+      challenge_id: begin_response.challenge_id,
+      credential_id: base64url.encode(credential.credential_id),
+      authenticator_data: base64url.encode(<<4>>),
+      signature: base64url.encode(<<5>>),
+      client_data_json: "test-passkey-login-success",
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      finish_passkey_login_domain.finish_passkey_login(fixture.ctx, request),
+      fixture.ctx,
+      challenged_db,
+    )
+
+  let assert Ok(session_issue) = run_result
+  assert session_issue.session_token == "random"
+  assert session_issue.session_cookie_max_age == 86_400
+  assert find_passkey_challenge_by_id(updated_db, begin_response.challenge_id)
+    == option.None
+
+  let assert option.Some(updated_credential) =
+    find_passkey_credential_by_credential_id(updated_db, credential.credential_id)
+  assert updated_credential.sign_count == 2
+  assert updated_credential.last_used_at == option.Some(test_timestamp())
+
+  let assert option.Some(updated_user) =
+    find_user_by_id(updated_db, fixture.user.id)
+  assert updated_user.identity.last_login_at == test_timestamp()
+
+  let assert option.Some(new_session) =
+    find_session_by_token(updated_db, "random", fixture.ctx.timestamp)
+  assert new_session.user_id == fixture.user.id
+}
+
+pub fn finish_passkey_login_with_unknown_credential_id_returns_invalid_assertion_test() {
+  let challenge_id = must_uuid("00000000-0000-0000-0000-000000000861")
+  let fixture =
+    integration_fixture(
+      next_uuids: [challenge_id],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+
+  let #(begin_result, challenged_db) =
+    run_test_program(
+      begin_passkey_login_domain.begin_passkey_login(fixture.ctx),
+      fixture.ctx,
+      fixture.db,
+    )
+
+  let assert Ok(begin_response) = begin_result
+  let request =
+    passkey_dto.FinishPasskeyLoginRequest(
+      challenge_id: begin_response.challenge_id,
+      credential_id: base64url.encode(<<9, 9, 9>>),
+      authenticator_data: base64url.encode(<<4>>),
+      signature: base64url.encode(<<5>>),
+      client_data_json: "test-passkey-login-success",
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      finish_passkey_login_domain.finish_passkey_login(fixture.ctx, request),
+      fixture.ctx,
+      challenged_db,
+    )
+
   assert run_result == Error(error.auth(auth_error.InvalidPasskeyAssertion))
-  assert updated_db.passkey_challenges == fixture.db.passkey_challenges
-  assert updated_db.user_action_count == 0
+  let assert option.Some(_) =
+    find_passkey_challenge_by_id(updated_db, begin_response.challenge_id)
+  assert find_session_by_token(updated_db, "random", fixture.ctx.timestamp)
+    == option.None
 }
 
 pub fn finish_passkey_registration_missing_challenge_returns_not_found_test() {
@@ -2256,6 +2376,10 @@ fn run_test_webauthn_effect(
       credentials,
       next,
     ) ->
+      case client_data_json {
+        "test-passkey-login-success" ->
+          run_test_program(next(Ok(#(2, <<>>))), ctx, db)
+        _ ->
       run_test_program(
         next(webauthn.authenticate(
           credential_id,
@@ -2268,6 +2392,7 @@ fn run_test_webauthn_effect(
         ctx,
         db,
       )
+      }
   }
 }
 
@@ -3099,6 +3224,8 @@ fn run_test_auth_effect(
         ctx,
         upsert_passkey_challenge(db, passkey_challenge),
       )
+    auth_algebra.DeletePasskeyCredential(id:, next:) ->
+      run_test_program(next(Ok(Nil)), ctx, delete_passkey_credential_by_id(db, id))
     auth_algebra.UpdateLoginToken(login_token:, next:) ->
       run_test_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
     auth_algebra.UpdatePasskeyCredential(passkey_credential:, next:) ->
@@ -3224,6 +3351,12 @@ fn run_test_auth_tx_effect(
         next(Ok(Nil)),
         ctx,
         upsert_passkey_challenge(db, passkey_challenge),
+      )
+    auth_algebra.DeletePasskeyCredential(id:, next:) ->
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_passkey_credential_by_id(db, id),
       )
     auth_algebra.UpdateLoginToken(login_token:, next:) ->
       run_test_tx_program(
@@ -4218,6 +4351,13 @@ fn delete_passkey_challenge_by_id(db: TestDb, id: uuid.Uuid) -> TestDb {
   TestDb(
     ..db,
     passkey_challenges: dict.delete(db.passkey_challenges, uuid_key(id)),
+  )
+}
+
+fn delete_passkey_credential_by_id(db: TestDb, id: uuid.Uuid) -> TestDb {
+  TestDb(
+    ..db,
+    passkey_credentials: dict.delete(db.passkey_credentials, uuid_key(id)),
   )
 }
 

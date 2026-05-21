@@ -11,6 +11,7 @@ import glot_core/auth/account_model
 import glot_core/auth/login_token_model
 import glot_core/auth/passkey_challenge_model
 import glot_core/auth/passkey_credential_model
+import glot_core/auth/platform_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
@@ -79,6 +80,8 @@ pub type AuthHandlers {
       Result(Nil, db_error.DbCommandError),
     create_passkey_challenge: fn(passkey_challenge_model.PasskeyChallenge) ->
       Result(Nil, db_error.DbCommandError),
+    delete_passkey_credential: fn(uuid.Uuid) ->
+      Result(Nil, db_error.DbCommandError),
     update_login_token: fn(login_token_model.LoginToken) ->
       Result(Nil, db_error.DbCommandError),
     update_passkey_credential: fn(passkey_credential_model.PasskeyCredential) ->
@@ -142,6 +145,7 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     create_passkey_challenge: fn(passkey_challenge) {
       create_passkey_challenge(db, passkey_challenge)
     },
+    delete_passkey_credential: fn(id) { delete_passkey_credential(db, id) },
     update_login_token: fn(login_token) { update_login_token(db, login_token) },
     update_passkey_credential: fn(passkey_credential) {
       update_passkey_credential(db, passkey_credential)
@@ -490,6 +494,15 @@ pub fn create_passkey_credential(
       cose_key: passkey_credential.cose_key,
       sign_count: passkey_credential.sign_count,
       aaguid: passkey_credential.aaguid,
+      os_name: option.map(
+        passkey_credential.os_name,
+        platform_model.operating_system_to_string,
+      ),
+      browser_name: option.map(
+        passkey_credential.browser_name,
+        platform_model.browser_to_string,
+      ),
+      raw_user_agent: passkey_credential.raw_user_agent,
       created_at: passkey_credential.created_at,
       updated_at: passkey_credential.updated_at,
       last_used_at: passkey_credential.last_used_at,
@@ -654,6 +667,15 @@ pub fn update_passkey_credential(
       cose_key: passkey_credential.cose_key,
       sign_count: passkey_credential.sign_count,
       aaguid: passkey_credential.aaguid,
+      os_name: option.map(
+        passkey_credential.os_name,
+        platform_model.operating_system_to_string,
+      ),
+      browser_name: option.map(
+        passkey_credential.browser_name,
+        platform_model.browser_to_string,
+      ),
+      raw_user_agent: passkey_credential.raw_user_agent,
       created_at: passkey_credential.created_at,
       updated_at: passkey_credential.updated_at,
       last_used_at: passkey_credential.last_used_at,
@@ -683,6 +705,20 @@ pub fn delete_passkey_challenge(
   db_helpers.execute(
     db,
     sql.delete_passkey_challenge(uuid.to_bit_array(id)),
+    to_error,
+  )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_passkey_credential(
+  db: db_helpers.Db,
+  id: uuid.Uuid,
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(
+    db,
+    sql.delete_passkey_credential(uuid.to_bit_array(id)),
     to_error,
   )
   |> result.map(fn(_) { Nil })
@@ -965,6 +1001,14 @@ fn passkey_credentials_from_rows(
 fn passkey_credential_from_lookup_row(
   row: sql.GetPasskeyCredentialByCredentialId,
 ) -> Result(passkey_credential_model.PasskeyCredential, db_error.DbQueryError) {
+  use os_name <- result.try(
+    optional_operating_system(row.os_name)
+    |> option.to_result(db_error.DbQueryError("Invalid operating system")),
+  )
+  use browser_name <- result.try(
+    optional_browser(row.browser_name)
+    |> option.to_result(db_error.DbQueryError("Invalid browser")),
+  )
   Ok(passkey_credential_model.PasskeyCredential(
     id: uuid_helpers.from_bit_array(row.id),
     user_id: uuid_helpers.from_bit_array(row.user_id),
@@ -972,6 +1016,9 @@ fn passkey_credential_from_lookup_row(
     cose_key: row.cose_key,
     sign_count: row.sign_count,
     aaguid: row.aaguid,
+    os_name: os_name,
+    browser_name: browser_name,
+    raw_user_agent: row.raw_user_agent,
     created_at: row.created_at,
     updated_at: row.updated_at,
     last_used_at: row.last_used_at,
@@ -981,6 +1028,14 @@ fn passkey_credential_from_lookup_row(
 fn passkey_credential_from_row(
   row: sql.ListPasskeyCredentialsByUserId,
 ) -> Result(passkey_credential_model.PasskeyCredential, db_error.DbQueryError) {
+  use os_name <- result.try(
+    optional_operating_system(row.os_name)
+    |> option.to_result(db_error.DbQueryError("Invalid operating system")),
+  )
+  use browser_name <- result.try(
+    optional_browser(row.browser_name)
+    |> option.to_result(db_error.DbQueryError("Invalid browser")),
+  )
   Ok(passkey_credential_model.PasskeyCredential(
     id: uuid_helpers.from_bit_array(row.id),
     user_id: uuid_helpers.from_bit_array(row.user_id),
@@ -988,10 +1043,35 @@ fn passkey_credential_from_row(
     cose_key: row.cose_key,
     sign_count: row.sign_count,
     aaguid: row.aaguid,
+    os_name: os_name,
+    browser_name: browser_name,
+    raw_user_agent: row.raw_user_agent,
     created_at: row.created_at,
     updated_at: row.updated_at,
     last_used_at: row.last_used_at,
   ))
+}
+
+fn optional_operating_system(
+  value: option.Option(String),
+) -> option.Option(option.Option(platform_model.OperatingSystem)) {
+  case value {
+    option.None -> option.Some(option.None)
+    option.Some(os_name) ->
+      platform_model.operating_system_from_string(os_name)
+      |> option.map(option.Some)
+  }
+}
+
+fn optional_browser(
+  value: option.Option(String),
+) -> option.Option(option.Option(platform_model.Browser)) {
+  case value {
+    option.None -> option.Some(option.None)
+    option.Some(browser_name) ->
+      platform_model.browser_from_string(browser_name)
+      |> option.map(option.Some)
+  }
 }
 
 fn passkey_challenge_from_rows(

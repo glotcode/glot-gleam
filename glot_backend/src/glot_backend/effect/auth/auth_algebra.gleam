@@ -121,6 +121,10 @@ pub type AuthEffect(next) {
     passkey_challenge: passkey_challenge_model.PasskeyChallenge,
     next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
+  DeletePasskeyCredential(
+    id: Uuid,
+    next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+  )
   UpdateLoginToken(
     login_token: login_token_model.LoginToken,
     next: fn(Result(Nil, db_error.DbCommandError)) -> next,
@@ -214,6 +218,8 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
         passkey_challenge: passkey_challenge,
         next: fn(value) { f(next(value)) },
       )
+    DeletePasskeyCredential(id: id, next: next) ->
+      DeletePasskeyCredential(id: id, next: fn(value) { f(next(value)) })
     UpdateLoginToken(login_token: login_token, next: next) ->
       UpdateLoginToken(login_token: login_token, next: fn(value) {
         f(next(value))
@@ -255,6 +261,7 @@ pub type EffectName {
   CreateLoginTokenEffectName
   CreatePasskeyCredentialEffectName
   CreatePasskeyChallengeEffectName
+  DeletePasskeyCredentialEffectName
   UpdateLoginTokenEffectName
   UpdatePasskeyCredentialEffectName
   DeleteLoginTokensBeforeEffectName
@@ -290,6 +297,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     CreateLoginTokenEffectName -> "create_login_token"
     CreatePasskeyCredentialEffectName -> "create_passkey_credential"
     CreatePasskeyChallengeEffectName -> "create_passkey_challenge"
+    DeletePasskeyCredentialEffectName -> "delete_passkey_credential"
     UpdateLoginTokenEffectName -> "update_login_token"
     UpdatePasskeyCredentialEffectName -> "update_passkey_credential"
     DeleteLoginTokensBeforeEffectName -> "delete_login_tokens_before"

@@ -228,6 +228,12 @@ pub fn create_passkey_challenge(
   )
 }
 
+pub fn delete_passkey_credential(id id: Uuid) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_passkey_credential_effect(id, command_next)),
+  )
+}
+
 pub fn update_login_token(
   login_token login_token: login_token_model.LoginToken,
 ) -> program_types.Program(Nil) {
@@ -423,6 +429,12 @@ pub fn create_passkey_challenge_tx(
   ))
 }
 
+pub fn delete_passkey_credential_tx(
+  id id: Uuid,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_passkey_credential_effect(id, tx_command_next))
+}
+
 pub fn update_login_token_tx(
   login_token login_token: login_token_model.LoginToken,
 ) -> program_types.TransactionProgram(Nil) {
@@ -515,6 +527,16 @@ fn get_passkey_credential_by_credential_id_effect(
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.GetPasskeyCredentialByCredentialId(
     credential_id: credential_id,
+    next: next,
+  ))
+}
+
+fn delete_passkey_credential_effect(
+  id: Uuid,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.DeletePasskeyCredential(
+    id: id,
     next: next,
   ))
 }
