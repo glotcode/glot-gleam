@@ -5,8 +5,10 @@ import gleam/string
 import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/account_dto
+import glot_core/auth/account_session_dto
 import glot_core/auth/platform_model
 import glot_core/auth/passkey_dto
+import glot_core/auth/session_dto
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
@@ -30,6 +32,9 @@ pub type Model {
     status: Status,
     danger_zone_expanded: Bool,
     passkey_supported: Bool,
+    current_session_id: option.Option(uuid.Uuid),
+    sessions: List(account_session_dto.AccountSessionResponse),
+    sessions_status: SessionsStatus,
     passkey_setup_status: PasskeySetupStatus,
     passkeys: List(passkey_dto.AccountPasskeyResponse),
     passkeys_status: PasskeysStatus,
@@ -59,6 +64,13 @@ pub type PasskeySetupStatus {
   PasskeySetupError(String)
 }
 
+pub type SessionsStatus {
+  LoadingSessions
+  IdleSessions
+  DeletingSession(uuid.Uuid)
+  SessionsError(String)
+}
+
 pub type PasskeysStatus {
   LoadingPasskeys
   IdlePasskeys
@@ -68,6 +80,10 @@ pub type PasskeysStatus {
 
 pub type Msg {
   AccountLoaded(api.ApiResponse(account_dto.AccountResponse))
+  SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
+  AccountSessionsLoaded(
+    api.ApiResponse(account_session_dto.ListAccountSessionsResponse),
+  )
   AccountPasskeysLoaded(api.ApiResponse(passkey_dto.ListAccountPasskeysResponse))
   UsernameChanged(String)
   UsernameSubmitted
@@ -81,6 +97,8 @@ pub type Msg {
     Result(passkey.RegistrationResult, passkey.PasskeyError),
   )
   FinishedPasskeyRegistration(api.ApiResponse(Nil))
+  DeleteSessionSubmitted(uuid.Uuid)
+  DeletedSession(uuid.Uuid, api.ApiResponse(Nil))
   DeletePasskeySubmitted(uuid.Uuid)
   DeletedPasskey(uuid.Uuid, api.ApiResponse(Nil))
   LogoutSubmitted
@@ -94,13 +112,16 @@ pub type Msg {
 
 pub fn init() -> #(Model, Effect(Msg)) {
   let passkey_supported = passkey.is_supported()
-  let effects = case should_show_passkey_section(passkey_supported) {
-    True -> [
-      api.get_account(AccountLoaded),
-      api.get_account_passkeys(AccountPasskeysLoaded),
-    ]
-    False -> [api.get_account(AccountLoaded)]
+  let passkey_effects = case should_show_passkey_section(passkey_supported) {
+    True -> [api.get_account_passkeys(AccountPasskeysLoaded)]
+    False -> []
   }
+  let effects = [
+    api.get_account(AccountLoaded),
+    api.get_session(SessionLoaded),
+    api.list_account_sessions(AccountSessionsLoaded),
+    ..passkey_effects
+  ]
 
   #(
     Model(
@@ -109,6 +130,9 @@ pub fn init() -> #(Model, Effect(Msg)) {
       status: Loading,
       danger_zone_expanded: False,
       passkey_supported: passkey_supported,
+      current_session_id: option.None,
+      sessions: [],
+      sessions_status: LoadingSessions,
       passkey_setup_status: PasskeySetupIdle,
       passkeys: [],
       passkeys_status: case passkey_supported {
@@ -148,6 +172,58 @@ pub fn update(
 
         api.HttpFailure(_) -> #(
           Model(..model, status: LoadError("Could not load account.")),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    SessionLoaded(result) ->
+      case result {
+        api.ApiSuccess(option.Some(session)) -> #(
+          Model(..model, current_session_id: option.Some(session.id)),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.ApiSuccess(option.None) -> #(
+          Model(..model, current_session_id: option.None),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.ApiFailure(_) | api.HttpFailure(_) -> #(
+          model,
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    AccountSessionsLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> #(
+          Model(
+            ..model,
+            sessions: response.sessions,
+            sessions_status: IdleSessions,
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            sessions_status: SessionsError(api.error_message(error)),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            sessions_status: SessionsError("Could not load sessions."),
+          ),
           effect.none(),
           app_event.NoAppEvent,
         )
@@ -343,6 +419,45 @@ pub fn update(
             passkey_setup_status: PasskeySetupError(
               "Could not save the new passkey.",
             ),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+      }
+
+    DeleteSessionSubmitted(id) -> {
+      let request = account_session_dto.DeleteAccountSessionRequest(id:)
+      #(
+        Model(..model, sessions_status: DeletingSession(id)),
+        api.delete_account_session(request, fn(result) { DeletedSession(id, result) }),
+        app_event.NoAppEvent,
+      )
+    }
+
+    DeletedSession(_id, result) ->
+      case result {
+        api.ApiSuccess(_) -> #(
+          Model(..model, sessions_status: LoadingSessions),
+          effect.batch([
+            api.get_session(SessionLoaded),
+            api.list_account_sessions(AccountSessionsLoaded),
+          ]),
+          app_event.RefreshSession,
+        )
+
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            sessions_status: SessionsError(api.error_message(error)),
+          ),
+          effect.none(),
+          app_event.NoAppEvent,
+        )
+
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            sessions_status: SessionsError("Could not delete session."),
           ),
           effect.none(),
           app_event.NoAppEvent,
@@ -573,9 +688,9 @@ fn account_form(
     ]),
     html.section([attribute.class("app-panel")], [
       html.h3([attribute.class("account-page__section-title")], [
-        html.text("Session"),
+        html.text("Sessions"),
       ]),
-      logout_section(model.status),
+      sessions_section(model, now),
     ]),
     html.section([attribute.class("app-panel")], [
       html.h3([attribute.class("account-page__section-title")], [
@@ -618,7 +733,12 @@ fn account_settings_form(model: Model) -> Element(Msg) {
         attribute.value(model.username),
         event.on_input(UsernameChanged),
         attribute.disabled(
-          is_busy(model.status, model.passkey_setup_status, model.passkeys_status),
+          is_busy(
+            model.status,
+            model.passkey_setup_status,
+            model.sessions_status,
+            model.passkeys_status,
+          ),
         ),
         attribute.class("account-page__input"),
       ]),
@@ -627,7 +747,12 @@ fn account_settings_form(model: Model) -> Element(Msg) {
         [
           attribute.type_("submit"),
           attribute.disabled(
-            is_busy(model.status, model.passkey_setup_status, model.passkeys_status),
+            is_busy(
+              model.status,
+              model.passkey_setup_status,
+              model.sessions_status,
+              model.passkeys_status,
+            ),
           ),
           attribute.class("account-page__button"),
         ],
@@ -651,7 +776,12 @@ fn passkey_section(model: Model, now: Timestamp) -> Element(Msg) {
       [
         attribute.type_("button"),
         attribute.disabled(
-          is_busy(model.status, model.passkey_setup_status, model.passkeys_status),
+          is_busy(
+            model.status,
+            model.passkey_setup_status,
+            model.sessions_status,
+            model.passkeys_status,
+          ),
         ),
         attribute.class("account-page__button account-page__button--secondary"),
         event.on_click(BeginPasskeySubmitted),
@@ -740,6 +870,85 @@ fn snippets_section() -> Element(Msg) {
   ])
 }
 
+fn sessions_section(model: Model, now: Timestamp) -> Element(Msg) {
+  html.div([attribute.class("account-page__empty")], [
+    html.p([attribute.class("account-page__status")], [
+      html.text("Review active account sessions and revoke any you no longer trust."),
+    ]),
+    sessions_status_view(model.sessions_status),
+    sessions_list(
+      model.sessions,
+      model.current_session_id,
+      model.sessions_status,
+      now,
+    ),
+    logout_section(model.status, model.sessions_status),
+  ])
+}
+
+fn sessions_list(
+  sessions: List(account_session_dto.AccountSessionResponse),
+  current_session_id: option.Option(uuid.Uuid),
+  sessions_status: SessionsStatus,
+  now: Timestamp,
+) -> Element(Msg) {
+  case sessions_status, sessions {
+    LoadingSessions, [] ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("Loading sessions..."),
+      ])
+
+    _, [] ->
+      html.p([attribute.class("account-page__status")], [
+        html.text("No active sessions found."),
+      ])
+
+    _, _ ->
+      html.div(
+        [attribute.class("account-page__passkey-list")],
+        list.map(sessions, fn(account_session) {
+          session_item(account_session, current_session_id, sessions_status, now)
+        }),
+      )
+  }
+}
+
+fn session_item(
+  account_session: account_session_dto.AccountSessionResponse,
+  current_session_id: option.Option(uuid.Uuid),
+  sessions_status: SessionsStatus,
+  now: Timestamp,
+) -> Element(Msg) {
+  html.div([attribute.class("account-page__passkey-item")], [
+    html.div([attribute.class("account-page__passkey-meta")], [
+      html.p([attribute.class("account-page__row-value")], [
+        html.text(session_label(account_session)),
+      ]),
+      html.p([attribute.class("account-page__status")], [
+        html.text(ip_label(account_session.ip)),
+      ]),
+      html.p([attribute.class("account-page__status")], [
+        html.text(current_session_label(account_session, current_session_id)),
+      ]),
+      html.p([attribute.class("account-page__status")], [
+        html.text(
+          "Started "
+          <> timestamp_helpers.relative_label(account_session.created_at, now),
+        ),
+      ]),
+    ]),
+    html.button(
+      [
+        attribute.type_("button"),
+        attribute.disabled(delete_session_button_disabled(sessions_status)),
+        attribute.class("account-page__button account-page__button--danger"),
+        event.on_click(DeleteSessionSubmitted(account_session.id)),
+      ],
+      [html.text(delete_session_button_text(sessions_status, account_session.id))],
+    ),
+  ])
+}
+
 fn account_row(label: String, value: String) -> Element(Msg) {
   html.div([attribute.class("account-page__row")], [
     html.span([attribute.class("account-page__row-label")], [html.text(label)]),
@@ -819,7 +1028,9 @@ fn delete_account_section(
           html.button(
             [
               attribute.type_("button"),
-              attribute.disabled(is_busy(status, PasskeySetupIdle, IdlePasskeys)),
+              attribute.disabled(
+                is_busy(status, PasskeySetupIdle, IdleSessions, IdlePasskeys),
+              ),
               attribute.class(button_class),
               event.on_click(button_msg),
             ],
@@ -846,6 +1057,17 @@ fn passkeys_status_view(passkeys_status: PasskeysStatus) -> Element(Msg) {
         [html.text(message)],
       )
     LoadingPasskeys | IdlePasskeys | DeletingPasskey(_) -> html.text("")
+  }
+}
+
+fn sessions_status_view(sessions_status: SessionsStatus) -> Element(Msg) {
+  case sessions_status {
+    SessionsError(message) ->
+      html.p(
+        [attribute.class("account-page__status account-page__status--error")],
+        [html.text(message)],
+      )
+    LoadingSessions | IdleSessions | DeletingSession(_) -> html.text("")
   }
 }
 
@@ -920,7 +1142,7 @@ fn delete_account_description(
   }
 }
 
-fn logout_section(status: Status) -> Element(Msg) {
+fn logout_section(status: Status, sessions_status: SessionsStatus) -> Element(Msg) {
   html.div([attribute.class("account-page__logout")], [
     html.p([attribute.class("account-page__status")], [
       html.text("End your current session on this device."),
@@ -929,7 +1151,9 @@ fn logout_section(status: Status) -> Element(Msg) {
     html.button(
       [
         attribute.type_("button"),
-        attribute.disabled(is_busy(status, PasskeySetupIdle, IdlePasskeys)),
+        attribute.disabled(
+          is_busy(status, PasskeySetupIdle, sessions_status, IdlePasskeys),
+        ),
         attribute.class("account-page__button account-page__button--logout"),
         event.on_click(LogoutSubmitted),
       ],
@@ -989,12 +1213,62 @@ fn delete_button_text(status: Status, delete_scheduled: Bool) -> String {
   }
 }
 
+fn session_label(
+  account_session: account_session_dto.AccountSessionResponse,
+) -> String {
+  case account_session.browser_name, account_session.os_name {
+    option.Some(browser_name), option.Some(os_name) ->
+      platform_model.browser_label(browser_name)
+      <> " on "
+      <> platform_model.operating_system_label(os_name)
+    option.Some(browser_name), option.None ->
+      platform_model.browser_label(browser_name)
+    option.None, option.Some(os_name) ->
+      platform_model.operating_system_label(os_name)
+    option.None, option.None -> "Unknown device"
+  }
+}
+
+fn ip_label(ip: option.Option(String)) -> String {
+  case ip {
+    option.Some(value) -> "IP " <> value
+    option.None -> "IP unavailable"
+  }
+}
+
+fn current_session_label(
+  account_session: account_session_dto.AccountSessionResponse,
+  current_session_id: option.Option(uuid.Uuid),
+) -> String {
+  case current_session_id {
+    option.Some(id) if id == account_session.id -> "Current session"
+    _ -> "Active session"
+  }
+}
+
 fn passkey_button_text(passkey_setup_status: PasskeySetupStatus) -> String {
   case passkey_setup_status {
     StartingPasskeySetup -> "Preparing..."
     CreatingPasskey -> "Waiting for passkey..."
     SavingPasskey -> "Saving..."
     _ -> "Add passkey"
+  }
+}
+
+fn delete_session_button_disabled(sessions_status: SessionsStatus) -> Bool {
+  case sessions_status {
+    LoadingSessions | DeletingSession(_) -> True
+    IdleSessions | SessionsError(_) -> False
+  }
+}
+
+fn delete_session_button_text(
+  sessions_status: SessionsStatus,
+  session_id: uuid.Uuid,
+) -> String {
+  case sessions_status {
+    DeletingSession(id) if id == session_id -> "Deleting..."
+    _ -> "Delete"
   }
 }
 
@@ -1043,6 +1317,7 @@ fn delete_passkey_button_text(
 fn is_busy(
   status: Status,
   passkey_setup_status: PasskeySetupStatus,
+  sessions_status: SessionsStatus,
   passkeys_status: PasskeysStatus,
 ) -> Bool {
   case status {
@@ -1057,9 +1332,13 @@ fn is_busy(
       case passkey_setup_status {
         StartingPasskeySetup | CreatingPasskey | SavingPasskey -> True
         PasskeySetupIdle | PasskeySaved | PasskeySetupError(_) ->
-          case passkeys_status {
-            LoadingPasskeys | DeletingPasskey(_) -> True
-            IdlePasskeys | PasskeysError(_) -> False
+          case sessions_status {
+            LoadingSessions | DeletingSession(_) -> True
+            IdleSessions | SessionsError(_) ->
+              case passkeys_status {
+                LoadingPasskeys | DeletingPasskey(_) -> True
+                IdlePasskeys | PasskeysError(_) -> False
+              }
           }
       }
   }
