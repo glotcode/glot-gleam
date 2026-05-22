@@ -548,6 +548,14 @@ pub fn create_session(
       previous_token: session.previous_token,
       previous_token_valid_until: session.previous_token_valid_until,
       ip: session.ip,
+      os_name: option.map(
+        session.os_name,
+        platform_model.operating_system_to_string,
+      ),
+      browser_name: option.map(
+        session.browser_name,
+        platform_model.browser_to_string,
+      ),
       user_agent: session.user_agent,
       created_at: session.created_at,
       token_updated_at: session.token_updated_at,
@@ -571,6 +579,14 @@ pub fn update_session(
       previous_token: session.previous_token,
       previous_token_valid_until: session.previous_token_valid_until,
       ip: session.ip,
+      os_name: option.map(
+        session.os_name,
+        platform_model.operating_system_to_string,
+      ),
+      browser_name: option.map(
+        session.browser_name,
+        platform_model.browser_to_string,
+      ),
       user_agent: session.user_agent,
       created_at: session.created_at,
       token_updated_at: session.token_updated_at,
@@ -1180,6 +1196,14 @@ fn session_from_row(
       "Invalid account tier: " <> row.user_account_tier,
     )),
   )
+  use os_name <- result.try(
+    optional_operating_system(row.os_name)
+    |> option.to_result(db_error.DbQueryError("Invalid operating system")),
+  )
+  use browser_name <- result.try(
+    optional_browser(row.browser_name)
+    |> option.to_result(db_error.DbQueryError("Invalid browser")),
+  )
 
   Ok(session_model.HydratedSession(
     identity: session_model.Session(
@@ -1189,6 +1213,8 @@ fn session_from_row(
       previous_token: row.previous_token,
       previous_token_valid_until: row.previous_token_valid_until,
       ip: row.ip,
+      os_name: os_name,
+      browser_name: browser_name,
       user_agent: row.user_agent,
       created_at: row.created_at,
       token_updated_at: row.token_updated_at,
@@ -1224,6 +1250,15 @@ fn session_from_row(
 fn session_identity_from_row(
   row: sql.GetSessionByTokenForUpdate,
 ) -> Result(session_model.Session, db_error.DbQueryError) {
+  use os_name <- result.try(
+    optional_operating_system(row.os_name)
+    |> option.to_result(db_error.DbQueryError("Invalid operating system")),
+  )
+  use browser_name <- result.try(
+    optional_browser(row.browser_name)
+    |> option.to_result(db_error.DbQueryError("Invalid browser")),
+  )
+
   Ok(session_model.Session(
     id: uuid_helpers.from_bit_array(row.id),
     user_id: uuid_helpers.from_bit_array(row.user_id),
@@ -1231,6 +1266,8 @@ fn session_identity_from_row(
     previous_token: row.previous_token,
     previous_token_valid_until: row.previous_token_valid_until,
     ip: row.ip,
+    os_name: os_name,
+    browser_name: browser_name,
     user_agent: row.user_agent,
     created_at: row.created_at,
     token_updated_at: row.token_updated_at,
@@ -1265,6 +1302,14 @@ fn session_from_previous_row(
       "Invalid account tier: " <> row.user_account_tier,
     )),
   )
+  use os_name <- result.try(
+    optional_operating_system(row.os_name)
+    |> option.to_result(db_error.DbQueryError("Invalid operating system")),
+  )
+  use browser_name <- result.try(
+    optional_browser(row.browser_name)
+    |> option.to_result(db_error.DbQueryError("Invalid browser")),
+  )
 
   Ok(session_model.HydratedSession(
     identity: session_model.Session(
@@ -1274,6 +1319,8 @@ fn session_from_previous_row(
       previous_token: row.previous_token,
       previous_token_valid_until: row.previous_token_valid_until,
       ip: row.ip,
+      os_name: os_name,
+      browser_name: browser_name,
       user_agent: row.user_agent,
       created_at: row.created_at,
       token_updated_at: row.token_updated_at,
@@ -1309,6 +1356,15 @@ fn session_from_previous_row(
 fn session_identity_from_previous_row(
   row: sql.GetSessionByPreviousTokenForUpdate,
 ) -> Result(session_model.Session, db_error.DbQueryError) {
+  use os_name <- result.try(
+    optional_operating_system(row.os_name)
+    |> option.to_result(db_error.DbQueryError("Invalid operating system")),
+  )
+  use browser_name <- result.try(
+    optional_browser(row.browser_name)
+    |> option.to_result(db_error.DbQueryError("Invalid browser")),
+  )
+
   Ok(session_model.Session(
     id: uuid_helpers.from_bit_array(row.id),
     user_id: uuid_helpers.from_bit_array(row.user_id),
@@ -1316,6 +1372,8 @@ fn session_identity_from_previous_row(
     previous_token: row.previous_token,
     previous_token_valid_until: row.previous_token_valid_until,
     ip: row.ip,
+    os_name: os_name,
+    browser_name: browser_name,
     user_agent: row.user_agent,
     created_at: row.created_at,
     token_updated_at: row.token_updated_at,

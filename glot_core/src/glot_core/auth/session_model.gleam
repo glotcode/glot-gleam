@@ -1,5 +1,6 @@
 import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/auth/platform_model.{type Browser, type OperatingSystem}
 import glot_core/auth/user_model.{type HydratedUser}
 import youid/uuid.{type Uuid}
 
@@ -11,6 +12,8 @@ pub type Session {
     previous_token: Option(String),
     previous_token_valid_until: Option(Timestamp),
     ip: Option(String),
+    os_name: Option(OperatingSystem),
+    browser_name: Option(Browser),
     user_agent: Option(String),
     created_at: Timestamp,
     token_updated_at: Timestamp,

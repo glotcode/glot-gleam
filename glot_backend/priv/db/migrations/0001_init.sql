@@ -112,6 +112,8 @@ CREATE TABLE sessions (
   previous_token TEXT NULL,
   previous_token_valid_until TIMESTAMPTZ NULL,
   ip TEXT NULL,
+  os_name TEXT NULL,
+  browser_name TEXT NULL,
   user_agent TEXT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   token_updated_at TIMESTAMPTZ NOT NULL

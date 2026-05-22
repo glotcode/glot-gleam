@@ -193,6 +193,8 @@ SELECT
   sessions.previous_token,
   sessions.previous_token_valid_until,
   sessions.ip,
+  sessions.os_name,
+  sessions.browser_name,
   sessions.user_agent,
   sessions.created_at,
   sessions.token_updated_at,
@@ -223,6 +225,8 @@ SELECT
   sessions.previous_token,
   sessions.previous_token_valid_until,
   sessions.ip,
+  sessions.os_name,
+  sessions.browser_name,
   sessions.user_agent,
   sessions.created_at,
   sessions.token_updated_at
@@ -238,6 +242,8 @@ SELECT
   sessions.previous_token,
   sessions.previous_token_valid_until,
   sessions.ip,
+  sessions.os_name,
+  sessions.browser_name,
   sessions.user_agent,
   sessions.created_at,
   sessions.token_updated_at,
@@ -268,6 +274,8 @@ SELECT
   sessions.previous_token,
   sessions.previous_token_valid_until,
   sessions.ip,
+  sessions.os_name,
+  sessions.browser_name,
   sessions.user_agent,
   sessions.created_at,
   sessions.token_updated_at
@@ -285,7 +293,7 @@ INSERT INTO accounts (id, account_state, account_state_reason, account_tier, del
 INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2, $3, $4, $5);
 
 -- name: InsertSession :exec
-INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, user_agent, created_at, token_updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, os_name, browser_name, user_agent, created_at, token_updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
 -- name: InsertPasskeyCredential :exec
 INSERT INTO passkey_credentials (id, user_id, credential_id, cose_key, sign_count, aaguid, os_name, browser_name, raw_user_agent, created_at, updated_at, last_used_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
@@ -300,10 +308,12 @@ SET user_id = $1,
     previous_token = $3,
     previous_token_valid_until = $4,
     ip = $5,
-    user_agent = $6,
-    created_at = $7,
-    token_updated_at = $8
-WHERE id = $9;
+    os_name = $6,
+    browser_name = $7,
+    user_agent = $8,
+    created_at = $9,
+    token_updated_at = $10
+WHERE id = $11;
 
 -- name: UpdateAccount :exec
 UPDATE accounts

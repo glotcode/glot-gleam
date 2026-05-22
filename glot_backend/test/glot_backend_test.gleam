@@ -87,6 +87,7 @@ import glot_core/auth/login_token_model
 import glot_core/auth/passkey_challenge_model
 import glot_core/auth/passkey_credential_model
 import glot_core/auth/passkey_dto
+import glot_core/auth/platform_model
 import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_model
 import glot_core/auth/user_model
@@ -2024,6 +2025,8 @@ fn integration_fixture(
       previous_token: option.None,
       previous_token_valid_until: option.None,
       ip: option.Some("127.0.0.1"),
+      os_name: option.Some(platform_model.MacOS),
+      browser_name: option.Some(platform_model.Chrome),
       user_agent: option.Some("gleeunit"),
       created_at: test_timestamp(),
       token_updated_at: test_timestamp(),
