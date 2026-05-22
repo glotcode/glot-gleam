@@ -179,6 +179,35 @@ pub fn run(
         )
       }
     }
+    auth_algebra.ListSessionsByUserId(user_id:, active_since:, next:) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.list_sessions_by_user_id(user_id, active_since)
+      case result {
+        Ok(value) ->
+          continue(
+            next(value),
+            program_state.add_effect_measurement(
+              state,
+              effect_trace.AuthEffectName(
+                auth_algebra.ListSessionsByUserIdEffectName,
+              ),
+              effect_trace.DbReadEffectCategory,
+              started_at,
+            ),
+          )
+        Error(error) -> #(
+          Error(error.database_query_error(error)),
+          program_state.add_effect_measurement(
+            state,
+            effect_trace.AuthEffectName(
+              auth_algebra.ListSessionsByUserIdEffectName,
+            ),
+            effect_trace.DbReadEffectCategory,
+            started_at,
+          ),
+        )
+      }
+    }
     auth_algebra.GetPasskeyChallengeById(id:, next:) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.auth.get_passkey_challenge_by_id(id)

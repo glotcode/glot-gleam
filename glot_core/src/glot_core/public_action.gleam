@@ -11,8 +11,10 @@ pub type PublicAction {
   RefreshSessionAction
   LogoutAction
   GetAccountAction
+  ListAccountSessionsAction
   GetAccountPasskeysAction
   UpdateAccountAction
+  DeleteAccountSessionAction
   DeleteAccountPasskeyAction
   ScheduleDeleteAccountAction
   CancelDeleteAccountAction
@@ -39,8 +41,10 @@ pub fn list() -> List(PublicAction) {
     RefreshSessionAction,
     LogoutAction,
     GetAccountAction,
+    ListAccountSessionsAction,
     GetAccountPasskeysAction,
     UpdateAccountAction,
+    DeleteAccountSessionAction,
     DeleteAccountPasskeyAction,
     ScheduleDeleteAccountAction,
     CancelDeleteAccountAction,
@@ -80,8 +84,10 @@ pub fn to_string(action: PublicAction) -> String {
     RefreshSessionAction -> "refresh_session"
     LogoutAction -> "logout"
     GetAccountAction -> "get_account"
+    ListAccountSessionsAction -> "list_account_sessions"
     GetAccountPasskeysAction -> "get_account_passkeys"
     UpdateAccountAction -> "update_account"
+    DeleteAccountSessionAction -> "delete_account_session"
     DeleteAccountPasskeyAction -> "delete_account_passkey"
     ScheduleDeleteAccountAction -> "schedule_delete_account"
     CancelDeleteAccountAction -> "cancel_delete_account"
@@ -109,8 +115,10 @@ pub fn from_string(action: String) -> option.Option(PublicAction) {
     "refresh_session" -> option.Some(RefreshSessionAction)
     "logout" -> option.Some(LogoutAction)
     "get_account" -> option.Some(GetAccountAction)
+    "list_account_sessions" -> option.Some(ListAccountSessionsAction)
     "get_account_passkeys" -> option.Some(GetAccountPasskeysAction)
     "update_account" -> option.Some(UpdateAccountAction)
+    "delete_account_session" -> option.Some(DeleteAccountSessionAction)
     "delete_account_passkey" -> option.Some(DeleteAccountPasskeyAction)
     "schedule_delete_account" -> option.Some(ScheduleDeleteAccountAction)
     "cancel_delete_account" -> option.Some(CancelDeleteAccountAction)
@@ -148,8 +156,10 @@ pub fn server_timing_policy(
     | RefreshSessionAction
     | LogoutAction
     | GetAccountAction
+    | ListAccountSessionsAction
     | GetAccountPasskeysAction
     | UpdateAccountAction
+    | DeleteAccountSessionAction
     | DeleteAccountPasskeyAction
     | ScheduleDeleteAccountAction
     | CancelDeleteAccountAction

@@ -80,6 +80,19 @@ pub fn list_passkey_credentials_by_user_id(
   )
 }
 
+pub fn list_sessions_by_user_id(
+  user_id user_id: Uuid,
+  active_since active_since: Timestamp,
+) -> program_types.Program(List(session_model.Session)) {
+  program_types.Impure(
+    program_types.DbEffect(list_sessions_by_user_id_effect(
+      user_id,
+      active_since,
+      program_types.Pure,
+    )),
+  )
+}
+
 pub fn get_passkey_challenge_by_id(
   id id: Uuid,
 ) -> program_types.Program(
@@ -547,6 +560,18 @@ fn list_passkey_credentials_by_user_id_effect(
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.ListPasskeyCredentialsByUserId(
     user_id: user_id,
+    next: next,
+  ))
+}
+
+fn list_sessions_by_user_id_effect(
+  user_id: Uuid,
+  active_since: Timestamp,
+  next: fn(List(session_model.Session)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.ListSessionsByUserId(
+    user_id: user_id,
+    active_since: active_since,
     next: next,
   ))
 }

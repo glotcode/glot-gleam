@@ -28,6 +28,7 @@ import glot_core/admin/user_dto
 import glot_core/admin_action
 import glot_core/api_error_dto
 import glot_core/auth/account_dto
+import glot_core/auth/account_session_dto
 import glot_core/auth/login_dto
 import glot_core/auth/login_token_dto
 import glot_core/auth/passkey_dto
@@ -289,6 +290,19 @@ pub fn get_account(
   )
 }
 
+pub fn list_account_sessions(
+  to_msg: fn(ApiResponse(account_session_dto.ListAccountSessionsResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = PublicApiRequest(public_action.ListAccountSessionsAction, Nil)
+
+  send_public_api_request(
+    req,
+    fn(_) { json.null() },
+    account_session_dto.list_account_sessions_response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn get_account_passkeys(
   to_msg: fn(ApiResponse(passkey_dto.ListAccountPasskeysResponse)) -> msg,
 ) -> effect.Effect(msg) {
@@ -378,6 +392,20 @@ pub fn delete_account_passkey(
   send_public_api_request(
     req,
     passkey_dto.encode_delete_account_passkey_request,
+    nil_decoder(),
+    to_msg,
+  )
+}
+
+pub fn delete_account_session(
+  request: account_session_dto.DeleteAccountSessionRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req = PublicApiRequest(public_action.DeleteAccountSessionAction, request)
+
+  send_public_api_request(
+    req,
+    account_session_dto.encode_delete_account_session_request,
     nil_decoder(),
     to_msg,
   )

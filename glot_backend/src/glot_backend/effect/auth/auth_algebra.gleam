@@ -49,6 +49,11 @@ pub type AuthEffect(next) {
     user_id: Uuid,
     next: fn(List(passkey_credential_model.PasskeyCredential)) -> next,
   )
+  ListSessionsByUserId(
+    user_id: Uuid,
+    active_since: Timestamp,
+    next: fn(List(session_model.Session)) -> next,
+  )
   GetPasskeyChallengeById(
     id: Uuid,
     next: fn(option.Option(passkey_challenge_model.PasskeyChallenge)) -> next,
@@ -166,6 +171,12 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       ListPasskeyCredentialsByUserId(user_id: user_id, next: fn(value) {
         f(next(value))
       })
+    ListSessionsByUserId(user_id:, active_since:, next:) ->
+      ListSessionsByUserId(
+        user_id: user_id,
+        active_since: active_since,
+        next: fn(value) { f(next(value)) },
+      )
     GetPasskeyChallengeById(id:, next:) ->
       GetPasskeyChallengeById(id: id, next: fn(value) { f(next(value)) })
     GetSessionByToken(token:, next:) ->
@@ -243,6 +254,7 @@ pub type EffectName {
   ListLoginTokensByEmailEffectName
   GetPasskeyCredentialByCredentialIdEffectName
   ListPasskeyCredentialsByUserIdEffectName
+  ListSessionsByUserIdEffectName
   GetPasskeyChallengeByIdEffectName
   GetSessionByTokenEffectName
   GetSessionByTokenForUpdateEffectName
@@ -278,6 +290,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
       "get_passkey_credential_by_credential_id"
     ListPasskeyCredentialsByUserIdEffectName ->
       "list_passkey_credentials_by_user_id"
+    ListSessionsByUserIdEffectName -> "list_sessions_by_user_id"
     GetPasskeyChallengeByIdEffectName -> "get_passkey_challenge_by_id"
     GetSessionByTokenEffectName -> "get_session_by_token"
     GetSessionByTokenForUpdateEffectName -> "get_session_by_token_for_update"

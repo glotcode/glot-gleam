@@ -350,6 +350,7 @@ fn test_handlers() -> handlers.Handlers {
       list_login_tokens_by_email: fn(_, _) { Ok([]) },
       get_passkey_credential_by_credential_id: fn(_) { Ok(option.None) },
       list_passkey_credentials_by_user_id: fn(_) { Ok([]) },
+      list_sessions_by_user_id: fn(_, _) { Ok([]) },
       get_passkey_challenge_by_id: fn(_) { Ok(option.None) },
       get_session_by_token: fn(_, _) { Ok(option.None) },
       get_session_by_token_for_update: fn(_) { Ok(option.None) },

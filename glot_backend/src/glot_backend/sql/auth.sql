@@ -174,6 +174,24 @@ FROM passkey_credentials
 WHERE user_id = $1
 ORDER BY created_at ASC;
 
+-- name: ListSessionsByUserId :many
+SELECT
+  id,
+  user_id,
+  token,
+  previous_token,
+  previous_token_valid_until,
+  ip,
+  os_name,
+  browser_name,
+  user_agent,
+  created_at,
+  token_updated_at
+FROM sessions
+WHERE user_id = $1
+  AND created_at >= $2
+ORDER BY created_at DESC;
+
 -- name: GetPasskeyChallengeById :one
 SELECT
   id,

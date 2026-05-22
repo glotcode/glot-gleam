@@ -3158,6 +3158,12 @@ fn run_test_auth_effect(
       )
     auth_algebra.ListPasskeyCredentialsByUserId(user_id:, next:) ->
       run_test_program(next(find_passkey_credentials_by_user_id(db, user_id)), ctx, db)
+    auth_algebra.ListSessionsByUserId(user_id:, active_since:, next:) ->
+      run_test_program(
+        next(find_sessions_by_user_id(db, user_id, active_since)),
+        ctx,
+        db,
+      )
     auth_algebra.GetPasskeyChallengeById(id:, next:) ->
       run_test_program(next(find_passkey_challenge_by_id(db, id)), ctx, db)
     auth_algebra.GetSessionByToken(token:, next:) ->
@@ -3275,6 +3281,12 @@ fn run_test_auth_tx_effect(
     auth_algebra.ListPasskeyCredentialsByUserId(user_id:, next:) ->
       run_test_tx_program(
         next(find_passkey_credentials_by_user_id(db, user_id)),
+        ctx,
+        db,
+      )
+    auth_algebra.ListSessionsByUserId(user_id:, active_since:, next:) ->
+      run_test_tx_program(
+        next(find_sessions_by_user_id(db, user_id, active_since)),
         ctx,
         db,
       )
@@ -4031,6 +4043,22 @@ fn find_passkey_credentials_by_user_id(
   db.passkey_credentials
   |> dict.to_list
   |> list.filter(fn(entry) { entry.1.user_id == user_id })
+  |> list.map(fn(entry) { entry.1 })
+}
+
+fn find_sessions_by_user_id(
+  db: TestDb,
+  user_id: uuid.Uuid,
+  active_since: timestamp.Timestamp,
+) -> List(session_model.Session) {
+  db.sessions
+  |> dict.to_list
+  |> list.filter(fn(entry) {
+    let session = entry.1
+    session.user_id == user_id
+    && timestamp_helpers.to_microseconds(session.created_at)
+    >= timestamp_helpers.to_microseconds(active_since)
+  })
   |> list.map(fn(entry) { entry.1 })
 }
 

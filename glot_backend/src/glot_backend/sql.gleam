@@ -2961,6 +2961,82 @@ pub fn list_passkey_credentials_by_user_id_decoder() -> decode.Decoder(
   ))
 }
 
+pub type ListSessionsByUserId {
+  ListSessionsByUserId(
+    id: BitArray,
+    user_id: BitArray,
+    token: String,
+    previous_token: Option(String),
+    previous_token_valid_until: Option(Timestamp),
+    ip: Option(String),
+    os_name: Option(String),
+    browser_name: Option(String),
+    user_agent: Option(String),
+    created_at: Timestamp,
+    token_updated_at: Timestamp,
+  )
+}
+
+pub fn list_sessions_by_user_id(
+  user_id user_id: BitArray,
+  created_at created_at: Timestamp,
+) {
+  let sql =
+    "SELECT
+  id,
+  user_id,
+  token,
+  previous_token,
+  previous_token_valid_until,
+  ip,
+  os_name,
+  browser_name,
+  user_agent,
+  created_at,
+  token_updated_at
+FROM sessions
+WHERE user_id = $1
+  AND created_at >= $2
+ORDER BY created_at DESC"
+  #(
+    sql,
+    [dev.ParamBitArray(user_id), dev.ParamTimestamp(created_at)],
+    list_sessions_by_user_id_decoder(),
+  )
+}
+
+pub fn list_sessions_by_user_id_decoder() -> decode.Decoder(
+  ListSessionsByUserId,
+) {
+  use id <- decode.field(0, decode.bit_array)
+  use user_id <- decode.field(1, decode.bit_array)
+  use token <- decode.field(2, decode.string)
+  use previous_token <- decode.field(3, decode.optional(decode.string))
+  use previous_token_valid_until <- decode.field(
+    4,
+    decode.optional(dev.datetime_decoder()),
+  )
+  use ip <- decode.field(5, decode.optional(decode.string))
+  use os_name <- decode.field(6, decode.optional(decode.string))
+  use browser_name <- decode.field(7, decode.optional(decode.string))
+  use user_agent <- decode.field(8, decode.optional(decode.string))
+  use created_at <- decode.field(9, dev.datetime_decoder())
+  use token_updated_at <- decode.field(10, dev.datetime_decoder())
+  decode.success(ListSessionsByUserId(
+    id:,
+    user_id:,
+    token:,
+    previous_token:,
+    previous_token_valid_until:,
+    ip:,
+    os_name:,
+    browser_name:,
+    user_agent:,
+    created_at:,
+    token_updated_at:,
+  ))
+}
+
 pub type GetPasskeyChallengeById {
   GetPasskeyChallengeById(
     id: BitArray,

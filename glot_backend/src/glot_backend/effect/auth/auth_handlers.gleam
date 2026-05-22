@@ -39,6 +39,8 @@ pub type AuthHandlers {
       ),
     list_passkey_credentials_by_user_id: fn(uuid.Uuid) ->
       Result(List(passkey_credential_model.PasskeyCredential), db_error.DbQueryError),
+    list_sessions_by_user_id: fn(uuid.Uuid, Timestamp) ->
+      Result(List(session_model.Session), db_error.DbQueryError),
     get_passkey_challenge_by_id: fn(uuid.Uuid) ->
       Result(
         option.Option(passkey_challenge_model.PasskeyChallenge),
@@ -110,6 +112,9 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     },
     list_passkey_credentials_by_user_id: fn(user_id) {
       list_passkey_credentials_by_user_id(db, user_id)
+    },
+    list_sessions_by_user_id: fn(user_id, active_since) {
+      list_sessions_by_user_id(db, user_id, active_since)
     },
     get_passkey_challenge_by_id: fn(id) { get_passkey_challenge_by_id(db, id) },
     get_session_by_token: fn(is_email, token) {
@@ -300,6 +305,22 @@ pub fn list_passkey_credentials_by_user_id(
   |> result.try(fn(returned) {
     passkey_credentials_from_rows(returned.rows)
   })
+}
+
+pub fn list_sessions_by_user_id(
+  db: db_helpers.Db,
+  user_id: uuid.Uuid,
+  active_since: Timestamp,
+) -> Result(List(session_model.Session), db_error.DbQueryError) {
+  db_helpers.query(
+    db,
+    sql.list_sessions_by_user_id(
+      user_id: uuid.to_bit_array(user_id),
+      created_at: active_since,
+    ),
+    fn(err) { db_error.DbQueryError(string.inspect(err)) },
+  )
+  |> result.try(fn(returned) { session_identities_from_list_rows(returned.rows) })
 }
 
 pub fn get_passkey_challenge_by_id(
@@ -1168,6 +1189,19 @@ fn session_identity_from_previous_rows(
   }
 }
 
+fn session_identities_from_list_rows(
+  rows: List(sql.ListSessionsByUserId),
+) -> Result(List(session_model.Session), db_error.DbQueryError) {
+  case rows {
+    [] -> Ok([])
+    [first, ..rest] -> {
+      use session <- result.try(session_identity_from_list_row(first))
+      use sessions <- result.try(session_identities_from_list_rows(rest))
+      Ok([session, ..sessions])
+    }
+  }
+}
+
 fn session_from_row(
   is_email: regexp.Regexp,
   row: sql.GetSessionByToken,
@@ -1355,6 +1389,33 @@ fn session_from_previous_row(
 
 fn session_identity_from_previous_row(
   row: sql.GetSessionByPreviousTokenForUpdate,
+) -> Result(session_model.Session, db_error.DbQueryError) {
+  use os_name <- result.try(
+    optional_operating_system(row.os_name)
+    |> option.to_result(db_error.DbQueryError("Invalid operating system")),
+  )
+  use browser_name <- result.try(
+    optional_browser(row.browser_name)
+    |> option.to_result(db_error.DbQueryError("Invalid browser")),
+  )
+
+  Ok(session_model.Session(
+    id: uuid_helpers.from_bit_array(row.id),
+    user_id: uuid_helpers.from_bit_array(row.user_id),
+    token: row.token,
+    previous_token: row.previous_token,
+    previous_token_valid_until: row.previous_token_valid_until,
+    ip: row.ip,
+    os_name: os_name,
+    browser_name: browser_name,
+    user_agent: row.user_agent,
+    created_at: row.created_at,
+    token_updated_at: row.token_updated_at,
+  ))
+}
+
+fn session_identity_from_list_row(
+  row: sql.ListSessionsByUserId,
 ) -> Result(session_model.Session, db_error.DbQueryError) {
   use os_name <- result.try(
     optional_operating_system(row.os_name)
