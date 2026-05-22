@@ -28,6 +28,7 @@ pub type Model {
     account: option.Option(account_dto.AccountResponse),
     username: String,
     status: Status,
+    danger_zone_expanded: Bool,
     passkey_supported: Bool,
     passkey_setup_status: PasskeySetupStatus,
     passkeys: List(passkey_dto.AccountPasskeyResponse),
@@ -87,6 +88,7 @@ pub type Msg {
   DeleteScheduled(api.ApiResponse(Nil))
   CancelDeleteSubmitted
   DeleteCanceled(api.ApiResponse(Nil))
+  ToggleDangerZone
   LoggedOut(api.ApiResponse(Nil))
 }
 
@@ -105,6 +107,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       account: option.None,
       username: "",
       status: Loading,
+      danger_zone_expanded: False,
       passkey_supported: passkey_supported,
       passkey_setup_status: PasskeySetupIdle,
       passkeys: [],
@@ -448,6 +451,12 @@ pub fn update(
         )
       }
 
+    ToggleDangerZone -> #(
+      Model(..model, danger_zone_expanded: !model.danger_zone_expanded),
+      effect.none(),
+      app_event.NoAppEvent,
+    )
+
     LoggedOut(result) ->
       case result {
         api.ApiSuccess(_) -> #(
@@ -564,15 +573,20 @@ fn account_form(
     ]),
     html.section([attribute.class("app-panel")], [
       html.h3([attribute.class("account-page__section-title")], [
-        html.text("Danger Zone"),
-      ]),
-      delete_account_section(account, model.status, now),
-    ]),
-    html.section([attribute.class("app-panel")], [
-      html.h3([attribute.class("account-page__section-title")], [
         html.text("Session"),
       ]),
       logout_section(model.status),
+    ]),
+    html.section([attribute.class("app-panel")], [
+      html.h3([attribute.class("account-page__section-title")], [
+        html.text("Danger Zone"),
+      ]),
+      delete_account_section(
+        account,
+        model.status,
+        model.danger_zone_expanded,
+        now,
+      ),
     ]),
   ])
 }
@@ -763,6 +777,7 @@ fn status_view(status: Status) -> Element(Msg) {
 fn delete_account_section(
   account: account_dto.AccountResponse,
   status: Status,
+  is_expanded: Bool,
   now: Timestamp,
 ) -> Element(Msg) {
   let #(description, button_msg, button_class, title, button_label) = case
@@ -785,19 +800,42 @@ fn delete_account_section(
   }
 
   html.div([attribute.class("account-page__danger-zone")], [
-    html.p([attribute.class("account-page__label")], [html.text(title)]),
-    html.p([attribute.class("account-page__status")], [html.text(description)]),
-    delete_status_view(status),
     html.button(
       [
         attribute.type_("button"),
-        attribute.disabled(is_busy(status, PasskeySetupIdle, IdlePasskeys)),
-        attribute.class(button_class),
-        event.on_click(button_msg),
+        attribute.class("account-page__button account-page__button--secondary"),
+        event.on_click(ToggleDangerZone),
       ],
-      [html.text(button_label)],
+      [html.text(danger_zone_toggle_text(is_expanded))],
     ),
+    case is_expanded {
+      True ->
+        html.div([attribute.class("account-page__danger-zone-body")], [
+          html.p([attribute.class("account-page__label")], [html.text(title)]),
+          html.p([attribute.class("account-page__status")], [
+            html.text(description),
+          ]),
+          delete_status_view(status),
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.disabled(is_busy(status, PasskeySetupIdle, IdlePasskeys)),
+              attribute.class(button_class),
+              event.on_click(button_msg),
+            ],
+            [html.text(button_label)],
+          ),
+        ])
+      False -> html.text("")
+    },
   ])
+}
+
+fn danger_zone_toggle_text(is_expanded: Bool) -> String {
+  case is_expanded {
+    True -> "Hide danger zone"
+    False -> "Show danger zone"
+  }
 }
 
 fn passkeys_status_view(passkeys_status: PasskeysStatus) -> Element(Msg) {

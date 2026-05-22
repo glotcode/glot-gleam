@@ -1429,6 +1429,13 @@ a {
   gap: 0.75rem;
 }
 
+.account-page__danger-zone-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
 .account-page__passkey-list {
   display: flex;
   flex-direction: column;
