@@ -3001,7 +3001,7 @@ FROM sessions
 WHERE user_id = $1
   AND created_at >= $2
   AND last_activity_at >= $3
-ORDER BY created_at DESC"
+ORDER BY last_activity_at DESC, created_at DESC"
   #(
     sql,
     [

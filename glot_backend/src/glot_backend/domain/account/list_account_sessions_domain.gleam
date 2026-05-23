@@ -44,6 +44,7 @@ pub fn list_account_sessions(
         os_name: session.os_name,
         browser_name: session.browser_name,
         created_at: session.created_at,
+        last_activity_at: session.last_activity_at,
       )
     }),
   ))

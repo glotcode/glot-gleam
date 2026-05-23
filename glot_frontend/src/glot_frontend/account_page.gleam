@@ -931,6 +931,9 @@ fn session_item(
         html.text(current_session_label(account_session, current_session_id)),
       ]),
       html.p([attribute.class("account-page__status")], [
+        html.text(last_activity_label(account_session, now)),
+      ]),
+      html.p([attribute.class("account-page__status")], [
         html.text(
           "Started "
           <> timestamp_helpers.relative_label(account_session.created_at, now),
@@ -1244,6 +1247,14 @@ fn current_session_label(
     option.Some(id) if id == account_session.id -> "Current session"
     _ -> "Active session"
   }
+}
+
+fn last_activity_label(
+  account_session: account_session_dto.AccountSessionResponse,
+  now: Timestamp,
+) -> String {
+  "Last active "
+  <> timestamp_helpers.relative_label(account_session.last_activity_at, now)
 }
 
 fn passkey_button_text(passkey_setup_status: PasskeySetupStatus) -> String {

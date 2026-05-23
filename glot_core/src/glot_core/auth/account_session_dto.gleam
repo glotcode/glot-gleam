@@ -14,6 +14,7 @@ pub type AccountSessionResponse {
     os_name: option.Option(platform_model.OperatingSystem),
     browser_name: option.Option(platform_model.Browser),
     created_at: timestamp.Timestamp,
+    last_activity_at: timestamp.Timestamp,
   )
 }
 
@@ -53,6 +54,7 @@ pub fn encode_account_session(response: AccountSessionResponse) -> json.Json {
       json.nullable(response.browser_name, platform_model.encode_browser),
     ),
     #("createdAt", timestamp_helpers.encode(response.created_at)),
+    #("lastActivityAt", timestamp_helpers.encode(response.last_activity_at)),
   ])
 }
 
@@ -68,12 +70,17 @@ pub fn account_session_decoder() -> decode.Decoder(AccountSessionResponse) {
     decode.optional(platform_model.browser_decoder()),
   )
   use created_at <- decode.field("createdAt", timestamp_helpers.decoder())
+  use last_activity_at <- decode.field(
+    "lastActivityAt",
+    timestamp_helpers.decoder(),
+  )
   decode.success(AccountSessionResponse(
     id:,
     ip:,
     os_name:,
     browser_name:,
     created_at:,
+    last_activity_at:,
   ))
 }
 
