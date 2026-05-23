@@ -9,8 +9,6 @@ pub type BrowserInfo {
   )
 }
 
-const max_user_agent_length = 2000
-
 pub fn from_user_agent(user_agent: Option(String)) -> BrowserInfo {
   case user_agent {
     option.Some(value) ->
@@ -73,12 +71,6 @@ fn detect_browser_name(
 
 fn contains(text: String, pattern: String) -> Bool {
   string.contains(text, pattern)
-}
-
-pub fn truncate_user_agent(user_agent: Option(String)) -> Option(String) {
-  option.map(user_agent, fn(value) {
-    string.slice(value, 0, max_user_agent_length)
-  })
 }
 
 fn cond(cases: List(#(Bool, a))) -> Option(a) {

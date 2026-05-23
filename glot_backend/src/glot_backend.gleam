@@ -257,7 +257,7 @@ fn get_client_info(
   req: wisp.Request,
   conn: mist.Connection,
 ) -> context.ClientInfo {
-  context.ClientInfo(
+  context.client_info(
     session_token: wisp.get_cookie(req, "session", wisp.Signed)
       |> option.from_result(),
     ip: get_header(req, "x-forwarded-for")

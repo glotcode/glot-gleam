@@ -3,6 +3,7 @@ import gleam/int
 import gleam/option.{type Option}
 import gleam/regexp
 import gleam/result
+import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/erlang
 import youid/uuid.{type Uuid}
@@ -186,11 +187,33 @@ pub type ClientInfo {
   )
 }
 
-pub fn empty_client_info() -> ClientInfo {
+const max_user_agent_length = 2000
+
+pub fn client_info(
+  session_token session_token: Option(String),
+  ip ip: Option(String),
+  user_agent user_agent: Option(String),
+  referrer referrer: Option(String),
+) -> ClientInfo {
   ClientInfo(
+    session_token: session_token,
+    ip: ip,
+    user_agent: truncate_user_agent(user_agent),
+    referrer: referrer,
+  )
+}
+
+pub fn empty_client_info() -> ClientInfo {
+  client_info(
     session_token: option.None,
     ip: option.None,
     user_agent: option.None,
     referrer: option.None,
   )
+}
+
+fn truncate_user_agent(user_agent: Option(String)) -> Option(String) {
+  option.map(user_agent, fn(value) {
+    string.slice(value, 0, max_user_agent_length)
+  })
 }
