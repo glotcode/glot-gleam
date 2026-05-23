@@ -116,10 +116,13 @@ CREATE TABLE sessions (
   browser_name TEXT NULL,
   user_agent TEXT NULL,
   created_at TIMESTAMPTZ NOT NULL,
-  token_updated_at TIMESTAMPTZ NOT NULL
+  token_updated_at TIMESTAMPTZ NOT NULL,
+  last_activity_at TIMESTAMPTZ NOT NULL
 );
 
 CREATE INDEX idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX idx_sessions_created_at ON sessions(created_at);
+CREATE INDEX idx_sessions_last_activity_at ON sessions(last_activity_at);
 CREATE UNIQUE INDEX idx_sessions_previous_token
   ON sessions(previous_token)
   WHERE previous_token IS NOT NULL;

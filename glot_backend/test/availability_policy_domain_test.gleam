@@ -176,6 +176,7 @@ fn run_app_config_effect(
           auth: dynamic_config.AuthConfig(
             login_token_max_age: 900,
             session_token_max_age: 86_400,
+            session_idle_timeout_seconds: 86_400,
             session_cookie_max_age: 86_400,
             session_refresh_interval_seconds: 300,
             session_previous_token_grace_seconds: 60,

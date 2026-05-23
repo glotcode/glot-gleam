@@ -39,7 +39,7 @@ pub type AuthHandlers {
       ),
     list_passkey_credentials_by_user_id: fn(uuid.Uuid) ->
       Result(List(passkey_credential_model.PasskeyCredential), db_error.DbQueryError),
-    list_sessions_by_user_id: fn(uuid.Uuid, Timestamp) ->
+    list_sessions_by_user_id: fn(uuid.Uuid, Timestamp, Timestamp) ->
       Result(List(session_model.Session), db_error.DbQueryError),
     get_passkey_challenge_by_id: fn(uuid.Uuid) ->
       Result(
@@ -68,7 +68,7 @@ pub type AuthHandlers {
     update_user: fn(user_model.User) -> Result(Nil, db_error.DbCommandError),
     delete_sessions_by_account_id: fn(uuid.Uuid) ->
       Result(Nil, db_error.DbCommandError),
-    delete_sessions_before: fn(Timestamp) ->
+    delete_expired_sessions: fn(Timestamp, Timestamp) ->
       Result(Nil, db_error.DbCommandError),
     delete_users_by_account_id: fn(uuid.Uuid) ->
       Result(Nil, db_error.DbCommandError),
@@ -115,8 +115,8 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     list_passkey_credentials_by_user_id: fn(user_id) {
       list_passkey_credentials_by_user_id(db, user_id)
     },
-    list_sessions_by_user_id: fn(user_id, active_since) {
-      list_sessions_by_user_id(db, user_id, active_since)
+    list_sessions_by_user_id: fn(user_id, created_since, last_activity_since) {
+      list_sessions_by_user_id(db, user_id, created_since, last_activity_since)
     },
     get_passkey_challenge_by_id: fn(id) { get_passkey_challenge_by_id(db, id) },
     get_session_by_token: fn(is_email, token) {
@@ -138,7 +138,9 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     delete_sessions_by_account_id: fn(account_id) {
       delete_sessions_by_account_id(db, account_id)
     },
-    delete_sessions_before: fn(before) { delete_sessions_before(db, before) },
+    delete_expired_sessions: fn(created_before, last_activity_before) {
+      delete_expired_sessions(db, created_before, last_activity_before)
+    },
     delete_users_by_account_id: fn(account_id) {
       delete_users_by_account_id(db, account_id)
     },
@@ -313,13 +315,15 @@ pub fn list_passkey_credentials_by_user_id(
 pub fn list_sessions_by_user_id(
   db: db_helpers.Db,
   user_id: uuid.Uuid,
-  active_since: Timestamp,
+  created_since: Timestamp,
+  last_activity_since: Timestamp,
 ) -> Result(List(session_model.Session), db_error.DbQueryError) {
   db_helpers.query(
     db,
     sql.list_sessions_by_user_id(
       user_id: uuid.to_bit_array(user_id),
-      created_at: active_since,
+      created_at: created_since,
+      last_activity_at: last_activity_since,
     ),
     fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
@@ -583,6 +587,7 @@ pub fn create_session(
       user_agent: session.user_agent,
       created_at: session.created_at,
       token_updated_at: session.token_updated_at,
+      last_activity_at: session.last_activity_at,
     ),
     to_error,
   )
@@ -614,6 +619,7 @@ pub fn update_session(
       user_agent: session.user_agent,
       created_at: session.created_at,
       token_updated_at: session.token_updated_at,
+      last_activity_at: session.last_activity_at,
       id: uuid.to_bit_array(session.id),
     ),
     to_error,
@@ -645,13 +651,21 @@ pub fn delete_sessions_by_account_id(
   |> result.map(fn(_) { Nil })
 }
 
-pub fn delete_sessions_before(
+pub fn delete_expired_sessions(
   db: db_helpers.Db,
-  before: Timestamp,
+  created_before: Timestamp,
+  last_activity_before: Timestamp,
 ) -> Result(Nil, db_error.DbCommandError) {
   let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
 
-  db_helpers.execute(db, sql.delete_sessions_before(before), to_error)
+  db_helpers.execute(
+    db,
+    sql.delete_expired_sessions(
+      created_at: created_before,
+      last_activity_at: last_activity_before,
+    ),
+    to_error,
+  )
   |> result.map(fn(_) { Nil })
 }
 
@@ -1265,6 +1279,7 @@ fn session_from_row(
       user_agent: row.user_agent,
       created_at: row.created_at,
       token_updated_at: row.token_updated_at,
+      last_activity_at: row.last_activity_at,
     ),
     user: user_model.HydratedUser(
       identity: user_model.User(
@@ -1318,6 +1333,7 @@ fn session_identity_from_row(
     user_agent: row.user_agent,
     created_at: row.created_at,
     token_updated_at: row.token_updated_at,
+    last_activity_at: row.last_activity_at,
   ))
 }
 
@@ -1371,6 +1387,7 @@ fn session_from_previous_row(
       user_agent: row.user_agent,
       created_at: row.created_at,
       token_updated_at: row.token_updated_at,
+      last_activity_at: row.last_activity_at,
     ),
     user: user_model.HydratedUser(
       identity: user_model.User(
@@ -1424,6 +1441,7 @@ fn session_identity_from_previous_row(
     user_agent: row.user_agent,
     created_at: row.created_at,
     token_updated_at: row.token_updated_at,
+    last_activity_at: row.last_activity_at,
   ))
 }
 
@@ -1451,5 +1469,6 @@ fn session_identity_from_list_row(
     user_agent: row.user_agent,
     created_at: row.created_at,
     token_updated_at: row.token_updated_at,
+    last_activity_at: row.last_activity_at,
   ))
 }

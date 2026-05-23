@@ -33,6 +33,7 @@ pub fn list_account_sessions(
   use sessions <- program.and_then(auth_effect.list_sessions_by_user_id(
     session.user.identity.id,
     subtract_seconds(ctx.timestamp, auth_config.session_token_max_age),
+    subtract_seconds(ctx.timestamp, auth_config.session_idle_timeout_seconds),
   ))
 
   program.succeed(account_session_dto.ListAccountSessionsResponse(

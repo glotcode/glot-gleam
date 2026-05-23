@@ -40,6 +40,7 @@ pub fn issue_session_for_user(
       user_agent: ctx.client_info.user_agent,
       created_at: ctx.timestamp,
       token_updated_at: ctx.timestamp,
+      last_activity_at: ctx.timestamp,
     )
 
   program.succeed(SessionIssue(

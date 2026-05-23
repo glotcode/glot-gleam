@@ -192,6 +192,54 @@ pub fn refresh_session_is_noop_when_rotated_too_recently_test() {
   assert session.previous_token == option.None
   assert session.previous_token_valid_until == option.None
   assert session.token_updated_at == test_timestamp()
+  assert session.last_activity_at == now
+}
+
+pub fn get_session_rejects_idle_expired_session_test() {
+  let fixture =
+    integration_fixture(
+      next_uuids: [],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let auth_config =
+    dynamic_config.AuthConfig(
+      login_token_max_age: 86_400,
+      session_token_max_age: 172_800,
+      session_idle_timeout_seconds: 60,
+      session_cookie_max_age: 86_400,
+      session_refresh_interval_seconds: 300,
+      session_previous_token_grace_seconds: 60,
+      session_heartbeat_interval_seconds: 60,
+    )
+  let idle_session =
+    session_model.Session(
+      ..fixture.session,
+      token_updated_at: add_seconds(test_timestamp(), 10),
+      last_activity_at: add_seconds(test_timestamp(), 10),
+    )
+  let db =
+    TestDb(
+      ..fixture.db,
+      dynamic_config: dynamic_config.DynamicConfig(
+        ..fixture.db.dynamic_config,
+        auth: auth_config,
+      ),
+      sessions: dict.from_list([#(uuid_key(idle_session.id), idle_session)]),
+      session_ids_by_token: dict.from_list([
+        #(idle_session.token, uuid_key(idle_session.id)),
+      ]),
+    )
+  let ctx =
+    context.Context(
+      ..fixture.ctx,
+      timestamp: add_seconds(test_timestamp(), 80),
+    )
+
+  let #(run_result, _) =
+    run_test_program(session_domain.get_session(ctx), ctx, db)
+
+  assert run_result == Ok(option.None)
 }
 
 pub fn get_session_accepts_previous_token_within_grace_window_test() {
@@ -209,6 +257,7 @@ pub fn get_session_accepts_previous_token_within_grace_window_test() {
       previous_token: option.Some("session-token"),
       previous_token_valid_until: option.Some(add_seconds(test_timestamp(), 60)),
       token_updated_at: test_timestamp(),
+      last_activity_at: test_timestamp(),
     )
   let db =
     TestDb(
@@ -253,6 +302,7 @@ pub fn get_session_rejects_previous_token_after_grace_window_test() {
       previous_token: option.Some("session-token"),
       previous_token_valid_until: option.Some(add_seconds(test_timestamp(), 60)),
       token_updated_at: test_timestamp(),
+      last_activity_at: test_timestamp(),
     )
   let db =
     TestDb(
@@ -291,6 +341,7 @@ pub fn refresh_session_uses_configured_heartbeat_cadence_test() {
     dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,
+      session_idle_timeout_seconds: 86_400,
       session_cookie_max_age: 86_400,
       session_refresh_interval_seconds: 300,
       session_previous_token_grace_seconds: 60,
@@ -335,6 +386,7 @@ pub fn refresh_session_rejects_expired_previous_token_test() {
       previous_token: option.Some("session-token"),
       previous_token_valid_until: option.Some(add_seconds(test_timestamp(), 60)),
       token_updated_at: test_timestamp(),
+      last_activity_at: test_timestamp(),
     )
   let db =
     TestDb(
@@ -486,6 +538,7 @@ pub fn app_config_uses_default_auth_config_test() {
     == dynamic_config.AuthConfig(
       login_token_max_age: 900,
       session_token_max_age: 86_400,
+      session_idle_timeout_seconds: 86_400,
       session_cookie_max_age: 86_400,
       session_refresh_interval_seconds: 300,
       session_previous_token_grace_seconds: 60,
@@ -813,6 +866,7 @@ pub fn upsert_auth_config_allows_admin_role_test() {
     auth_config_dto.UpsertAuthConfigRequest(
       login_token_max_age: 1200,
       session_token_max_age: 172_800,
+      session_idle_timeout_seconds: 86_400,
       session_cookie_max_age: 172_800,
       session_refresh_interval_seconds: 600,
       session_previous_token_grace_seconds: 90,
@@ -830,6 +884,7 @@ pub fn upsert_auth_config_allows_admin_role_test() {
     == Ok(auth_config_dto.AuthConfigResponse(
       login_token_max_age: request.login_token_max_age,
       session_token_max_age: request.session_token_max_age,
+      session_idle_timeout_seconds: request.session_idle_timeout_seconds,
       session_cookie_max_age: request.session_cookie_max_age,
       session_refresh_interval_seconds: request.session_refresh_interval_seconds,
       session_previous_token_grace_seconds: request.session_previous_token_grace_seconds,
@@ -1973,6 +2028,10 @@ pub fn clean_sessions_deletes_only_expired_rows_test() {
         1_699_999_000,
         0,
       ),
+      last_activity_at: timestamp.from_unix_seconds_and_nanoseconds(
+        1_699_999_000,
+        0,
+      ),
     )
   let recent_session =
     session_model.Session(
@@ -2091,6 +2150,7 @@ fn integration_fixture(
       user_agent: option.Some("gleeunit"),
       created_at: test_timestamp(),
       token_updated_at: test_timestamp(),
+      last_activity_at: test_timestamp(),
     )
   let snippet =
     snippet_model.Snippet(
@@ -2508,6 +2568,7 @@ fn run_test_app_config_effect(
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
+              session_idle_timeout_seconds: 86_400,
               session_cookie_max_age: 86_400,
               session_refresh_interval_seconds: 300,
               session_previous_token_grace_seconds: 60,
@@ -2538,6 +2599,7 @@ fn run_test_app_config_effect(
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
+              session_idle_timeout_seconds: 86_400,
               session_cookie_max_age: 86_400,
               session_refresh_interval_seconds: 300,
               session_previous_token_grace_seconds: 60,
@@ -2591,6 +2653,7 @@ fn run_test_app_config_effect(
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
+              session_idle_timeout_seconds: 86_400,
               session_cookie_max_age: 86_400,
               session_refresh_interval_seconds: 300,
               session_previous_token_grace_seconds: 60,
@@ -2621,6 +2684,7 @@ fn run_test_app_config_effect(
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
+              session_idle_timeout_seconds: 86_400,
               session_cookie_max_age: 86_400,
               session_refresh_interval_seconds: 300,
               session_previous_token_grace_seconds: 60,
@@ -2651,6 +2715,7 @@ fn run_test_app_config_effect(
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
+              session_idle_timeout_seconds: 86_400,
               session_cookie_max_age: 86_400,
               session_refresh_interval_seconds: 300,
               session_previous_token_grace_seconds: 60,
@@ -2687,6 +2752,7 @@ fn run_test_app_config_effect(
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
+              session_idle_timeout_seconds: 86_400,
               session_cookie_max_age: 86_400,
               session_refresh_interval_seconds: 300,
               session_previous_token_grace_seconds: 60,
@@ -2717,6 +2783,7 @@ fn run_test_app_config_effect(
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
+              session_idle_timeout_seconds: 86_400,
               session_cookie_max_age: 86_400,
               session_refresh_interval_seconds: 300,
               session_previous_token_grace_seconds: 60,
@@ -2747,6 +2814,7 @@ fn run_test_app_config_effect(
             auth: dynamic_config.AuthConfig(
               login_token_max_age: 900,
               session_token_max_age: 86_400,
+              session_idle_timeout_seconds: 86_400,
               session_cookie_max_age: 86_400,
               session_refresh_interval_seconds: 300,
               session_previous_token_grace_seconds: 60,
@@ -2818,6 +2886,7 @@ fn test_auth_config() -> dynamic_config.AuthConfig {
   dynamic_config.AuthConfig(
     login_token_max_age: 900,
     session_token_max_age: 86_400,
+    session_idle_timeout_seconds: 86_400,
     session_cookie_max_age: 86_400,
     session_refresh_interval_seconds: 300,
     session_previous_token_grace_seconds: 60,
@@ -3220,9 +3289,21 @@ fn run_test_auth_effect(
       )
     auth_algebra.ListPasskeyCredentialsByUserId(user_id:, next:) ->
       run_test_program(next(find_passkey_credentials_by_user_id(db, user_id)), ctx, db)
-    auth_algebra.ListSessionsByUserId(user_id:, active_since:, next:) ->
+    auth_algebra.ListSessionsByUserId(
+      user_id:,
+      created_since:,
+      last_activity_since:,
+      next:,
+    ) ->
       run_test_program(
-        next(find_sessions_by_user_id(db, user_id, active_since)),
+        next(
+          find_sessions_by_user_id(
+            db,
+            user_id,
+            created_since,
+            last_activity_since,
+          ),
+        ),
         ctx,
         db,
       )
@@ -3266,8 +3347,16 @@ fn run_test_auth_effect(
         ctx,
         delete_sessions_by_account_id(db, account_id),
       )
-    auth_algebra.DeleteSessionsBefore(before: before, next: next) ->
-      run_test_program(next(Ok(Nil)), ctx, delete_sessions_before(db, before))
+    auth_algebra.DeleteExpiredSessions(
+      created_before: created_before,
+      last_activity_before: last_activity_before,
+      next: next,
+    ) ->
+      run_test_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_expired_sessions(db, created_before, last_activity_before),
+      )
     auth_algebra.DeleteUsersByAccountId(account_id: account_id, next: next) ->
       run_test_program(
         next(Ok(Nil)),
@@ -3348,9 +3437,21 @@ fn run_test_auth_tx_effect(
         ctx,
         db,
       )
-    auth_algebra.ListSessionsByUserId(user_id:, active_since:, next:) ->
+    auth_algebra.ListSessionsByUserId(
+      user_id:,
+      created_since:,
+      last_activity_since:,
+      next:,
+    ) ->
       run_test_tx_program(
-        next(find_sessions_by_user_id(db, user_id, active_since)),
+        next(
+          find_sessions_by_user_id(
+            db,
+            user_id,
+            created_since,
+            last_activity_since,
+          ),
+        ),
         ctx,
         db,
       )
@@ -3394,8 +3495,16 @@ fn run_test_auth_tx_effect(
         ctx,
         delete_sessions_by_account_id(db, account_id),
       )
-    auth_algebra.DeleteSessionsBefore(before: before, next: next) ->
-      run_test_tx_program(next(Ok(Nil)), ctx, delete_sessions_before(db, before))
+    auth_algebra.DeleteExpiredSessions(
+      created_before: created_before,
+      last_activity_before: last_activity_before,
+      next: next,
+    ) ->
+      run_test_tx_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_expired_sessions(db, created_before, last_activity_before),
+      )
     auth_algebra.DeleteUsersByAccountId(account_id: account_id, next: next) ->
       run_test_tx_program(
         next(Ok(Nil)),
@@ -4115,7 +4224,8 @@ fn find_passkey_credentials_by_user_id(
 fn find_sessions_by_user_id(
   db: TestDb,
   user_id: uuid.Uuid,
-  active_since: timestamp.Timestamp,
+  created_since: timestamp.Timestamp,
+  last_activity_since: timestamp.Timestamp,
 ) -> List(session_model.Session) {
   db.sessions
   |> dict.to_list
@@ -4123,7 +4233,9 @@ fn find_sessions_by_user_id(
     let session = entry.1
     session.user_id == user_id
     && timestamp_helpers.to_microseconds(session.created_at)
-    >= timestamp_helpers.to_microseconds(active_since)
+    >= timestamp_helpers.to_microseconds(created_since)
+    && timestamp_helpers.to_microseconds(session.last_activity_at)
+    >= timestamp_helpers.to_microseconds(last_activity_since)
   })
   |> list.map(fn(entry) { entry.1 })
 }
@@ -4414,14 +4526,24 @@ fn delete_sessions_by_account_id(db: TestDb, account_id: uuid.Uuid) -> TestDb {
   )
 }
 
-fn delete_sessions_before(db: TestDb, before: timestamp.Timestamp) -> TestDb {
-  let before_microseconds = timestamp_helpers.to_microseconds(before)
+fn delete_expired_sessions(
+  db: TestDb,
+  created_before: timestamp.Timestamp,
+  last_activity_before: timestamp.Timestamp,
+) -> TestDb {
+  let created_before_microseconds =
+    timestamp_helpers.to_microseconds(created_before)
+  let last_activity_before_microseconds =
+    timestamp_helpers.to_microseconds(last_activity_before)
   let kept_sessions =
     db.sessions
     |> dict.to_list
     |> list.filter(fn(entry) {
       let #(_, session) = entry
-      timestamp_helpers.to_microseconds(session.created_at) >= before_microseconds
+      timestamp_helpers.to_microseconds(session.created_at)
+      >= created_before_microseconds
+      && timestamp_helpers.to_microseconds(session.last_activity_at)
+      >= last_activity_before_microseconds
     })
     |> dict.from_list
   let kept_session_ids_by_token =

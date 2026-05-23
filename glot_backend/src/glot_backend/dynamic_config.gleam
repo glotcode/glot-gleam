@@ -43,6 +43,7 @@ pub type AuthConfig {
   AuthConfig(
     login_token_max_age: Int,
     session_token_max_age: Int,
+    session_idle_timeout_seconds: Int,
     session_cookie_max_age: Int,
     session_refresh_interval_seconds: Int,
     session_previous_token_grace_seconds: Int,
@@ -327,6 +328,8 @@ fn decode_auth_config_entry(
       AuthConfig(..config.auth, login_token_max_age: value)
     "session_token_max_age" ->
       AuthConfig(..config.auth, session_token_max_age: value)
+    "session_idle_timeout_seconds" ->
+      AuthConfig(..config.auth, session_idle_timeout_seconds: value)
     "session_cookie_max_age" ->
       AuthConfig(..config.auth, session_cookie_max_age: value)
     "session_refresh_interval_seconds" ->
@@ -349,6 +352,7 @@ fn default_auth_config() -> AuthConfig {
   AuthConfig(
     login_token_max_age: 900,
     session_token_max_age: 86_400,
+    session_idle_timeout_seconds: 86_400,
     session_cookie_max_age: 86_400,
     session_refresh_interval_seconds: 300,
     session_previous_token_grace_seconds: 60,

@@ -82,12 +82,14 @@ pub fn list_passkey_credentials_by_user_id(
 
 pub fn list_sessions_by_user_id(
   user_id user_id: Uuid,
-  active_since active_since: Timestamp,
+  created_since created_since: Timestamp,
+  last_activity_since last_activity_since: Timestamp,
 ) -> program_types.Program(List(session_model.Session)) {
   program_types.Impure(
     program_types.DbEffect(list_sessions_by_user_id_effect(
       user_id,
-      active_since,
+      created_since,
+      last_activity_since,
       program_types.Pure,
     )),
   )
@@ -185,12 +187,14 @@ pub fn delete_sessions_by_account_id(
   )
 }
 
-pub fn delete_sessions_before(
-  before before: Timestamp,
+pub fn delete_expired_sessions(
+  created_before created_before: Timestamp,
+  last_activity_before last_activity_before: Timestamp,
 ) -> program_types.Program(Nil) {
   program_types.Impure(
-    program_types.DbEffect(delete_sessions_before_effect(
-      before,
+    program_types.DbEffect(delete_expired_sessions_effect(
+      created_before,
+      last_activity_before,
       command_next,
     )),
   )
@@ -403,10 +407,15 @@ pub fn delete_sessions_by_account_id_tx(
   ))
 }
 
-pub fn delete_sessions_before_tx(
-  before before: Timestamp,
+pub fn delete_expired_sessions_tx(
+  created_before created_before: Timestamp,
+  last_activity_before last_activity_before: Timestamp,
 ) -> program_types.TransactionProgram(Nil) {
-  program_types.TxImpure(delete_sessions_before_effect(before, tx_command_next))
+  program_types.TxImpure(delete_expired_sessions_effect(
+    created_before,
+    last_activity_before,
+    tx_command_next,
+  ))
 }
 
 pub fn delete_users_by_account_id_tx(
@@ -583,12 +592,14 @@ fn list_passkey_credentials_by_user_id_effect(
 
 fn list_sessions_by_user_id_effect(
   user_id: Uuid,
-  active_since: Timestamp,
+  created_since: Timestamp,
+  last_activity_since: Timestamp,
   next: fn(List(session_model.Session)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.ListSessionsByUserId(
     user_id: user_id,
-    active_since: active_since,
+    created_since: created_since,
+    last_activity_since: last_activity_since,
     next: next,
   ))
 }
@@ -681,12 +692,14 @@ fn delete_sessions_by_account_id_effect(
   ))
 }
 
-fn delete_sessions_before_effect(
-  before: Timestamp,
+fn delete_expired_sessions_effect(
+  created_before: Timestamp,
+  last_activity_before: Timestamp,
   next: fn(Result(Nil, db_error.DbCommandError)) -> next,
 ) -> program_types.DbEffect(next) {
-  program_types.AuthEffect(auth_algebra.DeleteSessionsBefore(
-    before: before,
+  program_types.AuthEffect(auth_algebra.DeleteExpiredSessions(
+    created_before: created_before,
+    last_activity_before: last_activity_before,
     next: next,
   ))
 }

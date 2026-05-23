@@ -179,9 +179,19 @@ pub fn run(
         )
       }
     }
-    auth_algebra.ListSessionsByUserId(user_id:, active_since:, next:) -> {
+    auth_algebra.ListSessionsByUserId(
+      user_id:,
+      created_since:,
+      last_activity_since:,
+      next:,
+    ) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.list_sessions_by_user_id(user_id, active_since)
+      let result =
+        handlers.auth.list_sessions_by_user_id(
+          user_id,
+          created_since,
+          last_activity_since,
+        )
       case result {
         Ok(value) ->
           continue(
@@ -422,15 +432,23 @@ pub fn run(
         ),
       )
     }
-    auth_algebra.DeleteSessionsBefore(before: before, next: next) -> {
+    auth_algebra.DeleteExpiredSessions(
+      created_before: created_before,
+      last_activity_before: last_activity_before,
+      next: next,
+    ) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.delete_sessions_before(before)
+      let result =
+        handlers.auth.delete_expired_sessions(
+          created_before,
+          last_activity_before,
+        )
       continue(
         next(result),
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(
-            auth_algebra.DeleteSessionsBeforeEffectName,
+            auth_algebra.DeleteExpiredSessionsEffectName,
           ),
           effect_trace.DbWriteEffectCategory,
           started_at,

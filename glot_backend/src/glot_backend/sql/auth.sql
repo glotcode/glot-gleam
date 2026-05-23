@@ -186,10 +186,12 @@ SELECT
   browser_name,
   user_agent,
   created_at,
-  token_updated_at
+  token_updated_at,
+  last_activity_at
 FROM sessions
 WHERE user_id = $1
   AND created_at >= $2
+  AND last_activity_at >= $3
 ORDER BY created_at DESC;
 
 -- name: GetPasskeyChallengeById :one
@@ -216,6 +218,7 @@ SELECT
   sessions.user_agent,
   sessions.created_at,
   sessions.token_updated_at,
+  sessions.last_activity_at,
   users.id AS user_id,
   users.account_id AS user_account_id,
   users.email AS user_email,
@@ -247,7 +250,8 @@ SELECT
   sessions.browser_name,
   sessions.user_agent,
   sessions.created_at,
-  sessions.token_updated_at
+  sessions.token_updated_at,
+  sessions.last_activity_at
 FROM sessions
 WHERE sessions.token = $1
 FOR UPDATE;
@@ -265,6 +269,7 @@ SELECT
   sessions.user_agent,
   sessions.created_at,
   sessions.token_updated_at,
+  sessions.last_activity_at,
   users.id AS user_id,
   users.account_id AS user_account_id,
   users.email AS user_email,
@@ -296,7 +301,8 @@ SELECT
   sessions.browser_name,
   sessions.user_agent,
   sessions.created_at,
-  sessions.token_updated_at
+  sessions.token_updated_at,
+  sessions.last_activity_at
 FROM sessions
 WHERE sessions.previous_token = $1
 FOR UPDATE;
@@ -311,7 +317,7 @@ INSERT INTO accounts (id, account_state, account_state_reason, account_tier, del
 INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2, $3, $4, $5);
 
 -- name: InsertSession :exec
-INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, os_name, browser_name, user_agent, created_at, token_updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, os_name, browser_name, user_agent, created_at, token_updated_at, last_activity_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
 
 -- name: InsertPasskeyCredential :exec
 INSERT INTO passkey_credentials (id, user_id, credential_id, cose_key, sign_count, aaguid, os_name, browser_name, user_agent, created_at, updated_at, last_used_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
@@ -330,8 +336,9 @@ SET user_id = $1,
     browser_name = $7,
     user_agent = $8,
     created_at = $9,
-    token_updated_at = $10
-WHERE id = $11;
+    token_updated_at = $10,
+    last_activity_at = $11
+WHERE id = $12;
 
 -- name: UpdateAccount :exec
 UPDATE accounts
@@ -392,9 +399,10 @@ WHERE user_id IN (
   WHERE account_id = $1
 );
 
--- name: DeleteSessionsBefore :exec
+-- name: DeleteExpiredSessions :exec
 DELETE FROM sessions
-WHERE created_at < $1;
+WHERE created_at < $1
+   OR last_activity_at < $2;
 
 -- name: DeleteLoginTokensBefore :exec
 DELETE FROM login_tokens

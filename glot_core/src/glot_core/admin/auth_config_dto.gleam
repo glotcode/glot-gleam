@@ -5,6 +5,7 @@ pub type AuthConfigResponse {
   AuthConfigResponse(
     login_token_max_age: Int,
     session_token_max_age: Int,
+    session_idle_timeout_seconds: Int,
     session_cookie_max_age: Int,
     session_refresh_interval_seconds: Int,
     session_previous_token_grace_seconds: Int,
@@ -16,6 +17,7 @@ pub type UpsertAuthConfigRequest {
   UpsertAuthConfigRequest(
     login_token_max_age: Int,
     session_token_max_age: Int,
+    session_idle_timeout_seconds: Int,
     session_cookie_max_age: Int,
     session_refresh_interval_seconds: Int,
     session_previous_token_grace_seconds: Int,
@@ -26,6 +28,10 @@ pub type UpsertAuthConfigRequest {
 pub fn response_decoder() -> decode.Decoder(AuthConfigResponse) {
   use login_token_max_age <- decode.field("loginTokenMaxAge", decode.int)
   use session_token_max_age <- decode.field("sessionTokenMaxAge", decode.int)
+  use session_idle_timeout_seconds <- decode.field(
+    "sessionIdleTimeoutSeconds",
+    decode.int,
+  )
   use session_cookie_max_age <- decode.field("sessionCookieMaxAge", decode.int)
   use session_refresh_interval_seconds <- decode.field(
     "sessionRefreshIntervalSeconds",
@@ -42,6 +48,7 @@ pub fn response_decoder() -> decode.Decoder(AuthConfigResponse) {
   decode.success(AuthConfigResponse(
     login_token_max_age:,
     session_token_max_age:,
+    session_idle_timeout_seconds:,
     session_cookie_max_age:,
     session_refresh_interval_seconds:,
     session_previous_token_grace_seconds:,
@@ -52,6 +59,10 @@ pub fn response_decoder() -> decode.Decoder(AuthConfigResponse) {
 pub fn decoder() -> decode.Decoder(UpsertAuthConfigRequest) {
   use login_token_max_age <- decode.field("loginTokenMaxAge", decode.int)
   use session_token_max_age <- decode.field("sessionTokenMaxAge", decode.int)
+  use session_idle_timeout_seconds <- decode.field(
+    "sessionIdleTimeoutSeconds",
+    decode.int,
+  )
   use session_cookie_max_age <- decode.field("sessionCookieMaxAge", decode.int)
   use session_refresh_interval_seconds <- decode.field(
     "sessionRefreshIntervalSeconds",
@@ -68,6 +79,7 @@ pub fn decoder() -> decode.Decoder(UpsertAuthConfigRequest) {
   decode.success(UpsertAuthConfigRequest(
     login_token_max_age:,
     session_token_max_age:,
+    session_idle_timeout_seconds:,
     session_cookie_max_age:,
     session_refresh_interval_seconds:,
     session_previous_token_grace_seconds:,
@@ -79,6 +91,10 @@ pub fn encode_response(response: AuthConfigResponse) -> json.Json {
   json.object([
     #("loginTokenMaxAge", json.int(response.login_token_max_age)),
     #("sessionTokenMaxAge", json.int(response.session_token_max_age)),
+    #(
+      "sessionIdleTimeoutSeconds",
+      json.int(response.session_idle_timeout_seconds),
+    ),
     #("sessionCookieMaxAge", json.int(response.session_cookie_max_age)),
     #(
       "sessionRefreshIntervalSeconds",
@@ -99,6 +115,10 @@ pub fn encode_request(request: UpsertAuthConfigRequest) -> json.Json {
   json.object([
     #("loginTokenMaxAge", json.int(request.login_token_max_age)),
     #("sessionTokenMaxAge", json.int(request.session_token_max_age)),
+    #(
+      "sessionIdleTimeoutSeconds",
+      json.int(request.session_idle_timeout_seconds),
+    ),
     #("sessionCookieMaxAge", json.int(request.session_cookie_max_age)),
     #(
       "sessionRefreshIntervalSeconds",

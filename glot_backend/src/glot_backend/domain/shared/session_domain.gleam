@@ -41,6 +41,7 @@ fn get_validated_session(
     _,
     ctx.timestamp,
     auth_config.session_token_max_age,
+    auth_config.session_idle_timeout_seconds,
   ))
   |> program.succeed
 }
@@ -61,10 +62,16 @@ pub fn get_session_by_client_token(
 fn validate_session(
   session: session_model.HydratedSession,
   now: timestamp.Timestamp,
-  session_token_max_age: Int,
+  session_max_lifetime: Int,
+  session_idle_timeout_seconds: Int,
 ) -> Result(session_model.HydratedSession, error.Error) {
   let expired =
-    is_expired(session.identity.created_at, now, session_token_max_age)
+    is_expired(session.identity.created_at, now, session_max_lifetime)
+    || is_expired(
+      session.identity.last_activity_at,
+      now,
+      session_idle_timeout_seconds,
+    )
 
   case expired {
     True -> Error(error.auth(auth_error.SessionExpired))

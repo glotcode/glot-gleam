@@ -17,6 +17,7 @@ pub type Session {
     user_agent: Option(String),
     created_at: Timestamp,
     token_updated_at: Timestamp,
+    last_activity_at: Timestamp,
   )
 }
 
@@ -36,5 +37,10 @@ pub fn rotate_token(
     previous_token: option.Some(session.token),
     previous_token_valid_until: option.Some(previous_token_valid_until),
     token_updated_at: token_updated_at,
+    last_activity_at: token_updated_at,
   )
+}
+
+pub fn touch(session: Session, last_activity_at: Timestamp) -> Session {
+  Session(..session, last_activity_at: last_activity_at)
 }

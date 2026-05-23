@@ -2974,12 +2974,14 @@ pub type ListSessionsByUserId {
     user_agent: Option(String),
     created_at: Timestamp,
     token_updated_at: Timestamp,
+    last_activity_at: Timestamp,
   )
 }
 
 pub fn list_sessions_by_user_id(
   user_id user_id: BitArray,
   created_at created_at: Timestamp,
+  last_activity_at last_activity_at: Timestamp,
 ) {
   let sql =
     "SELECT
@@ -2993,14 +2995,20 @@ pub fn list_sessions_by_user_id(
   browser_name,
   user_agent,
   created_at,
-  token_updated_at
+  token_updated_at,
+  last_activity_at
 FROM sessions
 WHERE user_id = $1
   AND created_at >= $2
+  AND last_activity_at >= $3
 ORDER BY created_at DESC"
   #(
     sql,
-    [dev.ParamBitArray(user_id), dev.ParamTimestamp(created_at)],
+    [
+      dev.ParamBitArray(user_id),
+      dev.ParamTimestamp(created_at),
+      dev.ParamTimestamp(last_activity_at),
+    ],
     list_sessions_by_user_id_decoder(),
   )
 }
@@ -3022,6 +3030,7 @@ pub fn list_sessions_by_user_id_decoder() -> decode.Decoder(
   use user_agent <- decode.field(8, decode.optional(decode.string))
   use created_at <- decode.field(9, dev.datetime_decoder())
   use token_updated_at <- decode.field(10, dev.datetime_decoder())
+  use last_activity_at <- decode.field(11, dev.datetime_decoder())
   decode.success(ListSessionsByUserId(
     id:,
     user_id:,
@@ -3034,6 +3043,7 @@ pub fn list_sessions_by_user_id_decoder() -> decode.Decoder(
     user_agent:,
     created_at:,
     token_updated_at:,
+    last_activity_at:,
   ))
 }
 
@@ -3094,6 +3104,7 @@ pub type GetSessionByToken {
     user_agent: Option(String),
     created_at: Timestamp,
     token_updated_at: Timestamp,
+    last_activity_at: Timestamp,
     users_user_id: BitArray,
     user_account_id: BitArray,
     user_email: String,
@@ -3124,6 +3135,7 @@ pub fn get_session_by_token(token token: String) {
   sessions.user_agent,
   sessions.created_at,
   sessions.token_updated_at,
+  sessions.last_activity_at,
   users.id AS user_id,
   users.account_id AS user_account_id,
   users.email AS user_email,
@@ -3160,28 +3172,29 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
   use user_agent <- decode.field(8, decode.optional(decode.string))
   use created_at <- decode.field(9, dev.datetime_decoder())
   use token_updated_at <- decode.field(10, dev.datetime_decoder())
-  use users_user_id <- decode.field(11, decode.bit_array)
-  use user_account_id <- decode.field(12, decode.bit_array)
-  use user_email <- decode.field(13, decode.string)
-  use user_username <- decode.field(14, decode.string)
-  use user_role <- decode.field(15, decode.string)
-  use user_account_state <- decode.field(16, decode.string)
+  use last_activity_at <- decode.field(11, dev.datetime_decoder())
+  use users_user_id <- decode.field(12, decode.bit_array)
+  use user_account_id <- decode.field(13, decode.bit_array)
+  use user_email <- decode.field(14, decode.string)
+  use user_username <- decode.field(15, decode.string)
+  use user_role <- decode.field(16, decode.string)
+  use user_account_state <- decode.field(17, decode.string)
   use user_account_state_reason <- decode.field(
-    17,
+    18,
     decode.optional(decode.string),
   )
-  use user_account_tier <- decode.field(18, decode.string)
+  use user_account_tier <- decode.field(19, decode.string)
   use user_account_delete_job_id <- decode.field(
-    19,
+    20,
     decode.optional(decode.bit_array),
   )
   use user_account_delete_scheduled_at <- decode.field(
-    20,
+    21,
     decode.optional(dev.datetime_decoder()),
   )
-  use user_last_login_at <- decode.field(21, dev.datetime_decoder())
-  use user_created_at <- decode.field(22, dev.datetime_decoder())
-  use user_updated_at <- decode.field(23, dev.datetime_decoder())
+  use user_last_login_at <- decode.field(22, dev.datetime_decoder())
+  use user_created_at <- decode.field(23, dev.datetime_decoder())
+  use user_updated_at <- decode.field(24, dev.datetime_decoder())
   decode.success(GetSessionByToken(
     id:,
     sessions_user_id:,
@@ -3194,6 +3207,7 @@ pub fn get_session_by_token_decoder() -> decode.Decoder(GetSessionByToken) {
     user_agent:,
     created_at:,
     token_updated_at:,
+    last_activity_at:,
     users_user_id:,
     user_account_id:,
     user_email:,
@@ -3223,6 +3237,7 @@ pub type GetSessionByTokenForUpdate {
     user_agent: Option(String),
     created_at: Timestamp,
     token_updated_at: Timestamp,
+    last_activity_at: Timestamp,
   )
 }
 
@@ -3239,7 +3254,8 @@ pub fn get_session_by_token_for_update(token token: String) {
   sessions.browser_name,
   sessions.user_agent,
   sessions.created_at,
-  sessions.token_updated_at
+  sessions.token_updated_at,
+  sessions.last_activity_at
 FROM sessions
 WHERE sessions.token = $1
 FOR UPDATE"
@@ -3263,6 +3279,7 @@ pub fn get_session_by_token_for_update_decoder() -> decode.Decoder(
   use user_agent <- decode.field(8, decode.optional(decode.string))
   use created_at <- decode.field(9, dev.datetime_decoder())
   use token_updated_at <- decode.field(10, dev.datetime_decoder())
+  use last_activity_at <- decode.field(11, dev.datetime_decoder())
   decode.success(GetSessionByTokenForUpdate(
     id:,
     user_id:,
@@ -3275,6 +3292,7 @@ pub fn get_session_by_token_for_update_decoder() -> decode.Decoder(
     user_agent:,
     created_at:,
     token_updated_at:,
+    last_activity_at:,
   ))
 }
 
@@ -3291,6 +3309,7 @@ pub type GetSessionByPreviousToken {
     user_agent: Option(String),
     created_at: Timestamp,
     token_updated_at: Timestamp,
+    last_activity_at: Timestamp,
     users_user_id: BitArray,
     user_account_id: BitArray,
     user_email: String,
@@ -3323,6 +3342,7 @@ pub fn get_session_by_previous_token(
   sessions.user_agent,
   sessions.created_at,
   sessions.token_updated_at,
+  sessions.last_activity_at,
   users.id AS user_id,
   users.account_id AS user_account_id,
   users.email AS user_email,
@@ -3369,28 +3389,29 @@ pub fn get_session_by_previous_token_decoder() -> decode.Decoder(
   use user_agent <- decode.field(8, decode.optional(decode.string))
   use created_at <- decode.field(9, dev.datetime_decoder())
   use token_updated_at <- decode.field(10, dev.datetime_decoder())
-  use users_user_id <- decode.field(11, decode.bit_array)
-  use user_account_id <- decode.field(12, decode.bit_array)
-  use user_email <- decode.field(13, decode.string)
-  use user_username <- decode.field(14, decode.string)
-  use user_role <- decode.field(15, decode.string)
-  use user_account_state <- decode.field(16, decode.string)
+  use last_activity_at <- decode.field(11, dev.datetime_decoder())
+  use users_user_id <- decode.field(12, decode.bit_array)
+  use user_account_id <- decode.field(13, decode.bit_array)
+  use user_email <- decode.field(14, decode.string)
+  use user_username <- decode.field(15, decode.string)
+  use user_role <- decode.field(16, decode.string)
+  use user_account_state <- decode.field(17, decode.string)
   use user_account_state_reason <- decode.field(
-    17,
+    18,
     decode.optional(decode.string),
   )
-  use user_account_tier <- decode.field(18, decode.string)
+  use user_account_tier <- decode.field(19, decode.string)
   use user_account_delete_job_id <- decode.field(
-    19,
+    20,
     decode.optional(decode.bit_array),
   )
   use user_account_delete_scheduled_at <- decode.field(
-    20,
+    21,
     decode.optional(dev.datetime_decoder()),
   )
-  use user_last_login_at <- decode.field(21, dev.datetime_decoder())
-  use user_created_at <- decode.field(22, dev.datetime_decoder())
-  use user_updated_at <- decode.field(23, dev.datetime_decoder())
+  use user_last_login_at <- decode.field(22, dev.datetime_decoder())
+  use user_created_at <- decode.field(23, dev.datetime_decoder())
+  use user_updated_at <- decode.field(24, dev.datetime_decoder())
   decode.success(GetSessionByPreviousToken(
     id:,
     sessions_user_id:,
@@ -3403,6 +3424,7 @@ pub fn get_session_by_previous_token_decoder() -> decode.Decoder(
     user_agent:,
     created_at:,
     token_updated_at:,
+    last_activity_at:,
     users_user_id:,
     user_account_id:,
     user_email:,
@@ -3432,6 +3454,7 @@ pub type GetSessionByPreviousTokenForUpdate {
     user_agent: Option(String),
     created_at: Timestamp,
     token_updated_at: Timestamp,
+    last_activity_at: Timestamp,
   )
 }
 
@@ -3450,7 +3473,8 @@ pub fn get_session_by_previous_token_for_update(
   sessions.browser_name,
   sessions.user_agent,
   sessions.created_at,
-  sessions.token_updated_at
+  sessions.token_updated_at,
+  sessions.last_activity_at
 FROM sessions
 WHERE sessions.previous_token = $1
 FOR UPDATE"
@@ -3482,6 +3506,7 @@ pub fn get_session_by_previous_token_for_update_decoder() -> decode.Decoder(
   use user_agent <- decode.field(8, decode.optional(decode.string))
   use created_at <- decode.field(9, dev.datetime_decoder())
   use token_updated_at <- decode.field(10, dev.datetime_decoder())
+  use last_activity_at <- decode.field(11, dev.datetime_decoder())
   decode.success(GetSessionByPreviousTokenForUpdate(
     id:,
     user_id:,
@@ -3494,6 +3519,7 @@ pub fn get_session_by_previous_token_for_update_decoder() -> decode.Decoder(
     user_agent:,
     created_at:,
     token_updated_at:,
+    last_activity_at:,
   ))
 }
 
@@ -3575,9 +3601,10 @@ pub fn insert_session(
   user_agent user_agent: Option(String),
   created_at created_at: Timestamp,
   token_updated_at token_updated_at: Timestamp,
+  last_activity_at last_activity_at: Timestamp,
 ) {
   let sql =
-    "INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, os_name, browser_name, user_agent, created_at, token_updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)"
+    "INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, os_name, browser_name, user_agent, created_at, token_updated_at, last_activity_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamBitArray(user_id),
@@ -3592,6 +3619,7 @@ pub fn insert_session(
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(token_updated_at),
+    dev.ParamTimestamp(last_activity_at),
   ])
 }
 
@@ -3658,6 +3686,7 @@ pub fn update_session(
   user_agent user_agent: Option(String),
   created_at created_at: Timestamp,
   token_updated_at token_updated_at: Timestamp,
+  last_activity_at last_activity_at: Timestamp,
   id id: BitArray,
 ) {
   let sql =
@@ -3671,8 +3700,9 @@ SET user_id = $1,
     browser_name = $7,
     user_agent = $8,
     created_at = $9,
-    token_updated_at = $10
-WHERE id = $11"
+    token_updated_at = $10,
+    last_activity_at = $11
+WHERE id = $12"
   #(sql, [
     dev.ParamBitArray(user_id),
     dev.ParamString(token),
@@ -3686,6 +3716,7 @@ WHERE id = $11"
     dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(token_updated_at),
+    dev.ParamTimestamp(last_activity_at),
     dev.ParamBitArray(id),
   ])
 }
@@ -3846,11 +3877,15 @@ WHERE user_id IN (
   #(sql, [dev.ParamBitArray(account_id)])
 }
 
-pub fn delete_sessions_before(created_at created_at: Timestamp) {
+pub fn delete_expired_sessions(
+  created_at created_at: Timestamp,
+  last_activity_at last_activity_at: Timestamp,
+) {
   let sql =
     "DELETE FROM sessions
-WHERE created_at < $1"
-  #(sql, [dev.ParamTimestamp(created_at)])
+WHERE created_at < $1
+   OR last_activity_at < $2"
+  #(sql, [dev.ParamTimestamp(created_at), dev.ParamTimestamp(last_activity_at)])
 }
 
 pub fn delete_login_tokens_before(created_at created_at: Timestamp) {

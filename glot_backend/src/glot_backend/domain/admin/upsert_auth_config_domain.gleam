@@ -29,6 +29,7 @@ pub fn upsert_auth_config(
     dynamic_config.AuthConfig(
       login_token_max_age: request.login_token_max_age,
       session_token_max_age: request.session_token_max_age,
+      session_idle_timeout_seconds: request.session_idle_timeout_seconds,
       session_cookie_max_age: request.session_cookie_max_age,
       session_refresh_interval_seconds: request.session_refresh_interval_seconds,
       session_previous_token_grace_seconds: request.session_previous_token_grace_seconds,
@@ -41,6 +42,7 @@ pub fn upsert_auth_config(
   program.succeed(auth_config_dto.AuthConfigResponse(
     login_token_max_age: request.login_token_max_age,
     session_token_max_age: request.session_token_max_age,
+    session_idle_timeout_seconds: request.session_idle_timeout_seconds,
     session_cookie_max_age: request.session_cookie_max_age,
     session_refresh_interval_seconds: request.session_refresh_interval_seconds,
     session_previous_token_grace_seconds: request.session_previous_token_grace_seconds,
@@ -66,6 +68,10 @@ fn validate_request(
     "session_token_max_age",
   ))
   use _ <- program.and_then(require_positive(
+    request.session_idle_timeout_seconds,
+    "session_idle_timeout_seconds",
+  ))
+  use _ <- program.and_then(require_positive(
     request.session_cookie_max_age,
     "session_cookie_max_age",
   ))
@@ -81,6 +87,12 @@ fn validate_request(
     request.session_heartbeat_interval_seconds,
     "session_heartbeat_interval_seconds",
   ))
+  use _ <- program.and_then(require_at_least(
+    request.session_idle_timeout_seconds,
+    request.session_heartbeat_interval_seconds,
+    "session_idle_timeout_seconds",
+    "session_heartbeat_interval_seconds",
+  ))
 
   program.succeed(Nil)
 }
@@ -91,6 +103,23 @@ fn require_positive(value: Int, field: String) -> program_types.Program(Nil) {
     False ->
       program.fail(
         error.validation(validation_error.MustBeGreaterThan(field, 0)),
+      )
+  }
+}
+
+fn require_at_least(
+  value: Int,
+  minimum: Int,
+  field: String,
+  minimum_field: String,
+) -> program_types.Program(Nil) {
+  case value >= minimum {
+    True -> program.succeed(Nil)
+    False ->
+      program.fail(
+        error.validation(
+          validation_error.MustBeGreaterThanOrEqualField(field, minimum_field),
+        ),
       )
   }
 }

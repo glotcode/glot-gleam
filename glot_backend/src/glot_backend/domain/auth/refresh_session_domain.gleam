@@ -136,7 +136,7 @@ fn refresh_session_tx(
           auth_config.session_previous_token_grace_seconds,
         ),
       )
-    False -> session
+    False -> session_model.touch(session, ctx.timestamp)
   }
 
   use _ <- transaction_program.and_then(auth_effect.update_session_tx(

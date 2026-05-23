@@ -136,6 +136,7 @@ pub type AuthFields {
   AuthFields(
     login_token_max_age: String,
     session_token_max_age: String,
+    session_idle_timeout_seconds: String,
     session_cookie_max_age: String,
     session_refresh_interval_seconds: String,
     session_previous_token_grace_seconds: String,
@@ -217,6 +218,7 @@ pub type Msg {
   AuthLoaded(api.ApiResponse(auth_config_dto.AuthConfigResponse))
   AuthLoginTokenMaxAgeChanged(String)
   AuthSessionTokenMaxAgeChanged(String)
+  AuthSessionIdleTimeoutSecondsChanged(String)
   AuthSessionCookieMaxAgeChanged(String)
   AuthSessionRefreshIntervalSecondsChanged(String)
   AuthSessionPreviousTokenGraceSecondsChanged(String)
@@ -641,6 +643,21 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         auth: AuthSection(
           ..model.auth,
           draft: AuthFields(..model.auth.draft, session_token_max_age: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    AuthSessionIdleTimeoutSecondsChanged(value) -> #(
+      Model(
+        ..model,
+        auth: AuthSection(
+          ..model.auth,
+          draft: AuthFields(
+            ..model.auth.draft,
+            session_idle_timeout_seconds: value,
+          ),
           state: mutation.Idle,
         ),
       ),
@@ -1802,11 +1819,18 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
         on_input: AuthLoginTokenMaxAgeChanged,
       ),
       admin_ui.text_input(
-        label: "Session token max age",
-        help: "Seconds before a session becomes invalid.",
+        label: "Session max lifetime",
+        help: "Absolute maximum seconds since creation before a session becomes invalid.",
         value: section.draft.session_token_max_age,
         placeholder: "",
         on_input: AuthSessionTokenMaxAgeChanged,
+      ),
+      admin_ui.text_input(
+        label: "Session idle timeout",
+        help: "Seconds since the last successful session heartbeat before a session becomes invalid.",
+        value: section.draft.session_idle_timeout_seconds,
+        placeholder: "",
+        on_input: AuthSessionIdleTimeoutSecondsChanged,
       ),
       admin_ui.text_input(
         label: "Session cookie max age",
@@ -2502,6 +2526,9 @@ fn auth_fields_from_response(
   AuthFields(
     login_token_max_age: int.to_string(response.login_token_max_age),
     session_token_max_age: int.to_string(response.session_token_max_age),
+    session_idle_timeout_seconds: int.to_string(
+      response.session_idle_timeout_seconds,
+    ),
     session_cookie_max_age: int.to_string(response.session_cookie_max_age),
     session_refresh_interval_seconds: int.to_string(
       response.session_refresh_interval_seconds,
@@ -2739,7 +2766,13 @@ fn validate_auth_fields(
   use session_token_max_age <- result.try(
     admin_format.parse_positive_int_with_error(
       fields.session_token_max_age,
-      "Session token max age must be a positive integer.",
+      "Session max lifetime must be a positive integer.",
+    ),
+  )
+  use session_idle_timeout_seconds <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.session_idle_timeout_seconds,
+      "Session idle timeout must be a positive integer.",
     ),
   )
   use session_cookie_max_age <- result.try(
@@ -2770,6 +2803,7 @@ fn validate_auth_fields(
   Ok(auth_config_dto.UpsertAuthConfigRequest(
     login_token_max_age: login_token_max_age,
     session_token_max_age: session_token_max_age,
+    session_idle_timeout_seconds: session_idle_timeout_seconds,
     session_cookie_max_age: session_cookie_max_age,
     session_refresh_interval_seconds: session_refresh_interval_seconds,
     session_previous_token_grace_seconds: session_previous_token_grace_seconds,
@@ -2946,6 +2980,7 @@ fn empty_auth_fields() -> AuthFields {
   AuthFields(
     login_token_max_age: "",
     session_token_max_age: "",
+    session_idle_timeout_seconds: "",
     session_cookie_max_age: "",
     session_refresh_interval_seconds: "",
     session_previous_token_grace_seconds: "",

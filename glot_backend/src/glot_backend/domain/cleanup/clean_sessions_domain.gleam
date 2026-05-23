@@ -9,8 +9,11 @@ import gleam/time/timestamp
 pub fn clean_sessions(ctx: context.Context) -> program_types.Program(Nil) {
   use config <- program.and_then(app_config_effect.get_dynamic_config())
   let auth_config = dynamic_config.auth_config(config)
-  let cutoff = subtract_seconds(ctx.timestamp, auth_config.session_token_max_age)
-  auth_effect.delete_sessions_before(cutoff)
+  let created_before =
+    subtract_seconds(ctx.timestamp, auth_config.session_token_max_age)
+  let token_updated_before =
+    subtract_seconds(ctx.timestamp, auth_config.session_idle_timeout_seconds)
+  auth_effect.delete_expired_sessions(created_before, token_updated_before)
 }
 
 fn subtract_seconds(

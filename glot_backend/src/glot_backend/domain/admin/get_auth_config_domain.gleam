@@ -28,6 +28,7 @@ pub fn get_auth_config(
   program.succeed(auth_config_dto.AuthConfigResponse(
     login_token_max_age: auth_config.login_token_max_age,
     session_token_max_age: auth_config.session_token_max_age,
+    session_idle_timeout_seconds: auth_config.session_idle_timeout_seconds,
     session_cookie_max_age: auth_config.session_cookie_max_age,
     session_refresh_interval_seconds: auth_config.session_refresh_interval_seconds,
     session_previous_token_grace_seconds: auth_config.session_previous_token_grace_seconds,

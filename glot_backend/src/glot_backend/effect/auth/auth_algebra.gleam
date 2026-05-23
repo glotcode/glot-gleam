@@ -51,7 +51,8 @@ pub type AuthEffect(next) {
   )
   ListSessionsByUserId(
     user_id: Uuid,
-    active_since: Timestamp,
+    created_since: Timestamp,
+    last_activity_since: Timestamp,
     next: fn(List(session_model.Session)) -> next,
   )
   GetPasskeyChallengeById(
@@ -94,8 +95,9 @@ pub type AuthEffect(next) {
     account_id: Uuid,
     next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
-  DeleteSessionsBefore(
-    before: Timestamp,
+  DeleteExpiredSessions(
+    created_before: Timestamp,
+    last_activity_before: Timestamp,
     next: fn(Result(Nil, db_error.DbCommandError)) -> next,
   )
   DeleteUsersByAccountId(
@@ -175,10 +177,11 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       ListPasskeyCredentialsByUserId(user_id: user_id, next: fn(value) {
         f(next(value))
       })
-    ListSessionsByUserId(user_id:, active_since:, next:) ->
+    ListSessionsByUserId(user_id:, created_since:, last_activity_since:, next:) ->
       ListSessionsByUserId(
         user_id: user_id,
-        active_since: active_since,
+        created_since: created_since,
+        last_activity_since: last_activity_since,
         next: fn(value) { f(next(value)) },
       )
     GetPasskeyChallengeById(id:, next:) ->
@@ -207,8 +210,16 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       DeleteSessionsByAccountId(account_id: account_id, next: fn(value) {
         f(next(value))
       })
-    DeleteSessionsBefore(before: before, next: next) ->
-      DeleteSessionsBefore(before: before, next: fn(value) { f(next(value)) })
+    DeleteExpiredSessions(
+      created_before: created_before,
+      last_activity_before: last_activity_before,
+      next: next,
+    ) ->
+      DeleteExpiredSessions(
+        created_before: created_before,
+        last_activity_before: last_activity_before,
+        next: fn(value) { f(next(value)) },
+      )
     DeleteUsersByAccountId(account_id: account_id, next: next) ->
       DeleteUsersByAccountId(account_id: account_id, next: fn(value) {
         f(next(value))
@@ -271,7 +282,7 @@ pub type EffectName {
   UpdateAccountEffectName
   UpdateUserEffectName
   DeleteSessionsByAccountIdEffectName
-  DeleteSessionsBeforeEffectName
+  DeleteExpiredSessionsEffectName
   DeleteUsersByAccountIdEffectName
   DeleteAccountEffectName
   CreateSessionEffectName
@@ -309,7 +320,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     UpdateAccountEffectName -> "update_account"
     UpdateUserEffectName -> "update_user"
     DeleteSessionsByAccountIdEffectName -> "delete_sessions_by_account_id"
-    DeleteSessionsBeforeEffectName -> "delete_sessions_before"
+    DeleteExpiredSessionsEffectName -> "delete_expired_sessions"
     DeleteUsersByAccountIdEffectName -> "delete_users_by_account_id"
     DeleteAccountEffectName -> "delete_account"
     CreateSessionEffectName -> "create_session"
