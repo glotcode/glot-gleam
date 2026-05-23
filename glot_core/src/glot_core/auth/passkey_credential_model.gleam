@@ -13,7 +13,7 @@ pub type PasskeyCredential {
     aaguid: BitArray,
     os_name: Option(OperatingSystem),
     browser_name: Option(Browser),
-    raw_user_agent: Option(String),
+    user_agent: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
     last_used_at: Option(Timestamp),

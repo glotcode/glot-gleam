@@ -87,7 +87,7 @@ pub fn finish_passkey_registration(
       aaguid: aaguid,
       os_name: browser_info.os_name,
       browser_name: browser_info.browser_name,
-      raw_user_agent: browser_info.truncate_raw_user_agent(
+      user_agent: browser_info.truncate_user_agent(
         ctx.client_info.user_agent,
       ),
       created_at: ctx.timestamp,

@@ -12,7 +12,7 @@ import glot_backend/domain/account/delete_account_session_domain
 import glot_backend/domain/account/delete_account_passkey_domain
 import glot_backend/domain/account/get_account_domain
 import glot_backend/domain/account/list_account_sessions_domain
-import glot_backend/domain/account/get_account_passkeys_domain
+import glot_backend/domain/account/list_account_passkeys_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/account/update_account_domain
 import glot_backend/domain/admin/create_job_domain
@@ -221,8 +221,8 @@ fn handle_public_api_request(
       list_account_sessions_domain.list_account_sessions(ctx)
       |> program.map(ListAccountSessionsResponse)
     }
-    public_action.GetAccountPasskeysAction -> {
-      get_account_passkeys_domain.get_account_passkeys(ctx)
+    public_action.ListAccountPasskeysAction -> {
+      list_account_passkeys_domain.list_account_passkeys(ctx)
       |> program.map(AccountPasskeysResponse)
     }
     public_action.UpdateAccountAction -> {

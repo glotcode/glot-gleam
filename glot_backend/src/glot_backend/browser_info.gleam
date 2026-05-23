@@ -9,7 +9,7 @@ pub type BrowserInfo {
   )
 }
 
-const max_raw_user_agent_length = 2000
+const max_user_agent_length = 2000
 
 pub fn from_user_agent(user_agent: Option(String)) -> BrowserInfo {
   case user_agent {
@@ -75,9 +75,9 @@ fn contains(text: String, pattern: String) -> Bool {
   string.contains(text, pattern)
 }
 
-pub fn truncate_raw_user_agent(user_agent: Option(String)) -> Option(String) {
+pub fn truncate_user_agent(user_agent: Option(String)) -> Option(String) {
   option.map(user_agent, fn(value) {
-    string.slice(value, 0, max_raw_user_agent_length)
+    string.slice(value, 0, max_user_agent_length)
   })
 }
 

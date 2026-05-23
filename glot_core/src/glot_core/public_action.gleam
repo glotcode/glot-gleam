@@ -12,7 +12,7 @@ pub type PublicAction {
   LogoutAction
   GetAccountAction
   ListAccountSessionsAction
-  GetAccountPasskeysAction
+  ListAccountPasskeysAction
   UpdateAccountAction
   DeleteAccountSessionAction
   DeleteAccountPasskeyAction
@@ -42,7 +42,7 @@ pub fn list() -> List(PublicAction) {
     LogoutAction,
     GetAccountAction,
     ListAccountSessionsAction,
-    GetAccountPasskeysAction,
+    ListAccountPasskeysAction,
     UpdateAccountAction,
     DeleteAccountSessionAction,
     DeleteAccountPasskeyAction,
@@ -85,7 +85,7 @@ pub fn to_string(action: PublicAction) -> String {
     LogoutAction -> "logout"
     GetAccountAction -> "get_account"
     ListAccountSessionsAction -> "list_account_sessions"
-    GetAccountPasskeysAction -> "get_account_passkeys"
+    ListAccountPasskeysAction -> "list_account_passkeys"
     UpdateAccountAction -> "update_account"
     DeleteAccountSessionAction -> "delete_account_session"
     DeleteAccountPasskeyAction -> "delete_account_passkey"
@@ -116,7 +116,7 @@ pub fn from_string(action: String) -> option.Option(PublicAction) {
     "logout" -> option.Some(LogoutAction)
     "get_account" -> option.Some(GetAccountAction)
     "list_account_sessions" -> option.Some(ListAccountSessionsAction)
-    "get_account_passkeys" -> option.Some(GetAccountPasskeysAction)
+    "list_account_passkeys" -> option.Some(ListAccountPasskeysAction)
     "update_account" -> option.Some(UpdateAccountAction)
     "delete_account_session" -> option.Some(DeleteAccountSessionAction)
     "delete_account_passkey" -> option.Some(DeleteAccountPasskeyAction)
@@ -157,7 +157,7 @@ pub fn server_timing_policy(
     | LogoutAction
     | GetAccountAction
     | ListAccountSessionsAction
-    | GetAccountPasskeysAction
+    | ListAccountPasskeysAction
     | UpdateAccountAction
     | DeleteAccountSessionAction
     | DeleteAccountPasskeyAction

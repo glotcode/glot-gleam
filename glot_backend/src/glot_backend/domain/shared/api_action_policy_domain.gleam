@@ -294,7 +294,7 @@ fn public_policy(action: public_action.PublicAction) -> ApiActionPolicy {
           account_model.ReadOnly,
         ]),
       )
-    public_action.GetAccountPasskeysAction ->
+    public_action.ListAccountPasskeysAction ->
       authenticated_action_policy(
         AllowedAccountStates([
           account_model.Active,

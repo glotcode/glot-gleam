@@ -864,7 +864,7 @@ fn action_label(action: public_action.PublicAction) -> String {
     public_action.LogoutAction -> "Logout"
     public_action.GetAccountAction -> "Get account"
     public_action.ListAccountSessionsAction -> "List account sessions"
-    public_action.GetAccountPasskeysAction -> "Get account passkeys"
+    public_action.ListAccountPasskeysAction -> "List account passkeys"
     public_action.UpdateAccountAction -> "Update account"
     public_action.DeleteAccountSessionAction -> "Delete account session"
     public_action.DeleteAccountPasskeyAction -> "Delete account passkey"

@@ -113,7 +113,7 @@ pub type Msg {
 pub fn init() -> #(Model, Effect(Msg)) {
   let passkey_supported = passkey.is_supported()
   let passkey_effects = case should_show_passkey_section(passkey_supported) {
-    True -> [api.get_account_passkeys(AccountPasskeysLoaded)]
+    True -> [api.list_account_passkeys(AccountPasskeysLoaded)]
     False -> []
   }
   let effects = [
@@ -400,7 +400,7 @@ pub fn update(
             passkey_setup_status: PasskeySaved,
             passkeys_status: LoadingPasskeys,
           ),
-          api.get_account_passkeys(AccountPasskeysLoaded),
+          api.list_account_passkeys(AccountPasskeysLoaded),
           app_event.NoAppEvent,
         )
 
@@ -477,7 +477,7 @@ pub fn update(
       case result {
         api.ApiSuccess(_) -> #(
           Model(..model, passkeys_status: LoadingPasskeys),
-          api.get_account_passkeys(AccountPasskeysLoaded),
+          api.list_account_passkeys(AccountPasskeysLoaded),
           app_event.NoAppEvent,
         )
 

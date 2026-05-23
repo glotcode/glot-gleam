@@ -303,10 +303,10 @@ pub fn list_account_sessions(
   )
 }
 
-pub fn get_account_passkeys(
+pub fn list_account_passkeys(
   to_msg: fn(ApiResponse(passkey_dto.ListAccountPasskeysResponse)) -> msg,
 ) -> effect.Effect(msg) {
-  let req = PublicApiRequest(public_action.GetAccountPasskeysAction, Nil)
+  let req = PublicApiRequest(public_action.ListAccountPasskeysAction, Nil)
 
   send_public_api_request(
     req,

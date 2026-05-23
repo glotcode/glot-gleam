@@ -10,13 +10,13 @@ import glot_core/api_action
 import glot_core/auth/passkey_dto
 import glot_core/public_action
 
-pub fn get_account_passkeys(
+pub fn list_account_passkeys(
   ctx: context.Context,
 ) -> program_types.Program(passkey_dto.ListAccountPasskeysResponse) {
   use session <- program.and_then(session_domain.require_session(ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
     ctx: ctx,
-    action: api_action.public(public_action.GetAccountPasskeysAction),
+    action: api_action.public(public_action.ListAccountPasskeysAction),
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,
       account_state: session.user.account.identity.account_state,

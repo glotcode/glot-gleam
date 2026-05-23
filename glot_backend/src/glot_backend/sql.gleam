@@ -2824,7 +2824,7 @@ pub type GetPasskeyCredentialByCredentialId {
     aaguid: BitArray,
     os_name: Option(String),
     browser_name: Option(String),
-    raw_user_agent: Option(String),
+    user_agent: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
     last_used_at: Option(Timestamp),
@@ -2844,7 +2844,7 @@ pub fn get_passkey_credential_by_credential_id(
   aaguid,
   os_name,
   browser_name,
-  raw_user_agent,
+  user_agent,
   created_at,
   updated_at,
   last_used_at
@@ -2868,7 +2868,7 @@ pub fn get_passkey_credential_by_credential_id_decoder() -> decode.Decoder(
   use aaguid <- decode.field(5, decode.bit_array)
   use os_name <- decode.field(6, decode.optional(decode.string))
   use browser_name <- decode.field(7, decode.optional(decode.string))
-  use raw_user_agent <- decode.field(8, decode.optional(decode.string))
+  use user_agent <- decode.field(8, decode.optional(decode.string))
   use created_at <- decode.field(9, dev.datetime_decoder())
   use updated_at <- decode.field(10, dev.datetime_decoder())
   use last_used_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
@@ -2881,7 +2881,7 @@ pub fn get_passkey_credential_by_credential_id_decoder() -> decode.Decoder(
     aaguid:,
     os_name:,
     browser_name:,
-    raw_user_agent:,
+    user_agent:,
     created_at:,
     updated_at:,
     last_used_at:,
@@ -2898,7 +2898,7 @@ pub type ListPasskeyCredentialsByUserId {
     aaguid: BitArray,
     os_name: Option(String),
     browser_name: Option(String),
-    raw_user_agent: Option(String),
+    user_agent: Option(String),
     created_at: Timestamp,
     updated_at: Timestamp,
     last_used_at: Option(Timestamp),
@@ -2916,7 +2916,7 @@ pub fn list_passkey_credentials_by_user_id(user_id user_id: BitArray) {
   aaguid,
   os_name,
   browser_name,
-  raw_user_agent,
+  user_agent,
   created_at,
   updated_at,
   last_used_at
@@ -2941,7 +2941,7 @@ pub fn list_passkey_credentials_by_user_id_decoder() -> decode.Decoder(
   use aaguid <- decode.field(5, decode.bit_array)
   use os_name <- decode.field(6, decode.optional(decode.string))
   use browser_name <- decode.field(7, decode.optional(decode.string))
-  use raw_user_agent <- decode.field(8, decode.optional(decode.string))
+  use user_agent <- decode.field(8, decode.optional(decode.string))
   use created_at <- decode.field(9, dev.datetime_decoder())
   use updated_at <- decode.field(10, dev.datetime_decoder())
   use last_used_at <- decode.field(11, decode.optional(dev.datetime_decoder()))
@@ -2954,7 +2954,7 @@ pub fn list_passkey_credentials_by_user_id_decoder() -> decode.Decoder(
     aaguid:,
     os_name:,
     browser_name:,
-    raw_user_agent:,
+    user_agent:,
     created_at:,
     updated_at:,
     last_used_at:,
@@ -3604,13 +3604,13 @@ pub fn insert_passkey_credential(
   aaguid aaguid: BitArray,
   os_name os_name: Option(String),
   browser_name browser_name: Option(String),
-  raw_user_agent raw_user_agent: Option(String),
+  user_agent user_agent: Option(String),
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
   last_used_at last_used_at: Option(Timestamp),
 ) {
   let sql =
-    "INSERT INTO passkey_credentials (id, user_id, credential_id, cose_key, sign_count, aaguid, os_name, browser_name, raw_user_agent, created_at, updated_at, last_used_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
+    "INSERT INTO passkey_credentials (id, user_id, credential_id, cose_key, sign_count, aaguid, os_name, browser_name, user_agent, created_at, updated_at, last_used_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamBitArray(user_id),
@@ -3620,7 +3620,7 @@ pub fn insert_passkey_credential(
     dev.ParamBitArray(aaguid),
     dev.ParamNullable(option.map(os_name, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(browser_name, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(raw_user_agent, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
     dev.ParamNullable(option.map(last_used_at, fn(v) { dev.ParamTimestamp(v) })),
@@ -3780,7 +3780,7 @@ pub fn update_passkey_credential(
   aaguid aaguid: BitArray,
   os_name os_name: Option(String),
   browser_name browser_name: Option(String),
-  raw_user_agent raw_user_agent: Option(String),
+  user_agent user_agent: Option(String),
   created_at created_at: Timestamp,
   updated_at updated_at: Timestamp,
   last_used_at last_used_at: Option(Timestamp),
@@ -3795,7 +3795,7 @@ SET user_id = $1,
     aaguid = $5,
     os_name = $6,
     browser_name = $7,
-    raw_user_agent = $8,
+    user_agent = $8,
     created_at = $9,
     updated_at = $10,
     last_used_at = $11
@@ -3808,7 +3808,7 @@ WHERE id = $12"
     dev.ParamBitArray(aaguid),
     dev.ParamNullable(option.map(os_name, fn(v) { dev.ParamString(v) })),
     dev.ParamNullable(option.map(browser_name, fn(v) { dev.ParamString(v) })),
-    dev.ParamNullable(option.map(raw_user_agent, fn(v) { dev.ParamString(v) })),
+    dev.ParamNullable(option.map(user_agent, fn(v) { dev.ParamString(v) })),
     dev.ParamTimestamp(created_at),
     dev.ParamTimestamp(updated_at),
     dev.ParamNullable(option.map(last_used_at, fn(v) { dev.ParamTimestamp(v) })),
