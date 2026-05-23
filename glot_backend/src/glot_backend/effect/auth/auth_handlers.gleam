@@ -68,6 +68,8 @@ pub type AuthHandlers {
     update_user: fn(user_model.User) -> Result(Nil, db_error.DbCommandError),
     delete_sessions_by_account_id: fn(uuid.Uuid) ->
       Result(Nil, db_error.DbCommandError),
+    delete_sessions_before: fn(Timestamp) ->
+      Result(Nil, db_error.DbCommandError),
     delete_users_by_account_id: fn(uuid.Uuid) ->
       Result(Nil, db_error.DbCommandError),
     delete_account: fn(uuid.Uuid) -> Result(Nil, db_error.DbCommandError),
@@ -136,6 +138,7 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     delete_sessions_by_account_id: fn(account_id) {
       delete_sessions_by_account_id(db, account_id)
     },
+    delete_sessions_before: fn(before) { delete_sessions_before(db, before) },
     delete_users_by_account_id: fn(account_id) {
       delete_users_by_account_id(db, account_id)
     },
@@ -639,6 +642,16 @@ pub fn delete_sessions_by_account_id(
     sql.delete_sessions_by_account_id(uuid.to_bit_array(account_id)),
     to_error,
   )
+  |> result.map(fn(_) { Nil })
+}
+
+pub fn delete_sessions_before(
+  db: db_helpers.Db,
+  before: Timestamp,
+) -> Result(Nil, db_error.DbCommandError) {
+  let to_error = fn(err) { db_error.DbCommandError(string.inspect(err)) }
+
+  db_helpers.execute(db, sql.delete_sessions_before(before), to_error)
   |> result.map(fn(_) { Nil })
 }
 

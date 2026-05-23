@@ -422,6 +422,21 @@ pub fn run(
         ),
       )
     }
+    auth_algebra.DeleteSessionsBefore(before: before, next: next) -> {
+      let started_at = erlang.perf_counter_ns()
+      let result = handlers.auth.delete_sessions_before(before)
+      continue(
+        next(result),
+        program_state.add_effect_measurement(
+          state,
+          effect_trace.AuthEffectName(
+            auth_algebra.DeleteSessionsBeforeEffectName,
+          ),
+          effect_trace.DbWriteEffectCategory,
+          started_at,
+        ),
+      )
+    }
     auth_algebra.DeleteUsersByAccountId(account_id: account_id, next: next) -> {
       let started_at = erlang.perf_counter_ns()
       let result = handlers.auth.delete_users_by_account_id(account_id)

@@ -10,6 +10,7 @@ import glot_backend/domain/cleanup/clean_login_tokens_domain
 import glot_backend/domain/cleanup/clean_page_log_domain
 import glot_backend/domain/cleanup/clean_pageview_log_domain
 import glot_backend/domain/cleanup/clean_run_log_domain
+import glot_backend/domain/cleanup/clean_sessions_domain
 import glot_backend/domain/cleanup/clean_user_actions_domain
 import glot_backend/domain/email/send_email_domain
 import glot_backend/effect/basic/basic_effect
@@ -121,6 +122,7 @@ fn delegate_job(
     job_model.CleanRunLogJob -> clean_run_log_domain.clean_run_log(ctx)
     job_model.CleanJobLogJob -> clean_job_log_domain.clean_job_log(ctx)
     job_model.CleanJobsJob -> clean_jobs_domain.clean_jobs(ctx)
+    job_model.CleanSessionsJob -> clean_sessions_domain.clean_sessions(ctx)
     job_model.CleanLoginTokensJob ->
       clean_login_tokens_domain.clean_login_tokens(ctx)
     job_model.CleanUserActionsJob ->

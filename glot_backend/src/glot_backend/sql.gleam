@@ -3846,6 +3846,13 @@ WHERE user_id IN (
   #(sql, [dev.ParamBitArray(account_id)])
 }
 
+pub fn delete_sessions_before(created_at created_at: Timestamp) {
+  let sql =
+    "DELETE FROM sessions
+WHERE created_at < $1"
+  #(sql, [dev.ParamTimestamp(created_at)])
+}
+
 pub fn delete_login_tokens_before(created_at created_at: Timestamp) {
   let sql =
     "DELETE FROM login_tokens

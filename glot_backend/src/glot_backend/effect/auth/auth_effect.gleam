@@ -185,6 +185,17 @@ pub fn delete_sessions_by_account_id(
   )
 }
 
+pub fn delete_sessions_before(
+  before before: Timestamp,
+) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_sessions_before_effect(
+      before,
+      command_next,
+    )),
+  )
+}
+
 pub fn delete_users_by_account_id(id id: Uuid) -> program_types.Program(Nil) {
   program_types.Impure(
     program_types.DbEffect(delete_users_by_account_id_effect(id, command_next)),
@@ -390,6 +401,12 @@ pub fn delete_sessions_by_account_id_tx(
     id,
     tx_command_next,
   ))
+}
+
+pub fn delete_sessions_before_tx(
+  before before: Timestamp,
+) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(delete_sessions_before_effect(before, tx_command_next))
 }
 
 pub fn delete_users_by_account_id_tx(
@@ -660,6 +677,16 @@ fn delete_sessions_by_account_id_effect(
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.DeleteSessionsByAccountId(
     account_id: id,
+    next: next,
+  ))
+}
+
+fn delete_sessions_before_effect(
+  before: Timestamp,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  program_types.AuthEffect(auth_algebra.DeleteSessionsBefore(
+    before: before,
     next: next,
   ))
 }

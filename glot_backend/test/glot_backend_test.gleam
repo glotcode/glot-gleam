@@ -34,6 +34,7 @@ import glot_backend/domain/auth/session_issue_domain
 import glot_backend/domain/cleanup/clean_jobs_domain
 import glot_backend/domain/cleanup/clean_login_tokens_domain
 import glot_backend/domain/cleanup/clean_run_log_domain
+import glot_backend/domain/cleanup/clean_sessions_domain
 import glot_backend/domain/cleanup/clean_user_actions_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
@@ -1955,6 +1956,66 @@ pub fn clean_login_tokens_deletes_only_old_rows_test() {
     == Ok(recent_login_token)
 }
 
+pub fn clean_sessions_deletes_only_expired_rows_test() {
+  let old_session =
+    session_model.Session(
+      id: must_uuid("00000000-0000-0000-0000-000000000d01"),
+      user_id: test_user_id(),
+      token: "old-session-token",
+      previous_token: option.None,
+      previous_token_valid_until: option.None,
+      ip: option.Some("127.0.0.1"),
+      os_name: option.Some(platform_model.MacOS),
+      browser_name: option.Some(platform_model.Chrome),
+      user_agent: option.Some("gleeunit"),
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_699_800_000, 0),
+      token_updated_at: timestamp.from_unix_seconds_and_nanoseconds(
+        1_699_999_000,
+        0,
+      ),
+    )
+  let recent_session =
+    session_model.Session(
+      ..old_session,
+      id: must_uuid("00000000-0000-0000-0000-000000000d02"),
+      token: "recent-session-token",
+      created_at: timestamp.from_unix_seconds_and_nanoseconds(1_699_950_000, 0),
+      token_updated_at: timestamp.from_unix_seconds_and_nanoseconds(
+        1_699_999_500,
+        0,
+      ),
+    )
+  let ctx =
+    context.Context(
+      ..test_context(),
+      timestamp: timestamp.from_unix_seconds_and_nanoseconds(1_700_000_000, 0),
+    )
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      sessions: dict.from_list([
+        #(uuid_key(old_session.id), old_session),
+        #(uuid_key(recent_session.id), recent_session),
+      ]),
+      session_ids_by_token: dict.from_list([
+        #(old_session.token, uuid_key(old_session.id)),
+        #(recent_session.token, uuid_key(recent_session.id)),
+      ]),
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(clean_sessions_domain.clean_sessions(ctx), ctx, db)
+
+  assert run_result == Ok(Nil)
+  assert dict.get(updated_db.sessions, uuid_key(old_session.id)) == Error(Nil)
+  assert dict.get(updated_db.sessions, uuid_key(recent_session.id))
+    == Ok(recent_session)
+  assert dict.get(updated_db.session_ids_by_token, old_session.token)
+    == Error(Nil)
+  assert dict.get(updated_db.session_ids_by_token, recent_session.token)
+    == Ok(uuid_key(recent_session.id))
+}
+
 type TestFixture {
   TestFixture(
     ctx: context.Context,
@@ -2202,6 +2263,7 @@ fn default_job_type_policies() -> Dict(String, job_model.JobTypePolicy) {
     job_model.CleanRunLogJob,
     job_model.CleanJobLogJob,
     job_model.CleanJobsJob,
+    job_model.CleanSessionsJob,
     job_model.CleanLoginTokensJob,
     job_model.CleanUserActionsJob,
     job_model.AggregateMetricsJob,
@@ -3204,6 +3266,8 @@ fn run_test_auth_effect(
         ctx,
         delete_sessions_by_account_id(db, account_id),
       )
+    auth_algebra.DeleteSessionsBefore(before: before, next: next) ->
+      run_test_program(next(Ok(Nil)), ctx, delete_sessions_before(db, before))
     auth_algebra.DeleteUsersByAccountId(account_id: account_id, next: next) ->
       run_test_program(
         next(Ok(Nil)),
@@ -3330,6 +3394,8 @@ fn run_test_auth_tx_effect(
         ctx,
         delete_sessions_by_account_id(db, account_id),
       )
+    auth_algebra.DeleteSessionsBefore(before: before, next: next) ->
+      run_test_tx_program(next(Ok(Nil)), ctx, delete_sessions_before(db, before))
     auth_algebra.DeleteUsersByAccountId(account_id: account_id, next: next) ->
       run_test_tx_program(
         next(Ok(Nil)),
@@ -4345,6 +4411,32 @@ fn delete_sessions_by_account_id(db: TestDb, account_id: uuid.Uuid) -> TestDb {
     sessions: kept_sessions,
     session_ids_by_token: kept_session_ids_by_token,
     deletion_steps: ["delete_sessions_by_account_id", ..db.deletion_steps],
+  )
+}
+
+fn delete_sessions_before(db: TestDb, before: timestamp.Timestamp) -> TestDb {
+  let before_microseconds = timestamp_helpers.to_microseconds(before)
+  let kept_sessions =
+    db.sessions
+    |> dict.to_list
+    |> list.filter(fn(entry) {
+      let #(_, session) = entry
+      timestamp_helpers.to_microseconds(session.created_at) >= before_microseconds
+    })
+    |> dict.from_list
+  let kept_session_ids_by_token =
+    db.session_ids_by_token
+    |> dict.to_list
+    |> list.filter(fn(entry) {
+      let #(_, session_id) = entry
+      dict.get(kept_sessions, session_id) == Ok(find_session(db, session_id))
+    })
+    |> dict.from_list
+
+  TestDb(
+    ..db,
+    sessions: kept_sessions,
+    session_ids_by_token: kept_session_ids_by_token,
   )
 }
 

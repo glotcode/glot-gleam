@@ -18,6 +18,7 @@ pub type JobType {
   CleanRunLogJob
   CleanJobLogJob
   CleanJobsJob
+  CleanSessionsJob
   CleanLoginTokensJob
   CleanUserActionsJob
   AggregateMetricsJob
@@ -33,6 +34,7 @@ pub fn job_type_to_string(job_type: JobType) -> String {
     CleanRunLogJob -> "clean_run_log"
     CleanJobLogJob -> "clean_job_log"
     CleanJobsJob -> "clean_jobs"
+    CleanSessionsJob -> "clean_sessions"
     CleanLoginTokensJob -> "clean_login_tokens"
     CleanUserActionsJob -> "clean_user_actions"
     AggregateMetricsJob -> "aggregate_metrics"
@@ -51,6 +53,7 @@ pub fn job_type_from_string(
     "clean_run_log" -> Ok(CleanRunLogJob)
     "clean_job_log" -> Ok(CleanJobLogJob)
     "clean_jobs" -> Ok(CleanJobsJob)
+    "clean_sessions" -> Ok(CleanSessionsJob)
     "clean_login_tokens" -> Ok(CleanLoginTokensJob)
     "clean_user_actions" -> Ok(CleanUserActionsJob)
     "aggregate_metrics" -> Ok(AggregateMetricsJob)

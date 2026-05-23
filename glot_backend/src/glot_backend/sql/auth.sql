@@ -392,6 +392,10 @@ WHERE user_id IN (
   WHERE account_id = $1
 );
 
+-- name: DeleteSessionsBefore :exec
+DELETE FROM sessions
+WHERE created_at < $1;
+
 -- name: DeleteLoginTokensBefore :exec
 DELETE FROM login_tokens
 WHERE created_at < $1;

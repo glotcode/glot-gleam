@@ -72,6 +72,14 @@ VALUES (
   CURRENT_TIMESTAMP,
   CURRENT_TIMESTAMP
 ), (
+  'clean_sessions',
+  5,
+  120,
+  5,
+  300,
+  CURRENT_TIMESTAMP,
+  CURRENT_TIMESTAMP
+), (
   'clean_login_tokens',
   5,
   120,

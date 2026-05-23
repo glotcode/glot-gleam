@@ -361,6 +361,7 @@ fn test_handlers() -> handlers.Handlers {
       update_account: fn(_) { Ok(Nil) },
       update_user: fn(_) { Ok(Nil) },
       delete_sessions_by_account_id: fn(_) { Ok(Nil) },
+      delete_sessions_before: fn(_) { Ok(Nil) },
       delete_users_by_account_id: fn(_) { Ok(Nil) },
       delete_account: fn(_) { Ok(Nil) },
       create_session: fn(_) { Ok(Nil) },
