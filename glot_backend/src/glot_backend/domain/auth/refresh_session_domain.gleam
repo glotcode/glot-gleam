@@ -172,13 +172,13 @@ fn get_session_by_client_token_for_update(
           error.auth(auth_error.SessionNotFound),
         ),
       )
-      transaction_program.and_then(
+      use _ <- transaction_program.and_then(
         transaction_program.from_result(session_domain.validate_previous_token(
           previous_session,
           now,
         )),
-        fn(_) { transaction_program.succeed(previous_session) },
       )
+      transaction_program.succeed(previous_session)
     }
   }
 }
