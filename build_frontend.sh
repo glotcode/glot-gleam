@@ -6,5 +6,5 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 (
     cd "$SCRIPT_DIR/glot_frontend"
     gleam build
-    bun run build
+    npm run build
 )

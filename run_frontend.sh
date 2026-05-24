@@ -2,5 +2,5 @@
 
 (
     cd glot_frontend
-    bun run dev
+    npm run dev
 )
