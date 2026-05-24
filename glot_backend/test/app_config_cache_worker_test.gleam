@@ -431,6 +431,11 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
       session_previous_token_grace_seconds: 60,
       session_heartbeat_interval_seconds: 60,
     ),
+    passkey: dynamic_config.PasskeyConfig(
+      origin: "https://glot.io",
+      rp_id: "glot.io",
+      challenge_timeout_seconds: 120,
+    ),
     cleanup: dynamic_config.CleanupConfig(
       api_log_retention_days: 30,
       page_log_retention_days: 30,
@@ -505,6 +510,11 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
       session_refresh_interval_seconds: 300,
       session_previous_token_grace_seconds: 60,
       session_heartbeat_interval_seconds: 60,
+    ),
+    passkey: dynamic_config.PasskeyConfig(
+      origin: "https://glot.io",
+      rp_id: "glot.io",
+      challenge_timeout_seconds: 180,
     ),
     cleanup: dynamic_config.CleanupConfig(
       api_log_retention_days: 30,

@@ -10,6 +10,7 @@ import glot_core/admin/docker_run_config_dto
 import glot_core/admin/email_config_dto
 import glot_core/admin/language_version_cache_worker_config_dto
 import glot_core/admin/log_worker_config_dto
+import glot_core/admin/passkey_config_dto
 import glot_core/availability_mode
 import glot_frontend/admin_format
 import glot_frontend/admin_ui
@@ -27,6 +28,7 @@ pub type Model {
     debug: DebugSection,
     availability: AvailabilitySection,
     auth: AuthSection,
+    passkey: PasskeySection,
     cleanup: CleanupSection,
     log_worker: LogWorkerSection,
     language_version_cache_worker: LanguageVersionCacheWorkerSection,
@@ -36,6 +38,7 @@ pub type Model {
     debug_loaded: Bool,
     availability_loaded: Bool,
     auth_loaded: Bool,
+    passkey_loaded: Bool,
     cleanup_loaded: Bool,
     log_worker_loaded: Bool,
     language_version_cache_worker_loaded: Bool,
@@ -132,6 +135,14 @@ pub type AuthSection {
   )
 }
 
+pub type PasskeySection {
+  PasskeySection(
+    saved: PasskeyFields,
+    draft: PasskeyFields,
+    state: mutation.MutationState,
+  )
+}
+
 pub type AuthFields {
   AuthFields(
     login_token_max_age: String,
@@ -141,6 +152,14 @@ pub type AuthFields {
     session_refresh_interval_seconds: String,
     session_previous_token_grace_seconds: String,
     session_heartbeat_interval_seconds: String,
+  )
+}
+
+pub type PasskeyFields {
+  PasskeyFields(
+    origin: String,
+    rp_id: String,
+    challenge_timeout_seconds: String,
   )
 }
 
@@ -226,6 +245,13 @@ pub type Msg {
   AuthResetClicked
   AuthSaveClicked
   AuthSaveFinished(api.ApiResponse(auth_config_dto.AuthConfigResponse))
+  PasskeyLoaded(api.ApiResponse(passkey_config_dto.PasskeyConfigResponse))
+  PasskeyOriginChanged(String)
+  PasskeyRpIdChanged(String)
+  PasskeyChallengeTimeoutSecondsChanged(String)
+  PasskeyResetClicked
+  PasskeySaveClicked
+  PasskeySaveFinished(api.ApiResponse(passkey_config_dto.PasskeyConfigResponse))
   CleanupLoaded(api.ApiResponse(cleanup_config_dto.CleanupConfigResponse))
   CleanupApiLogRetentionDaysChanged(String)
   CleanupPageLogRetentionDaysChanged(String)
@@ -302,6 +328,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       debug: empty_debug_section(),
       availability: empty_availability_section(),
       auth: empty_auth_section(),
+      passkey: empty_passkey_section(),
       cleanup: empty_cleanup_section(),
       log_worker: empty_log_worker_section(),
       language_version_cache_worker: empty_language_version_cache_worker_section(),
@@ -311,6 +338,7 @@ pub fn init() -> #(Model, Effect(Msg)) {
       debug_loaded: False,
       availability_loaded: False,
       auth_loaded: False,
+      passkey_loaded: False,
       cleanup_loaded: False,
       log_worker_loaded: False,
       language_version_cache_worker_loaded: False,
@@ -330,6 +358,7 @@ pub fn ensure_loaded(model: Model) -> #(Model, Effect(Msg)) {
         load_debug_config(),
         load_availability_config(),
         load_auth_config(),
+        load_passkey_config(),
         load_cleanup_config(),
         load_log_worker_config(),
         load_language_version_cache_worker_config(),
@@ -783,6 +812,146 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
             auth: AuthSection(
               ..model.auth,
               state: mutation.SaveError("Could not save auth config."),
+            ),
+          ),
+          effect.none(),
+        )
+      }
+
+    PasskeyLoaded(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = passkey_fields_from_response(response)
+          let next_model =
+            Model(
+              ..model,
+              passkey: PasskeySection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Idle,
+              ),
+              passkey_loaded: True,
+            )
+
+          #(
+            Model(..next_model, status: loaded_status(next_model)),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(..model, status: LoadError(api.error_message(error))),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(..model, status: LoadError("Could not load passkey config.")),
+          effect.none(),
+        )
+      }
+
+    PasskeyOriginChanged(value) -> #(
+      Model(
+        ..model,
+        passkey: PasskeySection(
+          ..model.passkey,
+          draft: PasskeyFields(..model.passkey.draft, origin: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    PasskeyRpIdChanged(value) -> #(
+      Model(
+        ..model,
+        passkey: PasskeySection(
+          ..model.passkey,
+          draft: PasskeyFields(..model.passkey.draft, rp_id: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    PasskeyChallengeTimeoutSecondsChanged(value) -> #(
+      Model(
+        ..model,
+        passkey: PasskeySection(
+          ..model.passkey,
+          draft: PasskeyFields(
+            ..model.passkey.draft,
+            challenge_timeout_seconds: value,
+          ),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    PasskeyResetClicked -> #(
+      Model(
+        ..model,
+        passkey: PasskeySection(
+          ..model.passkey,
+          draft: model.passkey.saved,
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
+    PasskeySaveClicked ->
+      case validate_passkey_fields(model.passkey.draft) {
+        Error(message) -> #(
+          Model(
+            ..model,
+            passkey: PasskeySection(
+              ..model.passkey,
+              state: mutation.SaveError(message),
+            ),
+          ),
+          effect.none(),
+        )
+        Ok(request) -> #(
+          Model(
+            ..model,
+            passkey: PasskeySection(..model.passkey, state: mutation.Saving),
+          ),
+          api.upsert_admin_passkey_config(request, PasskeySaveFinished),
+        )
+      }
+
+    PasskeySaveFinished(result) ->
+      case result {
+        api.ApiSuccess(response) -> {
+          let fields = passkey_fields_from_response(response)
+          #(
+            Model(
+              ..model,
+              passkey: PasskeySection(
+                saved: fields,
+                draft: fields,
+                state: mutation.Saved,
+              ),
+            ),
+            effect.none(),
+          )
+        }
+        api.ApiFailure(error) -> #(
+          Model(
+            ..model,
+            passkey: PasskeySection(
+              ..model.passkey,
+              state: mutation.SaveError(api.error_message(error)),
+            ),
+          ),
+          effect.none(),
+        )
+        api.HttpFailure(_) -> #(
+          Model(
+            ..model,
+            passkey: PasskeySection(
+              ..model.passkey,
+              state: mutation.SaveError("Could not save passkey config."),
             ),
           ),
           effect.none(),
@@ -1789,6 +1958,7 @@ pub fn view(model: Model) -> Element(Msg) {
         debug_section_view(model.debug, model.status),
         availability_section_view(model.availability, model.status),
         auth_section_view(model.auth, model.status),
+        passkey_section_view(model.passkey, model.status),
         cleanup_section_view(model.cleanup, model.status),
         log_worker_section_view(model.log_worker, model.status),
         language_version_cache_worker_section_view(
@@ -1868,6 +2038,47 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
       message: section_state_message(section.state, option.None),
       reset_msg: AuthResetClicked,
       save_msg: AuthSaveClicked,
+    ),
+  )
+}
+
+fn passkey_section_view(section: PasskeySection, status: Status) -> Element(Msg) {
+  let dirty = is_dirty_passkey(section)
+
+  config_section(
+    title: "Passkey",
+    subtitle: "Controls the WebAuthn relying party identity and challenge lifetime used for passkey registration and login.",
+    badge: section_badge(section.state, dirty, option.None),
+    fields: html.div([attribute.class("admin-page__field-grid")], [
+      admin_ui.text_input(
+        label: "Origin",
+        help: "Fully qualified site origin used for WebAuthn challenges. Example: https://glot.io",
+        value: section.draft.origin,
+        placeholder: "",
+        on_input: PasskeyOriginChanged,
+      ),
+      admin_ui.text_input(
+        label: "RP ID",
+        help: "WebAuthn relying party ID, usually the registrable domain.",
+        value: section.draft.rp_id,
+        placeholder: "",
+        on_input: PasskeyRpIdChanged,
+      ),
+      admin_ui.text_input(
+        label: "Challenge timeout",
+        help: "Seconds before a passkey challenge expires.",
+        value: section.draft.challenge_timeout_seconds,
+        placeholder: "",
+        on_input: PasskeyChallengeTimeoutSecondsChanged,
+      ),
+    ]),
+    footer: section_footer(
+      status: status,
+      state: section.state,
+      dirty: dirty,
+      message: section_state_message(section.state, option.None),
+      reset_msg: PasskeyResetClicked,
+      save_msg: PasskeySaveClicked,
     ),
   )
 }
@@ -2494,6 +2705,10 @@ fn load_auth_config() -> Effect(Msg) {
   api.get_admin_auth_config(AuthLoaded)
 }
 
+fn load_passkey_config() -> Effect(Msg) {
+  api.get_admin_passkey_config(PasskeyLoaded)
+}
+
 fn load_cleanup_config() -> Effect(Msg) {
   api.get_admin_cleanup_config(CleanupLoaded)
 }
@@ -2538,6 +2753,18 @@ fn auth_fields_from_response(
     ),
     session_heartbeat_interval_seconds: int.to_string(
       response.session_heartbeat_interval_seconds,
+    ),
+  )
+}
+
+fn passkey_fields_from_response(
+  response: passkey_config_dto.PasskeyConfigResponse,
+) -> PasskeyFields {
+  PasskeyFields(
+    origin: response.origin,
+    rp_id: response.rp_id,
+    challenge_timeout_seconds: int.to_string(
+      response.challenge_timeout_seconds,
     ),
   )
 }
@@ -2740,6 +2967,10 @@ fn is_dirty_auth(section: AuthSection) -> Bool {
   section.saved != section.draft
 }
 
+fn is_dirty_passkey(section: PasskeySection) -> Bool {
+  section.saved != section.draft
+}
+
 fn is_dirty_cleanup(section: CleanupSection) -> Bool {
   section.saved != section.draft
 }
@@ -2809,6 +3040,28 @@ fn validate_auth_fields(
     session_previous_token_grace_seconds: session_previous_token_grace_seconds,
     session_heartbeat_interval_seconds: session_heartbeat_interval_seconds,
   ))
+}
+
+fn validate_passkey_fields(
+  fields: PasskeyFields,
+) -> Result(passkey_config_dto.UpsertPasskeyConfigRequest, String) {
+  use challenge_timeout_seconds <- result.try(
+    admin_format.parse_positive_int_with_error(
+      fields.challenge_timeout_seconds,
+      "Challenge timeout must be a positive integer.",
+    ),
+  )
+
+  case fields.origin, fields.rp_id {
+    "", _ -> Error("Origin must not be empty.")
+    _, "" -> Error("RP ID must not be empty.")
+    _, _ ->
+      Ok(passkey_config_dto.UpsertPasskeyConfigRequest(
+        origin: fields.origin,
+        rp_id: fields.rp_id,
+        challenge_timeout_seconds: challenge_timeout_seconds,
+      ))
+  }
 }
 
 fn validate_cleanup_fields(
@@ -2954,6 +3207,11 @@ fn empty_auth_section() -> AuthSection {
   AuthSection(saved: fields, draft: fields, state: mutation.Idle)
 }
 
+fn empty_passkey_section() -> PasskeySection {
+  let fields = empty_passkey_fields()
+  PasskeySection(saved: fields, draft: fields, state: mutation.Idle)
+}
+
 fn empty_debug_section() -> DebugSection {
   let fields = empty_debug_fields()
   DebugSection(saved: fields, draft: fields, state: mutation.Idle)
@@ -2985,6 +3243,14 @@ fn empty_auth_fields() -> AuthFields {
     session_refresh_interval_seconds: "",
     session_previous_token_grace_seconds: "",
     session_heartbeat_interval_seconds: "",
+  )
+}
+
+fn empty_passkey_fields() -> PasskeyFields {
+  PasskeyFields(
+    origin: "https://glot.io",
+    rp_id: "glot.io",
+    challenge_timeout_seconds: "120",
   )
 }
 
@@ -3069,6 +3335,7 @@ fn loaded_status(model: Model) -> Status {
     model.debug_loaded
     && model.availability_loaded
     && model.auth_loaded
+    && model.passkey_loaded
     && model.cleanup_loaded
     && model.log_worker_loaded
     && model.language_version_cache_worker_loaded

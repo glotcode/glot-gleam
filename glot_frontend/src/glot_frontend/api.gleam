@@ -20,6 +20,7 @@ import glot_core/admin/job_log_dto
 import glot_core/admin/job_type_policy_dto
 import glot_core/admin/language_version_cache_worker_config_dto
 import glot_core/admin/log_worker_config_dto
+import glot_core/admin/passkey_config_dto
 import glot_core/admin/periodic_job_dto
 import glot_core/admin/rate_limit_config_dto
 import glot_core/admin/run_log_dto
@@ -467,6 +468,19 @@ pub fn get_admin_auth_config(
   )
 }
 
+pub fn get_admin_passkey_config(
+  to_msg: fn(ApiResponse(passkey_config_dto.PasskeyConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = AdminApiRequest(admin_action.GetAdminPasskeyConfigAction, Nil)
+
+  send_admin_api_request(
+    req,
+    fn(_) { json.null() },
+    passkey_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
 pub fn get_admin_job_type_policies(
   to_msg: fn(ApiResponse(job_type_policy_dto.ListJobTypePoliciesResponse)) ->
     msg,
@@ -563,6 +577,20 @@ pub fn upsert_admin_auth_config(
     req,
     auth_config_dto.encode_request,
     auth_config_dto.response_decoder(),
+    to_msg,
+  )
+}
+
+pub fn upsert_admin_passkey_config(
+  request: passkey_config_dto.UpsertPasskeyConfigRequest,
+  to_msg: fn(ApiResponse(passkey_config_dto.PasskeyConfigResponse)) -> msg,
+) -> effect.Effect(msg) {
+  let req = AdminApiRequest(admin_action.UpsertAdminPasskeyConfigAction, request)
+
+  send_admin_api_request(
+    req,
+    passkey_config_dto.encode_request,
+    passkey_config_dto.response_decoder(),
     to_msg,
   )
 }

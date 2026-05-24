@@ -10,6 +10,8 @@ pub type AdminAction {
   UpsertAdminAvailabilityConfigAction
   GetAdminAuthConfigAction
   UpsertAdminAuthConfigAction
+  GetAdminPasskeyConfigAction
+  UpsertAdminPasskeyConfigAction
   GetAdminCleanupConfigAction
   UpsertAdminCleanupConfigAction
   GetAdminLogWorkerConfigAction
@@ -58,6 +60,8 @@ pub fn list() -> List(AdminAction) {
     UpsertAdminAvailabilityConfigAction,
     GetAdminAuthConfigAction,
     UpsertAdminAuthConfigAction,
+    GetAdminPasskeyConfigAction,
+    UpsertAdminPasskeyConfigAction,
     GetAdminCleanupConfigAction,
     UpsertAdminCleanupConfigAction,
     GetAdminLogWorkerConfigAction,
@@ -120,6 +124,8 @@ pub fn to_string(action: AdminAction) -> String {
     UpsertAdminAvailabilityConfigAction -> "upsert_admin_availability_config"
     GetAdminAuthConfigAction -> "get_admin_auth_config"
     UpsertAdminAuthConfigAction -> "upsert_admin_auth_config"
+    GetAdminPasskeyConfigAction -> "get_admin_passkey_config"
+    UpsertAdminPasskeyConfigAction -> "upsert_admin_passkey_config"
     GetAdminCleanupConfigAction -> "get_admin_cleanup_config"
     UpsertAdminCleanupConfigAction -> "upsert_admin_cleanup_config"
     GetAdminLogWorkerConfigAction -> "get_admin_log_worker_config"
@@ -173,6 +179,9 @@ pub fn from_string(action: String) -> option.Option(AdminAction) {
       option.Some(UpsertAdminAvailabilityConfigAction)
     "get_admin_auth_config" -> option.Some(GetAdminAuthConfigAction)
     "upsert_admin_auth_config" -> option.Some(UpsertAdminAuthConfigAction)
+    "get_admin_passkey_config" -> option.Some(GetAdminPasskeyConfigAction)
+    "upsert_admin_passkey_config" ->
+      option.Some(UpsertAdminPasskeyConfigAction)
     "get_admin_cleanup_config" -> option.Some(GetAdminCleanupConfigAction)
     "upsert_admin_cleanup_config" -> option.Some(UpsertAdminCleanupConfigAction)
     "get_admin_log_worker_config" -> option.Some(GetAdminLogWorkerConfigAction)

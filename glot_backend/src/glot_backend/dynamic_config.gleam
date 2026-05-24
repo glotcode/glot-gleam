@@ -17,6 +17,7 @@ pub type DynamicConfig {
     debug: DebugConfig,
     availability: AvailabilityConfig,
     auth: AuthConfig,
+    passkey: PasskeyConfig,
     cleanup: CleanupConfig,
     log_worker: LogWorkerConfig,
     language_version_cache_worker: LanguageVersionCacheWorkerConfig,
@@ -48,6 +49,14 @@ pub type AuthConfig {
     session_refresh_interval_seconds: Int,
     session_previous_token_grace_seconds: Int,
     session_heartbeat_interval_seconds: Int,
+  )
+}
+
+pub type PasskeyConfig {
+  PasskeyConfig(
+    origin: String,
+    rp_id: String,
+    challenge_timeout_seconds: Int,
   )
 }
 
@@ -126,6 +135,7 @@ pub fn empty() -> DynamicConfig {
     debug: default_debug_config(),
     availability: default_availability_config(),
     auth: default_auth_config(),
+    passkey: default_passkey_config(),
     cleanup: default_cleanup_config(),
     log_worker: default_log_worker_config(),
     language_version_cache_worker: default_language_version_cache_worker_config(),
@@ -171,6 +181,10 @@ pub fn email_config(config: DynamicConfig) -> EmailConfig {
 
 pub fn auth_config(config: DynamicConfig) -> AuthConfig {
   config.auth
+}
+
+pub fn passkey_config(config: DynamicConfig) -> PasskeyConfig {
+  config.passkey
 }
 
 pub fn log_worker_config(config: DynamicConfig) -> LogWorkerConfig {
@@ -233,6 +247,7 @@ fn apply_entry(
     "debug" -> decode_debug_config_entry(config, entry)
     "availability" -> decode_availability_config_entry(config, entry)
     "auth" -> decode_auth_config_entry(config, entry)
+    "passkey" -> decode_passkey_config_entry(config, entry)
     "cleanup" -> decode_cleanup_config_entry(config, entry)
     "log_worker" -> decode_log_worker_config_entry(config, entry)
     "language_version_cache_worker" ->
@@ -360,6 +375,14 @@ fn default_auth_config() -> AuthConfig {
   )
 }
 
+fn default_passkey_config() -> PasskeyConfig {
+  PasskeyConfig(
+    origin: "https://glot.io",
+    rp_id: "glot.io",
+    challenge_timeout_seconds: 120,
+  )
+}
+
 fn default_debug_config() -> DebugConfig {
   DebugConfig(enabled: False)
 }
@@ -429,6 +452,45 @@ fn decode_cleanup_config_entry(
   }
 
   Ok(DynamicConfig(..config, cleanup: cleanup))
+}
+
+fn decode_passkey_config_entry(
+  config: DynamicConfig,
+  entry: app_config.AppConfigEntry,
+) -> Result(DynamicConfig, String) {
+  case entry.key {
+    "origin" -> {
+      use value <- result.try(decode_string_entry("passkey", entry))
+      Ok(
+        DynamicConfig(
+          ..config,
+          passkey: PasskeyConfig(..config.passkey, origin: value),
+        ),
+      )
+    }
+    "rp_id" -> {
+      use value <- result.try(decode_string_entry("passkey", entry))
+      Ok(
+        DynamicConfig(
+          ..config,
+          passkey: PasskeyConfig(..config.passkey, rp_id: value),
+        ),
+      )
+    }
+    "challenge_timeout_seconds" -> {
+      use value <- result.try(decode_int_entry("passkey", entry))
+      Ok(
+        DynamicConfig(
+          ..config,
+          passkey: PasskeyConfig(
+            ..config.passkey,
+            challenge_timeout_seconds: value,
+          ),
+        ),
+      )
+    }
+    _ -> Ok(config)
+  }
 }
 
 fn decode_log_worker_config_entry(

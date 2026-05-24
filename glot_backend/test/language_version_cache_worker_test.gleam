@@ -561,7 +561,6 @@ fn test_context() -> context.Context {
         pass: "test",
         pool_size: 1,
       ),
-      passkey: context.default_passkey_config(),
     ),
     regexes: context.Regexes(is_email: is_email),
     request_id: uuid.nil,

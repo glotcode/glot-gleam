@@ -324,6 +324,5 @@ fn test_config() -> context.Config {
       pass: "test",
       pool_size: 1,
     ),
-    passkey: context.default_passkey_config(),
   )
 }

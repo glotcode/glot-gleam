@@ -91,6 +91,26 @@ pub fn upsert_auth_config(
   )
 }
 
+pub fn upsert_passkey_config(
+  config: dynamic_config.PasskeyConfig,
+  updated_at: Timestamp,
+) -> program_types.Program(dynamic_config.DynamicConfig) {
+  program_types.Impure(
+    program_types.AppConfigEffect(
+      app_config_algebra.UpsertPasskeyConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(result) {
+          case result {
+            Ok(config) -> program_types.Pure(config)
+            Error(err) -> program_types.Fail(err)
+          }
+        },
+      ),
+    ),
+  )
+}
+
 pub fn upsert_cleanup_config(
   config: dynamic_config.CleanupConfig,
   updated_at: Timestamp,

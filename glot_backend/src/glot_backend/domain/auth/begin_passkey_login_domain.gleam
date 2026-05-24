@@ -3,6 +3,8 @@ import gleam/result
 import glot_backend/context
 import glot_backend/domain/auth/passkey_shared_domain
 import glot_backend/domain/shared/api_action_policy_domain
+import glot_backend/dynamic_config
+import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -26,7 +28,8 @@ pub fn begin_passkey_login(
     actor: api_action_policy_domain.Anonymous,
   ))
   use challenge_id <- program.and_then(basic_effect.uuid_v7())
-  let passkey_config = ctx.config.passkey
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  let passkey_config = dynamic_config.passkey_config(config)
   use challenge_result <- program.and_then(webauthn_effect.new_authentication_challenge(
     passkey_config.origin,
     passkey_config.rp_id,

@@ -1099,7 +1099,7 @@ pub fn begin_passkey_registration_creates_challenge_test() {
 
   let assert Ok(response) = run_result
   assert response.challenge != ""
-  assert response.rp_id == "localhost"
+  assert response.rp_id == "glot.io"
   assert response.user_name == "user@example.com"
   assert response.user_display_name == "user"
   assert response.user_verification == "required"
@@ -1167,7 +1167,7 @@ pub fn begin_passkey_login_without_credentials_creates_anonymous_challenge_test(
 
   let assert Ok(response) = run_result
   assert response.challenge != ""
-  assert response.rp_id == "localhost"
+  assert response.rp_id == "glot.io"
   assert response.allow_credential_ids == []
   assert response.user_verification == "required"
   assert updated_db.user_action_count == 1
@@ -2574,6 +2574,7 @@ fn run_test_app_config_effect(
               session_previous_token_grace_seconds: 60,
               session_heartbeat_interval_seconds: 60,
             ),
+            passkey: test_passkey_config(),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
             language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2605,6 +2606,7 @@ fn run_test_app_config_effect(
               session_previous_token_grace_seconds: 60,
               session_heartbeat_interval_seconds: 60,
             ),
+            passkey: test_passkey_config(),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
             language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2628,6 +2630,31 @@ fn run_test_app_config_effect(
             debug: dynamic_config.DebugConfig(enabled: False),
             availability: test_availability_config(),
             auth: config,
+            passkey: test_passkey_config(),
+            cleanup: test_cleanup_config(),
+            log_worker: test_log_worker_config(),
+            language_version_cache_worker: test_language_version_cache_worker_config(),
+            docker_run: option.None,
+            cloudflare: option.None,
+            email: option.None,
+            rate_limit_policies: dict.new(),
+          )),
+        ),
+        ctx,
+        db,
+      )
+    app_config_algebra.UpsertPasskeyConfig(
+      config: config,
+      updated_at: _,
+      next: next,
+    ) ->
+      run_test_program(
+        next(
+          Ok(dynamic_config.DynamicConfig(
+            debug: dynamic_config.DebugConfig(enabled: False),
+            availability: test_availability_config(),
+            auth: test_auth_config(),
+            passkey: config,
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
             language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2659,6 +2686,7 @@ fn run_test_app_config_effect(
               session_previous_token_grace_seconds: 60,
               session_heartbeat_interval_seconds: 60,
             ),
+            passkey: test_passkey_config(),
             cleanup: config,
             log_worker: test_log_worker_config(),
             language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2690,6 +2718,7 @@ fn run_test_app_config_effect(
               session_previous_token_grace_seconds: 60,
               session_heartbeat_interval_seconds: 60,
             ),
+            passkey: test_passkey_config(),
             cleanup: test_cleanup_config(),
             log_worker: config,
             language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2721,6 +2750,7 @@ fn run_test_app_config_effect(
               session_previous_token_grace_seconds: 60,
               session_heartbeat_interval_seconds: 60,
             ),
+            passkey: test_passkey_config(),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
             language_version_cache_worker: config,
@@ -2758,6 +2788,7 @@ fn run_test_app_config_effect(
               session_previous_token_grace_seconds: 60,
               session_heartbeat_interval_seconds: 60,
             ),
+            passkey: test_passkey_config(),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
             language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2789,6 +2820,7 @@ fn run_test_app_config_effect(
               session_previous_token_grace_seconds: 60,
               session_heartbeat_interval_seconds: 60,
             ),
+            passkey: test_passkey_config(),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
             language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2820,6 +2852,7 @@ fn run_test_app_config_effect(
               session_previous_token_grace_seconds: 60,
               session_heartbeat_interval_seconds: 60,
             ),
+            passkey: test_passkey_config(),
             cleanup: test_cleanup_config(),
             log_worker: test_log_worker_config(),
             language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2840,6 +2873,7 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
     debug: dynamic_config.DebugConfig(enabled: False),
     availability: test_availability_config(),
     auth: test_auth_config(),
+    passkey: test_passkey_config(),
     cleanup: test_cleanup_config(),
     log_worker: test_log_worker_config(),
     language_version_cache_worker: test_language_version_cache_worker_config(),
@@ -2862,6 +2896,14 @@ fn test_email_config() -> dynamic_config.EmailConfig {
     from_address: "sender@example.com",
     from_name: option.Some("Sender"),
     default_timeout_ms: 60_000,
+  )
+}
+
+fn test_passkey_config() -> dynamic_config.PasskeyConfig {
+  dynamic_config.PasskeyConfig(
+    origin: "https://glot.io",
+    rp_id: "glot.io",
+    challenge_timeout_seconds: 120,
   )
 }
 
@@ -4746,7 +4788,6 @@ fn test_context() -> context.Context {
         pass: "test",
         pool_size: 1,
       ),
-      passkey: context.default_passkey_config(),
     ),
     regexes: context.Regexes(is_email: is_email),
     request_id: uuid.nil,

@@ -24,6 +24,11 @@ pub type AppConfigEffect(next) {
     updated_at: Timestamp,
     next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
   )
+  UpsertPasskeyConfig(
+    config: dynamic_config.PasskeyConfig,
+    updated_at: Timestamp,
+    next: fn(Result(dynamic_config.DynamicConfig, error.Error)) -> next,
+  )
   UpsertCleanupConfig(
     config: dynamic_config.CleanupConfig,
     updated_at: Timestamp,
@@ -80,6 +85,12 @@ pub fn map(effect: AppConfigEffect(a), f: fn(a) -> b) -> AppConfigEffect(b) {
       UpsertAuthConfig(config: config, updated_at: updated_at, next: fn(value) {
         f(next(value))
       })
+    UpsertPasskeyConfig(config:, updated_at:, next:) ->
+      UpsertPasskeyConfig(
+        config: config,
+        updated_at: updated_at,
+        next: fn(value) { f(next(value)) },
+      )
     UpsertCleanupConfig(config:, updated_at:, next:) ->
       UpsertCleanupConfig(
         config: config,
@@ -129,6 +140,7 @@ pub type EffectName {
   UpsertDebugConfigEffectName
   UpsertAvailabilityConfigEffectName
   UpsertAuthConfigEffectName
+  UpsertPasskeyConfigEffectName
   UpsertCleanupConfigEffectName
   UpsertLogWorkerConfigEffectName
   UpsertLanguageVersionCacheWorkerConfigEffectName
@@ -144,6 +156,7 @@ pub fn effect_name_to_string(name: EffectName) -> String {
     UpsertDebugConfigEffectName -> "upsert_debug_config"
     UpsertAvailabilityConfigEffectName -> "upsert_availability_config"
     UpsertAuthConfigEffectName -> "upsert_auth_config"
+    UpsertPasskeyConfigEffectName -> "upsert_passkey_config"
     UpsertCleanupConfigEffectName -> "upsert_cleanup_config"
     UpsertLogWorkerConfigEffectName -> "upsert_log_worker_config"
     UpsertLanguageVersionCacheWorkerConfigEffectName ->
