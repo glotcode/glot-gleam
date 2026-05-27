@@ -40,6 +40,8 @@ pub type Config {
   Config(
     app_env: AppEnv,
     encryption_key: String,
+    listening_address: String,
+    listening_port: Int,
     static_base_path: String,
     postgres: PostgresConfig,
   )
@@ -58,12 +60,19 @@ pub fn config_from_dict(
     |> result.try(app_env_from_string),
   )
   use encryption_key <- result.try(lookup(values, "ENCRYPTION_KEY"))
+  use listening_address <- result.try(lookup(values, "LISTENING_ADDRESS"))
+  use listening_port <- result.try(
+    lookup(values, "LISTENING_PORT")
+    |> result.try(string_to_int),
+  )
   use static_base_path <- result.try(lookup(values, "STATIC_BASE_PATH"))
   use postgres <- result.try(postgres_config_from_dict(values))
 
   Ok(Config(
     app_env: app_env,
     encryption_key: encryption_key,
+    listening_address: listening_address,
+    listening_port: listening_port,
     static_base_path: static_base_path,
     postgres: postgres,
   ))

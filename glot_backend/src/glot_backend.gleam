@@ -54,6 +54,8 @@ pub fn main() {
 
   let default_env =
     dict.from_list([
+      #("LISTENING_ADDRESS", "localhost"),
+      #("LISTENING_PORT", "3000"),
       #("STATIC_BASE_PATH", static_directory),
     ])
 
@@ -114,7 +116,8 @@ pub fn main() {
 
   let mist_builder =
     mist.new(mist_handler)
-    |> mist.port(3000)
+    |> mist.bind(cfg.listening_address)
+    |> mist.port(cfg.listening_port)
 
   let assert Ok(_) =
     start_supervisor_tree(

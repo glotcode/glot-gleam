@@ -24,6 +24,8 @@ pub fn config_from_dict_rejects_invalid_app_env_test() {
     dict.from_list([
       #("APP_ENV", "staging"),
       #("ENCRYPTION_KEY", "test"),
+      #("LISTENING_ADDRESS", "localhost"),
+      #("LISTENING_PORT", "3000"),
       #("STATIC_BASE_PATH", "/tmp"),
       #("POSTGRES_HOST", "localhost"),
       #("POSTGRES_PORT", "5432"),

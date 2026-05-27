@@ -4779,6 +4779,8 @@ fn test_context() -> context.Context {
     config: context.Config(
       app_env: context.Dev,
       encryption_key: "test",
+      listening_address: "localhost",
+      listening_port: 3000,
       static_base_path: "/tmp",
       postgres: context.PostgresConfig(
         host: "localhost",
