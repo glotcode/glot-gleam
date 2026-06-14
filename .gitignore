@@ -1,2 +1,4 @@
 /run_backend_env.sh
 print_login_token.sh
+/app.tar.gz
+/build/
