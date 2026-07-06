@@ -10,6 +10,7 @@ import gleeunit
 import glot_backend/api
 import glot_backend/context
 import glot_backend/dynamic_config
+import glot_backend/file_system
 import glot_backend/page
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
@@ -62,6 +63,7 @@ pub fn api_returns_503_with_retry_after_in_read_only_mode_test() {
 }
 
 pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
+  let assert Ok(_) = write_test_manifest()
   let availability =
     dynamic_config.AvailabilityConfig(
       mode: availability_mode.MaintenanceMode,
@@ -88,6 +90,7 @@ pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
   let body = simulate.read_body(response)
   assert string.contains(body, "maintenance-page__shell")
   assert string.contains(body, "/static/glot_frontend.js") == False
+  assert string.contains(body, "/static/assets/test-styles.css")
   assert string.contains(body, "Temporarily unavailable")
   assert string.contains(body, "Scheduled platform maintenance.")
   assert string.contains(body, "Please try again in about 10 minute(s).")
@@ -132,7 +135,7 @@ fn test_context() -> context.Context {
       encryption_key: "test",
       listening_address: "localhost",
       listening_port: 3000,
-      static_base_path: "/tmp",
+      static_base_path: test_static_base_path(),
       postgres: context.PostgresConfig(
         host: "localhost",
         port: 5432,
@@ -148,5 +151,16 @@ fn test_context() -> context.Context {
     deadline_at_monotonic_ns: option.None,
     timestamp: timestamp.system_time(),
     client_info: context.empty_client_info(),
+  )
+}
+
+fn test_static_base_path() -> String {
+  "/tmp/glot_backend_availability_http_static"
+}
+
+fn write_test_manifest() -> Result(Nil, String) {
+  file_system.write_file(
+    test_static_base_path() <> "/manifest.json",
+    "{\"index.html\":{\"file\":\"assets/test-frontend.js\",\"css\":[\"assets/test-styles.css\"]}}",
   )
 }

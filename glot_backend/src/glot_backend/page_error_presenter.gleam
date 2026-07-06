@@ -13,6 +13,7 @@ import wisp
 
 pub fn unavailable_page_response(
   state: program_state.State,
+  stylesheet_href: String,
   message: String,
   retry_after_seconds: option.Option(Int),
 ) -> page_response.PageResponse {
@@ -22,6 +23,8 @@ pub fn unavailable_page_response(
         title: "glot.io - unavailable",
         head_children: [],
         include_frontend: False,
+        stylesheet_href: stylesheet_href,
+        frontend_src: "",
         app_attributes: [attribute.class("maintenance-page")],
         app_children: [
           html.main([attribute.class("maintenance-page__shell")], [

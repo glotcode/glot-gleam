@@ -20,6 +20,7 @@ import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/server_timing
 import glot_backend/snippets_page
+import glot_backend/static_assets
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/log_worker
@@ -89,26 +90,36 @@ fn handle_page_request(
 ) -> page_response.PageResponse {
   let runtime =
     runtime.new(db, app_config_cache_subject, language_version_cache_subject)
-  let #(page_decision, availability_state) =
-    availability_policy_domain.evaluate_page_route(page_request.route)
-    |> interpreter.run(runtime, ctx)
 
-  case page_decision {
-    Ok(availability_policy_domain.AllowPage) ->
-      handle_page_request_with_runtime(runtime, ctx, page_request)
-      |> prepend_effects(availability_state.effect_measurements)
-    Ok(availability_policy_domain.UnavailablePage(message, retry_after_seconds)) ->
-      page_error_presenter.unavailable_page_response(
-        availability_state,
-        message,
-        retry_after_seconds,
-      )
-    Error(err) ->
-      page_error_presenter.internal_page_error(
-        "availability page",
-        err,
-        availability_state,
-      )
+  case static_assets.load(ctx.config.static_base_path) {
+    Ok(assets) -> {
+      let #(page_decision, availability_state) =
+        availability_policy_domain.evaluate_page_route(page_request.route)
+        |> interpreter.run(runtime, ctx)
+
+      case page_decision {
+        Ok(availability_policy_domain.AllowPage) ->
+          handle_page_request_with_runtime(runtime, ctx, page_request, assets)
+          |> prepend_effects(availability_state.effect_measurements)
+        Ok(availability_policy_domain.UnavailablePage(
+          message,
+          retry_after_seconds,
+        )) ->
+          page_error_presenter.unavailable_page_response(
+            availability_state,
+            assets.stylesheet_href,
+            message,
+            retry_after_seconds,
+          )
+        Error(err) ->
+          page_error_presenter.internal_page_error(
+            "availability page",
+            err,
+            availability_state,
+          )
+      }
+    }
+    Error(message) -> static_assets_error_response(message)
   }
 }
 
@@ -116,6 +127,7 @@ fn handle_page_request_with_runtime(
   runtime: runtime.Runtime,
   ctx: context.Context,
   page_request: PageRequest,
+  assets: static_assets.Assets,
 ) -> page_response.PageResponse {
   case page_request.route {
     route.Public(route.Home) -> {
@@ -126,6 +138,8 @@ fn handle_page_request_with_runtime(
             title: home_page.title(),
             head_children: [],
             include_frontend: True,
+            stylesheet_href: assets.stylesheet_href,
+            frontend_src: assets.frontend_src,
             app_attributes: [],
             app_children: [home_page.view()],
           ),
@@ -140,40 +154,45 @@ fn handle_page_request_with_runtime(
         error: option.None,
       )
     }
-    route.Public(route.Login) -> spa_page("glot.io - login")
-    route.Account(route.AccountHome) -> spa_page("glot.io - account")
+    route.Public(route.Login) -> spa_page(assets, "glot.io - login")
+    route.Account(route.AccountHome) -> spa_page(assets, "glot.io - account")
     route.Account(route.AccountSnippets(_, _)) ->
-      spa_page("glot.io - account snippets")
-    route.Admin(route.AdminHome) -> spa_page("glot.io - admin")
-    route.Admin(route.AdminApiLogs) -> spa_page("glot.io - api logs")
-    route.Admin(route.AdminApiLog(_)) -> spa_page("glot.io - api log")
-    route.Admin(route.AdminRunLogs) -> spa_page("glot.io - run logs")
-    route.Admin(route.AdminRunLog(_)) -> spa_page("glot.io - run log")
-    route.Admin(route.AdminPeriodicJobs) -> spa_page("glot.io - periodic jobs")
-    route.Admin(route.AdminPeriodicJob(_)) -> spa_page("glot.io - periodic job")
-    route.Admin(route.AdminUsers) -> spa_page("glot.io - admin users")
-    route.Admin(route.AdminUser(_)) -> spa_page("glot.io - admin user")
-    route.Admin(route.AdminJobs) -> spa_page("glot.io - admin jobs")
-    route.Admin(route.AdminJob(_)) -> spa_page("glot.io - admin job")
+      spa_page(assets, "glot.io - account snippets")
+    route.Admin(route.AdminHome) -> spa_page(assets, "glot.io - admin")
+    route.Admin(route.AdminApiLogs) -> spa_page(assets, "glot.io - api logs")
+    route.Admin(route.AdminApiLog(_)) -> spa_page(assets, "glot.io - api log")
+    route.Admin(route.AdminRunLogs) -> spa_page(assets, "glot.io - run logs")
+    route.Admin(route.AdminRunLog(_)) -> spa_page(assets, "glot.io - run log")
+    route.Admin(route.AdminPeriodicJobs) ->
+      spa_page(assets, "glot.io - periodic jobs")
+    route.Admin(route.AdminPeriodicJob(_)) ->
+      spa_page(assets, "glot.io - periodic job")
+    route.Admin(route.AdminUsers) -> spa_page(assets, "glot.io - admin users")
+    route.Admin(route.AdminUser(_)) -> spa_page(assets, "glot.io - admin user")
+    route.Admin(route.AdminJobs) -> spa_page(assets, "glot.io - admin jobs")
+    route.Admin(route.AdminJob(_)) -> spa_page(assets, "glot.io - admin job")
     route.Admin(route.AdminEmailTemplates) ->
-      spa_page("glot.io - email templates")
+      spa_page(assets, "glot.io - email templates")
     route.Admin(route.AdminEmailTemplate(_)) ->
-      spa_page("glot.io - email template")
-    route.Admin(route.AdminSnippets) -> spa_page("glot.io - admin snippets")
-    route.Admin(route.AdminSnippet(_)) -> spa_page("glot.io - admin snippet")
-    route.Admin(route.AdminJobLogs) -> spa_page("glot.io - job logs")
-    route.Admin(route.AdminJobLog(_)) -> spa_page("glot.io - job log")
-    route.Admin(route.AdminConfig) -> spa_page("glot.io - admin config")
+      spa_page(assets, "glot.io - email template")
+    route.Admin(route.AdminSnippets) ->
+      spa_page(assets, "glot.io - admin snippets")
+    route.Admin(route.AdminSnippet(_)) ->
+      spa_page(assets, "glot.io - admin snippet")
+    route.Admin(route.AdminJobLogs) -> spa_page(assets, "glot.io - job logs")
+    route.Admin(route.AdminJobLog(_)) -> spa_page(assets, "glot.io - job log")
+    route.Admin(route.AdminConfig) -> spa_page(assets, "glot.io - admin config")
     route.Admin(route.AdminRateLimits) ->
-      spa_page("glot.io - admin rate limits")
+      spa_page(assets, "glot.io - admin rate limits")
     route.Admin(route.AdminJobTypePolicies) ->
-      spa_page("glot.io - admin job type policies")
+      spa_page(assets, "glot.io - admin job type policies")
     route.Public(route.Snippets(after:, before:, username:)) ->
       run_page_program(
         "snippets page",
         snippets_page_domain.load_view_model(ctx, after, before, username),
         runtime,
         ctx,
+        assets,
         fn(_) { snippets_page.title() },
         fn(_) { [] },
         snippets_page.app_attributes,
@@ -185,6 +204,7 @@ fn handle_page_request_with_runtime(
         editor_page_domain.load_new_view_model(language_slug),
         runtime,
         ctx,
+        assets,
         editor_page.title,
         editor_page.head_children,
         editor_page.app_attributes,
@@ -196,6 +216,7 @@ fn handle_page_request_with_runtime(
         editor_page_domain.load_existing_view_model(ctx, slug),
         runtime,
         ctx,
+        assets,
         editor_page.title,
         editor_page.head_children,
         editor_page.app_attributes,
@@ -217,7 +238,24 @@ fn handle_page_request_with_runtime(
   }
 }
 
-fn spa_page(title: String) -> page_response.PageResponse {
+fn static_assets_error_response(message: String) -> page_response.PageResponse {
+  let state = empty_page_state()
+  page_response.PageResponse(
+    response: wisp.html_response("Static asset manifest error: " <> message, 500),
+    status_code: 500,
+    render_mode: "static_assets_error",
+    effects: [],
+    info: state.info_fields,
+    warnings: state.warning_fields,
+    debug: state.debug_fields,
+    error: option.None,
+  )
+}
+
+fn spa_page(
+  assets: static_assets.Assets,
+  title: String,
+) -> page_response.PageResponse {
   let state = empty_page_state()
   page_response.PageResponse(
     response: wisp.html_response(
@@ -225,6 +263,8 @@ fn spa_page(title: String) -> page_response.PageResponse {
         title: title,
         head_children: [],
         include_frontend: True,
+        stylesheet_href: assets.stylesheet_href,
+        frontend_src: assets.frontend_src,
         app_attributes: [],
         app_children: [],
       ),
@@ -245,6 +285,7 @@ fn run_page_program(
   total_program: total_program.TotalProgram(a),
   runtime: runtime.Runtime,
   ctx: context.Context,
+  assets: static_assets.Assets,
   title: fn(a) -> String,
   head_children: fn(a) -> List(element.Element(Nil)),
   app_attributes: fn(a) -> List(attribute.Attribute(Nil)),
@@ -263,6 +304,8 @@ fn run_page_program(
             title: title(value),
             head_children: head_children(value),
             include_frontend: True,
+            stylesheet_href: assets.stylesheet_href,
+            frontend_src: assets.frontend_src,
             app_attributes: app_attributes(value),
             app_children: [render(value)],
           ),

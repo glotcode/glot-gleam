@@ -17,3 +17,8 @@ pub fn list_dir(_path: String) -> Result(List(String), String) {
 pub fn read_file(_path: String) -> Result(String, String) {
   panic as "not implemented"
 }
+
+@external(erlang, "file_system_ffi", "write_file")
+pub fn write_file(_path: String, _content: String) -> Result(Nil, String) {
+  panic as "not implemented"
+}
