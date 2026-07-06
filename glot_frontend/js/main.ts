@@ -1,4 +1,42 @@
-import './custom_elements/glot-codemirror'
 import { main } from '../build/dev/javascript/glot_frontend/glot_frontend.mjs';
 
+let codeMirrorImport: Promise<unknown> | null = null;
+
+function loadCodeMirror() {
+  if (customElements.get("glot-codemirror")) {
+    return Promise.resolve();
+  }
+
+  codeMirrorImport ??= import("./custom_elements/glot-codemirror");
+  return codeMirrorImport;
+}
+
+function loadCodeMirrorIfPresent(node: Node) {
+  if (node instanceof Element) {
+    if (node.matches("glot-codemirror") || node.querySelector("glot-codemirror")) {
+      void loadCodeMirror();
+    }
+
+    return;
+  }
+
+  if (node instanceof Document && node.querySelector("glot-codemirror")) {
+    void loadCodeMirror();
+  }
+}
+
+const codeMirrorObserver = new MutationObserver((mutations) => {
+  for (const mutation of mutations) {
+    for (const node of mutation.addedNodes) {
+      loadCodeMirrorIfPresent(node);
+    }
+  }
+});
+
+codeMirrorObserver.observe(document.documentElement, {
+  childList: true,
+  subtree: true,
+});
+
 main();
+loadCodeMirrorIfPresent(document);
