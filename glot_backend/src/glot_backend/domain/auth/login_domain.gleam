@@ -1,4 +1,5 @@
 import gleam/dynamic
+import gleam/int
 import gleam/list
 import gleam/option
 import gleam/time/timestamp
@@ -24,9 +25,20 @@ import glot_core/auth/login_token_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/public_action
+import glot_core/user_action
 import youid/uuid.{type Uuid}
 
-pub type LoginResult = session_issue_domain.SessionIssueResult
+pub type LoginResult =
+  session_issue_domain.SessionIssueResult
+
+const max_login_token_attempts = 10
+
+const valid_login_token_count = 2
+
+type LoginTokenVerification {
+  ValidToken
+  InvalidToken
+}
 
 pub fn login(
   ctx: context.Context,
@@ -52,21 +64,6 @@ pub fn login(
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
 
-  use tokens <- program.and_then(auth_effect.list_login_tokens_by_email(
-    request.email,
-    10,
-  ))
-  use matching_token <- program.and_then(
-    program.from_result(find_valid_token(
-      tokens,
-      request.token,
-      ctx.timestamp,
-      auth_config.login_token_max_age,
-    )),
-  )
-  let used_login_token =
-    login_token_model.mark_as_used(matching_token, ctx.timestamp)
-
   use user_outcome <- program.and_then(update_or_create_user(
     maybe_user,
     request.email,
@@ -77,16 +74,24 @@ pub fn login(
   use _ <- program.and_then(
     basic_effect.info(log.singleton(log.uuid("user_id", user.id))),
   )
-  use session_issue <- program.and_then(session_issue_domain.issue_session_for_user(
-    ctx,
-    user.id,
-  ))
-  use _ <- program.and_then(transaction_effect.run_all([
-    auth_effect.update_login_token_tx(used_login_token),
-    user_outcome.persist_fn(user),
-    auth_effect.create_session_tx(session_issue.session),
-    user_action_effect.create_user_action_tx(user_action),
-  ]))
+  use session_issue <- program.and_then(
+    session_issue_domain.issue_session_for_user(ctx, user.id),
+  )
+  use verification <- program.and_then(
+    transaction_effect.run(login_tx(
+      request,
+      ctx,
+      auth_config.login_token_max_age,
+      user_outcome,
+      user,
+      session_issue,
+      user_action,
+    )),
+  )
+  use _ <- program.and_then(case verification {
+    ValidToken -> program.succeed(Nil)
+    InvalidToken -> program.fail(error.auth(auth_error.InvalidLoginToken))
+  })
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
@@ -100,6 +105,88 @@ pub fn login(
     session_token: session_issue.session_token,
     session_cookie_max_age: auth_config.session_cookie_max_age,
   ))
+}
+
+fn login_tx(
+  request: login_dto.LoginRequest,
+  ctx: context.Context,
+  login_token_max_age: Int,
+  user_outcome: UserOutcome,
+  user: user_model.User,
+  session_issue: session_issue_domain.SessionIssue,
+  user_action: user_action.UserAction,
+) -> program_types.TransactionProgram(LoginTokenVerification) {
+  use verification <- transaction_program.and_then(verify_login_token_tx(
+    request,
+    ctx,
+    login_token_max_age,
+  ))
+
+  case verification {
+    InvalidToken -> transaction_program.succeed(InvalidToken)
+    ValidToken -> {
+      use _ <- transaction_program.and_then(user_outcome.persist_fn(user))
+      use _ <- transaction_program.and_then(auth_effect.create_session_tx(
+        session_issue.session,
+      ))
+      use _ <- transaction_program.and_then(
+        user_action_effect.create_user_action_tx(user_action),
+      )
+      transaction_program.succeed(ValidToken)
+    }
+  }
+}
+
+fn verify_login_token_tx(
+  request: login_dto.LoginRequest,
+  ctx: context.Context,
+  login_token_max_age: Int,
+) -> program_types.TransactionProgram(LoginTokenVerification) {
+  use tokens <- transaction_program.and_then(
+    auth_effect.list_login_tokens_by_email_tx(
+      request.email,
+      subtract_seconds(ctx.timestamp, login_token_max_age),
+      valid_login_token_count,
+    ),
+  )
+
+  let shared_attempt_count =
+    list.fold(tokens, 0, fn(count, token) {
+      int.max(count, token.attempt_count)
+    })
+
+  case tokens, shared_attempt_count >= max_login_token_attempts {
+    [], _ -> transaction_program.succeed(InvalidToken)
+    _, True -> transaction_program.succeed(InvalidToken)
+    _, False -> {
+      let matching_token =
+        tokens
+        |> list.find(fn(token) { token.token == request.token })
+        |> option.from_result()
+      let next_attempt_count = shared_attempt_count + 1
+      let updated_tokens =
+        list.map(tokens, fn(token) {
+          let token =
+            login_token_model.set_attempt_count(token, next_attempt_count)
+          case matching_token {
+            option.Some(matching) if matching.id == token.id ->
+              login_token_model.mark_as_used(token, ctx.timestamp)
+            _ -> token
+          }
+        })
+      use _ <- transaction_program.and_then(
+        transaction_program.sequence(list.map(
+          updated_tokens,
+          auth_effect.update_login_token_tx,
+        )),
+      )
+
+      case matching_token {
+        option.Some(_) -> transaction_program.succeed(ValidToken)
+        option.None -> transaction_program.succeed(InvalidToken)
+      }
+    }
+  }
 }
 
 pub fn request_from_dynamic(
@@ -150,36 +237,12 @@ fn update_or_create_user(
   }
 }
 
-fn find_valid_token(
-  tokens: List(login_token_model.LoginToken),
-  submitted_token: String,
-  now: timestamp.Timestamp,
-  max_age: Int,
-) -> Result(login_token_model.LoginToken, error.Error) {
-  case list.find(tokens, fn(token) { token.token == submitted_token }) {
-    Error(_) -> Error(error.auth(auth_error.InvalidLoginToken))
-    Ok(token) ->
-      case token.used_at {
-        option.Some(_) -> Error(error.auth(auth_error.LoginTokenUsed))
-        option.None ->
-          case token_is_still_valid(token.created_at, now, max_age) {
-            True -> Ok(token)
-            False -> Error(error.auth(auth_error.LoginTokenExpired))
-          }
-      }
-  }
-}
-
-fn token_is_still_valid(
-  created_at: timestamp.Timestamp,
-  now: timestamp.Timestamp,
-  max_age: Int,
-) -> Bool {
-  let #(created_seconds, _) =
-    timestamp.to_unix_seconds_and_nanoseconds(created_at)
-  let #(now_seconds, _) = timestamp.to_unix_seconds_and_nanoseconds(now)
-
-  now_seconds >= created_seconds && now_seconds - created_seconds <= max_age
+fn subtract_seconds(
+  ts: timestamp.Timestamp,
+  seconds: Int,
+) -> timestamp.Timestamp {
+  let #(unix_seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
+  timestamp.from_unix_seconds_and_nanoseconds(unix_seconds - seconds, nanos)
 }
 
 fn new_user(

@@ -30,15 +30,21 @@ pub type AuthHandlers {
       pagination_model.CursorPagination,
       auth_algebra.UserListFilters,
     ) -> Result(List(user_model.HydratedUser), db_error.DbQueryError),
-    list_login_tokens_by_email: fn(email_address_model.EmailAddress, Int) ->
-      Result(List(login_token_model.LoginToken), db_error.DbQueryError),
+    list_login_tokens_by_email: fn(
+      email_address_model.EmailAddress,
+      Timestamp,
+      Int,
+    ) -> Result(List(login_token_model.LoginToken), db_error.DbQueryError),
     get_passkey_credential_by_credential_id: fn(BitArray) ->
       Result(
         option.Option(passkey_credential_model.PasskeyCredential),
         db_error.DbQueryError,
       ),
     list_passkey_credentials_by_user_id: fn(uuid.Uuid) ->
-      Result(List(passkey_credential_model.PasskeyCredential), db_error.DbQueryError),
+      Result(
+        List(passkey_credential_model.PasskeyCredential),
+        db_error.DbQueryError,
+      ),
     list_sessions_by_user_id: fn(uuid.Uuid, Timestamp, Timestamp) ->
       Result(List(session_model.Session), db_error.DbQueryError),
     get_passkey_challenge_by_id: fn(uuid.Uuid) ->
@@ -106,8 +112,8 @@ pub fn new(db: db_helpers.Db) -> AuthHandlers {
     list_users: fn(is_email, pagination, filters) {
       list_users(db, is_email, pagination, filters)
     },
-    list_login_tokens_by_email: fn(email, limit) {
-      list_login_tokens_by_email(db, email, limit)
+    list_login_tokens_by_email: fn(email, created_since, limit) {
+      list_login_tokens_by_email(db, email, created_since, limit)
     },
     get_passkey_credential_by_credential_id: fn(credential_id) {
       get_passkey_credential_by_credential_id(db, credential_id)
@@ -271,11 +277,16 @@ pub fn list_users(
 pub fn list_login_tokens_by_email(
   db: db_helpers.Db,
   email: email_address_model.EmailAddress,
+  created_since: Timestamp,
   limit: Int,
 ) -> Result(List(login_token_model.LoginToken), db_error.DbQueryError) {
   db_helpers.query(
     db,
-    sql.list_login_tokens_by_email(email_address_model.to_string(email), limit),
+    sql.list_login_tokens_by_email(
+      email: email_address_model.to_string(email),
+      created_at: created_since,
+      limit: limit,
+    ),
     fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
   |> result.try(fn(returned) { login_tokens_from_rows(returned.rows) })
@@ -301,15 +312,16 @@ pub fn get_passkey_credential_by_credential_id(
 pub fn list_passkey_credentials_by_user_id(
   db: db_helpers.Db,
   user_id: uuid.Uuid,
-) -> Result(List(passkey_credential_model.PasskeyCredential), db_error.DbQueryError) {
+) -> Result(
+  List(passkey_credential_model.PasskeyCredential),
+  db_error.DbQueryError,
+) {
   db_helpers.query(
     db,
     sql.list_passkey_credentials_by_user_id(uuid.to_bit_array(user_id)),
     fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
-  |> result.try(fn(returned) {
-    passkey_credentials_from_rows(returned.rows)
-  })
+  |> result.try(fn(returned) { passkey_credentials_from_rows(returned.rows) })
 }
 
 pub fn list_sessions_by_user_id(
@@ -327,7 +339,9 @@ pub fn list_sessions_by_user_id(
     ),
     fn(err) { db_error.DbQueryError(string.inspect(err)) },
   )
-  |> result.try(fn(returned) { session_identities_from_list_rows(returned.rows) })
+  |> result.try(fn(returned) {
+    session_identities_from_list_rows(returned.rows)
+  })
 }
 
 pub fn get_passkey_challenge_by_id(
@@ -337,9 +351,11 @@ pub fn get_passkey_challenge_by_id(
   option.Option(passkey_challenge_model.PasskeyChallenge),
   db_error.DbQueryError,
 ) {
-  db_helpers.query(db, sql.get_passkey_challenge_by_id(uuid.to_bit_array(id)), fn(err) {
-    db_error.DbQueryError(string.inspect(err))
-  })
+  db_helpers.query(
+    db,
+    sql.get_passkey_challenge_by_id(uuid.to_bit_array(id)),
+    fn(err) { db_error.DbQueryError(string.inspect(err)) },
+  )
   |> result.try(fn(returned) { passkey_challenge_from_rows(returned.rows) })
 }
 
@@ -499,6 +515,7 @@ pub fn create_login_token(
       id: uuid.to_bit_array(login_token.id),
       email: email_address_model.to_string(login_token.email),
       token: login_token.token,
+      attempt_count: login_token.attempt_count,
       created_at: login_token.created_at,
       used_at: login_token.used_at,
     ),
@@ -708,6 +725,7 @@ pub fn update_login_token(
     sql.update_login_token(
       email: email_address_model.to_string(login_token.email),
       token: login_token.token,
+      attempt_count: login_token.attempt_count,
       created_at: login_token.created_at,
       used_at: login_token.used_at,
       id: uuid.to_bit_array(login_token.id),
@@ -1026,6 +1044,7 @@ fn login_token_from_row(
         id: uuid_helpers.from_bit_array(row.id),
         email: valid_email,
         token: row.token,
+        attempt_count: row.attempt_count,
         created_at: row.created_at,
         used_at: row.used_at,
       ))
@@ -1038,20 +1057,25 @@ fn login_token_from_row(
 
 fn passkey_credential_from_lookup_rows(
   rows: List(sql.GetPasskeyCredentialByCredentialId),
-) -> Result(option.Option(passkey_credential_model.PasskeyCredential), db_error.DbQueryError) {
+) -> Result(
+  option.Option(passkey_credential_model.PasskeyCredential),
+  db_error.DbQueryError,
+) {
   case rows {
     [] -> Ok(option.None)
-    [first] -> passkey_credential_from_lookup_row(first) |> result.map(option.Some)
+    [first] ->
+      passkey_credential_from_lookup_row(first) |> result.map(option.Some)
     _ ->
-      Error(db_error.DbQueryError(
-        "Expected at most one passkey credential row",
-      ))
+      Error(db_error.DbQueryError("Expected at most one passkey credential row"))
   }
 }
 
 fn passkey_credentials_from_rows(
   rows: List(sql.ListPasskeyCredentialsByUserId),
-) -> Result(List(passkey_credential_model.PasskeyCredential), db_error.DbQueryError) {
+) -> Result(
+  List(passkey_credential_model.PasskeyCredential),
+  db_error.DbQueryError,
+) {
   case rows {
     [] -> Ok([])
     [first, ..rest] -> {
@@ -1140,14 +1164,15 @@ fn optional_browser(
 
 fn passkey_challenge_from_rows(
   rows: List(sql.GetPasskeyChallengeById),
-) -> Result(option.Option(passkey_challenge_model.PasskeyChallenge), db_error.DbQueryError) {
+) -> Result(
+  option.Option(passkey_challenge_model.PasskeyChallenge),
+  db_error.DbQueryError,
+) {
   case rows {
     [] -> Ok(option.None)
     [first] -> passkey_challenge_from_row(first) |> result.map(option.Some)
     _ ->
-      Error(db_error.DbQueryError(
-        "Expected at most one passkey challenge row",
-      ))
+      Error(db_error.DbQueryError("Expected at most one passkey challenge row"))
   }
 }
 

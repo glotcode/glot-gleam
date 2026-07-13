@@ -2,9 +2,9 @@ import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/effect/error/db_error
 import glot_core/auth/account_model
+import glot_core/auth/login_token_model
 import glot_core/auth/passkey_challenge_model
 import glot_core/auth/passkey_credential_model
-import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
@@ -38,6 +38,7 @@ pub type AuthEffect(next) {
   )
   ListLoginTokensByEmail(
     email: email_address_model.EmailAddress,
+    created_since: Timestamp,
     limit: Int,
     next: fn(List(login_token_model.LoginToken)) -> next,
   )
@@ -164,10 +165,13 @@ pub fn map(effect: AuthEffect(a), f: fn(a) -> b) -> AuthEffect(b) {
       ListUsers(pagination: pagination, filters: filters, next: fn(value) {
         f(next(value))
       })
-    ListLoginTokensByEmail(email:, limit:, next:) ->
-      ListLoginTokensByEmail(email: email, limit: limit, next: fn(value) {
-        f(next(value))
-      })
+    ListLoginTokensByEmail(email:, created_since:, limit:, next:) ->
+      ListLoginTokensByEmail(
+        email: email,
+        created_since: created_since,
+        limit: limit,
+        next: fn(value) { f(next(value)) },
+      )
     GetPasskeyCredentialByCredentialId(credential_id:, next:) ->
       GetPasskeyCredentialByCredentialId(
         credential_id: credential_id,

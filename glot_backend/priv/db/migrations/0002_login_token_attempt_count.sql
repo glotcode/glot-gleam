@@ -1,0 +1,2 @@
+ALTER TABLE login_tokens
+ADD COLUMN IF NOT EXISTS attempt_count INT NOT NULL DEFAULT 0;

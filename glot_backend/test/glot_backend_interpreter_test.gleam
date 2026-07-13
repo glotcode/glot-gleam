@@ -283,9 +283,7 @@ fn test_handlers() -> handlers.Handlers {
     webauthn: webauthn_handlers.WebauthnHandlers(
       new_registration_challenge: fn(_, _, _) { Error("not implemented") },
       register: fn(_, _, _) { Error("not implemented") },
-      new_authentication_challenge: fn(_, _, _, _) {
-        Error("not implemented")
-      },
+      new_authentication_challenge: fn(_, _, _, _) { Error("not implemented") },
       authenticate: fn(_, _, _, _, _, _) { Error("not implemented") },
     ),
     email_template: email_template_handlers.EmailTemplateHandlers(
@@ -347,7 +345,7 @@ fn test_handlers() -> handlers.Handlers {
       get_user_by_email: fn(_, _) { Ok(option.None) },
       get_user_by_id: fn(_, _) { Ok(option.None) },
       list_users: fn(_, _, _) { Ok([]) },
-      list_login_tokens_by_email: fn(_, _) { Ok([]) },
+      list_login_tokens_by_email: fn(_, _, _) { Ok([]) },
       get_passkey_credential_by_credential_id: fn(_) { Ok(option.None) },
       list_passkey_credentials_by_user_id: fn(_) { Ok([]) },
       list_sessions_by_user_id: fn(_, _, _) { Ok([]) },

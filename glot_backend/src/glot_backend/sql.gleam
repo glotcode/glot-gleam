@@ -2782,17 +2782,33 @@ pub type ListLoginTokensByEmail {
     id: BitArray,
     email: String,
     token: String,
+    attempt_count: Int,
     created_at: Timestamp,
     used_at: Option(Timestamp),
   )
 }
 
-pub fn list_login_tokens_by_email(email email: String, limit limit: Int) {
+pub fn list_login_tokens_by_email(
+  email email: String,
+  created_at created_at: Timestamp,
+  limit limit: Int,
+) {
   let sql =
-    "SELECT id, email, token, created_at, used_at FROM login_tokens WHERE email = $1 ORDER BY created_at DESC LIMIT $2"
+    "SELECT id, email, token, attempt_count, created_at, used_at
+FROM login_tokens
+WHERE email = $1
+  AND used_at IS NULL
+  AND created_at >= $2
+ORDER BY created_at DESC
+LIMIT $3
+FOR UPDATE"
   #(
     sql,
-    [dev.ParamString(email), dev.ParamInt(limit)],
+    [
+      dev.ParamString(email),
+      dev.ParamTimestamp(created_at),
+      dev.ParamInt(limit),
+    ],
     list_login_tokens_by_email_decoder(),
   )
 }
@@ -2803,12 +2819,14 @@ pub fn list_login_tokens_by_email_decoder() -> decode.Decoder(
   use id <- decode.field(0, decode.bit_array)
   use email <- decode.field(1, decode.string)
   use token <- decode.field(2, decode.string)
-  use created_at <- decode.field(3, dev.datetime_decoder())
-  use used_at <- decode.field(4, decode.optional(dev.datetime_decoder()))
+  use attempt_count <- decode.field(3, decode.int)
+  use created_at <- decode.field(4, dev.datetime_decoder())
+  use used_at <- decode.field(5, decode.optional(dev.datetime_decoder()))
   decode.success(ListLoginTokensByEmail(
     id:,
     email:,
     token:,
+    attempt_count:,
     created_at:,
     used_at:,
   ))
@@ -3575,15 +3593,17 @@ pub fn insert_login_token(
   id id: BitArray,
   email email: String,
   token token: String,
+  attempt_count attempt_count: Int,
   created_at created_at: Timestamp,
   used_at used_at: Option(Timestamp),
 ) {
   let sql =
-    "INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2, $3, $4, $5)"
+    "INSERT INTO login_tokens (id, email, token, attempt_count, created_at, used_at) VALUES ($1, $2, $3, $4, $5, $6)"
   #(sql, [
     dev.ParamBitArray(id),
     dev.ParamString(email),
     dev.ParamString(token),
+    dev.ParamInt(attempt_count),
     dev.ParamTimestamp(created_at),
     dev.ParamNullable(option.map(used_at, fn(v) { dev.ParamTimestamp(v) })),
   ])
@@ -3788,15 +3808,17 @@ WHERE id = $8"
 pub fn update_login_token(
   email email: String,
   token token: String,
+  attempt_count attempt_count: Int,
   created_at created_at: Timestamp,
   used_at used_at: Option(Timestamp),
   id id: BitArray,
 ) {
   let sql =
-    "UPDATE login_tokens SET email = $1, token = $2, created_at = $3, used_at = $4 WHERE id = $5"
+    "UPDATE login_tokens SET email = $1, token = $2, attempt_count = $3, created_at = $4, used_at = $5 WHERE id = $6"
   #(sql, [
     dev.ParamString(email),
     dev.ParamString(token),
+    dev.ParamInt(attempt_count),
     dev.ParamTimestamp(created_at),
     dev.ParamNullable(option.map(used_at, fn(v) { dev.ParamTimestamp(v) })),
     dev.ParamBitArray(id),

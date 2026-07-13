@@ -7,6 +7,7 @@ import gleam/string
 import gleam/time/timestamp
 import gleeunit
 import glot_backend/app_config
+import glot_backend/base64url
 import glot_backend/context
 import glot_backend/domain/account/cancel_delete_account_domain
 import glot_backend/domain/account/schedule_delete_account_domain
@@ -70,7 +71,6 @@ import glot_backend/effect/run_log/run_log_algebra
 import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 import glot_backend/effect/webauthn/webauthn_algebra
-import glot_backend/base64url
 import glot_backend/email_template
 import glot_backend/webauthn
 import glot_core/admin/auth_config_dto
@@ -231,10 +231,7 @@ pub fn get_session_rejects_idle_expired_session_test() {
       ]),
     )
   let ctx =
-    context.Context(
-      ..fixture.ctx,
-      timestamp: add_seconds(test_timestamp(), 80),
-    )
+    context.Context(..fixture.ctx, timestamp: add_seconds(test_timestamp(), 80))
 
   let #(run_result, _) =
     run_test_program(session_domain.get_session(ctx), ctx, db)
@@ -960,6 +957,7 @@ pub fn login_creates_account_user_and_session_in_foreign_key_order_test() {
       id: must_uuid("00000000-0000-0000-0000-000000000501"),
       email: test_email_address(),
       token: "login-token",
+      attempt_count: 0,
       created_at: test_timestamp(),
       used_at: option.None,
     )
@@ -1004,6 +1002,82 @@ pub fn login_creates_account_user_and_session_in_foreign_key_order_test() {
       "create_session",
       "create_user_action",
     ]
+  let assert Ok(updated_login_token) =
+    dict.get(updated_db.login_tokens, uuid_key(login_token.id))
+  assert updated_login_token.attempt_count == 1
+  assert updated_login_token.used_at == option.Some(ctx.timestamp)
+}
+
+pub fn invalid_login_increments_all_valid_token_attempt_counts_test() {
+  let current_token =
+    login_token_model.LoginToken(
+      id: must_uuid("00000000-0000-0000-0000-000000000511"),
+      email: test_email_address(),
+      token: "current-token",
+      attempt_count: 2,
+      created_at: test_timestamp(),
+      used_at: option.None,
+    )
+  let previous_token =
+    login_token_model.LoginToken(
+      ..current_token,
+      id: must_uuid("00000000-0000-0000-0000-000000000512"),
+      token: "previous-token",
+      attempt_count: 4,
+    )
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      login_tokens: dict.from_list([
+        #(uuid_key(current_token.id), current_token),
+        #(uuid_key(previous_token.id), previous_token),
+      ]),
+    )
+  let request =
+    login_dto.LoginRequest(email: test_email_address(), token: "wrong-token")
+  let ctx = login_test_context()
+
+  let #(run_result, updated_db) =
+    run_test_program(login_domain.login(ctx, request), ctx, db)
+
+  assert run_result == Error(error.auth(auth_error.InvalidLoginToken))
+  let assert Ok(updated_current_token) =
+    dict.get(updated_db.login_tokens, uuid_key(current_token.id))
+  let assert Ok(updated_previous_token) =
+    dict.get(updated_db.login_tokens, uuid_key(previous_token.id))
+  assert updated_current_token.attempt_count == 5
+  assert updated_previous_token.attempt_count == 5
+  assert list.reverse(updated_db.write_steps)
+    == ["update_login_token", "update_login_token"]
+}
+
+pub fn login_at_shared_attempt_limit_is_rejected_without_session_test() {
+  let login_token =
+    login_token_model.LoginToken(
+      id: must_uuid("00000000-0000-0000-0000-000000000521"),
+      email: test_email_address(),
+      token: "login-token",
+      attempt_count: 10,
+      created_at: test_timestamp(),
+      used_at: option.None,
+    )
+  let db =
+    TestDb(
+      ..empty_test_db(),
+      login_tokens: dict.from_list([#(uuid_key(login_token.id), login_token)]),
+    )
+  let request =
+    login_dto.LoginRequest(email: test_email_address(), token: "login-token")
+  let ctx = login_test_context()
+
+  let #(run_result, updated_db) =
+    run_test_program(login_domain.login(ctx, request), ctx, db)
+
+  assert run_result == Error(error.auth(auth_error.InvalidLoginToken))
+  assert updated_db.write_steps == []
+  assert dict.is_empty(updated_db.accounts)
+  assert dict.is_empty(updated_db.users)
+  assert dict.is_empty(updated_db.sessions)
 }
 
 pub fn send_login_token_for_suspended_user_returns_account_state_error_test() {
@@ -1032,12 +1106,54 @@ pub fn send_login_token_for_suspended_user_returns_account_state_error_test() {
   assert db.write_steps == []
 }
 
+pub fn new_login_token_inherits_shared_attempt_count_test() {
+  let user_action_id = must_uuid("00000000-0000-0000-0000-000000000531")
+  let login_token_id = must_uuid("00000000-0000-0000-0000-000000000532")
+  let job_id = must_uuid("00000000-0000-0000-0000-000000000533")
+  let fixture =
+    integration_fixture(
+      next_uuids: [user_action_id, login_token_id, job_id],
+      jobs: [],
+      account_delete_job_id: option.None,
+    )
+  let existing_token =
+    login_token_model.LoginToken(
+      id: must_uuid("00000000-0000-0000-0000-000000000534"),
+      email: fixture.user.email,
+      token: "existing-token",
+      attempt_count: 7,
+      created_at: fixture.ctx.timestamp,
+      used_at: option.None,
+    )
+  let db =
+    TestDb(
+      ..fixture.db,
+      login_tokens: dict.from_list([
+        #(uuid_key(existing_token.id), existing_token),
+      ]),
+    )
+  let request = login_token_dto.LoginTokenRequest(email: fixture.user.email)
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      send_login_token_domain.send_login_token(fixture.ctx, request),
+      fixture.ctx,
+      db,
+    )
+
+  assert run_result == Ok(Nil)
+  let assert Ok(new_token) =
+    dict.get(updated_db.login_tokens, uuid_key(login_token_id))
+  assert new_token.attempt_count == 7
+}
+
 pub fn login_for_suspended_user_returns_account_state_error_test() {
   let login_token =
     login_token_model.LoginToken(
       id: must_uuid("00000000-0000-0000-0000-000000000601"),
       email: test_email_address(),
       token: "login-token",
+      attempt_count: 0,
       created_at: test_timestamp(),
       used_at: option.None,
     )
@@ -1175,7 +1291,8 @@ pub fn begin_passkey_login_without_credentials_creates_anonymous_challenge_test(
   let assert option.Some(challenge) =
     find_passkey_challenge_by_id(updated_db, response.challenge_id)
   assert challenge.user_id == option.None
-  assert challenge.flow == passkey_challenge_model.PasskeyAuthenticationChallenge
+  assert challenge.flow
+    == passkey_challenge_model.PasskeyAuthenticationChallenge
 }
 
 pub fn finish_passkey_login_with_valid_credential_and_anonymous_challenge_logs_user_in_test() {
@@ -1235,7 +1352,10 @@ pub fn finish_passkey_login_with_valid_credential_and_anonymous_challenge_logs_u
     == option.None
 
   let assert option.Some(updated_credential) =
-    find_passkey_credential_by_credential_id(updated_db, credential.credential_id)
+    find_passkey_credential_by_credential_id(
+      updated_db,
+      credential.credential_id,
+    )
   assert updated_credential.sign_count == 2
   assert updated_credential.last_used_at == option.Some(test_timestamp())
 
@@ -1977,6 +2097,7 @@ pub fn clean_login_tokens_deletes_only_old_rows_test() {
       id: must_uuid("00000000-0000-0000-0000-000000000c01"),
       email: test_email_address(),
       token: "old-login-token",
+      attempt_count: 0,
       created_at: timestamp.from_unix_seconds_and_nanoseconds(1_697_300_000, 0),
       used_at: option.None,
     )
@@ -2093,7 +2214,10 @@ type TestDb {
     users: Dict(String, user_model.User),
     email_templates: Dict(String, email_template.EmailTemplate),
     login_tokens: Dict(String, login_token_model.LoginToken),
-    passkey_credentials: Dict(String, passkey_credential_model.PasskeyCredential),
+    passkey_credentials: Dict(
+      String,
+      passkey_credential_model.PasskeyCredential,
+    ),
     passkey_challenges: Dict(String, passkey_challenge_model.PasskeyChallenge),
     sessions: Dict(String, session_model.Session),
     session_ids_by_token: Dict(String, String),
@@ -2465,13 +2589,27 @@ fn run_test_webauthn_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
-    webauthn_algebra.NewRegistrationChallenge(origin, rp_id, user_verification, next) ->
+    webauthn_algebra.NewRegistrationChallenge(
+      origin,
+      rp_id,
+      user_verification,
+      next,
+    ) ->
       run_test_program(
-        next(webauthn.new_registration_challenge(origin, rp_id, user_verification)),
+        next(webauthn.new_registration_challenge(
+          origin,
+          rp_id,
+          user_verification,
+        )),
         ctx,
         db,
       )
-    webauthn_algebra.Register(attestation_object, client_data_json, challenge_state, next) ->
+    webauthn_algebra.Register(
+      attestation_object,
+      client_data_json,
+      challenge_state,
+      next,
+    ) ->
       run_test_program(
         next(webauthn.register(
           attestation_object,
@@ -2481,7 +2619,13 @@ fn run_test_webauthn_effect(
         ctx,
         db,
       )
-    webauthn_algebra.NewAuthenticationChallenge(origin, rp_id, user_verification, credentials, next) ->
+    webauthn_algebra.NewAuthenticationChallenge(
+      origin,
+      rp_id,
+      user_verification,
+      credentials,
+      next,
+    ) ->
       run_test_program(
         next(webauthn.new_authentication_challenge(
           origin,
@@ -2505,18 +2649,18 @@ fn run_test_webauthn_effect(
         "test-passkey-login-success" ->
           run_test_program(next(Ok(#(2, <<>>))), ctx, db)
         _ ->
-      run_test_program(
-        next(webauthn.authenticate(
-          credential_id,
-          authenticator_data,
-          signature,
-          client_data_json,
-          challenge_state,
-          credentials,
-        )),
-        ctx,
-        db,
-      )
+          run_test_program(
+            next(webauthn.authenticate(
+              credential_id,
+              authenticator_data,
+              signature,
+              client_data_json,
+              challenge_state,
+              credentials,
+            )),
+            ctx,
+            db,
+          )
       }
   }
 }
@@ -3317,9 +3461,9 @@ fn run_test_auth_effect(
       run_test_program(next(find_user_by_id(db, id)), ctx, db)
     auth_algebra.ListUsers(pagination:, filters:, next:) ->
       run_test_program(next(find_users(db, pagination, filters)), ctx, db)
-    auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
+    auth_algebra.ListLoginTokensByEmail(email:, created_since:, limit:, next:) ->
       run_test_program(
-        next(find_login_tokens_by_email(db, email, limit)),
+        next(find_login_tokens_by_email(db, email, created_since, limit)),
         ctx,
         db,
       )
@@ -3330,7 +3474,11 @@ fn run_test_auth_effect(
         db,
       )
     auth_algebra.ListPasskeyCredentialsByUserId(user_id:, next:) ->
-      run_test_program(next(find_passkey_credentials_by_user_id(db, user_id)), ctx, db)
+      run_test_program(
+        next(find_passkey_credentials_by_user_id(db, user_id)),
+        ctx,
+        db,
+      )
     auth_algebra.ListSessionsByUserId(
       user_id:,
       created_since:,
@@ -3338,14 +3486,12 @@ fn run_test_auth_effect(
       next:,
     ) ->
       run_test_program(
-        next(
-          find_sessions_by_user_id(
-            db,
-            user_id,
-            created_since,
-            last_activity_since,
-          ),
-        ),
+        next(find_sessions_by_user_id(
+          db,
+          user_id,
+          created_since,
+          last_activity_since,
+        )),
         ctx,
         db,
       )
@@ -3429,7 +3575,11 @@ fn run_test_auth_effect(
         upsert_passkey_challenge(db, passkey_challenge),
       )
     auth_algebra.DeletePasskeyCredential(id:, next:) ->
-      run_test_program(next(Ok(Nil)), ctx, delete_passkey_credential_by_id(db, id))
+      run_test_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_passkey_credential_by_id(db, id),
+      )
     auth_algebra.UpdateLoginToken(login_token:, next:) ->
       run_test_program(next(Ok(Nil)), ctx, upsert_login_token(db, login_token))
     auth_algebra.UpdatePasskeyCredential(passkey_credential:, next:) ->
@@ -3445,7 +3595,11 @@ fn run_test_auth_effect(
         delete_login_tokens_before(db, before),
       )
     auth_algebra.DeletePasskeyChallenge(id:, next:) ->
-      run_test_program(next(Ok(Nil)), ctx, delete_passkey_challenge_by_id(db, id))
+      run_test_program(
+        next(Ok(Nil)),
+        ctx,
+        delete_passkey_challenge_by_id(db, id),
+      )
   }
 }
 
@@ -3461,9 +3615,9 @@ fn run_test_auth_tx_effect(
       run_test_tx_program(next(find_user_by_id(db, id)), ctx, db)
     auth_algebra.ListUsers(pagination:, filters:, next:) ->
       run_test_tx_program(next(find_users(db, pagination, filters)), ctx, db)
-    auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) ->
+    auth_algebra.ListLoginTokensByEmail(email:, created_since:, limit:, next:) ->
       run_test_tx_program(
-        next(find_login_tokens_by_email(db, email, limit)),
+        next(find_login_tokens_by_email(db, email, created_since, limit)),
         ctx,
         db,
       )
@@ -3486,14 +3640,12 @@ fn run_test_auth_tx_effect(
       next:,
     ) ->
       run_test_tx_program(
-        next(
-          find_sessions_by_user_id(
-            db,
-            user_id,
-            created_since,
-            last_activity_since,
-          ),
-        ),
+        next(find_sessions_by_user_id(
+          db,
+          user_id,
+          created_since,
+          last_activity_since,
+        )),
         ctx,
         db,
       )
@@ -4223,20 +4375,32 @@ fn find_session(db: TestDb, session_id: String) -> session_model.Session {
 fn find_login_tokens_by_email(
   db: TestDb,
   email: email_address_model.EmailAddress,
+  created_since: timestamp.Timestamp,
   limit: Int,
 ) -> List(login_token_model.LoginToken) {
-  let _ = limit
-
   db.login_tokens
   |> dict.to_list
   |> list.filter(fn(entry) {
     let #(_, login_token) = entry
     login_token.email == email
+    && login_token.used_at == option.None
+    && timestamp_helpers.to_microseconds(login_token.created_at)
+    >= timestamp_helpers.to_microseconds(created_since)
   })
   |> list.map(fn(entry) {
     let #(_, login_token) = entry
     login_token
   })
+  |> list.sort(fn(a, b) {
+    case
+      timestamp_helpers.to_microseconds(a.created_at)
+      > timestamp_helpers.to_microseconds(b.created_at)
+    {
+      True -> order.Lt
+      False -> order.Gt
+    }
+  })
+  |> list.take(limit)
 }
 
 fn find_passkey_credential_by_credential_id(
@@ -4770,6 +4934,19 @@ fn add_seconds(
 ) -> timestamp.Timestamp {
   let #(seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
   timestamp.from_unix_seconds_and_nanoseconds(seconds + seconds_to_add, nanos)
+}
+
+fn login_test_context() -> context.Context {
+  context.Context(
+    ..test_context(),
+    timestamp: test_timestamp(),
+    client_info: context.ClientInfo(
+      session_token: option.None,
+      ip: option.Some("127.0.0.1"),
+      user_agent: option.Some("gleeunit"),
+      referrer: option.None,
+    ),
+  )
 }
 
 fn test_context() -> context.Context {

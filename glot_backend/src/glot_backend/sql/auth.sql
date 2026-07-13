@@ -137,7 +137,14 @@ ORDER BY users.id ASC
 LIMIT sqlc.arg(page_limit);
 
 -- name: ListLoginTokensByEmail :many
-SELECT id, email, token, created_at, used_at FROM login_tokens WHERE email = $1 ORDER BY created_at DESC LIMIT $2;
+SELECT id, email, token, attempt_count, created_at, used_at
+FROM login_tokens
+WHERE email = $1
+  AND used_at IS NULL
+  AND created_at >= $2
+ORDER BY created_at DESC
+LIMIT $3
+FOR UPDATE;
 
 -- name: GetPasskeyCredentialByCredentialId :one
 SELECT
@@ -314,7 +321,7 @@ INSERT INTO users (id, account_id, email, username, role, last_login_at, created
 INSERT INTO accounts (id, account_state, account_state_reason, account_tier, delete_job_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: InsertLoginToken :exec
-INSERT INTO login_tokens (id, email, token, created_at, used_at) VALUES ($1, $2, $3, $4, $5);
+INSERT INTO login_tokens (id, email, token, attempt_count, created_at, used_at) VALUES ($1, $2, $3, $4, $5, $6);
 
 -- name: InsertSession :exec
 INSERT INTO sessions (id, user_id, token, previous_token, previous_token_valid_until, ip, os_name, browser_name, user_agent, created_at, token_updated_at, last_activity_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
@@ -363,7 +370,7 @@ SET
 WHERE id = $8;
 
 -- name: UpdateLoginToken :exec
-UPDATE login_tokens SET email = $1, token = $2, created_at = $3, used_at = $4 WHERE id = $5;
+UPDATE login_tokens SET email = $1, token = $2, attempt_count = $3, created_at = $4, used_at = $5 WHERE id = $6;
 
 -- name: UpdatePasskeyCredential :exec
 UPDATE passkey_credentials

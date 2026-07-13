@@ -91,9 +91,10 @@ pub fn run(
         )
       }
     }
-    auth_algebra.ListLoginTokensByEmail(email:, limit:, next:) -> {
+    auth_algebra.ListLoginTokensByEmail(email:, created_since:, limit:, next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = handlers.auth.list_login_tokens_by_email(email, limit)
+      let result =
+        handlers.auth.list_login_tokens_by_email(email, created_since, limit)
       case result {
         Ok(value) ->
           continue(

@@ -1,7 +1,10 @@
 import gleam/dict
 import gleam/dynamic
+import gleam/int
+import gleam/list
 import gleam/option
 import gleam/result
+import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/crypto_token
 import glot_backend/domain/job/job_type_policy_domain
@@ -17,6 +20,7 @@ import glot_backend/effect/job/job_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
+import glot_backend/effect/transaction/transaction_program
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/email_template
 import glot_backend/log
@@ -44,8 +48,10 @@ pub fn send_login_token(
     action: api_action.public(public_action.SendLoginTokenAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  let auth_config = dynamic_config.auth_config(config)
 
-  use token <- program.and_then(basic_effect.new_token(6, crypto_token.Numeric))
+  use token <- program.and_then(basic_effect.new_token(8, crypto_token.Numeric))
   use login_token_id <- program.and_then(basic_effect.uuid_v7())
   use job_id <- program.and_then(basic_effect.uuid_v7())
 
@@ -104,15 +110,48 @@ pub fn send_login_token(
       id: login_token_id,
       email: request.email,
       token: token,
+      attempt_count: 0,
       created_at: ctx.timestamp,
       used_at: option.None,
     )
 
   transaction_effect.run_all([
-    auth_effect.create_login_token_tx(login_token),
+    create_login_token_tx(
+      login_token,
+      subtract_seconds(ctx.timestamp, auth_config.login_token_max_age),
+    ),
     job_effect.create_job_tx(send_email_job),
     user_action_effect.create_user_action_tx(user_action),
   ])
+}
+
+fn create_login_token_tx(
+  login_token: login_token_model.LoginToken,
+  created_since: timestamp.Timestamp,
+) -> program_types.TransactionProgram(Nil) {
+  use valid_tokens <- transaction_program.and_then(
+    auth_effect.list_login_tokens_by_email_tx(
+      login_token.email,
+      created_since,
+      2,
+    ),
+  )
+  let attempt_count =
+    list.fold(valid_tokens, 0, fn(count, token) {
+      int.max(count, token.attempt_count)
+    })
+
+  auth_effect.create_login_token_tx(
+    login_token_model.LoginToken(..login_token, attempt_count: attempt_count),
+  )
+}
+
+fn subtract_seconds(
+  ts: timestamp.Timestamp,
+  seconds: Int,
+) -> timestamp.Timestamp {
+  let #(unix_seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
+  timestamp.from_unix_seconds_and_nanoseconds(unix_seconds - seconds, nanos)
 }
 
 fn sender_from_config(

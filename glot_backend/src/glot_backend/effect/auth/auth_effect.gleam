@@ -5,9 +5,9 @@ import glot_backend/effect/error
 import glot_backend/effect/error/db_error
 import glot_backend/effect/program_types
 import glot_core/auth/account_model
+import glot_core/auth/login_token_model
 import glot_core/auth/passkey_challenge_model
 import glot_core/auth/passkey_credential_model
-import glot_core/auth/login_token_model
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
@@ -45,11 +45,13 @@ pub fn list_users(
 
 pub fn list_login_tokens_by_email(
   email email: email_address_model.EmailAddress,
+  created_since created_since: Timestamp,
   limit limit: Int,
 ) -> program_types.Program(List(login_token_model.LoginToken)) {
   program_types.Impure(
     program_types.DbEffect(list_login_tokens_by_email_effect(
       email,
+      created_since,
       limit,
       program_types.Pure,
     )),
@@ -323,10 +325,12 @@ pub fn list_users_tx(
 
 pub fn list_login_tokens_by_email_tx(
   email email: email_address_model.EmailAddress,
+  created_since created_since: Timestamp,
   limit limit: Int,
 ) -> program_types.TransactionProgram(List(login_token_model.LoginToken)) {
   program_types.TxImpure(list_login_tokens_by_email_effect(
     email,
+    created_since,
     limit,
     program_types.TxPure,
   ))
@@ -345,7 +349,9 @@ pub fn get_passkey_credential_by_credential_id_tx(
 
 pub fn list_passkey_credentials_by_user_id_tx(
   user_id user_id: Uuid,
-) -> program_types.TransactionProgram(List(passkey_credential_model.PasskeyCredential)) {
+) -> program_types.TransactionProgram(
+  List(passkey_credential_model.PasskeyCredential),
+) {
   program_types.TxImpure(list_passkey_credentials_by_user_id_effect(
     user_id,
     program_types.TxPure,
@@ -550,11 +556,13 @@ fn list_users_effect(
 
 fn list_login_tokens_by_email_effect(
   email: email_address_model.EmailAddress,
+  created_since: Timestamp,
   limit: Int,
   next: fn(List(login_token_model.LoginToken)) -> next,
 ) -> program_types.DbEffect(next) {
   program_types.AuthEffect(auth_algebra.ListLoginTokensByEmail(
     email:,
+    created_since:,
     limit:,
     next: next,
   ))
