@@ -1,5 +1,6 @@
 import gleam/erlang/process
 import gleam/http
+import gleam/http/request as http_request
 import gleam/http/response as http_response
 import gleam/json
 import gleam/option
@@ -7,6 +8,7 @@ import gleam/regexp
 import gleam/string
 import gleam/time/timestamp
 import gleeunit
+import glot_backend
 import glot_backend/api
 import glot_backend/context
 import glot_backend/dynamic_config
@@ -62,6 +64,100 @@ pub fn api_returns_503_with_retry_after_in_read_only_mode_test() {
   )
 }
 
+pub fn api_rejects_non_json_content_type_test() {
+  let request =
+    simulate.request(http.Post, "/api/mux")
+    |> simulate.string_body("{}")
+
+  let response =
+    api.handle_request(
+      pog.named_connection(process.new_name("content_type_http_db")),
+      test_context(),
+      process.new_subject(),
+      process.new_subject(),
+      process.new_subject(),
+      request,
+    )
+
+  assert response.status == 415
+}
+
+pub fn api_accepts_json_content_type_with_charset_test() {
+  let availability =
+    dynamic_config.AvailabilityConfig(
+      mode: availability_mode.ReadOnlyMode,
+      message: "Scheduled platform maintenance.",
+      retry_after_seconds: option.None,
+    )
+  let request =
+    simulate.request(http.Post, "/api/mux")
+    |> simulate.json_body(
+      json.object([
+        #("action", json.string("create_snippet")),
+        #("data", json.object([])),
+      ]),
+    )
+    |> http_request.set_header(
+      "content-type",
+      "application/json; charset=utf-8",
+    )
+
+  let response =
+    api.handle_request(
+      pog.named_connection(process.new_name("content_type_http_db")),
+      test_context(),
+      start_app_config_worker(availability),
+      process.new_subject(),
+      process.new_subject(),
+      request,
+    )
+
+  assert response.status == 503
+}
+
+pub fn app_rejects_mismatched_origin_test() {
+  let server_mode_subject = start_server_mode(server_mode.Maintenance)
+  let request =
+    simulate.browser_request(http.Post, "/api/mux")
+    |> simulate.json_body(json.object([]))
+    |> http_request.set_header("origin", "https://attacker.example")
+
+  let response =
+    glot_backend.handle_request(
+      pog.named_connection(process.new_name("csrf_http_db")),
+      test_context(),
+      process.new_subject(),
+      process.new_subject(),
+      process.new_subject(),
+      process.new_subject(),
+      server_mode_subject,
+      request,
+    )
+
+  assert response.status == 400
+}
+
+pub fn app_accepts_matching_origin_test() {
+  let server_mode_subject = start_server_mode(server_mode.Maintenance)
+  let request =
+    simulate.browser_request(http.Post, "/api/mux")
+    |> simulate.json_body(json.object([]))
+
+  let response =
+    glot_backend.handle_request(
+      pog.named_connection(process.new_name("csrf_http_db")),
+      test_context(),
+      process.new_subject(),
+      process.new_subject(),
+      process.new_subject(),
+      process.new_subject(),
+      server_mode_subject,
+      request,
+    )
+
+  assert response.status == 503
+}
+
 pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
   let assert Ok(_) = write_test_manifest()
   let availability =
@@ -115,6 +211,14 @@ fn start_app_config_worker(
     )
 
   process.named_subject(worker_name)
+}
+
+fn start_server_mode(
+  mode: server_mode.Mode,
+) -> process.Subject(server_mode.Message) {
+  let name = process.new_name("csrf_http_server_mode")
+  let assert Ok(_) = server_mode.start_in(name, mode)
+  process.named_subject(name)
 }
 
 fn test_dynamic_config(

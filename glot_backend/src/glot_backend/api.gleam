@@ -139,6 +139,7 @@ pub fn handle_request(
   log_worker_subject: process.Subject(log_worker.Message),
   req: wisp.Request,
 ) -> wisp.Response {
+  use <- wisp.require_content_type(req, "application/json")
   use api_request <- require_api_request(ctx, req)
   let effect_runtime =
     runtime.new(db, app_config_cache_subject, language_version_cache_subject)
