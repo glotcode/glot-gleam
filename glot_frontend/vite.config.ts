@@ -7,6 +7,11 @@ export default defineConfig(({ command }) => ({
     emptyOutDir: true,
     manifest: "manifest.json",
     rollupOptions: {
+      input: {
+        frontend: new URL("./js/public.ts", import.meta.url).pathname,
+        admin: new URL("./js/admin.ts", import.meta.url).pathname,
+        styles: new URL("./js/styles.ts", import.meta.url).pathname,
+      },
       output: {
         entryFileNames: "assets/[name]-[hash].js",
         assetFileNames: "assets/[name]-[hash][extname]",

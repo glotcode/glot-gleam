@@ -192,6 +192,44 @@ pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
   assert string.contains(body, "Please try again in about 10 minute(s).")
 }
 
+pub fn public_page_uses_public_frontend_entry_test() {
+  let body = page_body("/login")
+
+  assert string.contains(body, "/static/assets/test-frontend.js")
+  assert string.contains(body, "/static/assets/test-admin.js") == False
+  assert string.contains(body, "/static/assets/test-shared.js")
+}
+
+pub fn admin_page_uses_admin_frontend_entry_test() {
+  let body = page_body("/admin")
+
+  assert string.contains(body, "/static/assets/test-admin.js")
+  assert string.contains(body, "/static/assets/test-frontend.js") == False
+  assert string.contains(body, "/static/assets/test-shared.js")
+}
+
+fn page_body(path: String) -> String {
+  let assert Ok(_) = write_test_manifest()
+  let availability =
+    dynamic_config.AvailabilityConfig(
+      mode: availability_mode.NormalMode,
+      message: "",
+      retry_after_seconds: option.None,
+    )
+  let response =
+    page.handle_request(
+      pog.named_connection(process.new_name("frontend_entry_http_db")),
+      test_context(),
+      start_app_config_worker(availability),
+      process.new_subject(),
+      process.new_subject(),
+      simulate.request(http.Get, path),
+    )
+
+  assert response.status == 200
+  simulate.read_body(response)
+}
+
 fn start_app_config_worker(
   availability: dynamic_config.AvailabilityConfig,
 ) -> process.Subject(app_config_cache_worker.Message) {
@@ -265,6 +303,6 @@ fn test_static_base_path() -> String {
 fn write_test_manifest() -> Result(Nil, String) {
   file_system.write_file(
     test_static_base_path() <> "/manifest.json",
-    "{\"index.html\":{\"file\":\"assets/test-frontend.js\",\"css\":[\"assets/test-styles.css\"]}}",
+    "{\"js/public.ts\":{\"file\":\"assets/test-frontend.js\",\"imports\":[\"_shared.js\"]},\"js/admin.ts\":{\"file\":\"assets/test-admin.js\",\"imports\":[\"_shared.js\"]},\"js/styles.ts\":{\"file\":\"assets/empty.js\",\"css\":[\"assets/test-styles.css\"]},\"_shared.js\":{\"file\":\"assets/test-shared.js\"}}",
   )
 }

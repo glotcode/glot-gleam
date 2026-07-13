@@ -9,6 +9,7 @@ pub fn document(
   include_frontend include_frontend: Bool,
   stylesheet_href stylesheet_href: String,
   frontend_src frontend_src: String,
+  frontend_preloads frontend_preloads: List(String),
   app_attributes app_attributes: List(attribute.Attribute(msg)),
   app_children app_children: List(element.Element(msg)),
 ) -> String {
@@ -25,15 +26,24 @@ pub fn document(
     ]),
   ]
   let tail_head = case include_frontend {
-    True -> [
-      html.script(
+    True ->
+      list.append(
+        list.map(frontend_preloads, fn(src) {
+          html.link([
+            attribute.rel("modulepreload"),
+            attribute.href(src),
+          ])
+        }),
         [
-          attribute.type_("module"),
-          attribute.src(frontend_src),
+          html.script(
+            [
+              attribute.type_("module"),
+              attribute.src(frontend_src),
+            ],
+            "",
+          ),
         ],
-        "",
-      ),
-    ]
+      )
     False -> []
   }
 

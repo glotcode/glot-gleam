@@ -25,6 +25,7 @@ pub fn unavailable_page_response(
         include_frontend: False,
         stylesheet_href: stylesheet_href,
         frontend_src: "",
+        frontend_preloads: [],
         app_attributes: [attribute.class("maintenance-page")],
         app_children: [
           html.main([attribute.class("maintenance-page__shell")], [
