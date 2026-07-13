@@ -15,6 +15,7 @@ import glot_backend/dynamic_config
 import glot_backend/file_system
 import glot_backend/page
 import glot_backend/server_mode
+import glot_backend/static_assets
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_core/availability_mode
 import pog
@@ -198,6 +199,7 @@ pub fn public_page_uses_public_frontend_entry_test() {
   assert string.contains(body, "/static/assets/test-frontend.js")
   assert string.contains(body, "/static/assets/test-admin.js") == False
   assert string.contains(body, "/static/assets/test-shared.js")
+  assert string.contains(body, "/static/assets/test-codemirror.js") == False
 }
 
 pub fn admin_page_uses_admin_frontend_entry_test() {
@@ -206,6 +208,18 @@ pub fn admin_page_uses_admin_frontend_entry_test() {
   assert string.contains(body, "/static/assets/test-admin.js")
   assert string.contains(body, "/static/assets/test-frontend.js") == False
   assert string.contains(body, "/static/assets/test-shared.js")
+  assert string.contains(body, "/static/assets/test-codemirror.js") == False
+}
+
+pub fn static_assets_loads_codemirror_entry_and_imports_test() {
+  let assert Ok(_) = write_test_manifest()
+  let assert Ok(assets) = static_assets.load(test_static_base_path())
+
+  assert assets.code_mirror_preloads
+    == [
+      "/static/assets/test-codemirror.js",
+      "/static/assets/test-codemirror-shared.js",
+    ]
 }
 
 fn page_body(path: String) -> String {
@@ -303,6 +317,6 @@ fn test_static_base_path() -> String {
 fn write_test_manifest() -> Result(Nil, String) {
   file_system.write_file(
     test_static_base_path() <> "/manifest.json",
-    "{\"js/public.ts\":{\"file\":\"assets/test-frontend.js\",\"imports\":[\"_shared.js\"]},\"js/admin.ts\":{\"file\":\"assets/test-admin.js\",\"imports\":[\"_shared.js\"]},\"js/styles.ts\":{\"file\":\"assets/empty.js\",\"css\":[\"assets/test-styles.css\"]},\"_shared.js\":{\"file\":\"assets/test-shared.js\"}}",
+    "{\"js/public.ts\":{\"file\":\"assets/test-frontend.js\",\"imports\":[\"_shared.js\"]},\"js/admin.ts\":{\"file\":\"assets/test-admin.js\",\"imports\":[\"_shared.js\"]},\"js/custom_elements/glot-codemirror.ts\":{\"file\":\"assets/test-codemirror.js\",\"imports\":[\"_shared.js\",\"_codemirror-shared.js\"]},\"js/styles.ts\":{\"file\":\"assets/empty.js\",\"css\":[\"assets/test-styles.css\"]},\"_shared.js\":{\"file\":\"assets/test-shared.js\"},\"_codemirror-shared.js\":{\"file\":\"assets/test-codemirror-shared.js\"}}",
   )
 }
