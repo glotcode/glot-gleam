@@ -5,9 +5,7 @@ import { lineNumbers, highlightActiveLineGutter } from "@codemirror/view";
 import { highlightActiveLine, drawSelection, dropCursor } from "@codemirror/view";
 import { defaultHighlightStyle, HighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language";
 import { bracketMatching } from "@codemirror/language";
-import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { autocompletion, completionKeymap } from "@codemirror/autocomplete";
 import { rectangularSelection } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { StreamLanguage } from "@codemirror/language"
@@ -56,10 +54,6 @@ const retroTheme = EditorView.theme({
     backgroundColor: "#ffffff",
     color: "#172033"
   },
-  ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
-    backgroundColor: "#e7f0ff",
-    color: "#172033"
-  },
   ".cm-panels": {
     backgroundColor: "#f8fbff",
     color: "#172033"
@@ -90,8 +84,6 @@ const basicSetup: Extension = [
   dropCursor(),
   indentOnInput(),
   bracketMatching(),
-  closeBrackets(),
-  autocompletion(),
   rectangularSelection(),
   highlightActiveLine(),
   highlightSelectionMatches(),
@@ -99,11 +91,9 @@ const basicSetup: Extension = [
   syntaxHighlighting(defaultHighlightStyle),
   syntaxHighlighting(retroHighlightStyle),
   keymap.of([
-    ...closeBracketsKeymap,
     ...defaultKeymap,
     ...searchKeymap,
     ...historyKeymap,
-    ...completionKeymap,
     indentWithTab
   ])
 ];
