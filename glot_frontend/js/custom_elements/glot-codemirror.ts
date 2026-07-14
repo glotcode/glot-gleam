@@ -412,17 +412,18 @@ export class GlotCodeMirror extends HTMLElement {
       state,
       parent: this._container
     });
+    const view = this._view;
 
     // Load language extension async
     this._getLanguageExtension(this._languageName)?.then((ext) => {
-      if (this._view && ext) {
-        this._view.dispatch({ effects: this._language.reconfigure(ext) });
+      if (this._view === view && ext) {
+        view.dispatch({ effects: this._language.reconfigure(ext) });
       }
     });
 
     this._getKeyboardBindingsExtension(this._keyboardBindingsName).then((ext) => {
-      if (this._view) {
-        this._view.dispatch({ effects: this._keyboardBindings.reconfigure(ext) });
+      if (this._view === view) {
+        view.dispatch({ effects: this._keyboardBindings.reconfigure(ext) });
       }
     });
   }
@@ -432,26 +433,22 @@ export class GlotCodeMirror extends HTMLElement {
       capture: true
     });
 
-    if (this._view) {
-      this._view.destroy();
-      this._view = null;
-    }
+    this._discardView();
   }
 
   async attributeChangedCallback(name: string, _oldVal: string | null, newVal: string | null) {
     // Cache until the editor is ready
     if (!this._view) {
-      if (name === "value") this._valueCache = newVal ?? "";
       if (name === "language") this._languageName = (newVal ?? "javascript").toLowerCase();
       if (name === "keyboard-bindings") {
         this._keyboardBindingsName = this._parseKeyboardBindingsAttribute(newVal);
       }
-      if (name === "editor-revision") {
-        this._revision = this._parseRevisionAttribute(newVal);
-        this._acknowledgedRevision = this._revision;
-      }
-      if (name === "editor-external-revision") {
-        this._externalRevision = this._parseRevisionAttribute(newVal);
+      if (
+        name === "value" ||
+        name === "editor-revision" ||
+        name === "editor-external-revision"
+      ) {
+        this._scheduleValueSync();
       }
       return;
     }
@@ -468,17 +465,21 @@ export class GlotCodeMirror extends HTMLElement {
 
     if (name === "language") {
       this._languageName = (newVal ?? "javascript").toLowerCase();
+      const view = this._view;
       const ext = await this._getLanguageExtension(this._languageName);
-      this._view.dispatch({ effects: this._language.reconfigure(ext ?? []) });
+      if (this._view === view) {
+        view.dispatch({ effects: this._language.reconfigure(ext ?? []) });
+      }
       return;
     }
 
     if (name === "keyboard-bindings") {
       this._keyboardBindingsName = this._parseKeyboardBindingsAttribute(newVal);
+      const view = this._view;
       const ext = await this._getKeyboardBindingsExtension(this._keyboardBindingsName);
-      this._view.dispatch({
-        effects: this._keyboardBindings.reconfigure(ext)
-      });
+      if (this._view === view) {
+        view.dispatch({ effects: this._keyboardBindings.reconfigure(ext) });
+      }
       return;
     }
 
@@ -564,14 +565,13 @@ export class GlotCodeMirror extends HTMLElement {
   }
 
   private _synchronizeValue() {
-    if (!this._view) return;
-
     const renderedRevision = this._parseRevisionAttribute(
       this.getAttribute("editor-revision")
     );
     const externalRevision = this._parseRevisionAttribute(
       this.getAttribute("editor-external-revision")
     );
+    const hasExternalUpdate = externalRevision !== this._externalRevision;
     const shouldApply = shouldApplyDocumentValue({
       localRevision: this._revision,
       acknowledgedRevision: this._acknowledgedRevision,
@@ -584,9 +584,19 @@ export class GlotCodeMirror extends HTMLElement {
     this._externalRevision = externalRevision;
     this._revision = Math.max(this._revision, renderedRevision);
 
+    const incoming = this.getAttribute("value") ?? "";
+    if (hasExternalUpdate) {
+      this._replaceViewDocument(incoming);
+      return;
+    }
+
     if (!shouldApply) return;
 
-    const incoming = this.getAttribute("value") ?? "";
+    if (!this._view) {
+      this._valueCache = incoming;
+      return;
+    }
+
     if (incoming === this.value) return;
 
     this._updatingFromOutside = true;
@@ -595,6 +605,23 @@ export class GlotCodeMirror extends HTMLElement {
     } finally {
       this._updatingFromOutside = false;
     }
+  }
+
+  private _replaceViewDocument(document: string) {
+    this._valueCache = document;
+    this._discardView();
+
+    if (this.isConnected) {
+      this.connectedCallback();
+    }
+  }
+
+  private _discardView() {
+    const view = this._view;
+    this._view = null;
+
+    view?.destroy();
+    this._container.replaceChildren();
   }
 
   private _getKeyboardBindingsExtension(name: KeyboardBindingsName): Promise<Extension> {
