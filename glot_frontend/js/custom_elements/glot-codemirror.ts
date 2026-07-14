@@ -10,6 +10,10 @@ import { rectangularSelection } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { StreamLanguage } from "@codemirror/language"
 import { tags } from "@lezer/highlight";
+import {
+  documentUpdate,
+  shouldApplyDocumentValue
+} from "./glot-codemirror-document.mjs";
 
 const retroTheme = EditorView.theme({
   "&": {
@@ -241,7 +245,7 @@ const languageMap: Record<string, () => Promise<Extension>> = {
   },
 };
 
-type ChangeEventDetail = { value: string };
+type ChangeEventDetail = { value: string; revision: number };
 type KeyboardBindingsName = "default" | "emacs" | "vim";
 
 const defaultKeyboardBindingsExtension: Extension = [];
@@ -259,7 +263,14 @@ const keyboardBindingsMap: Record<Exclude<KeyboardBindingsName, "default">, () =
 
 export class GlotCodeMirror extends HTMLElement {
   static get observedAttributes() {
-    return ["value", "language", "disabled", "keyboard-bindings"];
+    return [
+      "value",
+      "language",
+      "disabled",
+      "keyboard-bindings",
+      "editor-revision",
+      "editor-external-revision"
+    ];
   }
 
   private _shadow: ShadowRoot;
@@ -270,6 +281,10 @@ export class GlotCodeMirror extends HTMLElement {
   private _languageName = "javascript";
   private _keyboardBindingsName: KeyboardBindingsName = "default";
   private _updatingFromOutside = false;
+  private _revision = 0;
+  private _acknowledgedRevision = 0;
+  private _externalRevision = 0;
+  private _valueSyncScheduled = false;
   private _handleRunShortcut = (event: KeyboardEvent) => {
     if (
       event.key !== "Enter" ||
@@ -301,6 +316,11 @@ export class GlotCodeMirror extends HTMLElement {
     this._languageName = (this.getAttribute("language") ?? "javascript").toLowerCase();
     this._keyboardBindingsName = this._parseKeyboardBindingsAttribute(
       this.getAttribute("keyboard-bindings")
+    );
+    this._revision = this._parseRevisionAttribute(this.getAttribute("editor-revision"));
+    this._acknowledgedRevision = this._revision;
+    this._externalRevision = this._parseRevisionAttribute(
+      this.getAttribute("editor-external-revision")
     );
 
     this._shadow = this.attachShadow({ mode: "open" });
@@ -375,10 +395,11 @@ export class GlotCodeMirror extends HTMLElement {
           const next = update.state.doc.toString();
           this._valueCache = next;
           if (this._updatingFromOutside) return;
+          this._revision += 1;
           // Emit a bubbling, composed CustomEvent so frameworks (like Elm) can listen.
           this.dispatchEvent(
             new CustomEvent<ChangeEventDetail>("change", {
-              detail: { value: next },
+              detail: { value: next, revision: this._revision },
               bubbles: true,
               composed: true
             })
@@ -425,18 +446,23 @@ export class GlotCodeMirror extends HTMLElement {
       if (name === "keyboard-bindings") {
         this._keyboardBindingsName = this._parseKeyboardBindingsAttribute(newVal);
       }
+      if (name === "editor-revision") {
+        this._revision = this._parseRevisionAttribute(newVal);
+        this._acknowledgedRevision = this._revision;
+      }
+      if (name === "editor-external-revision") {
+        this._externalRevision = this._parseRevisionAttribute(newVal);
+      }
       return;
     }
 
     if (name === "value") {
-      const incoming = newVal ?? "";
-      if (incoming !== this.value) {
-        this._updatingFromOutside = true;
-        this._view.dispatch({
-          changes: { from: 0, to: this._view.state.doc.length, insert: incoming }
-        });
-        this._updatingFromOutside = false;
-      }
+      this._scheduleValueSync();
+      return;
+    }
+
+    if (name === "editor-revision" || name === "editor-external-revision") {
+      this._scheduleValueSync();
       return;
     }
 
@@ -519,6 +545,55 @@ export class GlotCodeMirror extends HTMLElement {
         return "vim";
       default:
         return "default";
+    }
+  }
+
+  private _parseRevisionAttribute(value: string | null): number {
+    const revision = Number.parseInt(value ?? "0", 10);
+    return Number.isSafeInteger(revision) && revision >= 0 ? revision : 0;
+  }
+
+  private _scheduleValueSync() {
+    if (this._valueSyncScheduled) return;
+
+    this._valueSyncScheduled = true;
+    queueMicrotask(() => {
+      this._valueSyncScheduled = false;
+      this._synchronizeValue();
+    });
+  }
+
+  private _synchronizeValue() {
+    if (!this._view) return;
+
+    const renderedRevision = this._parseRevisionAttribute(
+      this.getAttribute("editor-revision")
+    );
+    const externalRevision = this._parseRevisionAttribute(
+      this.getAttribute("editor-external-revision")
+    );
+    const shouldApply = shouldApplyDocumentValue({
+      localRevision: this._revision,
+      acknowledgedRevision: this._acknowledgedRevision,
+      externalRevision: this._externalRevision,
+      renderedRevision,
+      renderedExternalRevision: externalRevision
+    });
+
+    this._acknowledgedRevision = renderedRevision;
+    this._externalRevision = externalRevision;
+    this._revision = Math.max(this._revision, renderedRevision);
+
+    if (!shouldApply) return;
+
+    const incoming = this.getAttribute("value") ?? "";
+    if (incoming === this.value) return;
+
+    this._updatingFromOutside = true;
+    try {
+      this._view.dispatch(documentUpdate(this._view.state, incoming));
+    } finally {
+      this._updatingFromOutside = false;
     }
   }
 

@@ -1,4 +1,5 @@
 import gleam/dynamic/decode
+import gleam/int
 import gleam/json
 import gleam/list
 import gleam/option
@@ -69,6 +70,8 @@ pub type RealModel {
     updated_at: option.Option(Timestamp),
     files: List(snippet_model.File),
     stdin: option.Option(String),
+    editor_revision: Int,
+    editor_external_revision: Int,
     selected_tab: EditorTab,
     add_entry_kind: AddEntryKind,
     add_entry_filename: String,
@@ -235,7 +238,7 @@ pub type Msg {
   SnippetInfoDismissed
   SnippetInfoClosed
   TabSelected(EditorTab)
-  SourceCodeChanged(String)
+  SourceCodeChanged(String, Int)
   RunSubmitted
   RunFinished(api.ApiResponse(run.RunResult))
   VersionRunFinished(api.ApiResponse(run.RunResult))
@@ -551,12 +554,15 @@ pub fn update_helper(
         ..model,
         selected_tab: tab,
         edit_entry_filename: default_file_name(model.files, tab),
+        editor_external_revision: model.editor_external_revision + 1,
       ),
       effect.none(),
     )
 
-    SourceCodeChanged(source_code) -> {
-      let next_model = update_selected_tab_content(model, source_code)
+    SourceCodeChanged(source_code, revision) -> {
+      let next_model =
+        update_selected_tab_content(model, source_code)
+        |> fn(model) { RealModel(..model, editor_revision: revision) }
       #(next_model, save_editor_draft(next_model))
     }
 
@@ -758,6 +764,14 @@ fn view_helper(
         attribute.id(editor_id),
         attribute.class("editor-shell__codemirror"),
         attribute.attribute("language", language.to_string(model.language)),
+        attribute.attribute(
+          "editor-external-revision",
+          int.to_string(model.editor_external_revision),
+        ),
+        attribute.attribute(
+          "editor-revision",
+          int.to_string(model.editor_revision),
+        ),
         attribute.attribute("value", selected_tab_content(model)),
         attribute.attribute(
           "keyboard-bindings",
@@ -766,7 +780,8 @@ fn view_helper(
         ),
         event.on("change", {
           use value <- decode.subfield(["detail", "value"], decode.string)
-          decode.success(SourceCodeChanged(value))
+          use revision <- decode.subfield(["detail", "revision"], decode.int)
+          decode.success(SourceCodeChanged(value, revision))
         }),
         event.on("editor-run", decode.success(RunSubmitted)),
       ],
@@ -1908,6 +1923,8 @@ fn existing_model_from_data(
       updated_at: option.Some(updated_at),
       files: files,
       stdin: stdin,
+      editor_revision: 0,
+      editor_external_revision: 0,
       selected_tab: selected_tab,
       add_entry_kind: default_add_entry_kind(stdin),
       add_entry_filename: "",
@@ -1953,6 +1970,8 @@ fn new_editor_model(
     updated_at: option.None,
     files: [default_file],
     stdin: option.None,
+    editor_revision: 0,
+    editor_external_revision: 0,
     selected_tab: FileTab(0),
     add_entry_kind: AddFileEntry,
     add_entry_filename: "",
@@ -2011,6 +2030,7 @@ fn apply_editor_draft(
     language: draft.language,
     files: files,
     stdin: stdin,
+    editor_external_revision: model.editor_external_revision + 1,
     selected_tab: selected_tab,
     add_entry_kind: default_add_entry_kind(stdin),
     edit_entry_filename: default_file_name(files, selected_tab),
@@ -2470,6 +2490,7 @@ fn add_file_entry(model: RealModel) -> option.Option(RealModel) {
           files: list.append(model.files, [next_file]),
           selected_tab: FileTab(next_index),
           add_entry_filename: "",
+          editor_external_revision: model.editor_external_revision + 1,
         ),
       )
     }
@@ -2486,6 +2507,7 @@ fn add_stdin_entry(model: RealModel) -> option.Option(RealModel) {
           stdin: option.Some(""),
           selected_tab: StdinTab,
           add_entry_filename: "",
+          editor_external_revision: model.editor_external_revision + 1,
         ),
       )
   }
@@ -2571,6 +2593,7 @@ fn delete_selected_entry(model: RealModel) -> option.Option(RealModel) {
           stdin: option.None,
           selected_tab: FileTab(0),
           edit_entry_filename: default_file_name(model.files, FileTab(0)),
+          editor_external_revision: model.editor_external_revision + 1,
         ),
       )
 
@@ -2590,6 +2613,7 @@ fn delete_selected_entry(model: RealModel) -> option.Option(RealModel) {
               files: next_files,
               selected_tab: next_tab,
               edit_entry_filename: default_file_name(next_files, next_tab),
+              editor_external_revision: model.editor_external_revision + 1,
             ),
           )
         }
