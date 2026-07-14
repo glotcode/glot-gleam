@@ -40,9 +40,7 @@ fn detect_os_name(
   ])
 }
 
-fn detect_browser_name(
-  user_agent: String,
-) -> Option(platform_model.Browser) {
+fn detect_browser_name(user_agent: String) -> Option(platform_model.Browser) {
   cond([
     #(contains(user_agent, "Edg/"), platform_model.Edge),
     #(
@@ -52,18 +50,18 @@ fn detect_browser_name(
     #(contains(user_agent, "Firefox/"), platform_model.Firefox),
     #(
       contains(user_agent, "Chrome/")
-      && !contains(user_agent, "Edg/")
-      && !contains(user_agent, "OPR/"),
+        && !contains(user_agent, "Edg/")
+        && !contains(user_agent, "OPR/"),
       platform_model.Chrome,
     ),
     #(
       contains(user_agent, "Safari/")
-      && contains(user_agent, "Version/")
-      && !contains(user_agent, "Chrome/")
-      && !contains(user_agent, "Chromium/")
-      && !contains(user_agent, "CriOS/")
-      && !contains(user_agent, "FxiOS/")
-      && !contains(user_agent, "EdgiOS/"),
+        && contains(user_agent, "Version/")
+        && !contains(user_agent, "Chrome/")
+        && !contains(user_agent, "Chromium/")
+        && !contains(user_agent, "CriOS/")
+        && !contains(user_agent, "FxiOS/")
+        && !contains(user_agent, "EdgiOS/"),
       platform_model.Safari,
     ),
   ])

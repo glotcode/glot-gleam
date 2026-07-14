@@ -6,8 +6,8 @@ import gleam/time/calendar
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/account_dto
 import glot_core/auth/account_session_dto
-import glot_core/auth/platform_model
 import glot_core/auth/passkey_dto
+import glot_core/auth/platform_model
 import glot_core/auth/session_dto
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
@@ -84,7 +84,9 @@ pub type Msg {
   AccountSessionsLoaded(
     api.ApiResponse(account_session_dto.ListAccountSessionsResponse),
   )
-  AccountPasskeysLoaded(api.ApiResponse(passkey_dto.ListAccountPasskeysResponse))
+  AccountPasskeysLoaded(
+    api.ApiResponse(passkey_dto.ListAccountPasskeysResponse),
+  )
   UsernameChanged(String)
   UsernameSubmitted
   AccountUpdated(api.ApiResponse(account_dto.AccountResponse))
@@ -377,7 +379,10 @@ pub fn update(
             )
           #(
             Model(..model, passkey_setup_status: SavingPasskey),
-            api.finish_passkey_registration(request, FinishedPasskeyRegistration),
+            api.finish_passkey_registration(
+              request,
+              FinishedPasskeyRegistration,
+            ),
             app_event.NoAppEvent,
           )
         }
@@ -429,7 +434,9 @@ pub fn update(
       let request = account_session_dto.DeleteAccountSessionRequest(id:)
       #(
         Model(..model, sessions_status: DeletingSession(id)),
-        api.delete_account_session(request, fn(result) { DeletedSession(id, result) }),
+        api.delete_account_session(request, fn(result) {
+          DeletedSession(id, result)
+        }),
         app_event.NoAppEvent,
       )
     }
@@ -468,7 +475,9 @@ pub fn update(
       let request = passkey_dto.DeleteAccountPasskeyRequest(id:)
       #(
         Model(..model, passkeys_status: DeletingPasskey(id)),
-        api.delete_account_passkey(request, fn(result) { DeletedPasskey(id, result) }),
+        api.delete_account_passkey(request, fn(result) {
+          DeletedPasskey(id, result)
+        }),
         app_event.NoAppEvent,
       )
     }
@@ -732,28 +741,24 @@ fn account_settings_form(model: Model) -> Element(Msg) {
         attribute.type_("text"),
         attribute.value(model.username),
         event.on_input(UsernameChanged),
-        attribute.disabled(
-          is_busy(
-            model.status,
-            model.passkey_setup_status,
-            model.sessions_status,
-            model.passkeys_status,
-          ),
-        ),
+        attribute.disabled(is_busy(
+          model.status,
+          model.passkey_setup_status,
+          model.sessions_status,
+          model.passkeys_status,
+        )),
         attribute.class("account-page__input"),
       ]),
       status_view(model.status),
       html.button(
         [
           attribute.type_("submit"),
-          attribute.disabled(
-            is_busy(
-              model.status,
-              model.passkey_setup_status,
-              model.sessions_status,
-              model.passkeys_status,
-            ),
-          ),
+          attribute.disabled(is_busy(
+            model.status,
+            model.passkey_setup_status,
+            model.sessions_status,
+            model.passkeys_status,
+          )),
           attribute.class("account-page__button"),
         ],
         [html.text(button_text(model.status))],
@@ -775,14 +780,12 @@ fn passkey_section(model: Model, now: Timestamp) -> Element(Msg) {
     html.button(
       [
         attribute.type_("button"),
-        attribute.disabled(
-          is_busy(
-            model.status,
-            model.passkey_setup_status,
-            model.sessions_status,
-            model.passkeys_status,
-          ),
-        ),
+        attribute.disabled(is_busy(
+          model.status,
+          model.passkey_setup_status,
+          model.sessions_status,
+          model.passkeys_status,
+        )),
         attribute.class("account-page__button account-page__button--secondary"),
         event.on_click(BeginPasskeySubmitted),
       ],
@@ -829,7 +832,8 @@ fn passkey_item(
       ]),
       html.p([attribute.class("account-page__status")], [
         html.text(
-          "Added " <> timestamp_helpers.relative_label(account_passkey.created_at, now),
+          "Added "
+          <> timestamp_helpers.relative_label(account_passkey.created_at, now),
         ),
       ]),
       html.p([attribute.class("account-page__status")], [
@@ -843,7 +847,12 @@ fn passkey_item(
         attribute.class("account-page__button account-page__button--danger"),
         event.on_click(DeletePasskeySubmitted(account_passkey.id)),
       ],
-      [html.text(delete_passkey_button_text(passkeys_status, account_passkey.id))],
+      [
+        html.text(delete_passkey_button_text(
+          passkeys_status,
+          account_passkey.id,
+        )),
+      ],
     ),
   ])
 }
@@ -873,7 +882,9 @@ fn snippets_section() -> Element(Msg) {
 fn sessions_section(model: Model, now: Timestamp) -> Element(Msg) {
   html.div([attribute.class("account-page__empty")], [
     html.p([attribute.class("account-page__status")], [
-      html.text("Review active account sessions and revoke any you no longer trust."),
+      html.text(
+        "Review active account sessions and revoke any you no longer trust.",
+      ),
     ]),
     sessions_status_view(model.sessions_status),
     sessions_list(
@@ -907,7 +918,12 @@ fn sessions_list(
       html.div(
         [attribute.class("account-page__passkey-list")],
         list.map(sessions, fn(account_session) {
-          session_item(account_session, current_session_id, sessions_status, now)
+          session_item(
+            account_session,
+            current_session_id,
+            sessions_status,
+            now,
+          )
         }),
       )
   }
@@ -947,7 +963,12 @@ fn session_item(
         attribute.class("account-page__button account-page__button--danger"),
         event.on_click(DeleteSessionSubmitted(account_session.id)),
       ],
-      [html.text(delete_session_button_text(sessions_status, account_session.id))],
+      [
+        html.text(delete_session_button_text(
+          sessions_status,
+          account_session.id,
+        )),
+      ],
     ),
   ])
 }
@@ -1031,9 +1052,12 @@ fn delete_account_section(
           html.button(
             [
               attribute.type_("button"),
-              attribute.disabled(
-                is_busy(status, PasskeySetupIdle, IdleSessions, IdlePasskeys),
-              ),
+              attribute.disabled(is_busy(
+                status,
+                PasskeySetupIdle,
+                IdleSessions,
+                IdlePasskeys,
+              )),
               attribute.class(button_class),
               event.on_click(button_msg),
             ],
@@ -1145,7 +1169,10 @@ fn delete_account_description(
   }
 }
 
-fn logout_section(status: Status, sessions_status: SessionsStatus) -> Element(Msg) {
+fn logout_section(
+  status: Status,
+  sessions_status: SessionsStatus,
+) -> Element(Msg) {
   html.div([attribute.class("account-page__logout")], [
     html.p([attribute.class("account-page__status")], [
       html.text("End your current session on this device."),
@@ -1154,9 +1181,12 @@ fn logout_section(status: Status, sessions_status: SessionsStatus) -> Element(Ms
     html.button(
       [
         attribute.type_("button"),
-        attribute.disabled(
-          is_busy(status, PasskeySetupIdle, sessions_status, IdlePasskeys),
-        ),
+        attribute.disabled(is_busy(
+          status,
+          PasskeySetupIdle,
+          sessions_status,
+          IdlePasskeys,
+        )),
         attribute.class("account-page__button account-page__button--logout"),
         event.on_click(LogoutSubmitted),
       ],
@@ -1283,7 +1313,9 @@ fn delete_session_button_text(
   }
 }
 
-fn passkey_label(account_passkey: passkey_dto.AccountPasskeyResponse) -> String {
+fn passkey_label(
+  account_passkey: passkey_dto.AccountPasskeyResponse,
+) -> String {
   case account_passkey.browser_name, account_passkey.os_name {
     option.Some(browser_name), option.Some(os_name) ->
       platform_model.browser_label(browser_name)

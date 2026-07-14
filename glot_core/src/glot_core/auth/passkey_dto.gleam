@@ -284,6 +284,9 @@ pub fn encode_list_account_passkeys_response(
 pub fn list_account_passkeys_response_decoder() -> decode.Decoder(
   ListAccountPasskeysResponse,
 ) {
-  use passkeys <- decode.field("passkeys", decode.list(account_passkey_decoder()))
+  use passkeys <- decode.field(
+    "passkeys",
+    decode.list(account_passkey_decoder()),
+  )
   decode.success(ListAccountPasskeysResponse(passkeys: passkeys))
 }

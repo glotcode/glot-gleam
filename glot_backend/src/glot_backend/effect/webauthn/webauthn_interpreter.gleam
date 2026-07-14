@@ -16,7 +16,12 @@ pub fn run(
     #(Result(a, error.Error), program_state.State),
 ) -> #(Result(a, error.Error), program_state.State) {
   case effect {
-    webauthn_algebra.NewRegistrationChallenge(origin, rp_id, user_verification, next) -> {
+    webauthn_algebra.NewRegistrationChallenge(
+      origin,
+      rp_id,
+      user_verification,
+      next,
+    ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
         runtime.handlers.webauthn.new_registration_challenge(
@@ -36,7 +41,12 @@ pub fn run(
         ),
       )
     }
-    webauthn_algebra.Register(attestation_object, client_data_json, challenge_state, next) -> {
+    webauthn_algebra.Register(
+      attestation_object,
+      client_data_json,
+      challenge_state,
+      next,
+    ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
         runtime.handlers.webauthn.register(
@@ -54,7 +64,13 @@ pub fn run(
         ),
       )
     }
-    webauthn_algebra.NewAuthenticationChallenge(origin, rp_id, user_verification, credentials, next) -> {
+    webauthn_algebra.NewAuthenticationChallenge(
+      origin,
+      rp_id,
+      user_verification,
+      credentials,
+      next,
+    ) -> {
       let started_at = erlang.perf_counter_ns()
       let result =
         runtime.handlers.webauthn.new_authentication_challenge(

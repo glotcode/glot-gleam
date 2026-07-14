@@ -34,8 +34,8 @@ pub fn begin_registration(
   effect.from(fn(dispatch) {
     start_registration(
       options
-      |> passkey_dto.encode_begin_registration_response()
-      |> json.to_string(),
+        |> passkey_dto.encode_begin_registration_response()
+        |> json.to_string(),
       fn(success_json) {
         dispatch(
           success_json
@@ -53,15 +53,10 @@ pub fn begin_registration(
         let error = case parse_passkey_error(error_json) {
           Ok(parsed_error) -> parsed_error
           Error(_) ->
-            PasskeyError(
-              kind: FailedPasskey,
-              message: "Passkey setup failed.",
-            )
+            PasskeyError(kind: FailedPasskey, message: "Passkey setup failed.")
         }
 
-        dispatch(
-          error |> Error |> to_msg,
-        )
+        dispatch(error |> Error |> to_msg)
       },
     )
   })
@@ -74,8 +69,8 @@ pub fn begin_authentication(
   effect.from(fn(dispatch) {
     start_authentication(
       options
-      |> passkey_dto.encode_begin_login_response()
-      |> json.to_string(),
+        |> passkey_dto.encode_begin_login_response()
+        |> json.to_string(),
       fn(success_json) {
         dispatch(
           success_json
@@ -93,15 +88,10 @@ pub fn begin_authentication(
         let error = case parse_passkey_error(error_json) {
           Ok(parsed_error) -> parsed_error
           Error(_) ->
-            PasskeyError(
-              kind: FailedPasskey,
-              message: "Passkey login failed.",
-            )
+            PasskeyError(kind: FailedPasskey, message: "Passkey login failed.")
         }
 
-        dispatch(
-          error |> Error |> to_msg,
-        )
+        dispatch(error |> Error |> to_msg)
       },
     )
   })
@@ -115,9 +105,7 @@ pub fn is_supported() -> Bool {
   supports_passkeys()
 }
 
-fn parse_registration_result(
-  value: String,
-) -> Result(RegistrationResult, Nil) {
+fn parse_registration_result(value: String) -> Result(RegistrationResult, Nil) {
   json.parse(value, registration_result_decoder())
   |> result.map_error(fn(_) { Nil })
 }

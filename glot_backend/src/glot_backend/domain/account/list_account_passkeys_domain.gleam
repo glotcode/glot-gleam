@@ -29,15 +29,17 @@ pub fn list_account_passkeys(
     auth_effect.list_passkey_credentials_by_user_id(session.user.identity.id),
   )
 
-  program.succeed(passkey_dto.ListAccountPasskeysResponse(
-    passkeys: list.map(credentials, fn(credential) {
-      passkey_dto.AccountPasskeyResponse(
-        id: credential.id,
-        os_name: credential.os_name,
-        browser_name: credential.browser_name,
-        created_at: credential.created_at,
-        last_used_at: credential.last_used_at,
-      )
-    }),
-  ))
+  program.succeed(
+    passkey_dto.ListAccountPasskeysResponse(
+      passkeys: list.map(credentials, fn(credential) {
+        passkey_dto.AccountPasskeyResponse(
+          id: credential.id,
+          os_name: credential.os_name,
+          browser_name: credential.browser_name,
+          created_at: credential.created_at,
+          last_used_at: credential.last_used_at,
+        )
+      }),
+    ),
+  )
 }

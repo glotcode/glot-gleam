@@ -117,9 +117,10 @@ fn require_at_least(
     True -> program.succeed(Nil)
     False ->
       program.fail(
-        error.validation(
-          validation_error.MustBeGreaterThanOrEqualField(field, minimum_field),
-        ),
+        error.validation(validation_error.MustBeGreaterThanOrEqualField(
+          field,
+          minimum_field,
+        )),
       )
   }
 }

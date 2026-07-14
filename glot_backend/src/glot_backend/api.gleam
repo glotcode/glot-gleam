@@ -8,11 +8,11 @@ import gleam/string
 import glot_backend/api_error_presenter
 import glot_backend/context
 import glot_backend/domain/account/cancel_delete_account_domain
-import glot_backend/domain/account/delete_account_session_domain
 import glot_backend/domain/account/delete_account_passkey_domain
+import glot_backend/domain/account/delete_account_session_domain
 import glot_backend/domain/account/get_account_domain
-import glot_backend/domain/account/list_account_sessions_domain
 import glot_backend/domain/account/list_account_passkeys_domain
+import glot_backend/domain/account/list_account_sessions_domain
 import glot_backend/domain/account/schedule_delete_account_domain
 import glot_backend/domain/account/update_account_domain
 import glot_backend/domain/admin/create_job_domain
@@ -709,9 +709,7 @@ type ApiResult {
   CloudflareConfigResponse(cloudflare_config_dto.CloudflareConfigResponse)
   EmailConfigResponse(email_config_dto.EmailConfigResponse)
   LoginResponse(login_domain.LoginResult)
-  BeginPasskeyRegistrationResponse(
-    passkey_dto.BeginPasskeyRegistrationResponse,
-  )
+  BeginPasskeyRegistrationResponse(passkey_dto.BeginPasskeyRegistrationResponse)
   BeginPasskeyLoginResponse(passkey_dto.BeginPasskeyLoginResponse)
   FinishPasskeyLoginResponse(session_issue_domain.SessionIssueResult)
   RefreshSessionResponse(refresh_session_domain.RefreshSessionResult)
@@ -733,11 +731,13 @@ fn api_result_to_response(
       success_response(json.nullable(response, session_dto.encode))
     AccountResponse(response) -> success_response(account_dto.encode(response))
     ListAccountSessionsResponse(response) ->
-      success_response(account_session_dto.encode_list_account_sessions_response(
+      success_response(
+        account_session_dto.encode_list_account_sessions_response(response),
+      )
+    AccountPasskeysResponse(response) ->
+      success_response(passkey_dto.encode_list_account_passkeys_response(
         response,
       ))
-    AccountPasskeysResponse(response) ->
-      success_response(passkey_dto.encode_list_account_passkeys_response(response))
     SnippetResponse(response) ->
       success_response(snippet_dto.encode_response(response))
     SnippetsResponse(response) ->

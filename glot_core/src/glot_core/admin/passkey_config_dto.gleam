@@ -24,7 +24,11 @@ pub fn response_decoder() -> decode.Decoder(PasskeyConfigResponse) {
     "challengeTimeoutSeconds",
     decode.int,
   )
-  decode.success(PasskeyConfigResponse(origin:, rp_id:, challenge_timeout_seconds:))
+  decode.success(PasskeyConfigResponse(
+    origin:,
+    rp_id:,
+    challenge_timeout_seconds:,
+  ))
 }
 
 pub fn decoder() -> decode.Decoder(UpsertPasskeyConfigRequest) {
@@ -45,10 +49,7 @@ pub fn encode_response(response: PasskeyConfigResponse) -> json.Json {
   json.object([
     #("origin", json.string(response.origin)),
     #("rpId", json.string(response.rp_id)),
-    #(
-      "challengeTimeoutSeconds",
-      json.int(response.challenge_timeout_seconds),
-    ),
+    #("challengeTimeoutSeconds", json.int(response.challenge_timeout_seconds)),
   ])
 }
 
@@ -56,9 +57,6 @@ pub fn encode_request(request: UpsertPasskeyConfigRequest) -> json.Json {
   json.object([
     #("origin", json.string(request.origin)),
     #("rpId", json.string(request.rp_id)),
-    #(
-      "challengeTimeoutSeconds",
-      json.int(request.challenge_timeout_seconds),
-    ),
+    #("challengeTimeoutSeconds", json.int(request.challenge_timeout_seconds)),
   ])
 }

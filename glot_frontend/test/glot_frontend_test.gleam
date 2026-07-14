@@ -1,8 +1,8 @@
 import gleam/option
 import gleam/regexp
 import gleeunit
-import glot_core/route
 import glot_core/email/email_address_model
+import glot_core/route
 import glot_frontend/account_page
 import glot_frontend/login_page
 import glot_frontend/string_helpers

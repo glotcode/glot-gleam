@@ -25,6 +25,7 @@ import glot_core/public_action
 import youid/uuid
 
 const cose_alg_es256 = -7
+
 const cose_alg_rs256 = -257
 
 pub fn begin_passkey_registration(
@@ -42,11 +43,13 @@ pub fn begin_passkey_registration(
   use challenge_id <- program.and_then(basic_effect.uuid_v7())
   use config <- program.and_then(app_config_effect.get_dynamic_config())
   let passkey_config = dynamic_config.passkey_config(config)
-  use challenge_result <- program.and_then(webauthn_effect.new_registration_challenge(
-    passkey_config.origin,
-    passkey_config.rp_id,
-    "required",
-  ))
+  use challenge_result <- program.and_then(
+    webauthn_effect.new_registration_challenge(
+      passkey_config.origin,
+      passkey_config.rp_id,
+      "required",
+    ),
+  )
   use challenge_result <- program.and_then(
     challenge_result
     |> result.map_error(error_from_webauthn)

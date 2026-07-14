@@ -2042,7 +2042,10 @@ fn auth_section_view(section: AuthSection, status: Status) -> Element(Msg) {
   )
 }
 
-fn passkey_section_view(section: PasskeySection, status: Status) -> Element(Msg) {
+fn passkey_section_view(
+  section: PasskeySection,
+  status: Status,
+) -> Element(Msg) {
   let dirty = is_dirty_passkey(section)
 
   config_section(
@@ -2763,9 +2766,7 @@ fn passkey_fields_from_response(
   PasskeyFields(
     origin: response.origin,
     rp_id: response.rp_id,
-    challenge_timeout_seconds: int.to_string(
-      response.challenge_timeout_seconds,
-    ),
+    challenge_timeout_seconds: int.to_string(response.challenge_timeout_seconds),
   )
 }
 

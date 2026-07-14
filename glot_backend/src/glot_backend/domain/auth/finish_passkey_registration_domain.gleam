@@ -45,18 +45,22 @@ pub fn finish_passkey_registration(
     challenge,
     passkey_challenge_model.PasskeyRegistrationChallenge,
   ))
-  use challenge <- program.and_then(passkey_shared_domain.require_challenge_user(
-    challenge,
-    session.user.identity.id,
-  ))
+  use challenge <- program.and_then(
+    passkey_shared_domain.require_challenge_user(
+      challenge,
+      session.user.identity.id,
+    ),
+  )
   use challenge <- program.and_then(passkey_shared_domain.require_not_expired(
     challenge,
     ctx.timestamp,
   ))
-  use attestation_object <- program.and_then(passkey_shared_domain.decode_base64url(
-    "attestationObject",
-    request.attestation_object,
-  ))
+  use attestation_object <- program.and_then(
+    passkey_shared_domain.decode_base64url(
+      "attestationObject",
+      request.attestation_object,
+    ),
+  )
   use registration_result <- program.and_then(webauthn_effect.register(
     attestation_object,
     request.client_data_json,
@@ -73,7 +77,8 @@ pub fn finish_passkey_registration(
   )
   use _ <- program.and_then(case existing_credential {
     option.None -> program.succeed(Nil)
-    option.Some(_) -> program.fail(error.auth(auth_error.InvalidPasskeyAssertion))
+    option.Some(_) ->
+      program.fail(error.auth(auth_error.InvalidPasskeyAssertion))
   })
   use credential_record_id <- program.and_then(basic_effect.uuid_v7())
   let browser_info = browser_info.from_user_agent(ctx.client_info.user_agent)
@@ -106,5 +111,8 @@ pub fn finish_passkey_registration(
 pub fn request_from_dynamic(
   data: dynamic.Dynamic,
 ) -> program_types.Program(passkey_dto.FinishPasskeyRegistrationRequest) {
-  program.decode_dynamic(data, passkey_dto.finish_registration_request_decoder())
+  program.decode_dynamic(
+    data,
+    passkey_dto.finish_registration_request_decoder(),
+  )
 }

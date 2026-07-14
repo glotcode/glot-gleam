@@ -292,7 +292,8 @@ pub fn get_account(
 }
 
 pub fn list_account_sessions(
-  to_msg: fn(ApiResponse(account_session_dto.ListAccountSessionsResponse)) -> msg,
+  to_msg: fn(ApiResponse(account_session_dto.ListAccountSessionsResponse)) ->
+    msg,
 ) -> effect.Effect(msg) {
   let req = PublicApiRequest(public_action.ListAccountSessionsAction, Nil)
 
@@ -585,7 +586,8 @@ pub fn upsert_admin_passkey_config(
   request: passkey_config_dto.UpsertPasskeyConfigRequest,
   to_msg: fn(ApiResponse(passkey_config_dto.PasskeyConfigResponse)) -> msg,
 ) -> effect.Effect(msg) {
-  let req = AdminApiRequest(admin_action.UpsertAdminPasskeyConfigAction, request)
+  let req =
+    AdminApiRequest(admin_action.UpsertAdminPasskeyConfigAction, request)
 
   send_admin_api_request(
     req,

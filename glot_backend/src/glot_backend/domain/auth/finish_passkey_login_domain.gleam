@@ -9,11 +9,11 @@ import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/dynamic_config
 import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
+import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/error/auth_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
-import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/effect/webauthn/webauthn_effect
@@ -101,7 +101,11 @@ pub fn finish_passkey_login(
   let #(sign_count, _aaguid) = authentication_result
   use _ <- program.and_then(validate_sign_count(matched_credential, sign_count))
   let updated_credential =
-    passkey_credential_model.mark_used(matched_credential, sign_count, ctx.timestamp)
+    passkey_credential_model.mark_used(
+      matched_credential,
+      sign_count,
+      ctx.timestamp,
+    )
   let updated_user = user.identity |> user_model.mark_last_login(ctx.timestamp)
   use config <- program.and_then(app_config_effect.get_dynamic_config())
   let auth_config = dynamic_config.auth_config(config)
@@ -109,17 +113,18 @@ pub fn finish_passkey_login(
     basic_effect.info(log.singleton(log.uuid("user_id", updated_user.id))),
   )
 
-  use session_issue <- program.and_then(session_issue_domain.issue_session_for_user(
-    ctx,
-    updated_user.id,
-  ))
-  use _ <- program.and_then(transaction_effect.run_all([
-    auth_effect.update_passkey_credential_tx(updated_credential),
-    auth_effect.delete_passkey_challenge_tx(challenge.id),
-    auth_effect.update_user_tx(updated_user),
-    auth_effect.create_session_tx(session_issue.session),
-    user_action_effect.create_user_action_tx(user_action),
-  ]))
+  use session_issue <- program.and_then(
+    session_issue_domain.issue_session_for_user(ctx, updated_user.id),
+  )
+  use _ <- program.and_then(
+    transaction_effect.run_all([
+      auth_effect.update_passkey_credential_tx(updated_credential),
+      auth_effect.delete_passkey_challenge_tx(challenge.id),
+      auth_effect.update_user_tx(updated_user),
+      auth_effect.create_session_tx(session_issue.session),
+      user_action_effect.create_user_action_tx(user_action),
+    ]),
+  )
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
@@ -165,7 +170,11 @@ fn validate_sign_count(
   credential: passkey_credential_model.PasskeyCredential,
   next_sign_count: Int,
 ) -> program_types.Program(Nil) {
-  case credential.sign_count > 0 && next_sign_count > 0 && next_sign_count <= credential.sign_count {
+  case
+    credential.sign_count > 0
+    && next_sign_count > 0
+    && next_sign_count <= credential.sign_count
+  {
     True -> program.fail(error.auth(auth_error.InvalidPasskeyAssertion))
     False -> program.succeed(Nil)
   }

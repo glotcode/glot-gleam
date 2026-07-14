@@ -117,11 +117,10 @@ fn collect_imports(
         False ->
           case dict.get(manifest, name) {
             Ok(entry) ->
-              collect_imports(
-                manifest,
-                list.append(remaining, entry.imports),
-                [name, ..collected],
-              )
+              collect_imports(manifest, list.append(remaining, entry.imports), [
+                name,
+                ..collected
+              ])
             Error(_) -> collect_imports(manifest, remaining, collected)
           }
       }

@@ -36,21 +36,26 @@ pub fn list_account_sessions(
     subtract_seconds(ctx.timestamp, auth_config.session_idle_timeout_seconds),
   ))
 
-  program.succeed(account_session_dto.ListAccountSessionsResponse(
-    sessions: list.map(sessions, fn(session) {
-      account_session_dto.AccountSessionResponse(
-        id: session.id,
-        ip: session.ip,
-        os_name: session.os_name,
-        browser_name: session.browser_name,
-        created_at: session.created_at,
-        last_activity_at: session.last_activity_at,
-      )
-    }),
-  ))
+  program.succeed(
+    account_session_dto.ListAccountSessionsResponse(
+      sessions: list.map(sessions, fn(session) {
+        account_session_dto.AccountSessionResponse(
+          id: session.id,
+          ip: session.ip,
+          os_name: session.os_name,
+          browser_name: session.browser_name,
+          created_at: session.created_at,
+          last_activity_at: session.last_activity_at,
+        )
+      }),
+    ),
+  )
 }
 
-fn subtract_seconds(ts: timestamp.Timestamp, seconds: Int) -> timestamp.Timestamp {
+fn subtract_seconds(
+  ts: timestamp.Timestamp,
+  seconds: Int,
+) -> timestamp.Timestamp {
   let #(unix_seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
   timestamp.from_unix_seconds_and_nanoseconds(unix_seconds - seconds, nanos)
 }

@@ -39,10 +39,12 @@ pub fn delete_account_passkey(
     |> option.from_result()
     |> program.from_option(error.auth(auth_error.NotOwner)),
   )
-  use _ <- program.and_then(transaction_effect.run_all([
-    auth_effect.delete_passkey_credential_tx(credential.id),
-    user_action_effect.create_user_action_tx(user_action),
-  ]))
+  use _ <- program.and_then(
+    transaction_effect.run_all([
+      auth_effect.delete_passkey_credential_tx(credential.id),
+      user_action_effect.create_user_action_tx(user_action),
+    ]),
+  )
 
   program.succeed(Nil)
 }
@@ -50,5 +52,8 @@ pub fn delete_account_passkey(
 pub fn request_from_dynamic(
   data: dynamic.Dynamic,
 ) -> program_types.Program(passkey_dto.DeleteAccountPasskeyRequest) {
-  program.decode_dynamic(data, passkey_dto.delete_account_passkey_request_decoder())
+  program.decode_dynamic(
+    data,
+    passkey_dto.delete_account_passkey_request_decoder(),
+  )
 }

@@ -58,8 +58,7 @@ pub fn decode_base64url(
   value: String,
 ) -> program_types.Program(BitArray) {
   case string.trim(value) == "" {
-    True ->
-      program.fail(error.validation(validation_error.EmptyField(field)))
+    True -> program.fail(error.validation(validation_error.EmptyField(field)))
     False ->
       base64url.decode(value)
       |> result.map_error(fn(message) {

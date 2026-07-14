@@ -218,10 +218,7 @@ fn handle_page_request_with_runtime(
         runtime,
         ctx,
         assets,
-        list.append(
-          assets.frontend_preloads,
-          assets.code_mirror_preloads,
-        ),
+        list.append(assets.frontend_preloads, assets.code_mirror_preloads),
         editor_page.title,
         editor_page.head_children,
         editor_page.app_attributes,
@@ -234,10 +231,7 @@ fn handle_page_request_with_runtime(
         runtime,
         ctx,
         assets,
-        list.append(
-          assets.frontend_preloads,
-          assets.code_mirror_preloads,
-        ),
+        list.append(assets.frontend_preloads, assets.code_mirror_preloads),
         editor_page.title,
         editor_page.head_children,
         editor_page.app_attributes,
@@ -262,7 +256,10 @@ fn handle_page_request_with_runtime(
 fn static_assets_error_response(message: String) -> page_response.PageResponse {
   let state = empty_page_state()
   page_response.PageResponse(
-    response: wisp.html_response("Static asset manifest error: " <> message, 500),
+    response: wisp.html_response(
+      "Static asset manifest error: " <> message,
+      500,
+    ),
     status_code: 500,
     render_mode: "static_assets_error",
     effects: [],

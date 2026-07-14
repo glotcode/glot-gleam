@@ -43,8 +43,5 @@ pub fn issue_session_for_user(
       last_activity_at: ctx.timestamp,
     )
 
-  program.succeed(SessionIssue(
-    session: session,
-    session_token: session_token,
-  ))
+  program.succeed(SessionIssue(session: session, session_token: session_token))
 }

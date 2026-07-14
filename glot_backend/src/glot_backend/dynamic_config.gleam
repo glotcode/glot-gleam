@@ -53,11 +53,7 @@ pub type AuthConfig {
 }
 
 pub type PasskeyConfig {
-  PasskeyConfig(
-    origin: String,
-    rp_id: String,
-    challenge_timeout_seconds: Int,
-  )
+  PasskeyConfig(origin: String, rp_id: String, challenge_timeout_seconds: Int)
 }
 
 pub type DockerRunConfig {

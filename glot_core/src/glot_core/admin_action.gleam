@@ -180,8 +180,7 @@ pub fn from_string(action: String) -> option.Option(AdminAction) {
     "get_admin_auth_config" -> option.Some(GetAdminAuthConfigAction)
     "upsert_admin_auth_config" -> option.Some(UpsertAdminAuthConfigAction)
     "get_admin_passkey_config" -> option.Some(GetAdminPasskeyConfigAction)
-    "upsert_admin_passkey_config" ->
-      option.Some(UpsertAdminPasskeyConfigAction)
+    "upsert_admin_passkey_config" -> option.Some(UpsertAdminPasskeyConfigAction)
     "get_admin_cleanup_config" -> option.Some(GetAdminCleanupConfigAction)
     "upsert_admin_cleanup_config" -> option.Some(UpsertAdminCleanupConfigAction)
     "get_admin_log_worker_config" -> option.Some(GetAdminLogWorkerConfigAction)

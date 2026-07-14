@@ -46,10 +46,12 @@ pub fn delete_account_session(
     |> option.from_result()
     |> program.from_option(error.auth(auth_error.NotOwner)),
   )
-  use _ <- program.and_then(transaction_effect.run_all([
-    auth_effect.delete_session_tx(account_session.id),
-    user_action_effect.create_user_action_tx(user_action),
-  ]))
+  use _ <- program.and_then(
+    transaction_effect.run_all([
+      auth_effect.delete_session_tx(account_session.id),
+      user_action_effect.create_user_action_tx(user_action),
+    ]),
+  )
 
   program.succeed(Nil)
 }
@@ -63,7 +65,10 @@ pub fn request_from_dynamic(
   )
 }
 
-fn subtract_seconds(ts: timestamp.Timestamp, seconds: Int) -> timestamp.Timestamp {
+fn subtract_seconds(
+  ts: timestamp.Timestamp,
+  seconds: Int,
+) -> timestamp.Timestamp {
   let #(unix_seconds, nanos) = timestamp.to_unix_seconds_and_nanoseconds(ts)
   timestamp.from_unix_seconds_and_nanoseconds(unix_seconds - seconds, nanos)
 }

@@ -144,7 +144,10 @@ pub fn update(
           case token == "" {
             True -> {
               #(
-                Model(..model, status: StatusError("Please enter the login token.")),
+                Model(
+                  ..model,
+                  status: StatusError("Please enter the login token."),
+                ),
                 effect.none(),
                 app_event.NoAppEvent,
               )
@@ -295,7 +298,9 @@ pub fn update(
               #(
                 Model(
                   ..model,
-                  passkey_status: PasskeyError("Could not complete passkey login."),
+                  passkey_status: PasskeyError(
+                    "Could not complete passkey login.",
+                  ),
                 ),
                 effect.none(),
                 app_event.NoAppEvent,
@@ -354,7 +359,9 @@ fn passkey_section(model: Model) -> Element(Msg) {
       html.text("Login by passkey"),
     ]),
     html.p([attribute.class("login-page__section-copy")], [
-      html.text("Use a saved passkey from your browser, password manager, or device."),
+      html.text(
+        "Use a saved passkey from your browser, password manager, or device.",
+      ),
     ]),
     passkey_status_view(model.passkey_status),
     html.button(
@@ -409,10 +416,9 @@ fn email_fields(model: Model) -> List(Element(Msg)) {
   }
 
   [
-    html.label(
-      [attribute.for("email"), attribute.class("login-page__label")],
-      [html.text("Email")],
-    ),
+    html.label([attribute.for("email"), attribute.class("login-page__label")], [
+      html.text("Email"),
+    ]),
     html.input([
       attribute.id("email"),
       attribute.name("email"),
@@ -432,10 +438,9 @@ fn email_fields(model: Model) -> List(Element(Msg)) {
 fn token_fields(model: Model) -> List(Element(Msg)) {
   [
     token_status_view(model.status),
-    html.label(
-      [attribute.for("token"), attribute.class("login-page__label")],
-      [html.text("Token")],
-    ),
+    html.label([attribute.for("token"), attribute.class("login-page__label")], [
+      html.text("Token"),
+    ]),
     html.input([
       attribute.id("token"),
       attribute.name("token"),
@@ -605,10 +610,7 @@ fn finish_passkey_login_response(
     api.ApiSuccess(_) -> login_succeeded(model)
     api.ApiFailure(error) -> {
       #(
-        Model(
-          ..model,
-          passkey_status: PasskeyError(api.error_message(error)),
-        ),
+        Model(..model, passkey_status: PasskeyError(api.error_message(error))),
         effect.none(),
         app_event.NoAppEvent,
       )
