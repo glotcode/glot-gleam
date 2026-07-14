@@ -1242,7 +1242,7 @@ fn save_dialog_children(
             attribute.class(
               "editor-page__dialog-button editor-page__dialog-button--secondary",
             ),
-            event.on_click(SnippetInfoDismissed),
+            event.on_click(SaveCancelled),
           ],
           [html.text("Close")],
         ),
