@@ -721,6 +721,7 @@ fn view_helper(
   let show_snippet_info = model.slug != option.None
 
   editor_layout.shell(
+    load_ad: True,
     title: model.title,
     title_actions: [
       case show_snippet_info {

@@ -1,4 +1,5 @@
 import gleam/list
+import glot_core/page/carbon_ad
 import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
@@ -31,6 +32,7 @@ pub fn title_hint_button(
 }
 
 pub fn shell(
+  load_ad load_ad: Bool,
   title title: String,
   title_actions title_actions: List(Element(msg)),
   pre_tabbar_children pre_tabbar_children: List(Element(msg)),
@@ -51,7 +53,12 @@ pub fn shell(
 
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
-    html.main([attribute.class("editor-shell")], shell_children),
+    html.main([attribute.class("editor-shell")], [
+      html.div([attribute.class("editor-shell__workspace")], shell_children),
+      html.section([attribute.class("editor-sponsor")], [
+        carbon_ad.view(container_class: "editor-sponsor__ad", load_ad:),
+      ]),
+    ]),
   ])
 }
 

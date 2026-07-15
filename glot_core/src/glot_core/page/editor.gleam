@@ -186,6 +186,7 @@ fn content_for_model(
   view_model: ViewModel,
 ) -> lustre_element.Element(Nil) {
   editor_layout.shell(
+    load_ad: False,
     title: model.title,
     title_actions: [
       title_info_button(view_model),

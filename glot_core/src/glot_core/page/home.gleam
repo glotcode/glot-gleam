@@ -1,5 +1,6 @@
 import gleam/list
 import glot_core/language.{type Language}
+import glot_core/page/carbon_ad
 import glot_core/page/icons
 import glot_core/page/logo
 import glot_core/route
@@ -61,28 +62,7 @@ pub fn view(load_ad load_ad: Bool) -> Element(msg) {
         ]),
       ]),
       html.section([attribute.class("home-section home-sponsor")], [
-        html.div(
-          [
-            attribute.id("carbon-ad-container"),
-            attribute.class("home-sponsor__ad"),
-          ],
-          case load_ad {
-            True -> [
-              html.script(
-                [
-                  attribute.attribute("async", ""),
-                  attribute.type_("text/javascript"),
-                  attribute.src(
-                    "//cdn.carbonads.com/carbon.js?serve=CKYIE2JM&placement=glotio&format=cover",
-                  ),
-                  attribute.id("_carbonads_js"),
-                ],
-                "",
-              ),
-            ]
-            False -> []
-          },
-        ),
+        carbon_ad.view(container_class: "home-sponsor__ad", load_ad:),
       ]),
       html.section([attribute.class("home-section home-languages")], [
         html.h2([attribute.class("home-section__title")], [

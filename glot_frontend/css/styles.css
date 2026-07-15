@@ -1105,19 +1105,29 @@ a {
   padding-bottom: 2.5rem;
 }
 
-.home-sponsor__ad {
+.home-sponsor__ad,
+.editor-sponsor__ad {
   display: grid;
   place-items: center;
   width: 100%;
+  box-sizing: border-box;
+}
+
+.home-sponsor__ad {
   height: 100%;
   overflow: hidden;
-  box-sizing: border-box;
+}
+
+.editor-sponsor__ad {
+  align-items: start;
+}
+
+.editor-sponsor {
+  min-width: 0;
 }
 
 #carbon-cover {
   width: 100%;
-  max-height: 100%;
-  overflow: hidden;
   margin: 0 auto;
   font-family: "Helvetica Neue", Arial, sans-serif;
 }
@@ -2376,10 +2386,17 @@ a.snippets-table__cell:hover {
 .editor-shell {
   position: relative;
   z-index: 1;
-  width: min(72rem, calc(100vw - 2rem));
-  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+  width: calc(100vw - 2rem);
+  margin: 0 0 0 1rem;
   padding: 1rem 0 1.4rem;
   box-sizing: border-box;
+}
+
+.editor-shell__workspace {
+  min-width: 0;
 }
 
 .editor-shell__bezel {
@@ -2582,6 +2599,13 @@ a.snippets-table__cell:hover {
   background: #ffffff;
   min-height: 12rem;
   overflow: hidden;
+}
+
+@media (min-width: 86rem) {
+  .editor-shell {
+    width: calc(100vw - 3rem);
+    grid-template-columns: minmax(0, 1fr) 23rem;
+  }
 }
 
 .editor-shell__console::after {
@@ -2789,6 +2813,7 @@ a.snippets-table__cell:hover {
 
   .editor-shell {
     width: calc(100vw - 1rem);
+    margin-left: 0.5rem;
     padding-top: 0.5rem;
   }
 
