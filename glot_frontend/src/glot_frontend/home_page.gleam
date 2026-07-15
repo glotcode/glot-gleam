@@ -25,5 +25,5 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 }
 
 pub fn view(_model: Model) -> Element(Msg) {
-  home.view()
+  home.view(load_ad: True)
 }

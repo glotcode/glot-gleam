@@ -7,7 +7,7 @@ import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 
-pub fn view() -> Element(msg) {
+pub fn view(load_ad load_ad: Bool) -> Element(msg) {
   html.div([attribute.class("app-page app-page--home")], [
     html.main([attribute.class("home-page")], [
       html.section([attribute.class("home-hero")], [
@@ -59,6 +59,30 @@ pub fn view() -> Element(msg) {
             "If your favorite language is missing you can open an issue or pull request on GitHub to get it added.",
           ),
         ]),
+      ]),
+      html.section([attribute.class("home-section home-sponsor")], [
+        html.div(
+          [
+            attribute.id("carbon-ad-container"),
+            attribute.class("home-sponsor__ad"),
+          ],
+          case load_ad {
+            True -> [
+              html.script(
+                [
+                  attribute.attribute("async", ""),
+                  attribute.type_("text/javascript"),
+                  attribute.src(
+                    "//cdn.carbonads.com/carbon.js?serve=CKYIE2JM&placement=glotio&format=cover",
+                  ),
+                  attribute.id("_carbonads_js"),
+                ],
+                "",
+              ),
+            ]
+            False -> []
+          },
+        ),
       ]),
       html.section([attribute.class("home-section home-languages")], [
         html.h2([attribute.class("home-section__title")], [
