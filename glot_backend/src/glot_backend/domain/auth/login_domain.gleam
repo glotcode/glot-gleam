@@ -70,23 +70,29 @@ pub fn login(
     ctx.timestamp,
   ))
 
-  let user = user_outcome.user |> user_model.mark_last_login(ctx.timestamp)
+  let user_outcome = mark_user_last_login(user_outcome, ctx.timestamp)
+  let user = user_from_outcome(user_outcome)
   use _ <- program.and_then(
     basic_effect.info(log.singleton(log.uuid("user_id", user.id))),
   )
   use session_issue <- program.and_then(
     session_issue_domain.issue_session_for_user(ctx, user.id),
   )
+  let prepared_login =
+    PreparedLogin(
+      email: request.email,
+      token: request.token,
+      attempted_at: ctx.timestamp,
+      valid_token_created_since: subtract_seconds(
+        ctx.timestamp,
+        auth_config.login_token_max_age,
+      ),
+      user_outcome: user_outcome,
+      session_issue: session_issue,
+      user_action: user_action,
+    )
   use verification <- program.and_then(
-    transaction_effect.run(login_tx(
-      request,
-      ctx,
-      auth_config.login_token_max_age,
-      user_outcome,
-      user,
-      session_issue,
-      user_action,
-    )),
+    transaction_effect.run(login_tx(prepared_login)),
   )
   use _ <- program.and_then(case verification {
     ValidToken -> program.succeed(Nil)
@@ -96,7 +102,7 @@ pub fn login(
     basic_effect.info(
       log.from_list([
         log.uuid("session_id", session_issue.session.id),
-        log.bool("is_first_login", user_outcome.is_new_user),
+        log.bool("is_first_login", is_new_user(user_outcome)),
       ]),
     ),
   )
@@ -107,85 +113,113 @@ pub fn login(
   ))
 }
 
-fn login_tx(
-  request: login_dto.LoginRequest,
-  ctx: context.Context,
-  login_token_max_age: Int,
-  user_outcome: UserOutcome,
-  user: user_model.User,
-  session_issue: session_issue_domain.SessionIssue,
-  user_action: user_action.UserAction,
-) -> program_types.TransactionProgram(LoginTokenVerification) {
-  use verification <- transaction_program.and_then(verify_login_token_tx(
-    request,
-    ctx,
-    login_token_max_age,
-  ))
-
-  case verification {
-    InvalidToken -> transaction_program.succeed(InvalidToken)
-    ValidToken -> {
-      use _ <- transaction_program.and_then(user_outcome.persist_fn(user))
-      use _ <- transaction_program.and_then(auth_effect.create_session_tx(
-        session_issue.session,
-      ))
-      use _ <- transaction_program.and_then(
-        user_action_effect.create_user_action_tx(user_action),
-      )
-      transaction_program.succeed(ValidToken)
-    }
-  }
+type PreparedLogin {
+  PreparedLogin(
+    email: EmailAddress,
+    token: String,
+    attempted_at: timestamp.Timestamp,
+    valid_token_created_since: timestamp.Timestamp,
+    user_outcome: UserOutcome,
+    session_issue: session_issue_domain.SessionIssue,
+    user_action: user_action.UserAction,
+  )
 }
 
-fn verify_login_token_tx(
-  request: login_dto.LoginRequest,
-  ctx: context.Context,
-  login_token_max_age: Int,
+fn login_tx(
+  prepared_login: PreparedLogin,
 ) -> program_types.TransactionProgram(LoginTokenVerification) {
+  // Keep this lookup in the transaction because the query locks the tokens with
+  // FOR UPDATE, preventing concurrent login attempts from losing updates.
   use tokens <- transaction_program.and_then(
     auth_effect.list_login_tokens_by_email_tx(
-      request.email,
-      subtract_seconds(ctx.timestamp, login_token_max_age),
+      prepared_login.email,
+      prepared_login.valid_token_created_since,
       valid_login_token_count,
     ),
   )
+  let token_preparation =
+    prepare_login_token_mutations(
+      tokens,
+      prepared_login.token,
+      prepared_login.attempted_at,
+    )
+  let transaction =
+    prepare_login_mutations(
+      token_preparation,
+      prepared_login.user_outcome,
+      prepared_login.session_issue,
+      prepared_login.user_action,
+    )
+  use _ <- transaction_program.and_then(transaction)
 
+  transaction_program.succeed(token_preparation.verification)
+}
+
+type LoginTokenPreparation {
+  LoginTokenPreparation(
+    verification: LoginTokenVerification,
+    attempt_transaction: program_types.TransactionProgram(Nil),
+  )
+}
+
+fn prepare_login_token_mutations(
+  tokens: List(login_token_model.LoginToken),
+  provided_token: String,
+  now: timestamp.Timestamp,
+) -> LoginTokenPreparation {
   let shared_attempt_count =
     list.fold(tokens, 0, fn(count, token) {
       int.max(count, token.attempt_count)
     })
 
   case tokens, shared_attempt_count >= max_login_token_attempts {
-    [], _ -> transaction_program.succeed(InvalidToken)
-    _, True -> transaction_program.succeed(InvalidToken)
+    [], _ ->
+      LoginTokenPreparation(InvalidToken, transaction_program.succeed(Nil))
+    _, True ->
+      LoginTokenPreparation(InvalidToken, transaction_program.succeed(Nil))
     _, False -> {
       let matching_token =
         tokens
-        |> list.find(fn(token) { token.token == request.token })
+        |> list.find(fn(token) { token.token == provided_token })
         |> option.from_result()
-      let next_attempt_count = shared_attempt_count + 1
-      let updated_tokens =
+      let attempt_transaction =
         list.map(tokens, fn(token) {
           let token =
-            login_token_model.set_attempt_count(token, next_attempt_count)
-          case matching_token {
+            login_token_model.increment_attempt(token, shared_attempt_count)
+          let token = case matching_token {
             option.Some(matching) if matching.id == token.id ->
-              login_token_model.mark_as_used(token, ctx.timestamp)
+              login_token_model.mark_as_used(token, now)
             _ -> token
           }
+          auth_effect.update_login_token_tx(token)
         })
-      use _ <- transaction_program.and_then(
-        transaction_program.sequence(list.map(
-          updated_tokens,
-          auth_effect.update_login_token_tx,
-        )),
-      )
-
-      case matching_token {
-        option.Some(_) -> transaction_program.succeed(ValidToken)
-        option.None -> transaction_program.succeed(InvalidToken)
+        |> transaction_program.sequence
+      let verification = case matching_token {
+        option.Some(_) -> ValidToken
+        option.None -> InvalidToken
       }
+
+      LoginTokenPreparation(verification, attempt_transaction)
     }
+  }
+}
+
+fn prepare_login_mutations(
+  token_preparation: LoginTokenPreparation,
+  user_outcome: UserOutcome,
+  session_issue: session_issue_domain.SessionIssue,
+  user_action: user_action.UserAction,
+) -> program_types.TransactionProgram(Nil) {
+  use _ <- transaction_program.and_then(token_preparation.attempt_transaction)
+
+  case token_preparation.verification {
+    InvalidToken -> transaction_program.succeed(Nil)
+    ValidToken ->
+      transaction_program.sequence([
+        prepare_user_mutations(user_outcome),
+        auth_effect.create_session_tx(session_issue.session),
+        user_action_effect.create_user_action_tx(user_action),
+      ])
   }
 }
 
@@ -197,11 +231,8 @@ pub fn request_from_dynamic(
 }
 
 type UserOutcome {
-  UserOutcome(
-    user: user_model.User,
-    is_new_user: Bool,
-    persist_fn: fn(user_model.User) -> program_types.TransactionProgram(Nil),
-  )
+  ExistingUser(user: user_model.User)
+  NewUser(user: user_model.User, account: account_model.Account)
 }
 
 fn update_or_create_user(
@@ -211,13 +242,7 @@ fn update_or_create_user(
 ) -> program_types.Program(UserOutcome) {
   case maybe_user {
     option.Some(existing_user) -> {
-      program.succeed(
-        UserOutcome(
-          user: existing_user.identity,
-          is_new_user: False,
-          persist_fn: fn(user) { auth_effect.update_user_tx(user) },
-        ),
-      )
+      program.succeed(ExistingUser(existing_user.identity))
     }
     option.None -> {
       use user_id <- program.and_then(basic_effect.uuid_v7())
@@ -225,15 +250,46 @@ fn update_or_create_user(
       let new_account = new_account(account_id, now)
       let new_user = new_user(user_id, account_id, email, now)
 
-      program.succeed(
-        UserOutcome(user: new_user, is_new_user: True, persist_fn: fn(user) {
-          use _ <- transaction_program.and_then(auth_effect.create_account_tx(
-            new_account,
-          ))
-          auth_effect.create_user_tx(user)
-        }),
-      )
+      program.succeed(NewUser(new_user, new_account))
     }
+  }
+}
+
+fn user_from_outcome(user_outcome: UserOutcome) -> user_model.User {
+  case user_outcome {
+    ExistingUser(user) -> user
+    NewUser(user, _) -> user
+  }
+}
+
+fn mark_user_last_login(
+  user_outcome: UserOutcome,
+  now: timestamp.Timestamp,
+) -> UserOutcome {
+  case user_outcome {
+    ExistingUser(user) -> ExistingUser(user_model.mark_last_login(user, now))
+    NewUser(user, account) ->
+      NewUser(user_model.mark_last_login(user, now), account)
+  }
+}
+
+fn is_new_user(user_outcome: UserOutcome) -> Bool {
+  case user_outcome {
+    ExistingUser(_) -> False
+    NewUser(_, _) -> True
+  }
+}
+
+fn prepare_user_mutations(
+  user_outcome: UserOutcome,
+) -> program_types.TransactionProgram(Nil) {
+  case user_outcome {
+    NewUser(user, account) ->
+      transaction_program.sequence([
+        auth_effect.create_account_tx(account),
+        auth_effect.create_user_tx(user),
+      ])
+    ExistingUser(user) -> auth_effect.update_user_tx(user)
   }
 }
 

@@ -14,8 +14,11 @@ pub type LoginToken {
   )
 }
 
-pub fn set_attempt_count(login_token: LoginToken, count: Int) -> LoginToken {
-  LoginToken(..login_token, attempt_count: count)
+pub fn increment_attempt(
+  login_token: LoginToken,
+  shared_attempt_count: Int,
+) -> LoginToken {
+  LoginToken(..login_token, attempt_count: shared_attempt_count + 1)
 }
 
 pub fn mark_as_used(login_token: LoginToken, used_at: Timestamp) -> LoginToken {

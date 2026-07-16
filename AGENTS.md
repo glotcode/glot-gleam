@@ -20,6 +20,9 @@ Repository instructions for future agent sessions.
 - If a file needs both type annotations and module-qualified values from the same module, prefer keeping the `.{type ...}` import and also use the module namespace if Gleam requires it for value references.
 - Avoid destructuring nested structures in patterns unless it is clearly simpler. Prefer simple bindings and read nested fields directly where that improves readability. Avoid introducing `as c`-style whole-value aliases unless they actually make the code clearer.
 - When logic has several sequential steps or guards, prefer flattening it with small helpers and `use`-style early exits instead of nesting `case` expressions.
+- Keep transaction bodies as declarative and free of business logic as possible. Prepare domain decisions and mutation programs in small helpers, then execute the composed mutations together in one transaction.
+- Prefer returning and composing `TransactionProgram` values. Use `transaction_program.sequence` for ordered mutations and `and_then` only when a later operation depends on an earlier result.
+- Keep reads required for locking or atomic decisions, such as `FOR UPDATE` queries, inside the same transaction as their mutations. Isolate the decision and mutation preparation from the transaction orchestration in small helpers.
 
 ## Generated Files
 
