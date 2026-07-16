@@ -1,6 +1,5 @@
 import gleam/dynamic
 import gleam/option
-import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/dynamic_config
@@ -9,6 +8,7 @@ import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
+import glot_backend/request_context
 import glot_core/admin/log_worker_config_dto
 import glot_core/admin_action
 import glot_core/api_action
@@ -21,12 +21,14 @@ const max_batch_size_limit = 10_000
 const max_buffer_size_limit = 100_000
 
 pub fn upsert_log_worker_config(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: log_worker_config_dto.UpsertLogWorkerConfigRequest,
 ) -> program_types.Program(log_worker_config_dto.LogWorkerConfigResponse) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+  let ctx = request_ctx.context
+
+  use session <- program.and_then(session_domain.require_session(request_ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.admin(admin_action.UpsertAdminLogWorkerConfigAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))

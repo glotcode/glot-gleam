@@ -2,12 +2,10 @@ import gleam/dynamic
 import gleam/list
 import gleam/option
 import gleam/result
-import glot_backend/context
 import glot_backend/domain/auth/passkey_shared_domain
 import glot_backend/domain/auth/session_issue_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -18,6 +16,7 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/effect/webauthn/webauthn_effect
 import glot_backend/log
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/auth/passkey_challenge_model
 import glot_core/auth/passkey_credential_model
@@ -26,9 +25,12 @@ import glot_core/auth/user_model
 import glot_core/public_action
 
 pub fn finish_passkey_login(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: passkey_dto.FinishPasskeyLoginRequest,
 ) -> program_types.Program(session_issue_domain.SessionIssueResult) {
+  let ctx = request_ctx.context
+  let config = request_ctx.dynamic_config
+
   use credential_id <- program.and_then(passkey_shared_domain.decode_base64url(
     "credentialId",
     request.credential_id,
@@ -38,7 +40,7 @@ pub fn finish_passkey_login(
   )
   use actor <- program.and_then(actor_from_credential(maybe_credential))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.FinishPasskeyLoginAction),
     actor: actor,
   ))
@@ -107,7 +109,6 @@ pub fn finish_passkey_login(
       ctx.timestamp,
     )
   let updated_user = user.identity |> user_model.mark_last_login(ctx.timestamp)
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
   let auth_config = dynamic_config.auth_config(config)
   use _ <- program.and_then(
     basic_effect.info(log.singleton(log.uuid("user_id", updated_user.id))),

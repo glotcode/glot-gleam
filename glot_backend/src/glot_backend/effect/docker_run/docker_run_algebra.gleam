@@ -1,8 +1,11 @@
+import gleam/option.{type Option}
+import glot_backend/dynamic_config.{type DockerRunConfig}
 import glot_backend/effect/error/run_request_error
 import glot_core/run
 
 pub type DockerRunEffect(next) {
   RunCode(
+    Option(DockerRunConfig),
     run.RunRequest,
     fn(Result(run.RunResult, run_request_error.RunRequestError)) -> next,
   )
@@ -10,7 +13,8 @@ pub type DockerRunEffect(next) {
 
 pub fn map(effect: DockerRunEffect(a), f: fn(a) -> b) -> DockerRunEffect(b) {
   case effect {
-    RunCode(request, next) -> RunCode(request, fn(value) { f(next(value)) })
+    RunCode(config, request, next) ->
+      RunCode(config, request, fn(value) { f(next(value)) })
   }
 }
 

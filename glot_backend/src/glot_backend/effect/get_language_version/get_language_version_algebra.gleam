@@ -1,11 +1,12 @@
-import glot_backend/context
+import gleam/option.{type Option}
+import glot_backend/dynamic_config.{type DockerRunConfig}
 import glot_backend/effect/error/run_request_error
 import glot_core/language.{type Language}
 import glot_core/run
 
 pub type GetLanguageVersionEffect(next) {
   GetLanguageVersion(
-    context.Config,
+    Option(DockerRunConfig),
     Language,
     fn(Result(run.RunResult, run_request_error.RunRequestError)) -> next,
   )
@@ -16,8 +17,10 @@ pub fn map(
   f: fn(a) -> b,
 ) -> GetLanguageVersionEffect(b) {
   case effect {
-    GetLanguageVersion(cfg, language, next) ->
-      GetLanguageVersion(cfg, language, fn(value) { f(next(value)) })
+    GetLanguageVersion(docker_run_config, language, next) ->
+      GetLanguageVersion(docker_run_config, language, fn(value) {
+        f(next(value))
+      })
   }
 }
 

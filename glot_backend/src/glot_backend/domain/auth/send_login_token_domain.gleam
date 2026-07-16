@@ -10,7 +10,6 @@ import glot_backend/crypto_token
 import glot_backend/domain/job/job_type_policy_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/email_template/email_template_effect
@@ -24,6 +23,7 @@ import glot_backend/effect/transaction/transaction_program
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/email_template
 import glot_backend/log
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/auth/login_token_dto
 import glot_core/auth/login_token_model
@@ -33,9 +33,12 @@ import glot_core/job/job_model
 import glot_core/public_action
 
 pub fn send_login_token(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: login_token_dto.LoginTokenRequest,
 ) -> program_types.Program(Nil) {
+  let ctx = request_ctx.context
+  let config = request_ctx.dynamic_config
+
   use _ <- program.and_then(
     basic_effect.info(log.singleton(log.email("email", request.email))),
   )
@@ -44,11 +47,10 @@ pub fn send_login_token(
     request.email,
   ))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.SendLoginTokenAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
   let auth_config = dynamic_config.auth_config(config)
 
   use token <- program.and_then(basic_effect.new_token(8, crypto_token.Numeric))
@@ -69,7 +71,7 @@ pub fn send_login_token(
       email_template.LoginTokenTemplate,
     ),
   )
-  use sender <- program.and_then(sender_from_config(ctx))
+  use sender <- program.and_then(sender_from_config(request_ctx))
   let assert_template = case maybe_template {
     option.Some(template) -> Ok(template)
     option.None ->
@@ -155,13 +157,12 @@ fn subtract_seconds(
 }
 
 fn sender_from_config(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
 ) -> program_types.Program(email_model.EmailSender) {
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
-  let email_config = dynamic_config.email_config(config)
+  let email_config = dynamic_config.email_config(request_ctx.dynamic_config)
   use address <- program.and_then(log_send_email_internal_error(
     email_address_model.from_string(
-      ctx.regexes.is_email,
+      request_ctx.context.regexes.is_email,
       email_config.from_address,
     )
     |> option.to_result(infra_error.EmailDeliveryFailed(

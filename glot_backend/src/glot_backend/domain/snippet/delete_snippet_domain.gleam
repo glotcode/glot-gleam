@@ -1,5 +1,4 @@
 import gleam/dynamic
-import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/authorization_domain
 import glot_backend/domain/shared/session_domain
@@ -12,15 +11,16 @@ import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/public_action
 import glot_core/snippet/snippet_dto
 
 pub fn delete_snippet(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: snippet_dto.DeleteSnippetRequest,
 ) -> program_types.Program(Nil) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+  use session <- program.and_then(session_domain.require_session(request_ctx))
 
   use _ <- program.and_then(
     basic_effect.info(
@@ -33,7 +33,7 @@ pub fn delete_snippet(
   )
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.DeleteSnippetAction),
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,

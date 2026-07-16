@@ -1,26 +1,27 @@
 import gleam/list
 import gleam/time/timestamp
-import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/auth/account_session_dto
 import glot_core/public_action
 
 pub fn list_account_sessions(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
 ) -> program_types.Program(account_session_dto.ListAccountSessionsResponse) {
-  use session <- program.and_then(session_domain.require_session(ctx))
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  let ctx = request_ctx.context
+  let config = request_ctx.dynamic_config
+
+  use session <- program.and_then(session_domain.require_session(request_ctx))
   let auth_config = dynamic_config.auth_config(config)
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.ListAccountSessionsAction),
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,

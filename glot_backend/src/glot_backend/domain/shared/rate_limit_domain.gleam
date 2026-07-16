@@ -3,7 +3,6 @@ import gleam/option.{type Option}
 import gleam/time/timestamp.{type Timestamp}
 import glot_backend/context
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
 import glot_backend/effect/error/auth_error
@@ -19,12 +18,12 @@ import glot_core/user_action
 import youid/uuid.{type Uuid}
 
 pub fn enforce(
+  config config: dynamic_config.DynamicConfig,
   ctx ctx: context.Context,
   user_id user_id: Option(Uuid),
   account_tier account_tier: Option(AccountTier),
   action action: PublicAction,
 ) -> program_types.Program(user_action.UserAction) {
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
   let action_rate_limits =
     lookup_rate_limits(config, action, actor_from_account_tier(account_tier))
 

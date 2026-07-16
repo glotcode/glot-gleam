@@ -81,6 +81,8 @@ import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/domain/snippet/list_public_snippets_domain
 import glot_backend/domain/snippet/list_session_snippets_domain
 import glot_backend/domain/snippet/update_snippet_domain
+import glot_backend/dynamic_config
+import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/error
@@ -90,6 +92,7 @@ import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
+import glot_backend/request_context
 import glot_backend/server_timing
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
@@ -171,138 +174,142 @@ fn handle_api_request(
   ctx: context.Context,
   api_request: ApiRequest,
 ) -> program_types.Program(ApiResult) {
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  let request_ctx = request_context.new(ctx, config)
   use _ <- program.and_then(availability_policy_domain.enforce_api_action(
+    dynamic_config.availability_config(config),
     api_request.action,
   ))
   case api_request.action {
     api_action.PublicAction(action) ->
-      handle_public_api_request(ctx, action, api_request.data)
+      handle_public_api_request(request_ctx, action, api_request.data)
     api_action.AdminAction(action) ->
-      handle_admin_api_request(ctx, action, api_request.data)
+      handle_admin_api_request(request_ctx, action, api_request.data)
   }
 }
 
 fn handle_public_api_request(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   action: public_action.PublicAction,
   data: dynamic.Dynamic,
 ) -> program_types.Program(ApiResult) {
+  let ctx = request_ctx.context
   case action {
     public_action.TrackPageviewAction -> {
       use request <- program.and_then(
         track_pageview_domain.request_from_dynamic(data),
       )
-      track_pageview_domain.track_pageview(ctx, request)
+      track_pageview_domain.track_pageview(request_ctx, request)
       |> program.map(TrackPageviewResponse)
     }
     public_action.RunAction -> {
       use request <- program.and_then(run_domain.request_from_dynamic(data))
-      run_domain.run(ctx, request)
+      run_domain.run(request_ctx, request)
       |> program.map(RunResultResponse)
     }
     public_action.GetLanguageVersionAction -> {
       use request <- program.and_then(
         get_language_version_domain.request_from_dynamic(data),
       )
-      get_language_version_domain.get_language_version(ctx, request)
+      get_language_version_domain.get_language_version(request_ctx, request)
       |> program.map(RunResultResponse)
     }
     public_action.GetSessionAction -> {
-      get_session_domain.get_session(ctx)
+      get_session_domain.get_session(request_ctx)
       |> program.map(SessionResponse)
     }
     public_action.RefreshSessionAction ->
-      refresh_session_domain.refresh_session(ctx)
+      refresh_session_domain.refresh_session(request_ctx)
       |> program.map(RefreshSessionResponse)
     public_action.LogoutAction ->
-      logout_domain.logout(ctx)
+      logout_domain.logout(request_ctx)
       |> program.map(fn(_) { LogoutResponse })
     public_action.GetAccountAction -> {
-      get_account_domain.get_account(ctx)
+      get_account_domain.get_account(request_ctx)
       |> program.map(AccountResponse)
     }
     public_action.ListAccountSessionsAction -> {
-      list_account_sessions_domain.list_account_sessions(ctx)
+      list_account_sessions_domain.list_account_sessions(request_ctx)
       |> program.map(ListAccountSessionsResponse)
     }
     public_action.ListAccountPasskeysAction -> {
-      list_account_passkeys_domain.list_account_passkeys(ctx)
+      list_account_passkeys_domain.list_account_passkeys(request_ctx)
       |> program.map(AccountPasskeysResponse)
     }
     public_action.UpdateAccountAction -> {
       use request <- program.and_then(
         update_account_domain.request_from_dynamic(data),
       )
-      update_account_domain.update_account(ctx, request)
+      update_account_domain.update_account(request_ctx, request)
       |> program.map(AccountResponse)
     }
     public_action.DeleteAccountPasskeyAction -> {
       use request <- program.and_then(
         delete_account_passkey_domain.request_from_dynamic(data),
       )
-      delete_account_passkey_domain.delete_account_passkey(ctx, request)
+      delete_account_passkey_domain.delete_account_passkey(request_ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     public_action.DeleteAccountSessionAction -> {
       use request <- program.and_then(
         delete_account_session_domain.request_from_dynamic(data),
       )
-      delete_account_session_domain.delete_account_session(ctx, request)
+      delete_account_session_domain.delete_account_session(request_ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     public_action.ScheduleDeleteAccountAction ->
-      schedule_delete_account_domain.schedule_delete_account(ctx)
+      schedule_delete_account_domain.schedule_delete_account(request_ctx)
       |> program.map(fn(_) { NoContentResponse })
     public_action.CancelDeleteAccountAction ->
-      cancel_delete_account_domain.cancel_delete_account(ctx)
+      cancel_delete_account_domain.cancel_delete_account(request_ctx)
       |> program.map(fn(_) { NoContentResponse })
     public_action.GetSnippetAction -> {
       use request <- program.and_then(get_snippet_domain.request_from_dynamic(
         data,
       ))
-      get_snippet_domain.get_snippet(ctx, request)
+      get_snippet_domain.get_snippet(request_ctx, request)
       |> program.map(SnippetResponse)
     }
     public_action.ListPublicSnippetsAction -> {
       use request <- program.and_then(
         list_public_snippets_domain.request_from_dynamic(data),
       )
-      list_public_snippets_domain.list_public_snippets(ctx, request)
+      list_public_snippets_domain.list_public_snippets(request_ctx, request)
       |> program.map(SnippetsResponse)
     }
     public_action.ListSessionSnippetsAction -> {
       use request <- program.and_then(
         list_session_snippets_domain.request_from_dynamic(data),
       )
-      list_session_snippets_domain.list_session_snippets(ctx, request)
+      list_session_snippets_domain.list_session_snippets(request_ctx, request)
       |> program.map(SnippetsResponse)
     }
     public_action.CreateSnippetAction -> {
       use request <- program.and_then(
         create_snippet_domain.request_from_dynamic(data),
       )
-      create_snippet_domain.create_snippet(ctx, request)
+      create_snippet_domain.create_snippet(request_ctx, request)
       |> program.map(SnippetResponse)
     }
     public_action.UpdateSnippetAction -> {
       use request <- program.and_then(
         update_snippet_domain.request_from_dynamic(data),
       )
-      update_snippet_domain.update_snippet(ctx, request)
+      update_snippet_domain.update_snippet(request_ctx, request)
       |> program.map(SnippetResponse)
     }
     public_action.DeleteSnippetAction -> {
       use request <- program.and_then(
         delete_snippet_domain.request_from_dynamic(data),
       )
-      delete_snippet_domain.delete_snippet(ctx, request)
+      delete_snippet_domain.delete_snippet(request_ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     public_action.SendLoginTokenAction -> {
       use request <- program.and_then(
         send_login_token_domain.request_from_dynamic(ctx, data),
       )
-      send_login_token_domain.send_login_token(ctx, request)
+      send_login_token_domain.send_login_token(request_ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     public_action.LoginAction -> {
@@ -310,106 +317,112 @@ fn handle_public_api_request(
         ctx,
         data,
       ))
-      login_domain.login(ctx, request)
+      login_domain.login(request_ctx, request)
       |> program.map(LoginResponse)
     }
     public_action.BeginPasskeyRegistrationAction ->
-      begin_passkey_registration_domain.begin_passkey_registration(ctx)
+      begin_passkey_registration_domain.begin_passkey_registration(request_ctx)
       |> program.map(BeginPasskeyRegistrationResponse)
     public_action.FinishPasskeyRegistrationAction -> {
       use request <- program.and_then(
         finish_passkey_registration_domain.request_from_dynamic(data),
       )
       finish_passkey_registration_domain.finish_passkey_registration(
-        ctx,
+        request_ctx,
         request,
       )
       |> program.map(fn(_) { NoContentResponse })
     }
     public_action.BeginPasskeyLoginAction -> {
       let _ = data
-      begin_passkey_login_domain.begin_passkey_login(ctx)
+      begin_passkey_login_domain.begin_passkey_login(request_ctx)
       |> program.map(BeginPasskeyLoginResponse)
     }
     public_action.FinishPasskeyLoginAction -> {
       use request <- program.and_then(
         finish_passkey_login_domain.request_from_dynamic(data),
       )
-      finish_passkey_login_domain.finish_passkey_login(ctx, request)
+      finish_passkey_login_domain.finish_passkey_login(request_ctx, request)
       |> program.map(FinishPasskeyLoginResponse)
     }
   }
 }
 
 fn handle_admin_api_request(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   action: admin_action.AdminAction,
   data: dynamic.Dynamic,
 ) -> program_types.Program(ApiResult) {
   case action {
     admin_action.GetAdminDebugConfigAction ->
-      get_debug_config_domain.get_debug_config(ctx)
+      get_debug_config_domain.get_debug_config(request_ctx)
       |> program.map(DebugConfigResponse)
     admin_action.GetAdminAvailabilityConfigAction ->
-      get_availability_config_domain.get_availability_config(ctx)
+      get_availability_config_domain.get_availability_config(request_ctx)
       |> program.map(AvailabilityConfigResponse)
     admin_action.UpsertAdminAvailabilityConfigAction -> {
       use request <- program.and_then(
         upsert_availability_config_domain.request_from_dynamic(data),
       )
-      upsert_availability_config_domain.upsert_availability_config(ctx, request)
+      upsert_availability_config_domain.upsert_availability_config(
+        request_ctx,
+        request,
+      )
       |> program.map(AvailabilityConfigResponse)
     }
     admin_action.UpsertAdminDebugConfigAction -> {
       use request <- program.and_then(
         upsert_debug_config_domain.request_from_dynamic(data),
       )
-      upsert_debug_config_domain.upsert_debug_config(ctx, request)
+      upsert_debug_config_domain.upsert_debug_config(request_ctx, request)
       |> program.map(DebugConfigResponse)
     }
     admin_action.GetAdminAuthConfigAction ->
-      get_auth_config_domain.get_auth_config(ctx)
+      get_auth_config_domain.get_auth_config(request_ctx)
       |> program.map(AuthConfigResponse)
     admin_action.GetAdminPasskeyConfigAction ->
-      get_passkey_config_domain.get_passkey_config(ctx)
+      get_passkey_config_domain.get_passkey_config(request_ctx)
       |> program.map(PasskeyConfigResponse)
     admin_action.UpsertAdminAuthConfigAction -> {
       use request <- program.and_then(
         upsert_auth_config_domain.request_from_dynamic(data),
       )
-      upsert_auth_config_domain.upsert_auth_config(ctx, request)
+      upsert_auth_config_domain.upsert_auth_config(request_ctx, request)
       |> program.map(AuthConfigResponse)
     }
     admin_action.UpsertAdminPasskeyConfigAction -> {
       use request <- program.and_then(
         upsert_passkey_config_domain.request_from_dynamic(data),
       )
-      upsert_passkey_config_domain.upsert_passkey_config(ctx, request)
+      upsert_passkey_config_domain.upsert_passkey_config(request_ctx, request)
       |> program.map(PasskeyConfigResponse)
     }
     admin_action.GetAdminCleanupConfigAction ->
-      get_cleanup_config_domain.get_cleanup_config(ctx)
+      get_cleanup_config_domain.get_cleanup_config(request_ctx)
       |> program.map(CleanupConfigResponse)
     admin_action.UpsertAdminCleanupConfigAction -> {
       use request <- program.and_then(
         upsert_cleanup_config_domain.request_from_dynamic(data),
       )
-      upsert_cleanup_config_domain.upsert_cleanup_config(ctx, request)
+      upsert_cleanup_config_domain.upsert_cleanup_config(request_ctx, request)
       |> program.map(CleanupConfigResponse)
     }
     admin_action.GetAdminLogWorkerConfigAction ->
-      get_log_worker_config_domain.get_log_worker_config(ctx)
+      get_log_worker_config_domain.get_log_worker_config(request_ctx)
       |> program.map(LogWorkerConfigResponse)
     admin_action.UpsertAdminLogWorkerConfigAction -> {
       use request <- program.and_then(
         upsert_log_worker_config_domain.request_from_dynamic(data),
       )
-      upsert_log_worker_config_domain.upsert_log_worker_config(ctx, request)
+      upsert_log_worker_config_domain.upsert_log_worker_config(
+        request_ctx,
+        request,
+      )
       |> program.map(LogWorkerConfigResponse)
     }
     admin_action.GetAdminLanguageVersionCacheWorkerConfigAction ->
       get_language_version_cache_worker_config_domain.get_language_version_cache_worker_config(
-        ctx,
+        request_ctx,
       )
       |> program.map(LanguageVersionCacheWorkerConfigResponse)
     admin_action.UpsertAdminLanguageVersionCacheWorkerConfigAction -> {
@@ -419,199 +432,208 @@ fn handle_admin_api_request(
         ),
       )
       upsert_language_version_cache_worker_config_domain.upsert_language_version_cache_worker_config(
-        ctx,
+        request_ctx,
         request,
       )
       |> program.map(LanguageVersionCacheWorkerConfigResponse)
     }
     admin_action.GetAdminPeriodicJobsAction ->
-      get_periodic_jobs_domain.get_periodic_jobs(ctx)
+      get_periodic_jobs_domain.get_periodic_jobs(request_ctx)
       |> program.map(AdminPeriodicJobsResponse)
     admin_action.GetAdminPeriodicJobAction -> {
       use request <- program.and_then(
         get_periodic_job_domain.request_from_dynamic(data),
       )
-      get_periodic_job_domain.get_periodic_job(ctx, request)
+      get_periodic_job_domain.get_periodic_job(request_ctx, request)
       |> program.map(AdminPeriodicJobDetailResponse)
     }
     admin_action.UpdateAdminPeriodicJobAction -> {
       use request <- program.and_then(
         update_periodic_job_domain.request_from_dynamic(data),
       )
-      update_periodic_job_domain.update_periodic_job(ctx, request)
+      update_periodic_job_domain.update_periodic_job(request_ctx, request)
       |> program.map(AdminPeriodicJobResponse)
     }
     admin_action.GetAdminJobsAction -> {
       use request <- program.and_then(get_jobs_domain.request_from_dynamic(data))
-      get_jobs_domain.get_jobs(ctx, request)
+      get_jobs_domain.get_jobs(request_ctx, request)
       |> program.map(AdminJobsResponse)
     }
     admin_action.GetAdminJobAction -> {
       use request <- program.and_then(get_job_domain.request_from_dynamic(data))
-      get_job_domain.get_job(ctx, request)
+      get_job_domain.get_job(request_ctx, request)
       |> program.map(AdminJobResponse)
     }
     admin_action.CreateAdminJobAction -> {
       use request <- program.and_then(create_job_domain.request_from_dynamic(
         data,
       ))
-      create_job_domain.create_job(ctx, request)
+      create_job_domain.create_job(request_ctx, request)
       |> program.map(AdminJobResponse)
     }
     admin_action.GetAdminEmailTemplatesAction ->
-      get_email_templates_domain.get_email_templates(ctx)
+      get_email_templates_domain.get_email_templates(request_ctx)
       |> program.map(AdminEmailTemplatesResponse)
     admin_action.GetAdminEmailTemplateAction -> {
       use request <- program.and_then(
         get_email_template_domain.request_from_dynamic(data),
       )
-      get_email_template_domain.get_email_template(ctx, request)
+      get_email_template_domain.get_email_template(request_ctx, request)
       |> program.map(AdminEmailTemplateResponse)
     }
     admin_action.UpdateAdminEmailTemplateAction -> {
       use request <- program.and_then(
         update_email_template_domain.request_from_dynamic(data),
       )
-      update_email_template_domain.update_email_template(ctx, request)
+      update_email_template_domain.update_email_template(request_ctx, request)
       |> program.map(AdminUpdatedEmailTemplateResponse)
     }
     admin_action.GetAdminSnippetsAction -> {
       use request <- program.and_then(get_snippets_domain.request_from_dynamic(
         data,
       ))
-      get_snippets_domain.get_snippets(ctx, request)
+      get_snippets_domain.get_snippets(request_ctx, request)
       |> program.map(AdminSnippetsResponse)
     }
     admin_action.GetAdminSnippetAction -> {
       use request <- program.and_then(
         admin_get_snippet_domain.request_from_dynamic(data),
       )
-      admin_get_snippet_domain.get_snippet(ctx, request)
+      admin_get_snippet_domain.get_snippet(request_ctx, request)
       |> program.map(AdminSnippetResponse)
     }
     admin_action.DeleteAdminSnippetAction -> {
       use request <- program.and_then(
         admin_delete_snippet_domain.request_from_dynamic(data),
       )
-      admin_delete_snippet_domain.delete_snippet(ctx, request)
+      admin_delete_snippet_domain.delete_snippet(request_ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     admin_action.GetAdminUsersAction -> {
       use request <- program.and_then(get_users_domain.request_from_dynamic(
         data,
       ))
-      get_users_domain.get_users(ctx, request)
+      get_users_domain.get_users(request_ctx, request)
       |> program.map(AdminUsersResponse)
     }
     admin_action.GetAdminUserAction -> {
       use request <- program.and_then(get_user_domain.request_from_dynamic(data))
-      get_user_domain.get_user(ctx, request)
+      get_user_domain.get_user(request_ctx, request)
       |> program.map(AdminUserDetailResponse)
     }
     admin_action.UpdateAdminUserAction -> {
       use request <- program.and_then(update_user_domain.request_from_dynamic(
         data,
       ))
-      update_user_domain.update_user(ctx, request)
+      update_user_domain.update_user(request_ctx, request)
       |> program.map(AdminUserResponse)
     }
     admin_action.DeleteAdminAccountAction -> {
       use request <- program.and_then(
         admin_delete_account_domain.request_from_dynamic(data),
       )
-      admin_delete_account_domain.delete_account(ctx, request)
+      admin_delete_account_domain.delete_account(request_ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     admin_action.GetAdminApiLogsAction -> {
       use request <- program.and_then(get_api_logs_domain.request_from_dynamic(
         data,
       ))
-      get_api_logs_domain.get_api_logs(ctx, request)
+      get_api_logs_domain.get_api_logs(request_ctx, request)
       |> program.map(AdminApiLogsResponse)
     }
     admin_action.GetAdminApiLogAction -> {
       use request <- program.and_then(get_api_log_domain.request_from_dynamic(
         data,
       ))
-      get_api_log_domain.get_api_log(ctx, request)
+      get_api_log_domain.get_api_log(request_ctx, request)
       |> program.map(AdminApiLogResponse)
     }
     admin_action.GetAdminRunLogsAction -> {
       use request <- program.and_then(get_run_logs_domain.request_from_dynamic(
         data,
       ))
-      get_run_logs_domain.get_run_logs(ctx, request)
+      get_run_logs_domain.get_run_logs(request_ctx, request)
       |> program.map(AdminRunLogsResponse)
     }
     admin_action.GetAdminRunLogAction -> {
       use request <- program.and_then(get_run_log_domain.request_from_dynamic(
         data,
       ))
-      get_run_log_domain.get_run_log(ctx, request)
+      get_run_log_domain.get_run_log(request_ctx, request)
       |> program.map(AdminRunLogResponse)
     }
     admin_action.GetAdminJobLogsAction -> {
       use request <- program.and_then(get_job_logs_domain.request_from_dynamic(
         data,
       ))
-      get_job_logs_domain.get_job_logs(ctx, request)
+      get_job_logs_domain.get_job_logs(request_ctx, request)
       |> program.map(AdminJobLogsResponse)
     }
     admin_action.GetAdminJobLogAction -> {
       use request <- program.and_then(get_job_log_domain.request_from_dynamic(
         data,
       ))
-      get_job_log_domain.get_job_log(ctx, request)
+      get_job_log_domain.get_job_log(request_ctx, request)
       |> program.map(AdminJobLogResponse)
     }
     admin_action.GetAdminRateLimitPoliciesAction ->
-      get_rate_limit_policies_domain.get_rate_limit_policies(ctx)
+      get_rate_limit_policies_domain.get_rate_limit_policies(request_ctx)
       |> program.map(RateLimitPoliciesResponse)
     admin_action.UpsertAdminRateLimitPolicyAction -> {
       use request <- program.and_then(
         upsert_rate_limit_policy_domain.request_from_dynamic(data),
       )
-      upsert_rate_limit_policy_domain.upsert_rate_limit_policy(ctx, request)
+      upsert_rate_limit_policy_domain.upsert_rate_limit_policy(
+        request_ctx,
+        request,
+      )
       |> program.map(RateLimitPolicyResponse)
     }
     admin_action.GetAdminJobTypePoliciesAction ->
-      get_job_type_policies_domain.get_job_type_policies(ctx)
+      get_job_type_policies_domain.get_job_type_policies(request_ctx)
       |> program.map(JobTypePoliciesResponse)
     admin_action.UpsertAdminJobTypePolicyAction -> {
       use request <- program.and_then(
         upsert_job_type_policy_domain.request_from_dynamic(data),
       )
-      upsert_job_type_policy_domain.upsert_job_type_policy(ctx, request)
+      upsert_job_type_policy_domain.upsert_job_type_policy(request_ctx, request)
       |> program.map(JobTypePolicyResponse)
     }
     admin_action.GetAdminDockerRunConfigAction ->
-      get_docker_run_config_domain.get_docker_run_config(ctx)
+      get_docker_run_config_domain.get_docker_run_config(request_ctx)
       |> program.map(DockerRunConfigResponse)
     admin_action.UpsertAdminDockerRunConfigAction -> {
       use request <- program.and_then(
         upsert_docker_run_config_domain.request_from_dynamic(data),
       )
-      upsert_docker_run_config_domain.upsert_docker_run_config(ctx, request)
+      upsert_docker_run_config_domain.upsert_docker_run_config(
+        request_ctx,
+        request,
+      )
       |> program.map(DockerRunConfigResponse)
     }
     admin_action.GetAdminCloudflareConfigAction ->
-      get_cloudflare_config_domain.get_cloudflare_config(ctx)
+      get_cloudflare_config_domain.get_cloudflare_config(request_ctx)
       |> program.map(CloudflareConfigResponse)
     admin_action.UpsertAdminCloudflareConfigAction -> {
       use request <- program.and_then(
         upsert_cloudflare_config_domain.request_from_dynamic(data),
       )
-      upsert_cloudflare_config_domain.upsert_cloudflare_config(ctx, request)
+      upsert_cloudflare_config_domain.upsert_cloudflare_config(
+        request_ctx,
+        request,
+      )
       |> program.map(CloudflareConfigResponse)
     }
     admin_action.GetAdminEmailConfigAction ->
-      get_email_config_domain.get_email_config(ctx)
+      get_email_config_domain.get_email_config(request_ctx)
       |> program.map(EmailConfigResponse)
     admin_action.UpsertAdminEmailConfigAction -> {
       use request <- program.and_then(
         upsert_email_config_domain.request_from_dynamic(data),
       )
-      upsert_email_config_domain.upsert_email_config(ctx, request)
+      upsert_email_config_domain.upsert_email_config(request_ctx, request)
       |> program.map(EmailConfigResponse)
     }
   }

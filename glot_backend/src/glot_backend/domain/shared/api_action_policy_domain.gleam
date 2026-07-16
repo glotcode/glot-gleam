@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/option.{type Option}
+import gleam/result
 import glot_backend/context
 import glot_backend/domain/shared/rate_limit_domain
 import glot_backend/effect/basic/basic_effect
@@ -8,6 +9,7 @@ import glot_backend/effect/error/auth_error
 import glot_backend/effect/error/policy_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
+import glot_backend/request_context
 import glot_core/admin_action
 import glot_core/api_action
 import glot_core/auth/account_model.{type AccountState, type AccountTier}
@@ -50,27 +52,21 @@ type ApiActionPolicy {
 }
 
 pub fn enforce(
-  ctx ctx: context.Context,
+  request_ctx request_ctx: request_context.RequestContext,
   action action: api_action.ApiAction,
   actor actor: ActionActor,
 ) -> program_types.Program(user_action.UserAction) {
-  let policy = action_policy(action)
+  let ctx = request_ctx.context
+  let config = request_ctx.dynamic_config
   use _ <- program.and_then(
-    enforce_authentication(policy.authentication_policy, actor)
-    |> program.from_result(),
-  )
-  use _ <- program.and_then(
-    enforce_authorization(policy.authorization_policy, actor)
-    |> program.from_result(),
-  )
-  use _ <- program.and_then(
-    enforce_account_state(action, policy.account_state_policy, actor)
+    enforce_policy(action, actor)
     |> program.from_result(),
   )
 
   case action {
     api_action.PublicAction(action) ->
       rate_limit_domain.enforce(
+        config: config,
         ctx: ctx,
         user_id: actor_user_id(actor),
         account_tier: actor_account_tier(actor),
@@ -78,6 +74,24 @@ pub fn enforce(
       )
     api_action.AdminAction(_) -> create_user_action(ctx, actor, action)
   }
+}
+
+fn enforce_policy(
+  action: api_action.ApiAction,
+  actor: ActionActor,
+) -> Result(Nil, error.Error) {
+  let policy = action_policy(action)
+  use _ <- result.try(enforce_authentication(
+    policy.authentication_policy,
+    actor,
+  ))
+  use _ <- result.try(enforce_authorization(policy.authorization_policy, actor))
+  use _ <- result.try(enforce_account_state(
+    action,
+    policy.account_state_policy,
+    actor,
+  ))
+  Ok(Nil)
 }
 
 pub fn actor_from_user(

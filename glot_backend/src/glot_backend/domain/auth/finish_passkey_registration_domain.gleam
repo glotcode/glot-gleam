@@ -2,7 +2,6 @@ import gleam/dynamic
 import gleam/option
 import gleam/result
 import glot_backend/browser_info
-import glot_backend/context
 import glot_backend/domain/auth/passkey_shared_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
@@ -15,6 +14,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/effect/webauthn/webauthn_effect
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/auth/passkey_challenge_model
 import glot_core/auth/passkey_credential_model
@@ -22,15 +22,17 @@ import glot_core/auth/passkey_dto
 import glot_core/public_action
 
 pub fn finish_passkey_registration(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: passkey_dto.FinishPasskeyRegistrationRequest,
 ) -> program_types.Program(Nil) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+  let ctx = request_ctx.context
+
+  use session <- program.and_then(session_domain.require_session(request_ctx))
   use maybe_user <- program.and_then(auth_effect.get_user_by_id(
     session.user.identity.id,
   ))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.FinishPasskeyRegistrationAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))

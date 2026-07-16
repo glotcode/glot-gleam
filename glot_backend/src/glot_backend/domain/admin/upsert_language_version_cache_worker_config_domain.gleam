@@ -1,6 +1,5 @@
 import gleam/dynamic
 import gleam/option
-import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/dynamic_config
@@ -9,6 +8,7 @@ import glot_backend/effect/error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
+import glot_backend/request_context
 import glot_core/admin/language_version_cache_worker_config_dto
 import glot_core/admin_action
 import glot_core/api_action
@@ -23,14 +23,16 @@ const max_refresh_step_jitter_ms = 60_000
 const max_default_timeout_ms = 600_000
 
 pub fn upsert_language_version_cache_worker_config(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: language_version_cache_worker_config_dto.UpsertLanguageVersionCacheWorkerConfigRequest,
 ) -> program_types.Program(
   language_version_cache_worker_config_dto.LanguageVersionCacheWorkerConfigResponse,
 ) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+  let ctx = request_ctx.context
+
+  use session <- program.and_then(session_domain.require_session(request_ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.admin(
       admin_action.UpsertAdminLanguageVersionCacheWorkerConfigAction,
     ),

@@ -22,9 +22,10 @@ pub fn normal_mode_allows_public_write_api_test() {
   let config = availability_config(availability_mode.NormalMode)
 
   assert run_policy_program(
-      availability_policy_domain.enforce_api_action(api_action.public(
-        public_action.CreateSnippetAction,
-      )),
+      availability_policy_domain.enforce_api_action(
+        config,
+        api_action.public(public_action.CreateSnippetAction),
+      ),
       config,
     )
     == Ok(Nil)
@@ -34,9 +35,10 @@ pub fn read_only_mode_blocks_public_write_api_test() {
   let config = availability_config(availability_mode.ReadOnlyMode)
 
   assert run_policy_program(
-      availability_policy_domain.enforce_api_action(api_action.public(
-        public_action.CreateSnippetAction,
-      )),
+      availability_policy_domain.enforce_api_action(
+        config,
+        api_action.public(public_action.CreateSnippetAction),
+      ),
       config,
     )
     == Error(
@@ -51,9 +53,10 @@ pub fn read_only_mode_allows_public_read_api_test() {
   let config = availability_config(availability_mode.ReadOnlyMode)
 
   assert run_policy_program(
-      availability_policy_domain.enforce_api_action(api_action.public(
-        public_action.ListPublicSnippetsAction,
-      )),
+      availability_policy_domain.enforce_api_action(
+        config,
+        api_action.public(public_action.ListPublicSnippetsAction),
+      ),
       config,
     )
     == Ok(Nil)
@@ -63,9 +66,10 @@ pub fn maintenance_mode_blocks_public_read_api_test() {
   let config = availability_config(availability_mode.MaintenanceMode)
 
   assert run_policy_program(
-      availability_policy_domain.enforce_api_action(api_action.public(
-        public_action.ListPublicSnippetsAction,
-      )),
+      availability_policy_domain.enforce_api_action(
+        config,
+        api_action.public(public_action.ListPublicSnippetsAction),
+      ),
       config,
     )
     == Error(
@@ -80,9 +84,10 @@ pub fn maintenance_mode_allows_admin_api_test() {
   let config = availability_config(availability_mode.MaintenanceMode)
 
   assert run_policy_program(
-      availability_policy_domain.enforce_api_action(api_action.admin(
-        admin_action.GetAdminDebugConfigAction,
-      )),
+      availability_policy_domain.enforce_api_action(
+        config,
+        api_action.admin(admin_action.GetAdminDebugConfigAction),
+      ),
       config,
     )
     == Ok(Nil)
@@ -93,6 +98,7 @@ pub fn read_only_mode_keeps_general_pages_available_test() {
 
   assert run_policy_program(
       availability_policy_domain.evaluate_page_route(
+        config,
         route.Public(route.Snippets(
           after: option.None,
           before: option.None,
@@ -108,9 +114,10 @@ pub fn maintenance_mode_blocks_general_pages_test() {
   let config = availability_config(availability_mode.MaintenanceMode)
 
   assert run_policy_program(
-      availability_policy_domain.evaluate_page_route(route.Account(
-        route.AccountHome,
-      )),
+      availability_policy_domain.evaluate_page_route(
+        config,
+        route.Account(route.AccountHome),
+      ),
       config,
     )
     == Ok(availability_policy_domain.UnavailablePage(
@@ -124,21 +131,26 @@ pub fn maintenance_mode_keeps_login_admin_and_not_found_pages_available_test() {
   let assert Ok(not_found_uri) = uri.parse("/missing")
 
   assert run_policy_program(
-      availability_policy_domain.evaluate_page_route(route.Public(route.Login)),
+      availability_policy_domain.evaluate_page_route(
+        config,
+        route.Public(route.Login),
+      ),
       config,
     )
     == Ok(availability_policy_domain.AllowPage)
   assert run_policy_program(
-      availability_policy_domain.evaluate_page_route(route.Admin(
-        route.AdminHome,
-      )),
+      availability_policy_domain.evaluate_page_route(
+        config,
+        route.Admin(route.AdminHome),
+      ),
       config,
     )
     == Ok(availability_policy_domain.AllowPage)
   assert run_policy_program(
-      availability_policy_domain.evaluate_page_route(route.NotFound(
-        not_found_uri,
-      )),
+      availability_policy_domain.evaluate_page_route(
+        config,
+        route.NotFound(not_found_uri),
+      ),
       config,
     )
     == Ok(availability_policy_domain.AllowPage)

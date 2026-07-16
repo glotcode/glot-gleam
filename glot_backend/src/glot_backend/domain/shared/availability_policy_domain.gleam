@@ -1,6 +1,5 @@
 import gleam/option
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/error
 import glot_backend/effect/error/policy_error
 import glot_backend/effect/program
@@ -30,11 +29,9 @@ type PageSurface {
 }
 
 pub fn enforce_api_action(
+  availability: dynamic_config.AvailabilityConfig,
   action: api_action.ApiAction,
 ) -> program_types.Program(Nil) {
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
-  let availability = dynamic_config.availability_config(config)
-
   case api_action_error(availability, action) {
     option.Some(err) -> program.fail(error.policy(err))
     option.None -> program.succeed(Nil)
@@ -42,10 +39,9 @@ pub fn enforce_api_action(
 }
 
 pub fn evaluate_page_route(
+  availability: dynamic_config.AvailabilityConfig,
   page_route: route.Route,
 ) -> program_types.Program(PageAvailabilityDecision) {
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
-  let availability = dynamic_config.availability_config(config)
   let surface = page_surface(page_route)
 
   case page_surface_allowed_in_mode(availability.mode, surface) {

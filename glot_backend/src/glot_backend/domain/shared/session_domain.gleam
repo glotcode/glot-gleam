@@ -3,33 +3,38 @@ import gleam/result
 import gleam/time/timestamp
 import glot_backend/context
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/error
 import glot_backend/effect/error/auth_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
+import glot_backend/request_context
 import glot_core/auth/session_model
 
 pub fn get_session(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
 ) -> program_types.Program(Option(session_model.HydratedSession)) {
-  get_validated_session(ctx)
+  get_validated_session(
+    request_ctx.context,
+    dynamic_config.auth_config(request_ctx.dynamic_config),
+  )
   |> program.map(option.from_result)
 }
 
 pub fn require_session(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
 ) -> program_types.Program(session_model.HydratedSession) {
-  get_validated_session(ctx)
+  get_validated_session(
+    request_ctx.context,
+    dynamic_config.auth_config(request_ctx.dynamic_config),
+  )
   |> program.and_then(program.from_result)
 }
 
 fn get_validated_session(
   ctx: context.Context,
+  auth_config: dynamic_config.AuthConfig,
 ) -> program_types.Program(Result(session_model.HydratedSession, error.Error)) {
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
-  let auth_config = dynamic_config.auth_config(config)
   use session_result <- program.and_then(case ctx.client_info.session_token {
     option.Some(token) -> get_session_by_client_token(ctx.timestamp, token)
     option.None ->

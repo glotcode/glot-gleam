@@ -6,7 +6,6 @@ import glot_backend/crypto_token
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -17,6 +16,7 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/transaction/transaction_program
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_model
@@ -32,9 +32,12 @@ pub type RefreshSessionResult {
 }
 
 pub fn refresh_session(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
 ) -> program_types.Program(RefreshSessionResult) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+  let ctx = request_ctx.context
+  let config = request_ctx.dynamic_config
+
+  use session <- program.and_then(session_domain.require_session(request_ctx))
 
   use _ <- program.and_then(
     basic_effect.info(
@@ -45,11 +48,10 @@ pub fn refresh_session(
     ),
   )
 
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
   let auth_config = dynamic_config.auth_config(config)
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.RefreshSessionAction),
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,

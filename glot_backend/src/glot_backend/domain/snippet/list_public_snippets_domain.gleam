@@ -1,7 +1,6 @@
 import gleam/dynamic
 import gleam/option
 import gleam/result
-import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
@@ -11,6 +10,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/snippet/snippet_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/pagination_model
 import glot_core/public_action
@@ -18,7 +18,7 @@ import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 
 pub fn list_public_snippets(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: snippet_dto.ListPublicSnippetsRequest,
 ) -> program_types.Program(snippet_dto.ListSnippetsResponse) {
   let pagination = request.pagination
@@ -27,7 +27,7 @@ pub fn list_public_snippets(
     |> result.map_error(error.validation)
     |> program.from_result,
   )
-  use maybe_session <- program.and_then(session_domain.get_session(ctx))
+  use maybe_session <- program.and_then(session_domain.get_session(request_ctx))
   let maybe_session_id =
     option.map(maybe_session, fn(session) { session.identity.id })
   let maybe_user_id =
@@ -48,7 +48,7 @@ pub fn list_public_snippets(
     |> api_action_policy_domain.actor_from_user
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.ListPublicSnippetsAction),
     actor: actor,
   ))

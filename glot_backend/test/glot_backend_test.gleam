@@ -72,6 +72,7 @@ import glot_backend/effect/snippet/snippet_algebra
 import glot_backend/effect/user_action/user_action_algebra
 import glot_backend/effect/webauthn/webauthn_algebra
 import glot_backend/email_template
+import glot_backend/request_context
 import glot_backend/webauthn
 import glot_core/admin/auth_config_dto
 import glot_core/admin/availability_config_dto
@@ -118,7 +119,11 @@ pub fn get_session_without_token_returns_none_test() {
   let ctx = test_context()
 
   let #(run_result, _) =
-    run_test_program(session_domain.get_session(ctx), ctx, empty_test_db())
+    run_test_program(
+      session_domain.get_session(request_context.new(ctx, test_dynamic_config())),
+      ctx,
+      empty_test_db(),
+    )
 
   assert run_result == Ok(option.None)
 }
@@ -135,7 +140,10 @@ pub fn refresh_session_rotates_token_with_previous_token_grace_test() {
 
   let #(run_result, db) =
     run_test_program(
-      refresh_session_domain.refresh_session(ctx),
+      refresh_session_domain.refresh_session(request_context.new(
+        ctx,
+        fixture.db.dynamic_config,
+      )),
       ctx,
       fixture.db,
     )
@@ -173,7 +181,10 @@ pub fn refresh_session_is_noop_when_rotated_too_recently_test() {
 
   let #(run_result, db) =
     run_test_program(
-      refresh_session_domain.refresh_session(ctx),
+      refresh_session_domain.refresh_session(request_context.new(
+        ctx,
+        fixture.db.dynamic_config,
+      )),
       ctx,
       fixture.db,
     )
@@ -234,7 +245,11 @@ pub fn get_session_rejects_idle_expired_session_test() {
     context.Context(..fixture.ctx, timestamp: add_seconds(test_timestamp(), 80))
 
   let #(run_result, _) =
-    run_test_program(session_domain.get_session(ctx), ctx, db)
+    run_test_program(
+      session_domain.get_session(request_context.new(ctx, db.dynamic_config)),
+      ctx,
+      db,
+    )
 
   assert run_result == Ok(option.None)
 }
@@ -277,7 +292,11 @@ pub fn get_session_accepts_previous_token_within_grace_window_test() {
     )
 
   let #(run_result, _) =
-    run_test_program(session_domain.get_session(ctx), ctx, db)
+    run_test_program(
+      session_domain.get_session(request_context.new(ctx, test_dynamic_config())),
+      ctx,
+      db,
+    )
 
   let assert Ok(option.Some(session)) = run_result
   assert session.identity.id == rotated_session.id
@@ -322,7 +341,11 @@ pub fn get_session_rejects_previous_token_after_grace_window_test() {
     )
 
   let #(run_result, _) =
-    run_test_program(session_domain.get_session(ctx), ctx, db)
+    run_test_program(
+      session_domain.get_session(request_context.new(ctx, db.dynamic_config)),
+      ctx,
+      db,
+    )
 
   assert run_result == Ok(option.None)
 }
@@ -356,7 +379,14 @@ pub fn refresh_session_uses_configured_heartbeat_cadence_test() {
   let ctx = context.Context(..fixture.ctx, timestamp: now)
 
   let #(run_result, _) =
-    run_test_program(refresh_session_domain.refresh_session(ctx), ctx, db)
+    run_test_program(
+      refresh_session_domain.refresh_session(request_context.new(
+        ctx,
+        db.dynamic_config,
+      )),
+      ctx,
+      db,
+    )
 
   assert run_result
     == Ok(refresh_session_domain.RefreshSessionResult(
@@ -406,7 +436,14 @@ pub fn refresh_session_rejects_expired_previous_token_test() {
     )
 
   let #(run_result, _) =
-    run_test_program(refresh_session_domain.refresh_session(ctx), ctx, db)
+    run_test_program(
+      refresh_session_domain.refresh_session(request_context.new(
+        ctx,
+        db.dynamic_config,
+      )),
+      ctx,
+      db,
+    )
 
   assert run_result == Error(error.auth(auth_error.SessionNotFound))
 }
@@ -604,7 +641,9 @@ pub fn get_rate_limit_policies_requires_admin_role_test() {
 
   let #(run_result, _) =
     run_test_program(
-      get_rate_limit_policies_domain.get_rate_limit_policies(fixture.ctx),
+      get_rate_limit_policies_domain.get_rate_limit_policies(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -622,7 +661,10 @@ pub fn get_docker_run_config_requires_admin_role_test() {
 
   let #(run_result, _) =
     run_test_program(
-      get_docker_run_config_domain.get_docker_run_config(fixture.ctx),
+      get_docker_run_config_domain.get_docker_run_config(request_context.new(
+        fixture.ctx,
+        fixture.db.dynamic_config,
+      )),
       fixture.ctx,
       fixture.db,
     )
@@ -640,7 +682,10 @@ pub fn get_email_config_requires_admin_role_test() {
 
   let #(run_result, _) =
     run_test_program(
-      get_email_config_domain.get_email_config(fixture.ctx),
+      get_email_config_domain.get_email_config(request_context.new(
+        fixture.ctx,
+        fixture.db.dynamic_config,
+      )),
       fixture.ctx,
       fixture.db,
     )
@@ -658,7 +703,10 @@ pub fn get_auth_config_requires_admin_role_test() {
 
   let #(run_result, _) =
     run_test_program(
-      get_auth_config_domain.get_auth_config(fixture.ctx),
+      get_auth_config_domain.get_auth_config(request_context.new(
+        fixture.ctx,
+        fixture.db.dynamic_config,
+      )),
       fixture.ctx,
       fixture.db,
     )
@@ -676,7 +724,10 @@ pub fn get_debug_config_requires_admin_role_test() {
 
   let #(run_result, _) =
     run_test_program(
-      get_debug_config_domain.get_debug_config(fixture.ctx),
+      get_debug_config_domain.get_debug_config(request_context.new(
+        fixture.ctx,
+        fixture.db.dynamic_config,
+      )),
       fixture.ctx,
       fixture.db,
     )
@@ -694,7 +745,9 @@ pub fn get_availability_config_requires_admin_role_test() {
 
   let #(run_result, _) =
     run_test_program(
-      get_availability_config_domain.get_availability_config(fixture.ctx),
+      get_availability_config_domain.get_availability_config(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -708,7 +761,10 @@ pub fn upsert_debug_config_allows_admin_role_test() {
 
   let #(run_result, _) =
     run_test_program(
-      upsert_debug_config_domain.upsert_debug_config(fixture.ctx, request),
+      upsert_debug_config_domain.upsert_debug_config(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -728,7 +784,7 @@ pub fn upsert_availability_config_allows_admin_role_test() {
   let #(run_result, _) =
     run_test_program(
       upsert_availability_config_domain.upsert_availability_config(
-        fixture.ctx,
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
         request,
       ),
       fixture.ctx,
@@ -763,7 +819,7 @@ pub fn upsert_rate_limit_policy_allows_admin_role_test() {
   let #(run_result, updated_db) =
     run_test_program(
       upsert_rate_limit_policy_domain.upsert_rate_limit_policy(
-        fixture.ctx,
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
         request,
       ),
       fixture.ctx,
@@ -790,7 +846,7 @@ pub fn upsert_docker_run_config_allows_admin_role_test() {
   let #(run_result, updated_db) =
     run_test_program(
       upsert_docker_run_config_domain.upsert_docker_run_config(
-        fixture.ctx,
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
         request,
       ),
       fixture.ctx,
@@ -817,7 +873,7 @@ pub fn upsert_cloudflare_config_allows_admin_role_test() {
   let #(run_result, updated_db) =
     run_test_program(
       upsert_cloudflare_config_domain.upsert_cloudflare_config(
-        fixture.ctx,
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
         request,
       ),
       fixture.ctx,
@@ -843,7 +899,10 @@ pub fn upsert_email_config_allows_admin_role_test() {
 
   let #(run_result, updated_db) =
     run_test_program(
-      upsert_email_config_domain.upsert_email_config(fixture.ctx, request),
+      upsert_email_config_domain.upsert_email_config(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -872,7 +931,10 @@ pub fn upsert_auth_config_allows_admin_role_test() {
 
   let #(run_result, updated_db) =
     run_test_program(
-      upsert_auth_config_domain.upsert_auth_config(fixture.ctx, request),
+      upsert_auth_config_domain.upsert_auth_config(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -903,7 +965,11 @@ pub fn get_session_with_missing_db_session_returns_none_test() {
     )
 
   let #(run_result, _) =
-    run_test_program(session_domain.get_session(ctx), ctx, empty_test_db())
+    run_test_program(
+      session_domain.get_session(request_context.new(ctx, test_dynamic_config())),
+      ctx,
+      empty_test_db(),
+    )
 
   assert run_result == Ok(option.None)
 }
@@ -912,7 +978,14 @@ pub fn require_session_without_token_returns_missing_token_error_test() {
   let ctx = test_context()
 
   let #(run_result, _) =
-    run_test_program(session_domain.require_session(ctx), ctx, empty_test_db())
+    run_test_program(
+      session_domain.require_session(request_context.new(
+        ctx,
+        test_dynamic_config(),
+      )),
+      ctx,
+      empty_test_db(),
+    )
 
   assert run_result == Error(error.auth(auth_error.MissingSessionToken))
 }
@@ -930,7 +1003,14 @@ pub fn require_session_with_missing_db_session_returns_not_found_error_test() {
     )
 
   let #(run_result, _) =
-    run_test_program(session_domain.require_session(ctx), ctx, empty_test_db())
+    run_test_program(
+      session_domain.require_session(request_context.new(
+        ctx,
+        test_dynamic_config(),
+      )),
+      ctx,
+      empty_test_db(),
+    )
 
   assert run_result == Error(error.auth(auth_error.SessionNotFound))
 }
@@ -941,7 +1021,10 @@ pub fn get_language_version_without_session_reaches_docker_run_test() {
 
   let #(run_result, db) =
     run_test_program(
-      get_language_version_domain.get_language_version(ctx, request),
+      get_language_version_domain.get_language_version(
+        request_context.new(ctx, test_dynamic_config()),
+        request,
+      ),
       ctx,
       empty_test_db(),
     )
@@ -987,7 +1070,11 @@ pub fn login_creates_account_user_and_session_in_foreign_key_order_test() {
     login_dto.LoginRequest(email: test_email_address(), token: "login-token")
 
   let #(run_result, updated_db) =
-    run_test_program(login_domain.login(ctx, request), ctx, db)
+    run_test_program(
+      login_domain.login(request_context.new(ctx, db.dynamic_config), request),
+      ctx,
+      db,
+    )
 
   assert run_result
     == Ok(session_issue_domain.SessionIssueResult(
@@ -1038,7 +1125,11 @@ pub fn invalid_login_increments_all_valid_token_attempt_counts_test() {
   let ctx = login_test_context()
 
   let #(run_result, updated_db) =
-    run_test_program(login_domain.login(ctx, request), ctx, db)
+    run_test_program(
+      login_domain.login(request_context.new(ctx, db.dynamic_config), request),
+      ctx,
+      db,
+    )
 
   assert run_result == Error(error.auth(auth_error.InvalidLoginToken))
   let assert Ok(updated_current_token) =
@@ -1071,7 +1162,11 @@ pub fn login_at_shared_attempt_limit_is_rejected_without_session_test() {
   let ctx = login_test_context()
 
   let #(run_result, updated_db) =
-    run_test_program(login_domain.login(ctx, request), ctx, db)
+    run_test_program(
+      login_domain.login(request_context.new(ctx, db.dynamic_config), request),
+      ctx,
+      db,
+    )
 
   assert run_result == Error(error.auth(auth_error.InvalidLoginToken))
   assert updated_db.write_steps == []
@@ -1091,7 +1186,10 @@ pub fn send_login_token_for_suspended_user_returns_account_state_error_test() {
 
   let #(run_result, db) =
     run_test_program(
-      send_login_token_domain.send_login_token(fixture.ctx, request),
+      send_login_token_domain.send_login_token(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -1136,7 +1234,10 @@ pub fn new_login_token_inherits_shared_attempt_count_test() {
 
   let #(run_result, updated_db) =
     run_test_program(
-      send_login_token_domain.send_login_token(fixture.ctx, request),
+      send_login_token_domain.send_login_token(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       db,
     )
@@ -1186,7 +1287,11 @@ pub fn login_for_suspended_user_returns_account_state_error_test() {
     login_dto.LoginRequest(email: test_email_address(), token: "login-token")
 
   let #(run_result, updated_db) =
-    run_test_program(login_domain.login(ctx, request), ctx, db)
+    run_test_program(
+      login_domain.login(request_context.new(ctx, db.dynamic_config), request),
+      ctx,
+      db,
+    )
 
   assert run_result
     == Error(
@@ -1208,7 +1313,9 @@ pub fn begin_passkey_registration_creates_challenge_test() {
 
   let #(run_result, updated_db) =
     run_test_program(
-      begin_passkey_registration_domain.begin_passkey_registration(fixture.ctx),
+      begin_passkey_registration_domain.begin_passkey_registration(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -1257,7 +1364,9 @@ pub fn begin_passkey_registration_includes_existing_credential_ids_test() {
 
   let #(run_result, _) =
     run_test_program(
-      begin_passkey_registration_domain.begin_passkey_registration(fixture.ctx),
+      begin_passkey_registration_domain.begin_passkey_registration(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+      ),
       fixture.ctx,
       db,
     )
@@ -1276,7 +1385,10 @@ pub fn begin_passkey_login_without_credentials_creates_anonymous_challenge_test(
 
   let #(run_result, updated_db) =
     run_test_program(
-      begin_passkey_login_domain.begin_passkey_login(fixture.ctx),
+      begin_passkey_login_domain.begin_passkey_login(request_context.new(
+        fixture.ctx,
+        fixture.db.dynamic_config,
+      )),
       fixture.ctx,
       fixture.db,
     )
@@ -1323,7 +1435,10 @@ pub fn finish_passkey_login_with_valid_credential_and_anonymous_challenge_logs_u
 
   let #(begin_result, challenged_db) =
     run_test_program(
-      begin_passkey_login_domain.begin_passkey_login(fixture.ctx),
+      begin_passkey_login_domain.begin_passkey_login(request_context.new(
+        fixture.ctx,
+        fixture.db.dynamic_config,
+      )),
       fixture.ctx,
       db,
     )
@@ -1340,7 +1455,10 @@ pub fn finish_passkey_login_with_valid_credential_and_anonymous_challenge_logs_u
 
   let #(run_result, updated_db) =
     run_test_program(
-      finish_passkey_login_domain.finish_passkey_login(fixture.ctx, request),
+      finish_passkey_login_domain.finish_passkey_login(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       challenged_db,
     )
@@ -1379,7 +1497,10 @@ pub fn finish_passkey_login_with_unknown_credential_id_returns_invalid_assertion
 
   let #(begin_result, challenged_db) =
     run_test_program(
-      begin_passkey_login_domain.begin_passkey_login(fixture.ctx),
+      begin_passkey_login_domain.begin_passkey_login(request_context.new(
+        fixture.ctx,
+        fixture.db.dynamic_config,
+      )),
       fixture.ctx,
       fixture.db,
     )
@@ -1396,7 +1517,10 @@ pub fn finish_passkey_login_with_unknown_credential_id_returns_invalid_assertion
 
   let #(run_result, updated_db) =
     run_test_program(
-      finish_passkey_login_domain.finish_passkey_login(fixture.ctx, request),
+      finish_passkey_login_domain.finish_passkey_login(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       challenged_db,
     )
@@ -1425,7 +1549,7 @@ pub fn finish_passkey_registration_missing_challenge_returns_not_found_test() {
   let #(run_result, updated_db) =
     run_test_program(
       finish_passkey_registration_domain.finish_passkey_registration(
-        fixture.ctx,
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
         request,
       ),
       fixture.ctx,
@@ -1454,7 +1578,10 @@ pub fn finish_passkey_login_missing_challenge_returns_not_found_test() {
 
   let #(run_result, updated_db) =
     run_test_program(
-      finish_passkey_login_domain.finish_passkey_login(fixture.ctx, request),
+      finish_passkey_login_domain.finish_passkey_login(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -1522,7 +1649,10 @@ pub fn create_snippet_rejects_empty_files_test() {
 
   let #(run_result, db) =
     run_test_program(
-      create_snippet_domain.create_snippet(fixture.ctx, request),
+      create_snippet_domain.create_snippet(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -1552,7 +1682,10 @@ pub fn create_snippet_rejects_too_long_title_test() {
 
   let #(run_result, db) =
     run_test_program(
-      create_snippet_domain.create_snippet(fixture.ctx, request),
+      create_snippet_domain.create_snippet(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -1589,7 +1722,10 @@ pub fn update_snippet_rejects_too_long_file_content_test() {
 
   let #(run_result, db) =
     run_test_program(
-      update_snippet_domain.update_snippet(fixture.ctx, request),
+      update_snippet_domain.update_snippet(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+        request,
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -1636,7 +1772,9 @@ pub fn schedule_delete_account_sets_delete_job_id_test() {
 
   let #(run_result, db) =
     run_test_program(
-      schedule_delete_account_domain.schedule_delete_account(fixture.ctx),
+      schedule_delete_account_domain.schedule_delete_account(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -1677,7 +1815,9 @@ pub fn schedule_delete_account_rejects_existing_pending_delete_job_test() {
 
   let #(run_result, db) =
     run_test_program(
-      schedule_delete_account_domain.schedule_delete_account(fixture.ctx),
+      schedule_delete_account_domain.schedule_delete_account(
+        request_context.new(fixture.ctx, fixture.db.dynamic_config),
+      ),
       fixture.ctx,
       fixture.db,
     )
@@ -1713,7 +1853,10 @@ pub fn cancel_delete_account_clears_delete_job_id_and_removes_job_test() {
 
   let #(run_result, db) =
     run_test_program(
-      cancel_delete_account_domain.cancel_delete_account(fixture.ctx),
+      cancel_delete_account_domain.cancel_delete_account(request_context.new(
+        fixture.ctx,
+        fixture.db.dynamic_config,
+      )),
       fixture.ctx,
       fixture.db,
     )
@@ -2670,7 +2813,7 @@ fn run_test_docker_run_effect(
   db: TestDb,
 ) -> #(Result(a, error.Error), TestDb) {
   case effect {
-    docker_run_algebra.RunCode(_, _) -> #(
+    docker_run_algebra.RunCode(_, _, _) -> #(
       Error(error.run_request_error(run_request_error.ServerRunRequestError)),
       db,
     )

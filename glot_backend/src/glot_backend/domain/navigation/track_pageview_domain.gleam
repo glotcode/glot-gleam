@@ -1,11 +1,11 @@
 import gleam/dynamic
 import gleam/option
-import glot_backend/context
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/log
+import glot_backend/request_context
 import glot_core/pageview_dto
 import youid/uuid.{type Uuid}
 
@@ -20,10 +20,10 @@ pub type TrackedPageview {
 }
 
 pub fn track_pageview(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: pageview_dto.PageviewRequest,
 ) -> program_types.Program(TrackedPageview) {
-  use maybe_session <- program.and_then(session_domain.get_session(ctx))
+  use maybe_session <- program.and_then(session_domain.get_session(request_ctx))
   let maybe_session_id =
     option.map(maybe_session, fn(session) { session.identity.id })
   let maybe_user_id =

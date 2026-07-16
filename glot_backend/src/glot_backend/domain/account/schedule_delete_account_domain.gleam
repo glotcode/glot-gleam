@@ -15,6 +15,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/job/job_model
@@ -24,9 +25,11 @@ import youid/uuid.{type Uuid}
 const delete_delay_seconds = 86_400
 
 pub fn schedule_delete_account(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
 ) -> program_types.Program(Nil) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+  let ctx = request_ctx.context
+
+  use session <- program.and_then(session_domain.require_session(request_ctx))
 
   use _ <- program.and_then(
     basic_effect.info(
@@ -39,7 +42,7 @@ pub fn schedule_delete_account(
   )
 
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.ScheduleDeleteAccountAction),
     actor: api_action_policy_domain.KnownUser(
       user_id: session.user.identity.id,

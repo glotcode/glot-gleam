@@ -1,10 +1,10 @@
-import glot_backend/context
 import glot_backend/domain/snippet/get_snippet_domain
 import glot_backend/effect/error
 import glot_backend/effect/error/request_error
 import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/total_program
+import glot_backend/request_context
 import glot_core/page/editor
 import glot_core/snippet/snippet_dto
 
@@ -15,10 +15,13 @@ pub fn load_new_view_model(
 }
 
 pub fn load_existing_view_model(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   slug: String,
 ) -> total_program.TotalProgram(editor.ViewModel) {
-  get_snippet_domain.get_snippet(ctx, snippet_dto.GetSnippetRequest(slug: slug))
+  get_snippet_domain.get_snippet(
+    request_ctx,
+    snippet_dto.GetSnippetRequest(slug: slug),
+  )
   |> program.map(editor.from_snippet)
   |> total_program.from_program(fn(err) {
     editor.LoadError(page_error_message(err))

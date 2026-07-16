@@ -7,7 +7,6 @@ import glot_backend/context
 import glot_backend/domain/auth/session_issue_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -18,6 +17,7 @@ import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/transaction/transaction_program
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/log
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/auth/login_dto
@@ -41,9 +41,12 @@ type LoginTokenVerification {
 }
 
 pub fn login(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: login_dto.LoginRequest,
 ) -> program_types.Program(LoginResult) {
+  let ctx = request_ctx.context
+  let config = request_ctx.dynamic_config
+
   use _ <- program.and_then(
     basic_effect.info(
       log.from_list([
@@ -52,14 +55,13 @@ pub fn login(
       ]),
     ),
   )
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
   let auth_config = dynamic_config.auth_config(config)
 
   use maybe_user <- program.and_then(auth_effect.get_user_by_email(
     request.email,
   ))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.LoginAction),
     actor: api_action_policy_domain.actor_from_user(maybe_user),
   ))

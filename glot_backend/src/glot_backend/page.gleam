@@ -4,11 +4,15 @@ import gleam/list
 import gleam/option
 import glot_backend/context
 import glot_backend/domain/shared/availability_policy_domain
+import glot_backend/dynamic_config
 import glot_backend/editor_page
+import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/basic/basic_handlers
 import glot_backend/effect/effect_trace
 import glot_backend/effect/interpreter
+import glot_backend/effect/program
 import glot_backend/effect/program_state
+import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/effect/total_program
 import glot_backend/erlang
@@ -18,6 +22,7 @@ import glot_backend/page/snippets_page_domain
 import glot_backend/page_error_presenter
 import glot_backend/page_layout
 import glot_backend/page_response
+import glot_backend/request_context
 import glot_backend/server_timing
 import glot_backend/snippets_page
 import glot_backend/static_assets
@@ -93,17 +98,25 @@ fn handle_page_request(
 
   case static_assets.load(ctx.config.static_base_path) {
     Ok(assets) -> {
-      let #(page_decision, availability_state) =
-        availability_policy_domain.evaluate_page_route(page_request.route)
+      let #(page_result, availability_state) =
+        page_config_and_availability(ctx, page_request.route)
         |> interpreter.run(runtime, ctx)
 
-      case page_decision {
-        Ok(availability_policy_domain.AllowPage) ->
-          handle_page_request_with_runtime(runtime, ctx, page_request, assets)
+      case page_result {
+        Ok(#(request_ctx, availability_policy_domain.AllowPage)) ->
+          handle_page_request_with_runtime(
+            runtime,
+            request_ctx,
+            page_request,
+            assets,
+          )
           |> prepend_effects(availability_state.effect_measurements)
-        Ok(availability_policy_domain.UnavailablePage(
-          message,
-          retry_after_seconds,
+        Ok(#(
+          _,
+          availability_policy_domain.UnavailablePage(
+            message,
+            retry_after_seconds,
+          ),
         )) ->
           page_error_presenter.unavailable_page_response(
             availability_state,
@@ -123,12 +136,31 @@ fn handle_page_request(
   }
 }
 
+fn page_config_and_availability(
+  ctx: context.Context,
+  page_route: route.Route,
+) -> program_types.Program(
+  #(
+    request_context.RequestContext,
+    availability_policy_domain.PageAvailabilityDecision,
+  ),
+) {
+  use config <- program.and_then(app_config_effect.get_dynamic_config())
+  let request_ctx = request_context.new(ctx, config)
+  availability_policy_domain.evaluate_page_route(
+    dynamic_config.availability_config(config),
+    page_route,
+  )
+  |> program.map(fn(decision) { #(request_ctx, decision) })
+}
+
 fn handle_page_request_with_runtime(
   runtime: runtime.Runtime,
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   page_request: PageRequest,
   assets: static_assets.Assets,
 ) -> page_response.PageResponse {
+  let ctx = request_ctx.context
   case page_request.route {
     route.Public(route.Home) -> {
       let state = empty_page_state()
@@ -201,7 +233,12 @@ fn handle_page_request_with_runtime(
     route.Public(route.Snippets(after:, before:, username:)) ->
       run_page_program(
         "snippets page",
-        snippets_page_domain.load_view_model(ctx, after, before, username),
+        snippets_page_domain.load_view_model(
+          request_ctx,
+          after,
+          before,
+          username,
+        ),
         runtime,
         ctx,
         assets,
@@ -227,7 +264,7 @@ fn handle_page_request_with_runtime(
     route.Public(route.Snippet(slug)) ->
       run_page_program(
         "snippet page",
-        editor_page_domain.load_existing_view_model(ctx, slug),
+        editor_page_domain.load_existing_view_model(request_ctx, slug),
         runtime,
         ctx,
         assets,

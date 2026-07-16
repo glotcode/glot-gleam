@@ -2,12 +2,10 @@ import gleam/list
 import gleam/option
 import gleam/result
 import glot_backend/base64url
-import glot_backend/context
 import glot_backend/domain/auth/passkey_shared_domain
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/dynamic_config
-import glot_backend/effect/app_config/app_config_effect
 import glot_backend/effect/auth/auth_effect
 import glot_backend/effect/basic/basic_effect
 import glot_backend/effect/error
@@ -17,6 +15,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/transaction/transaction_effect
 import glot_backend/effect/user_action/user_action_effect
 import glot_backend/effect/webauthn/webauthn_effect
+import glot_backend/request_context
 import glot_core/api_action
 import glot_core/auth/passkey_challenge_model
 import glot_core/auth/passkey_dto
@@ -29,11 +28,14 @@ const cose_alg_es256 = -7
 const cose_alg_rs256 = -257
 
 pub fn begin_passkey_registration(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
 ) -> program_types.Program(passkey_dto.BeginPasskeyRegistrationResponse) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+  let ctx = request_ctx.context
+  let config = request_ctx.dynamic_config
+
+  use session <- program.and_then(session_domain.require_session(request_ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.public(public_action.BeginPasskeyRegistrationAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))
@@ -41,7 +43,6 @@ pub fn begin_passkey_registration(
     auth_effect.list_passkey_credentials_by_user_id(session.user.identity.id),
   )
   use challenge_id <- program.and_then(basic_effect.uuid_v7())
-  use config <- program.and_then(app_config_effect.get_dynamic_config())
   let passkey_config = dynamic_config.passkey_config(config)
   use challenge_result <- program.and_then(
     webauthn_effect.new_registration_challenge(

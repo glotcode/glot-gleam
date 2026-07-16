@@ -1,6 +1,5 @@
 import gleam/dynamic
 import gleam/option
-import glot_backend/context
 import glot_backend/domain/shared/api_action_policy_domain
 import glot_backend/domain/shared/session_domain
 import glot_backend/effect/admin_log/admin_log_effect
@@ -9,17 +8,18 @@ import glot_backend/effect/error/resource_error
 import glot_backend/effect/program
 import glot_backend/effect/program_types
 import glot_backend/effect/user_action/user_action_effect
+import glot_backend/request_context
 import glot_core/admin/job_log_dto
 import glot_core/admin_action
 import glot_core/api_action
 
 pub fn get_job_log(
-  ctx: context.Context,
+  request_ctx: request_context.RequestContext,
   request: job_log_dto.GetJobLogRequest,
 ) -> program_types.Program(job_log_dto.GetJobLogResponse) {
-  use session <- program.and_then(session_domain.require_session(ctx))
+  use session <- program.and_then(session_domain.require_session(request_ctx))
   use user_action <- program.and_then(api_action_policy_domain.enforce(
-    ctx: ctx,
+    request_ctx: request_ctx,
     action: api_action.admin(admin_action.GetAdminJobLogAction),
     actor: api_action_policy_domain.actor_from_user(option.Some(session.user)),
   ))

@@ -1,7 +1,6 @@
 import gleam/option
 import gleam/time/timestamp
 import gleeunit
-import glot_backend/context
 import glot_backend/effect/error
 import glot_backend/effect/error/db_error
 import glot_backend/effect/get_language_version/get_language_version_effect
@@ -106,7 +105,7 @@ pub fn program_attempt_recovers_from_non_transaction_interpreter_failure_test() 
   let fallback = successful_run("fallback")
   let effect =
     get_language_version_effect.get_language_version(
-      test_config(),
+      option.None,
       language.Python,
     )
     |> program.attempt(fn(_) { program.succeed(fallback) })
@@ -309,22 +308,4 @@ fn must_uuid(value: String) -> uuid.Uuid {
 
 fn successful_run(stdout: String) -> run.RunResult {
   Ok(run.SuccessfulRun(duration: 1, stdout: stdout, stderr: "", error: ""))
-}
-
-fn test_config() -> context.Config {
-  context.Config(
-    app_env: context.Dev,
-    encryption_key: "test",
-    listening_address: "localhost",
-    listening_port: 3000,
-    static_base_path: "/tmp",
-    postgres: context.PostgresConfig(
-      host: "localhost",
-      port: 5432,
-      db: "test",
-      user: "test",
-      pass: "test",
-      pool_size: 1,
-    ),
-  )
 }
