@@ -445,6 +445,7 @@ fn token_fields(model: Model) -> List(Element(Msg)) {
       attribute.id("token"),
       attribute.name("token"),
       attribute.type_("text"),
+      attribute.autocomplete("one-time-code"),
       attribute.placeholder("Enter login token"),
       attribute.value(model.token),
       event.on_input(TokenChanged),
