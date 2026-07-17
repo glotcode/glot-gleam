@@ -429,7 +429,7 @@ fn email_fields(model: Model) -> List(Element(Msg)) {
       attribute.disabled(is_busy(model.status, model.passkey_status)),
       attribute.class("login-page__input"),
     ]),
-    email_status_view(model.status),
+    email_status_view(model.status, model.step),
   ]
   |> list.append(email_button)
   |> list.append(token_elements)
@@ -485,10 +485,10 @@ fn status_view(status: Status) -> Element(Msg) {
   }
 }
 
-fn email_status_view(status: Status) -> Element(Msg) {
-  case status {
-    SendingToken | StatusError(_) -> status_view(status)
-    _ -> html.text("")
+fn email_status_view(status: Status, step: Step) -> Element(Msg) {
+  case step, status {
+    EnterEmail, SendingToken | EnterEmail, StatusError(_) -> status_view(status)
+    _, _ -> html.text("")
   }
 }
 
