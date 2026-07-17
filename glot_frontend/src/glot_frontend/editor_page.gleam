@@ -34,7 +34,7 @@ import lustre/event
 import modem
 import youid/uuid.{type Uuid}
 
-const title_dialog_id = "editor-page-title-dialog"
+const edit_metadata_dialog_id = "editor-page-edit-metadata-dialog"
 
 const add_entry_dialog_id = "editor-page-add-entry-dialog"
 
@@ -201,11 +201,12 @@ fn take_ssr_view_model() -> option.Option(editor_ssr.ViewModel) {
 
 pub type Msg {
   SnippetLoaded(api.ApiResponse(snippet_dto.SnippetResponse))
-  TitleClicked
+  EditMetadataClicked
   TitleDraftChanged(String)
-  TitleEditCancelled
-  TitleEditSubmitted
-  TitleDialogClosed
+  EditMetadataVisibilitySelected(snippet_model.Visibility)
+  EditMetadataCancelled
+  EditMetadataSubmitted
+  EditMetadataDialogClosed
   AddEntryClicked
   AddEntryKindSelected(AddEntryKind)
   AddEntryFilenameChanged(String)
@@ -285,9 +286,13 @@ pub fn update_helper(
   case msg {
     SnippetLoaded(_) -> #(model, effect.none())
 
-    TitleClicked -> #(
-      RealModel(..model, title_draft: model.title),
-      app_dialog.open(title_dialog_id),
+    EditMetadataClicked -> #(
+      RealModel(
+        ..model,
+        title_draft: model.title,
+        save_visibility_draft: model.visibility,
+      ),
+      app_dialog.open(edit_metadata_dialog_id),
     )
 
     TitleDraftChanged(title_draft) -> #(
@@ -295,24 +300,34 @@ pub fn update_helper(
       effect.none(),
     )
 
-    TitleEditCancelled -> #(
-      RealModel(..model, title_draft: model.title),
-      app_dialog.close(title_dialog_id),
+    EditMetadataVisibilitySelected(visibility) -> #(
+      RealModel(..model, save_visibility_draft: visibility),
+      effect.none(),
     )
 
-    TitleEditSubmitted -> {
-      let next_model = RealModel(..model, title: model.title_draft)
+    EditMetadataCancelled -> #(
+      reset_edit_metadata_draft(model),
+      app_dialog.close(edit_metadata_dialog_id),
+    )
+
+    EditMetadataSubmitted -> {
+      let next_model =
+        RealModel(
+          ..model,
+          title: model.title_draft,
+          visibility: model.save_visibility_draft,
+        )
       #(
         next_model,
         effect.batch([
-          app_dialog.close(title_dialog_id),
+          app_dialog.close(edit_metadata_dialog_id),
           save_editor_draft(next_model),
         ]),
       )
     }
 
-    TitleDialogClosed -> #(
-      RealModel(..model, title_draft: model.title),
+    EditMetadataDialogClosed -> #(
+      reset_edit_metadata_draft(model),
       focus_editor(),
     )
 
@@ -502,10 +517,15 @@ pub fn update_helper(
       focus_editor(),
     )
 
-    SaveClicked -> #(
-      RealModel(..model, save_visibility_draft: model.visibility),
-      app_dialog.open(save_dialog_id),
-    )
+    SaveClicked ->
+      case model.slug, current_user_id {
+        option.Some(_), option.Some(_) ->
+          save_snippet(model, current_user_id, False)
+        _, _ -> #(
+          RealModel(..model, save_visibility_draft: model.visibility),
+          app_dialog.open(save_dialog_id),
+        )
+      }
 
     SaveVisibilityDraftSelected(visibility) -> #(
       RealModel(..model, save_visibility_draft: visibility),
@@ -624,37 +644,7 @@ pub fn update_helper(
       }
     }
 
-    SaveConfirmed -> {
-      let visibility = save_visibility(model, current_user_id)
-      let data =
-        snippet_dto.SnippetData(
-          title: model.title,
-          language: model.language,
-          visibility: visibility,
-          stdin: stdin_to_string(model.stdin),
-          run_instructions: model.run_instructions_override,
-          files: model.files,
-        )
-
-      let save_effect = case save_operation(model, current_user_id) {
-        CreateSnippet ->
-          api.create_snippet(
-            snippet_dto.CreateSnippetRequest(data: data),
-            SaveFinished,
-          )
-
-        UpdateSnippet(slug) ->
-          api.update_snippet(
-            snippet_dto.UpdateSnippetRequest(slug: slug, data: data),
-            SaveFinished,
-          )
-      }
-
-      #(
-        RealModel(..model, visibility: visibility, save_state: Saving),
-        effect.batch([app_dialog.close(save_dialog_id), save_effect]),
-      )
-    }
+    SaveConfirmed -> save_snippet(model, current_user_id, True)
 
     SaveFinished(result) -> {
       case result {
@@ -740,17 +730,17 @@ fn view_helper(
         True ->
           editor_layout.title_hint_button(
             class_name: "editor-page__title-edit-button",
-            aria_label: "Edit title",
+            aria_label: "Edit snippet metadata",
             hint_class: "editor-page__title-hint",
             hint_label: "Edit",
-            attributes: [event.on_click(TitleClicked)],
+            attributes: [event.on_click(EditMetadataClicked)],
           )
 
         False -> html.div([], [])
       },
     ],
     pre_tabbar_children: [
-      title_dialog_view(model),
+      edit_metadata_dialog_view(model),
       add_entry_dialog_view(model),
       edit_entry_dialog_view(model),
       settings_dialog_view(model),
@@ -869,11 +859,11 @@ fn quick_actions_for_model(
   {
     True -> [
       top_bar.Action(
-        label: "Edit title",
-        description: "Rename the current snippet.",
+        label: "Edit metadata",
+        description: "Edit the current snippet's metadata.",
         shortcut: [],
         target_route: option.None,
-        msg: TitleClicked,
+        msg: EditMetadataClicked,
       ),
     ]
     False -> []
@@ -909,35 +899,61 @@ fn action_button(
   )
 }
 
-fn title_dialog_view(model: RealModel) -> Element(Msg) {
+fn edit_metadata_dialog_view(model: RealModel) -> Element(Msg) {
   html.dialog(
     [
-      attribute.id(title_dialog_id),
+      attribute.id(edit_metadata_dialog_id),
       attribute.class("editor-page__dialog"),
-      event.on("close", decode.success(TitleDialogClosed)),
+      event.on("close", decode.success(EditMetadataDialogClosed)),
     ],
     [
       html.form(
         [
           attribute.class("editor-page__dialog-form"),
-          event.on_submit(fn(_) { TitleEditSubmitted }),
+          event.on_submit(fn(_) { EditMetadataSubmitted }),
         ],
         [
-          html.label(
-            [
-              attribute.for("editor-page-title-input"),
-              attribute.class("editor-page__dialog-label"),
-            ],
-            [html.text("Title")],
-          ),
-          html.input([
-            attribute.id("editor-page-title-input"),
-            attribute.name("title"),
-            attribute.type_("text"),
-            attribute.value(model.title_draft),
-            attribute.autofocus(True),
-            attribute.class("editor-page__dialog-input"),
-            event.on_input(TitleDraftChanged),
+          html.label([attribute.class("editor-page__dialog-label")], [
+            html.text("Edit metadata"),
+          ]),
+          html.div([attribute.class("editor-page__dialog-section")], [
+            html.label(
+              [
+                attribute.for("editor-page-title-input"),
+                attribute.class("editor-page__dialog-sublabel"),
+              ],
+              [html.text("Title")],
+            ),
+            html.input([
+              attribute.id("editor-page-title-input"),
+              attribute.name("title"),
+              attribute.type_("text"),
+              attribute.value(model.title_draft),
+              attribute.autofocus(True),
+              attribute.class("editor-page__dialog-input"),
+              event.on_input(TitleDraftChanged),
+            ]),
+          ]),
+          html.div([attribute.class("editor-page__dialog-section")], [
+            html.label([attribute.class("editor-page__dialog-sublabel")], [
+              html.text("Visibility"),
+            ]),
+            html.div([attribute.class("editor-page__dialog-panel")], [
+              visibility_option(
+                "Public",
+                "Visible to everyone.",
+                snippet_model.Public,
+                model.save_visibility_draft,
+                EditMetadataVisibilitySelected,
+              ),
+              visibility_option(
+                "Unlisted",
+                "Available through the link only.",
+                snippet_model.Unlisted,
+                model.save_visibility_draft,
+                EditMetadataVisibilitySelected,
+              ),
+            ]),
           ]),
           html.div([attribute.class("editor-page__dialog-actions")], [
             html.button(
@@ -946,7 +962,7 @@ fn title_dialog_view(model: RealModel) -> Element(Msg) {
                 attribute.class(
                   "editor-page__dialog-button editor-page__dialog-button--secondary",
                 ),
-                event.on_click(TitleEditCancelled),
+                event.on_click(EditMetadataCancelled),
               ],
               [html.text("Cancel")],
             ),
@@ -1262,12 +1278,14 @@ fn save_dialog_children(
               "Visible to everyone.",
               snippet_model.Public,
               model.save_visibility_draft,
+              SaveVisibilityDraftSelected,
             ),
             visibility_option(
               "Unlisted",
               "Available through the link only.",
               snippet_model.Unlisted,
               model.save_visibility_draft,
+              SaveVisibilityDraftSelected,
             ),
           ]),
           html.div([attribute.class("editor-page__dialog-actions")], [
@@ -1667,6 +1685,7 @@ fn visibility_option(
   description: String,
   value: snippet_model.Visibility,
   selected: snippet_model.Visibility,
+  on_select: fn(snippet_model.Visibility) -> Msg,
 ) -> Element(Msg) {
   let is_selected = value == selected
   let class_name = case is_selected {
@@ -1680,7 +1699,7 @@ fn visibility_option(
       attribute.type_("button"),
       attribute.class(class_name),
       attribute.attribute("aria-pressed", bool_attribute(is_selected)),
-      event.on_click(SaveVisibilityDraftSelected(value)),
+      event.on_click(on_select(value)),
     ],
     [
       html.span([attribute.class("editor-page__settings-option-title")], [
@@ -1801,13 +1820,58 @@ fn save_operation(
   }
 }
 
+fn save_snippet(
+  model: RealModel,
+  current_user_id: option.Option(Uuid),
+  close_dialog: Bool,
+) -> #(RealModel, Effect(Msg)) {
+  let visibility = save_visibility(model, current_user_id)
+  let data =
+    snippet_dto.SnippetData(
+      title: model.title,
+      language: model.language,
+      visibility: visibility,
+      stdin: stdin_to_string(model.stdin),
+      run_instructions: model.run_instructions_override,
+      files: model.files,
+    )
+
+  let save_effect = case save_operation(model, current_user_id) {
+    CreateSnippet ->
+      api.create_snippet(
+        snippet_dto.CreateSnippetRequest(data: data),
+        SaveFinished,
+      )
+
+    UpdateSnippet(slug) ->
+      api.update_snippet(
+        snippet_dto.UpdateSnippetRequest(slug: slug, data: data),
+        SaveFinished,
+      )
+  }
+
+  let combined_effect = case close_dialog {
+    True -> effect.batch([app_dialog.close(save_dialog_id), save_effect])
+    False -> save_effect
+  }
+
+  #(
+    RealModel(..model, visibility: visibility, save_state: Saving),
+    combined_effect,
+  )
+}
+
 fn save_visibility(
   model: RealModel,
   current_user_id: option.Option(Uuid),
 ) -> snippet_model.Visibility {
-  case can_choose_save_visibility(model, current_user_id) {
-    True -> model.save_visibility_draft
-    False -> model.visibility
+  case model.slug {
+    option.Some(_) -> model.visibility
+    option.None ->
+      case can_choose_save_visibility(model, current_user_id) {
+        True -> model.save_visibility_draft
+        False -> model.visibility
+      }
   }
 }
 
@@ -1823,6 +1887,14 @@ fn save_action_name(
 
 fn reset_save_dialog_draft(model: RealModel) -> RealModel {
   RealModel(..model, save_visibility_draft: model.visibility)
+}
+
+fn reset_edit_metadata_draft(model: RealModel) -> RealModel {
+  RealModel(
+    ..model,
+    title_draft: model.title,
+    save_visibility_draft: model.visibility,
+  )
 }
 
 fn existing_model_from_response(
