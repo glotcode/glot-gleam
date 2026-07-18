@@ -196,6 +196,12 @@ pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
 pub fn public_page_uses_public_frontend_entry_test() {
   let body = page_body("/login")
 
+  assert string.contains(body, "content=\"light dark\" name=\"color-scheme\"")
+  assert string.contains(body, "glot.color-theme")
+  assert string.contains(
+    body,
+    "</script><link href=\"/static/assets/test-styles.css\"",
+  )
   assert string.contains(body, "/static/assets/test-frontend.js")
   assert string.contains(body, "/static/assets/test-admin.js") == False
   assert string.contains(body, "/static/assets/test-shared.js")

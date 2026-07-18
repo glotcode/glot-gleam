@@ -1,0 +1,2 @@
+/* Kept as a separate entry so only admin documents download these rules. */
+@import "./admin.css" layer(admin);

@@ -1,0 +1,16 @@
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top, var(--theme-page-glow), transparent 32%),
+    linear-gradient(180deg, var(--theme-page) 0%, var(--theme-page) 46%, var(--theme-surface-muted) 100%);
+  color: var(--theme-text-strong);
+  font-family: "Lucida Console", Monaco, "Courier New", monospace;
+}
+
+#app.maintenance-page {
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+}

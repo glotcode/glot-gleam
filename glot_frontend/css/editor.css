@@ -1,0 +1,767 @@
+.editor-page {
+  position: relative;
+  min-height: calc(100vh - 3.2rem);
+  overflow: hidden;
+}
+
+.editor-page__screen-glow {
+  position: absolute;
+  inset: 0;
+}
+
+.app-topbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 3.2rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+
+.app-topbar__title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.app-topbar__brand {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--theme-text);
+  text-decoration: none;
+}
+
+.app-topbar__icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-topbar__icon-button:hover {
+  background: var(--theme-surface-muted);
+}
+
+.app-topbar__icon-button:active {
+  background: var(--theme-surface-muted);
+}
+
+.app-topbar__account {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.app-topbar__account-label {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--theme-border);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.editor-page__title-row {
+  display: flex;
+  align-self: stretch;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 0.7rem;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+.editor-page__title {
+  margin: 0;
+  align-self: center;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.editor-page__title-actions {
+  display: flex;
+  align-items: stretch;
+  margin-left: auto;
+}
+
+.editor-page__title-edit-button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-self: stretch;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 0 0.15rem 0 0.55rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+
+.editor-page__title-edit-button:hover {
+  color: var(--color-accent);
+}
+
+.editor-page__title-edit-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.editor-page__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-page__title-hint {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.3rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.editor-page__title-hint--info {
+  background: var(--theme-surface);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
+
+.editor-page__dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  padding: 0;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  box-shadow: 0 1.5rem 4rem var(--shadow-dialog);
+}
+
+.editor-page__dialog::backdrop {
+  background: var(--overlay-backdrop);
+}
+
+.editor-page__dialog-form {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem;
+}
+
+.editor-page__dialog-section {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.editor-page__dialog-divider {
+  margin: 0.7rem 0 0.8rem;
+  height: 1px;
+  background: linear-gradient(90deg, var(--theme-surface-muted) 0%, var(--theme-border) 50%, var(--theme-surface-muted) 100%);
+}
+
+.editor-page__dialog-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.editor-page__dialog-label--snippet-info {
+  margin-bottom: 1rem;
+}
+
+.editor-page__dialog-sublabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
+.editor-page__dialog-panel {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-height: 5.1rem;
+}
+
+.editor-page__dialog-input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: var(--theme-text-strong);
+  font: inherit;
+}
+
+.editor-page__dialog-input:disabled,
+.editor-page__dialog-select:disabled {
+  border-color: var(--theme-border);
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-disabled);
+  cursor: not-allowed;
+}
+
+.editor-page__dialog-select {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: var(--theme-text-strong);
+  font: inherit;
+}
+
+.editor-page__dialog-input--multiline {
+  resize: vertical;
+}
+
+.editor-page__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.editor-page__dialog-toggle-group {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.editor-page__dialog-toggle {
+  min-width: 5.5rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: var(--theme-text-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.editor-page__dialog-toggle--selected {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.editor-page__dialog-button {
+  min-width: 6rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--theme-border);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  cursor: pointer;
+  font: inherit;
+}
+
+.editor-page__dialog-button--secondary {
+  background: var(--theme-surface);
+  color: var(--theme-text-muted);
+}
+
+.editor-page__dialog-button--danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.editor-page__dialog-copy {
+  margin: 0;
+  color: var(--theme-text-muted);
+  line-height: 1.6;
+}
+
+.editor-page__dialog-link {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.editor-page__dialog-helper-text {
+  margin: 0;
+  color: var(--theme-text-subtle);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.editor-page__settings-option {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: start;
+  width: 100%;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: var(--theme-text-strong);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.editor-page__settings-option--selected {
+  border-color: var(--color-accent);
+  background: var(--theme-surface-muted);
+}
+
+.editor-page__settings-option-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-text-muted);
+}
+
+.editor-page__settings-option-copy {
+  color: var(--theme-text-muted);
+  line-height: 1.5;
+}
+
+.editor-shell__settings-button,
+.editor-shell__tab-action-button,
+.editor-shell__action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.editor-shell__settings-button:hover,
+.editor-shell__tab-action-button:hover,
+.editor-shell__action-button:hover:not(:disabled) {
+  background: var(--theme-surface-muted);
+}
+
+.editor-shell__settings-button:active,
+.editor-shell__tab-action-button:active,
+.editor-shell__action-button:active:not(:disabled) {
+  background: var(--theme-surface-muted);
+}
+
+.editor-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 1rem;
+  align-items: start;
+  width: calc(100vw - 2rem);
+  margin: 0 0 0 1rem;
+  padding: 1rem 0 1.4rem;
+}
+
+.editor-shell__workspace {
+  min-width: 0;
+}
+
+.editor-shell__bezel {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 1rem;
+  height: 43px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--theme-border);
+  border-bottom: 0;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+}
+
+.editor-shell__tabbar {
+  display: flex;
+  align-items: stretch;
+  min-height: 2rem;
+  border: 1px solid var(--theme-border);
+  border-bottom: 0;
+  background: var(--theme-surface-muted);
+}
+
+.editor-shell__tab-scroll {
+  flex: 1 1 auto;
+  align-self: stretch;
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.editor-shell__tab-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.editor-shell__tab-strip {
+  display: flex;
+  align-items: stretch;
+  min-height: 100%;
+  min-width: max-content;
+}
+
+.editor-shell__settings-button {
+  flex: 0 0 auto;
+  width: 43px;
+  height: 100%;
+  padding: 0.6rem;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 1px solid var(--theme-border);
+}
+
+.editor-shell__tab-action-button {
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 100%;
+  padding: 0.6rem;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 0;
+}
+
+.editor-shell__tabbar>.editor-shell__settings-button:last-child,
+.editor-shell__tabbar>.editor-shell__tab-action-button:last-child {
+  border-right: 0;
+}
+
+.editor-shell__tab {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.45rem;
+  align-self: stretch;
+  min-height: 2rem;
+  padding: 0 0.8rem;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 1px solid var(--theme-border);
+  background: inherit;
+  color: var(--theme-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  appearance: none;
+}
+
+.editor-shell__tab--selected {
+  background: var(--theme-surface);
+  color: var(--color-accent);
+}
+
+.editor-shell__tab-meta-button {
+  flex: 0 0 auto;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.55rem 0 0.6rem;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 1px solid var(--theme-border);
+  background: inherit;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.editor-shell__tab-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.3rem;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.editor-shell__editor {
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  height: 60vh;
+  min-height: 12rem;
+  overflow: hidden;
+}
+
+.editor-shell__codemirror {
+  display: block;
+  height: 100%;
+}
+
+.editor-shell__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  height: 43px;
+  border-left: 1px solid var(--theme-border);
+  border-right: 1px solid var(--theme-border);
+  border-bottom: 1px solid var(--theme-border);
+  background: var(--theme-surface-muted);
+}
+
+.editor-shell__actions {
+  background: var(--theme-surface-muted);
+}
+
+.editor-shell__action-button {
+  width: 100%;
+  height: 100%;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 1px solid var(--theme-border);
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.editor-shell__action-button:last-child {
+  border-right: 0;
+}
+
+.editor-shell__action-button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.editor-shell__console {
+  position: relative;
+  margin-top: 1rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  min-height: 12rem;
+  overflow: hidden;
+}
+
+@media (min-width: 86rem) {
+  .editor-shell {
+    width: calc(100vw - 3rem);
+    grid-template-columns: minmax(0, 1fr) 23rem;
+  }
+}
+
+.editor-shell__console::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border: 1px solid var(--theme-surface-muted);
+  pointer-events: none;
+}
+
+.editor-shell__console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid var(--color-focus);
+  background: var(--color-info);
+  color: var(--color-on-accent);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.editor-shell__console-body {
+  position: relative;
+}
+
+.editor-shell__console-section+.editor-shell__console-section {
+  border-top: 1px solid var(--theme-surface-muted);
+}
+
+.editor-shell__console-section {
+  min-height: 4.5rem;
+  padding: 1rem;
+}
+
+.editor-shell__console-label {
+  margin-bottom: 0.45rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--theme-text-subtle);
+}
+
+.editor-shell__console-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Lucida Console", Monaco, "Courier New", monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--theme-text-strong);
+  text-shadow: 0 0 4px var(--theme-code-shadow);
+}
+
+.editor-shell__result-panel+.editor-shell__result-panel {
+  border-top: 1px solid var(--theme-surface-muted);
+}
+
+.editor-shell__result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 1rem;
+  border-bottom: 1px solid transparent;
+  color: var(--theme-text-strong);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.editor-shell__result-header--stdout {
+  background: var(--color-stdout);
+  border-bottom-color: var(--color-focus);
+  color: var(--color-on-accent);
+}
+
+.editor-shell__result-header--stderr {
+  background: var(--color-stderr);
+  border-bottom-color: var(--color-stderr);
+  color: var(--color-on-accent);
+}
+
+.editor-shell__result-header--error {
+  background: var(--color-error);
+  border-bottom-color: var(--color-error);
+  color: var(--color-on-accent);
+}
+
+.editor-shell__result-title,
+.editor-shell__result-duration {
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.editor-shell__result-title {
+  color: inherit;
+}
+
+.editor-shell__result-duration {
+  color: inherit;
+}
+
+.editor-shell__result-body {
+  min-height: 4.5rem;
+  padding: 1rem;
+  background: var(--theme-surface);
+}
+
+.editor-shell__result-pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Lucida Console", Monaco, "Courier New", monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--theme-text-strong);
+  text-shadow: 0 0 4px var(--theme-code-shadow);
+}
+
+.app-topbar__menu-icon {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+.app-topbar__menu-icon {
+  width: 0.8rem;
+  height: 0.6rem;
+  background:
+    linear-gradient(var(--theme-text-muted), var(--theme-text-muted)) 0 0 / 100% 2px no-repeat,
+    linear-gradient(var(--theme-text-muted), var(--theme-text-muted)) 0 50% / 100% 2px no-repeat,
+    linear-gradient(var(--theme-text-muted), var(--theme-text-muted)) 0 100% / 100% 2px no-repeat;
+}
+
+@media (max-width: 720px) {
+
+  .app-topbar,
+  .editor-shell__bezel {
+    gap: 0.5rem;
+  }
+
+  .editor-shell__bezel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-topbar {
+    flex-wrap: nowrap;
+  }
+
+  .app-topbar__account {
+    flex-wrap: nowrap;
+    margin-left: auto;
+  }
+
+  .editor-shell {
+    width: calc(100vw - 1rem);
+    margin-left: 0.5rem;
+    padding-top: 0.5rem;
+  }
+
+}
+
+@media (max-height: 900px) {
+  .editor-shell {
+    padding-top: 0.5rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .editor-shell__editor {
+    height: 12rem;
+    min-height: 10rem;
+  }
+
+  .editor-shell__console {
+    margin-top: 0.5rem;
+    min-height: 6rem;
+  }
+
+  .editor-shell__console-section,
+  .editor-shell__result-body {
+    min-height: 3rem;
+    padding: 0.75rem;
+  }
+
+  .editor-shell__console-header,
+  .editor-shell__result-header {
+    padding: 0.35rem 0.75rem;
+  }
+}

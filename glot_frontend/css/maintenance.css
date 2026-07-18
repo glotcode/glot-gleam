@@ -1,0 +1,62 @@
+.maintenance-page__shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.maintenance-page__panel {
+  display: grid;
+  gap: 1rem;
+  width: min(34rem, 100%);
+  padding: 1.5rem;
+  border: 1px solid var(--theme-border);
+  background: color-mix(in srgb, var(--theme-surface) 94%, transparent);
+  box-shadow: 0 1.5rem 4rem var(--shadow-panel-strong);
+}
+
+.maintenance-page__eyebrow {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.maintenance-page__title {
+  margin: 0;
+  font-size: clamp(1.8rem, 5vw, 3.25rem);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.maintenance-page__message {
+  margin: 0;
+  color: var(--theme-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.maintenance-page__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-top: 0.35rem;
+}
+
+.maintenance-page__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  text-decoration: none;
+}
+
+.maintenance-page__link:hover {
+  background: var(--theme-surface-muted);
+}

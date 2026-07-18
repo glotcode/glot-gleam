@@ -1,4 +1,4 @@
-import "../css/admin.css";
+import "../css/admin-entry.css";
 import { main } from "../build/dev/javascript/glot_frontend/glot_frontend/admin_app.mjs";
 import { start } from "./start";
 

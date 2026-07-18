@@ -1,0 +1,69 @@
+:root {
+  color-scheme: light dark;
+
+  --theme-page: light-dark(#fdf6e3, #002b36);
+  --theme-surface: light-dark(#fdf6e3, #073642);
+  --theme-surface-muted: light-dark(#eee8d5, #002b36);
+  --theme-text-strong: light-dark(#002b36, #fdf6e3);
+  --theme-text: light-dark(#073642, #eee8d5);
+  --theme-text-muted: light-dark(#586e75, #93a1a1);
+  --theme-text-subtle: light-dark(#657b83, #839496);
+  --theme-text-disabled: light-dark(#839496, #586e75);
+  --theme-border: light-dark(#d8d1bd, #34505a);
+  --theme-screen-line: light-dark(rgba(255, 255, 255, 0.12), rgba(147, 161, 161, 0.04));
+  --theme-code-shadow: light-dark(rgba(255, 255, 255, 0.35), rgba(0, 43, 54, 0.35));
+
+  --color-accent: #268bd2;
+  --color-accent-hover: #6c71c4;
+  --color-focus: #2aa198;
+  --color-info: var(--color-accent);
+  --color-info-soft: var(--color-accent-soft);
+  --color-stdout: var(--color-info);
+  --color-stderr: #6c71c4;
+  --color-error: #dc322f;
+  --color-danger: var(--color-error);
+  --color-warning: #b58900;
+  --color-success: #859900;
+  --color-diagnostic: #cb4b16;
+  --color-on-accent: #fdf6e3;
+  --color-on-image: #ffffff;
+
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  --color-accent-line: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  --color-accent-selection: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  --color-accent-selection-muted: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  --color-danger-subtle: color-mix(in srgb, var(--color-danger) 8%, transparent);
+  --color-danger-hover: color-mix(in srgb, var(--color-danger) 16%, transparent);
+  --color-danger-border: color-mix(in srgb, var(--color-danger) 35%, transparent);
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 12%, transparent);
+  --color-warning-emphasis: color-mix(in srgb, var(--color-warning) 24%, transparent);
+  --color-warning-border: color-mix(in srgb, var(--color-warning) 35%, transparent);
+  --color-success-soft: color-mix(in srgb, var(--color-success) 12%, transparent);
+  --color-success-border: color-mix(in srgb, var(--color-success) 35%, transparent);
+  --color-focus-ring: color-mix(in srgb, var(--color-focus) 20%, transparent);
+
+  --syntax-keyword: var(--color-success);
+  --syntax-string: var(--color-focus);
+  --syntax-number: var(--color-accent-hover);
+  --syntax-function: var(--color-accent);
+  --syntax-type: var(--color-warning);
+
+  --theme-page-glow: color-mix(in srgb, var(--color-warning) 10%, transparent);
+  --theme-screen-glow: color-mix(in srgb, var(--color-warning) 6%, transparent);
+  --overlay-image: rgba(0, 43, 54, 0.38);
+  --overlay-backdrop: rgba(16, 24, 40, 0.42);
+  --shadow-soft: rgba(0, 43, 54, 0.08);
+  --shadow-panel: rgba(0, 43, 54, 0.12);
+  --shadow-panel-strong: rgba(0, 43, 54, 0.16);
+  --shadow-dialog: rgba(0, 43, 54, 0.22);
+  --shadow-floating: rgba(12, 26, 54, 0.18);
+}
+
+:root[data-theme="light"] {
+  color-scheme: only light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: only dark;
+}

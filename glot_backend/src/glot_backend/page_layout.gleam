@@ -3,6 +3,8 @@ import lustre/attribute
 import lustre/element
 import lustre/element/html
 
+const theme_bootstrap = "try{let theme=localStorage.getItem('glot.color-theme');if(theme==='light'||theme==='dark')document.documentElement.dataset.theme=theme}catch{}"
+
 pub fn document(
   title title: String,
   head_children head_children: List(element.Element(msg)),
@@ -22,7 +24,12 @@ pub fn document(
           attribute.name("viewport"),
           attribute.content("width=device-width, initial-scale=1"),
         ]),
+        html.meta([
+          attribute.name("color-scheme"),
+          attribute.content("light dark"),
+        ]),
         html.title([], title),
+        html.script([], theme_bootstrap),
         html.link([
           attribute.rel("stylesheet"),
           attribute.href(stylesheet_href),

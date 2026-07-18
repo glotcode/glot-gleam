@@ -22,17 +22,17 @@ const editorTheme = EditorView.theme({
     backgroundColor: "var(--theme-page)"
   },
   ".cm-content": {
-    caretColor: "var(--solarized-blue)",
+    caretColor: "var(--color-accent)",
     fontFamily: '"Lucida Console", Monaco, "Courier New", monospace',
     fontSize: "14px",
     lineHeight: "1.6",
     textShadow: "0 0 4px var(--theme-code-shadow)"
   },
   ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "var(--solarized-blue)"
+    borderLeftColor: "var(--color-accent)"
   },
   ".cm-selectionBackground, ::selection": {
-    backgroundColor: "rgba(38, 139, 210, 0.18) !important"
+    backgroundColor: "var(--color-accent-selection) !important"
   },
   ".cm-gutters": {
     backgroundColor: "var(--theme-surface-muted)",
@@ -40,11 +40,11 @@ const editorTheme = EditorView.theme({
     borderRight: "1px solid var(--theme-border)"
   },
   ".cm-activeLineGutter": {
-    backgroundColor: "rgba(38, 139, 210, 0.12)",
+    backgroundColor: "var(--color-accent-selection-muted)",
     color: "var(--theme-text-muted)"
   },
   ".cm-activeLine": {
-    backgroundColor: "rgba(38, 139, 210, 0.06)"
+    backgroundColor: "var(--color-accent-line)"
   },
   ".cm-lineNumbers .cm-gutterElement": {
     paddingLeft: "10px",
@@ -63,18 +63,18 @@ const editorTheme = EditorView.theme({
     color: "var(--theme-text-strong)"
   },
   ".cm-searchMatch": {
-    backgroundColor: "rgba(181, 137, 0, 0.24)",
-    outline: "1px solid #cb4b16"
+    backgroundColor: "var(--color-warning-emphasis)",
+    outline: "1px solid var(--color-diagnostic)"
   }
 });
 
 const editorHighlightStyle = HighlightStyle.define([
-  { tag: [tags.keyword, tags.modifier], color: "var(--solarized-green)", fontWeight: "bold" },
-  { tag: [tags.string, tags.special(tags.string)], color: "var(--solarized-cyan)" },
-  { tag: [tags.number, tags.bool, tags.null], color: "var(--solarized-violet)" },
+  { tag: [tags.keyword, tags.modifier], color: "var(--syntax-keyword)", fontWeight: "bold" },
+  { tag: [tags.string, tags.special(tags.string)], color: "var(--syntax-string)" },
+  { tag: [tags.number, tags.bool, tags.null], color: "var(--syntax-number)" },
   { tag: [tags.comment], color: "var(--theme-text-subtle)", fontStyle: "italic" },
-  { tag: [tags.function(tags.variableName), tags.labelName], color: "var(--solarized-blue)" },
-  { tag: [tags.typeName, tags.className], color: "var(--solarized-yellow)" },
+  { tag: [tags.function(tags.variableName), tags.labelName], color: "var(--syntax-function)" },
+  { tag: [tags.typeName, tags.className], color: "var(--syntax-type)" },
   { tag: [tags.variableName, tags.propertyName], color: "var(--theme-text-muted)" },
   { tag: [tags.operator, tags.punctuation, tags.separator], color: "var(--theme-text-subtle)" }
 ]);

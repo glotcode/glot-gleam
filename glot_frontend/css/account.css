@@ -1,0 +1,233 @@
+.login-page__title,
+.account-page__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.account-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.account-page__panels {
+  display: grid;
+  gap: 1rem;
+}
+
+.login-page__form,
+.account-page__form,
+.account-page__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.login-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.25rem;
+}
+
+.login-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+
+.login-page__section-title {
+  margin: 0;
+  color: var(--theme-text-strong);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.login-page__section-copy {
+  margin: 0;
+  color: var(--theme-text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.login-page__label,
+.account-page__label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.login-page__input,
+.account-page__input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: inherit;
+  font: inherit;
+}
+
+.login-page__status,
+.account-page__status {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--theme-text-muted);
+}
+
+.login-page__status--error,
+.account-page__status--error {
+  color: var(--color-danger);
+}
+
+.login-page__button,
+.account-page__button {
+  align-self: flex-start;
+  padding: 0.45rem 0.85rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.login-page__button:hover,
+.account-page__button:hover {
+  background: var(--theme-surface-muted);
+}
+
+.account-page__button--logout {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-subtle);
+}
+
+.account-page__button--logout:hover {
+  background: var(--color-danger-hover);
+}
+
+.account-page__button--secondary {
+  border-color: var(--theme-border);
+  background: var(--theme-surface-muted);
+}
+
+.account-page__button--secondary:hover {
+  background: var(--color-accent-soft);
+}
+
+.account-page__button--danger {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-soft);
+}
+
+.account-page__button--danger:hover {
+  background: var(--color-danger-hover);
+}
+
+.login-page__button:disabled,
+.login-page__input:disabled,
+.account-page__button:disabled,
+.account-page__input:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.account-page__row {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: baseline;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.account-page__row-label {
+  color: var(--theme-text-disabled);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-page__row-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--theme-text-strong);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.account-page__logout {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.account-page__appearance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.account-page__theme-picker {
+  font-size: 0.85rem;
+  letter-spacing: normal;
+}
+
+.account-page__danger-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.account-page__danger-zone-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.account-page__passkey-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.account-page__passkey-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+
+.account-page__passkey-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.account-page__section-title {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.account-page__link {
+  width: fit-content;
+  color: var(--color-accent);
+  font-weight: 700;
+}
+

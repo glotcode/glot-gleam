@@ -2,7 +2,6 @@
   width: min(72rem, calc(100vw - 2rem));
   margin: 0 auto;
   padding-top: 0.9rem;
-  box-sizing: border-box;
 }
 
 .admin-breadcrumbs {
@@ -11,7 +10,7 @@
   padding: 0.8rem 1rem;
   border: 1px solid var(--theme-border);
   background: color-mix(in srgb, var(--theme-surface) 88%, transparent);
-  box-shadow: 0 0.8rem 2rem rgba(0, 43, 54, 0.08);
+  box-shadow: 0 0.8rem 2rem var(--shadow-soft);
   backdrop-filter: blur(10px);
 }
 
@@ -38,7 +37,7 @@
 }
 
 .admin-breadcrumbs__link:hover {
-  color: var(--solarized-blue);
+  color: var(--color-accent);
 }
 
 .admin-breadcrumbs__link--current {
@@ -84,11 +83,11 @@
 
 .admin-page__status--error,
 .admin-page__policy-status--error {
-  color: var(--solarized-red);
+  color: var(--color-danger);
 }
 
 .admin-page__policy-status--dirty {
-  color: var(--solarized-blue);
+  color: var(--color-accent);
 }
 
 .admin-page__group {
@@ -211,28 +210,28 @@
   align-items: center;
   padding: 0.28rem 0.5rem;
   border: 1px solid var(--theme-border);
-  background: rgba(38, 139, 210, 0.10);
-  color: var(--solarized-blue);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .admin-page__version--dirty {
   border-color: var(--theme-border);
-  background: rgba(38, 139, 210, 0.10);
-  color: var(--solarized-blue);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 .admin-page__version--success {
-  border-color: rgba(133, 153, 0, 0.35);
-  background: rgba(133, 153, 0, 0.12);
-  color: var(--solarized-green);
+  border-color: var(--color-success-border);
+  background: var(--color-success-soft);
+  color: var(--color-success);
 }
 
 .admin-page__version--error {
-  border-color: rgba(220, 50, 47, 0.35);
-  background: rgba(220, 50, 47, 0.10);
-  color: var(--solarized-red);
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 
 .admin-page__dialog {
@@ -308,7 +307,6 @@
   color: var(--theme-text-strong);
   font: inherit;
   line-height: 1.5;
-  box-sizing: border-box;
 }
 
 .admin-page__input,
@@ -318,8 +316,8 @@
 
 .admin-page__select:focus,
 .admin-page__input:focus {
-  outline: 2px solid rgba(38, 139, 210, 0.2);
-  border-color: var(--solarized-cyan);
+  outline: 2px solid var(--color-focus-ring);
+  border-color: var(--color-focus);
 }
 
 .admin-page__button,
@@ -329,8 +327,8 @@
   justify-content: center;
   padding: 0.55rem 0.8rem;
   border: 1px solid var(--theme-border);
-  background: var(--solarized-blue);
-  color: var(--theme-surface);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
   font: inherit;
   cursor: pointer;
   text-decoration: none;
@@ -338,13 +336,13 @@
 
 .admin-page__button:hover,
 .admin-page__chip:hover {
-  background: var(--solarized-violet);
+  background: var(--color-accent-hover);
 }
 
 .admin-page__button--secondary,
 .admin-page__chip {
-  background: rgba(38, 139, 210, 0.10);
-  color: var(--solarized-blue);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
 }
 
 .admin-page__button--secondary:hover,
@@ -358,9 +356,9 @@
 }
 
 .admin-page__chip--selected {
-  border-color: var(--solarized-blue);
-  background: var(--solarized-blue);
-  color: var(--theme-surface);
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .admin-page__empty {
@@ -406,28 +404,28 @@
   align-items: center;
   padding: 0.28rem 0.5rem;
   border: 1px solid var(--theme-border);
-  background: rgba(38, 139, 210, 0.10);
-  color: var(--solarized-blue);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .admin-jobs-page__summary-tone--warning {
-  border-color: rgba(181, 137, 0, 0.35);
-  background: rgba(181, 137, 0, 0.12);
-  color: var(--solarized-yellow);
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
 }
 
 .admin-jobs-page__summary-tone--danger {
-  border-color: rgba(220, 50, 47, 0.35);
-  background: rgba(220, 50, 47, 0.10);
-  color: var(--solarized-red);
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 
 .admin-jobs-page__summary-tone--success {
-  border-color: rgba(133, 153, 0, 0.35);
-  background: rgba(133, 153, 0, 0.12);
-  color: var(--solarized-green);
+  border-color: var(--color-success-border);
+  background: var(--color-success-soft);
+  color: var(--color-success);
 }
 
 .admin-jobs-page__filters {
@@ -619,7 +617,7 @@
 }
 
 .admin-table__cell--language .admin-table__value {
-  color: var(--solarized-blue);
+  color: var(--color-accent);
   font-weight: 700;
 }
 
@@ -634,12 +632,12 @@
 }
 
 .admin-table__row--rollback:hover {
-  background: rgba(220, 50, 47, 0.10);
+  background: var(--color-danger-soft);
 }
 
 .admin-table__row--rollback .admin-table__value--primary,
 .admin-table__row--rollback .admin-table__cell {
-  color: var(--solarized-red);
+  color: var(--color-danger);
 }
 
 .admin-info-grid {
@@ -721,34 +719,34 @@
   width: fit-content;
   padding: 0.28rem 0.5rem;
   border: 1px solid var(--theme-border);
-  background: rgba(38, 139, 210, 0.10);
-  color: var(--solarized-blue);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
 .admin-badge--info {
   border-color: var(--theme-border);
-  background: rgba(38, 139, 210, 0.10);
-  color: var(--solarized-blue);
+  background: var(--color-info-soft);
+  color: var(--color-info);
 }
 
 .admin-badge--warning {
-  border-color: rgba(181, 137, 0, 0.35);
-  background: rgba(181, 137, 0, 0.12);
-  color: var(--solarized-yellow);
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
 }
 
 .admin-badge--danger {
-  border-color: rgba(220, 50, 47, 0.35);
-  background: rgba(220, 50, 47, 0.10);
-  color: var(--solarized-red);
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
 }
 
 .admin-badge--success {
-  border-color: rgba(133, 153, 0, 0.35);
-  background: rgba(133, 153, 0, 0.12);
-  color: var(--solarized-green);
+  border-color: var(--color-success-border);
+  background: var(--color-success-soft);
+  color: var(--color-success);
 }
 
 @media (max-width: 700px) {

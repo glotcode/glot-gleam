@@ -75,7 +75,7 @@ class GlotThemePicker extends HTMLElement {
       }
 
       select:focus-visible {
-        outline: 2px solid var(--solarized-cyan);
+        outline: 2px solid var(--color-focus);
         outline-offset: 2px;
       }
 
