@@ -312,18 +312,18 @@ fn heartbeat_effect(model: Model) -> Effect(Msg) {
 }
 
 fn view(model: Model) -> Element(Msg) {
+  case app_shell.is_admin(model.session) {
+    True -> admin_view(model)
+    False -> element.none()
+  }
+}
+
+fn admin_view(model: Model) -> Element(Msg) {
   let page_content =
-    admin_pages.view(
-      model.page_model,
-      model.now,
-      app_shell.is_admin(model.session),
-    )
+    admin_pages.view(model.page_model, model.now)
     |> element.map(AdminPagesMsg)
 
-  let content = case
-    app_shell.is_admin(model.session)
-    && admin_breadcrumbs.is_admin_route(model.route)
-  {
+  let content = case admin_breadcrumbs.is_admin_route(model.route) {
     True -> admin_breadcrumbs.wrap(model.route, page_content)
     False -> page_content
   }

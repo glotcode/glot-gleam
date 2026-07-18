@@ -669,14 +669,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   }
 }
 
-pub fn view(model: Model, now: Timestamp, is_admin: Bool) -> Element(Msg) {
-  case is_admin {
-    True -> admin_view(model, now)
-    False -> app_shell.not_found_view()
-  }
-}
-
-fn admin_view(model: Model, now: Timestamp) -> Element(Msg) {
+pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   case model.page_model {
     EmptyPageModel -> app_shell.not_found_view()
     AdminPage(page_model) -> {
