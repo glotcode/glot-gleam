@@ -1,3 +1,5 @@
+import { initializeTheme } from "./custom_elements/glot-theme-picker";
+
 let codeMirrorImport: Promise<unknown> | null = null;
 
 function loadCodeMirror() {
@@ -24,6 +26,8 @@ function loadCodeMirrorIfPresent(node: Node) {
 }
 
 export function start(main: () => unknown) {
+  initializeTheme();
+
   const codeMirrorObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {

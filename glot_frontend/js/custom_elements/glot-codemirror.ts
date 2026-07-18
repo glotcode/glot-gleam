@@ -15,36 +15,36 @@ import {
   shouldApplyDocumentValue
 } from "./glot-codemirror-document.mjs";
 
-const retroTheme = EditorView.theme({
+const editorTheme = EditorView.theme({
   "&": {
     height: "100%",
-    color: "#172033",
-    backgroundColor: "#ffffff"
+    color: "var(--theme-text-strong)",
+    backgroundColor: "var(--theme-page)"
   },
   ".cm-content": {
-    caretColor: "#1d4ed8",
+    caretColor: "var(--solarized-blue)",
     fontFamily: '"Lucida Console", Monaco, "Courier New", monospace',
     fontSize: "14px",
     lineHeight: "1.6",
-    textShadow: "0 0 4px rgba(255, 255, 255, 0.35)"
+    textShadow: "0 0 4px var(--theme-code-shadow)"
   },
   ".cm-cursor, .cm-dropCursor": {
-    borderLeftColor: "#1d4ed8"
+    borderLeftColor: "var(--solarized-blue)"
   },
   ".cm-selectionBackground, ::selection": {
-    backgroundColor: "rgba(59, 130, 246, 0.18) !important"
+    backgroundColor: "rgba(38, 139, 210, 0.18) !important"
   },
   ".cm-gutters": {
-    backgroundColor: "#edf4ff",
-    color: "#6480b9",
-    borderRight: "1px solid #c8d7ef"
+    backgroundColor: "var(--theme-surface-muted)",
+    color: "var(--theme-text-subtle)",
+    borderRight: "1px solid var(--theme-border)"
   },
   ".cm-activeLineGutter": {
-    backgroundColor: "#dbe7fb",
-    color: "#23406f"
+    backgroundColor: "rgba(38, 139, 210, 0.12)",
+    color: "var(--theme-text-muted)"
   },
   ".cm-activeLine": {
-    backgroundColor: "rgba(59, 130, 246, 0.05)"
+    backgroundColor: "rgba(38, 139, 210, 0.06)"
   },
   ".cm-lineNumbers .cm-gutterElement": {
     paddingLeft: "10px",
@@ -54,29 +54,29 @@ const retroTheme = EditorView.theme({
     fontFamily: '"Lucida Console", Monaco, "Courier New", monospace'
   },
   ".cm-tooltip": {
-    border: "1px solid #c8d7ef",
-    backgroundColor: "#ffffff",
-    color: "#172033"
+    border: "1px solid var(--theme-border)",
+    backgroundColor: "var(--theme-surface)",
+    color: "var(--theme-text-strong)"
   },
   ".cm-panels": {
-    backgroundColor: "#f8fbff",
-    color: "#172033"
+    backgroundColor: "var(--theme-surface-muted)",
+    color: "var(--theme-text-strong)"
   },
   ".cm-searchMatch": {
-    backgroundColor: "rgba(251, 191, 36, 0.22)",
-    outline: "1px solid #f59e0b"
+    backgroundColor: "rgba(181, 137, 0, 0.24)",
+    outline: "1px solid #cb4b16"
   }
 });
 
-const retroHighlightStyle = HighlightStyle.define([
-  { tag: [tags.keyword, tags.modifier], color: "#2563eb", fontWeight: "bold" },
-  { tag: [tags.string, tags.special(tags.string)], color: "#059669" },
-  { tag: [tags.number, tags.bool, tags.null], color: "#d97706" },
-  { tag: [tags.comment], color: "#7c8aa5", fontStyle: "italic" },
-  { tag: [tags.function(tags.variableName), tags.labelName], color: "#7c3aed" },
-  { tag: [tags.typeName, tags.className], color: "#0891b2" },
-  { tag: [tags.variableName, tags.propertyName], color: "#172033" },
-  { tag: [tags.operator, tags.punctuation, tags.separator], color: "#51627f" }
+const editorHighlightStyle = HighlightStyle.define([
+  { tag: [tags.keyword, tags.modifier], color: "var(--solarized-green)", fontWeight: "bold" },
+  { tag: [tags.string, tags.special(tags.string)], color: "var(--solarized-cyan)" },
+  { tag: [tags.number, tags.bool, tags.null], color: "var(--solarized-violet)" },
+  { tag: [tags.comment], color: "var(--theme-text-subtle)", fontStyle: "italic" },
+  { tag: [tags.function(tags.variableName), tags.labelName], color: "var(--solarized-blue)" },
+  { tag: [tags.typeName, tags.className], color: "var(--solarized-yellow)" },
+  { tag: [tags.variableName, tags.propertyName], color: "var(--theme-text-muted)" },
+  { tag: [tags.operator, tags.punctuation, tags.separator], color: "var(--theme-text-subtle)" }
 ]);
 
 // Minimal "basic setup" (avoids depending on codemirror meta-package)
@@ -91,9 +91,9 @@ const basicSetup: Extension = [
   rectangularSelection(),
   highlightActiveLine(),
   highlightSelectionMatches(),
-  retroTheme,
+  editorTheme,
   syntaxHighlighting(defaultHighlightStyle),
-  syntaxHighlighting(retroHighlightStyle),
+  syntaxHighlighting(editorHighlightStyle),
   keymap.of([
     ...defaultKeymap,
     ...searchKeymap,
@@ -352,12 +352,12 @@ export class GlotCodeMirror extends HTMLElement {
         background:
           linear-gradient(
             180deg,
-            rgba(255, 255, 255, 0.05) 0,
-            rgba(255, 255, 255, 0.05) 1px,
+            var(--theme-screen-line) 0,
+            var(--theme-screen-line) 1px,
             transparent 1px,
             transparent 4px
           ),
-          #ffffff;
+          var(--theme-page);
       }
 
       .cm-editor {

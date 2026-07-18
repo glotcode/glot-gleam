@@ -679,6 +679,21 @@ fn account_form(
       ]),
       account_settings_form(model),
     ]),
+    html.section([attribute.class("app-panel")], [
+      html.h3([attribute.class("account-page__section-title")], [
+        html.text("Appearance"),
+      ]),
+      html.div([attribute.class("account-page__appearance")], [
+        html.p([attribute.class("account-page__status")], [
+          html.text("Choose a color theme, or follow your system setting."),
+        ]),
+        element.element(
+          "glot-theme-picker",
+          [attribute.class("account-page__theme-picker")],
+          [],
+        ),
+      ]),
+    ]),
     case should_show_passkey_section(model.passkey_supported) {
       True ->
         html.section([attribute.class("app-panel")], [
