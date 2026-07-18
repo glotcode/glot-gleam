@@ -29,6 +29,27 @@ pub fn document(
           attribute.name("color-scheme"),
           attribute.content("light dark"),
         ]),
+        html.meta([
+          attribute.name("theme-color"),
+          attribute.content("#111827"),
+        ]),
+        html.meta([
+          attribute.name("referrer"),
+          attribute.content("strict-origin-when-cross-origin"),
+        ]),
+        html.meta([
+          attribute.name("format-detection"),
+          attribute.content("telephone=no"),
+        ]),
+        html.link([
+          attribute.rel("icon"),
+          attribute.type_("image/svg+xml"),
+          attribute.href("/static/favicon.svg"),
+        ]),
+        html.link([
+          attribute.rel("manifest"),
+          attribute.href("/static/site.webmanifest"),
+        ]),
         html.title([], title),
         html.link([
           attribute.rel("stylesheet"),

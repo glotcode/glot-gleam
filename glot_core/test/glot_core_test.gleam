@@ -1,5 +1,7 @@
+import gleam/json
 import gleam/option
 import gleam/regexp
+import gleam/string
 import gleam/time/timestamp
 import gleeunit
 import glot_core/admin_action
@@ -10,15 +12,31 @@ import glot_core/effect_trace_dto
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
+import glot_core/page/seo
 import glot_core/pagination_model
 import glot_core/public_action
 import glot_core/run
 import glot_core/server_timing_policy
 import glot_core/snippet/snippet_model
 import glot_core/validation_error
+import lustre/element
 
 pub fn main() -> Nil {
   gleeunit.main()
+}
+
+pub fn seo_login_metadata_is_not_indexable_test() {
+  assert seo.robots(seo.login()) == "noindex, nofollow"
+  assert seo.canonical_url(seo.login()) == "https://glot.io/login"
+}
+
+pub fn structured_data_escapes_script_closing_tags_test() {
+  let rendered =
+    seo.json_ld(json.object([#("name", json.string("</script><script>"))]))
+    |> element.to_document_string
+
+  assert string.contains(rendered, "</script><script>") == False
+  assert string.contains(rendered, "\\u003c/script\\u003e")
 }
 
 pub fn new_slug_test() {

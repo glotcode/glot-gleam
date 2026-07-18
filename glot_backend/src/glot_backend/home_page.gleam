@@ -1,11 +1,16 @@
 import glot_core/page/home
+import glot_core/page/seo
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/route
 import lustre/element.{type Element}
 
 pub fn title() -> String {
-  "glot.io - code playground"
+  seo.title(metadata())
+}
+
+pub fn metadata() -> seo.Metadata {
+  seo.home()
 }
 
 pub fn view() -> Element(Nil) {

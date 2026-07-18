@@ -79,7 +79,7 @@ pub fn view(model: ViewModel) -> Element(msg) {
       html.section([attribute.class("app-panel snippets-page")], [
         html.div([attribute.class("snippets-page__header")], [
           html.div([], [
-            html.h2([attribute.class("snippets-page__title")], [
+            html.h1([attribute.class("snippets-page__title")], [
               html.text("Public snippets"),
             ]),
             active_filter_view(model.username),

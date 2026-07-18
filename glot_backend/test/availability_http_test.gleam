@@ -210,6 +210,40 @@ pub fn public_page_uses_public_frontend_entry_test() {
   assert string.contains(body, "/static/assets/test-admin.css") == False
 }
 
+pub fn public_pages_render_complete_search_metadata_test() {
+  let home = page_body("/")
+  let login = page_body("/login")
+
+  assert string.contains(
+    home,
+    "<title>Online Code Playground – Run &amp; Share Code | glot.io</title>",
+  )
+  assert string.contains(home, "href=\"https://glot.io/\" rel=\"canonical\"")
+  assert string.contains(home, "property=\"og:title\"")
+  assert string.contains(home, "name=\"twitter:card\"")
+  assert string.contains(home, "application/ld+json")
+  assert string.contains(home, "WebApplication")
+  assert string.contains(home, "/static/assets/test-home-banner.jpg")
+  assert string.contains(home, "<h1")
+
+  assert string.contains(login, "content=\"noindex, nofollow\" name=\"robots\"")
+  assert string.contains(
+    login,
+    "href=\"https://glot.io/login\" rel=\"canonical\"",
+  )
+}
+
+pub fn private_pages_are_not_indexable_test() {
+  let account = page_body("/account")
+  let admin = page_body("/admin")
+
+  assert string.contains(
+    account,
+    "content=\"noindex, nofollow\" name=\"robots\"",
+  )
+  assert string.contains(admin, "content=\"noindex, nofollow\" name=\"robots\"")
+}
+
 pub fn page_renders_valid_theme_cookie_test() {
   let light_body = page_body_with_theme("/login", "light")
   let dark_body = page_body_with_theme("/login", "dark")
@@ -244,6 +278,7 @@ pub fn static_assets_loads_codemirror_entry_and_imports_test() {
       "/static/assets/test-codemirror.js",
       "/static/assets/test-codemirror-shared.js",
     ]
+  assert assets.social_image_href == "/static/assets/test-home-banner.jpg"
 }
 
 fn page_body(path: String) -> String {
@@ -358,6 +393,6 @@ fn test_static_base_path() -> String {
 fn write_test_manifest() -> Result(Nil, String) {
   file_system.write_file(
     test_static_base_path() <> "/manifest.json",
-    "{\"js/public.ts\":{\"file\":\"assets/test-frontend.js\",\"imports\":[\"_shared.js\"]},\"js/admin.ts\":{\"file\":\"assets/test-admin.js\",\"css\":[\"assets/test-admin.css\"],\"imports\":[\"_shared.js\"]},\"js/custom_elements/glot-codemirror.ts\":{\"file\":\"assets/test-codemirror.js\",\"imports\":[\"_shared.js\",\"_codemirror-shared.js\"]},\"js/styles.ts\":{\"file\":\"assets/empty.js\",\"css\":[\"assets/test-styles.css\"]},\"_shared.js\":{\"file\":\"assets/test-shared.js\"},\"_codemirror-shared.js\":{\"file\":\"assets/test-codemirror-shared.js\"}}",
+    "{\"js/public.ts\":{\"file\":\"assets/test-frontend.js\",\"imports\":[\"_shared.js\"]},\"js/admin.ts\":{\"file\":\"assets/test-admin.js\",\"css\":[\"assets/test-admin.css\"],\"imports\":[\"_shared.js\"]},\"js/custom_elements/glot-codemirror.ts\":{\"file\":\"assets/test-codemirror.js\",\"imports\":[\"_shared.js\",\"_codemirror-shared.js\"]},\"js/styles.ts\":{\"file\":\"assets/empty.js\",\"css\":[\"assets/test-styles.css\"]},\"assets/home-banner.jpg\":{\"file\":\"assets/test-home-banner.jpg\"},\"_shared.js\":{\"file\":\"assets/test-shared.js\"},\"_codemirror-shared.js\":{\"file\":\"assets/test-codemirror-shared.js\"}}",
   )
 }

@@ -30,6 +30,7 @@ import glot_backend/static_assets
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
 import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_backend/worker/log_worker
+import glot_core/page/seo
 import glot_core/route
 import lustre/attribute
 import lustre/element
@@ -172,9 +173,35 @@ fn handle_page_request_with_runtime(
   assets: static_assets.Assets,
 ) -> page_response.PageResponse {
   let ctx = request_ctx.context
-  let public_spa = fn(title) { spa_page(assets, title, page_request.theme) }
+  let social_image_url = seo.site_url <> assets.social_image_href
+  let public_spa = fn(metadata) {
+    spa_page(assets, metadata, page_request.theme)
+  }
+  let private_spa = fn(title) {
+    spa_page(
+      assets,
+      seo.metadata(
+        title: title,
+        description: "Secure glot.io account page.",
+        canonical_path: route.to_string(page_request.route),
+        index: False,
+        open_graph_type: "website",
+      ),
+      page_request.theme,
+    )
+  }
   let admin_spa = fn(title) {
-    admin_spa_page(assets, title, page_request.theme)
+    admin_spa_page(
+      assets,
+      seo.metadata(
+        title: title,
+        description: "Private glot.io administration page.",
+        canonical_path: route.to_string(page_request.route),
+        index: False,
+        open_graph_type: "website",
+      ),
+      page_request.theme,
+    )
   }
 
   case page_request.route {
@@ -185,7 +212,13 @@ fn handle_page_request_with_runtime(
           page_layout.document(
             title: home_page.title(),
             theme: page_request.theme,
-            head_children: [],
+            head_children: seo.append(
+              seo.head_children(
+                home_page.metadata(),
+                option.Some(social_image_url),
+              ),
+              [seo.home_structured_data()],
+            ),
             include_frontend: True,
             stylesheet_href: assets.stylesheet_href,
             additional_stylesheet_hrefs: [],
@@ -205,10 +238,10 @@ fn handle_page_request_with_runtime(
         error: option.None,
       )
     }
-    route.Public(route.Login) -> public_spa("glot.io - login")
-    route.Account(route.AccountHome) -> public_spa("glot.io - account")
+    route.Public(route.Login) -> public_spa(seo.login())
+    route.Account(route.AccountHome) -> private_spa("Account | glot.io")
     route.Account(route.AccountSnippets(_, _)) ->
-      public_spa("glot.io - account snippets")
+      private_spa("Your snippets | glot.io")
     route.Admin(route.AdminHome) -> admin_spa("glot.io - admin")
     route.Admin(route.AdminApiLogs) -> admin_spa("glot.io - api logs")
     route.Admin(route.AdminApiLog(_)) -> admin_spa("glot.io - api log")
@@ -248,8 +281,20 @@ fn handle_page_request_with_runtime(
         assets,
         page_request.theme,
         assets.frontend_preloads,
-        fn(_) { snippets_page.title() },
-        fn(_) { [] },
+        fn(view_model) {
+          snippets_page.metadata(
+            view_model.username,
+            route.to_string(page_request.route),
+          )
+          |> seo.title
+        },
+        fn(view_model) {
+          snippets_page.metadata(
+            view_model.username,
+            route.to_string(page_request.route),
+          )
+          |> seo.head_children(option.Some(social_image_url))
+        },
         snippets_page.app_attributes,
         snippets_page.render,
       )
@@ -263,7 +308,9 @@ fn handle_page_request_with_runtime(
         page_request.theme,
         list.append(assets.frontend_preloads, assets.code_mirror_preloads),
         editor_page.title,
-        editor_page.head_children,
+        fn(view_model) {
+          editor_page.head_children(view_model, social_image_url)
+        },
         editor_page.app_attributes,
         editor_page.render,
       )
@@ -277,7 +324,9 @@ fn handle_page_request_with_runtime(
         page_request.theme,
         list.append(assets.frontend_preloads, assets.code_mirror_preloads),
         editor_page.title,
-        editor_page.head_children,
+        fn(view_model) {
+          editor_page.head_children(view_model, social_image_url)
+        },
         editor_page.app_attributes,
         editor_page.render,
       )
@@ -316,12 +365,12 @@ fn static_assets_error_response(message: String) -> page_response.PageResponse {
 
 fn spa_page(
   assets: static_assets.Assets,
-  title: String,
+  metadata: seo.Metadata,
   theme: option.Option(PageTheme),
 ) -> page_response.PageResponse {
   spa_page_with_frontend(
     assets,
-    title,
+    metadata,
     assets.frontend_src,
     assets.frontend_preloads,
     [],
@@ -331,12 +380,12 @@ fn spa_page(
 
 fn admin_spa_page(
   assets: static_assets.Assets,
-  title: String,
+  metadata: seo.Metadata,
   theme: option.Option(PageTheme),
 ) -> page_response.PageResponse {
   spa_page_with_frontend(
     assets,
-    title,
+    metadata,
     assets.admin_frontend_src,
     assets.admin_frontend_preloads,
     assets.admin_stylesheet_hrefs,
@@ -346,7 +395,7 @@ fn admin_spa_page(
 
 fn spa_page_with_frontend(
   assets: static_assets.Assets,
-  title: String,
+  metadata: seo.Metadata,
   frontend_src: String,
   frontend_preloads: List(String),
   additional_stylesheet_hrefs: List(String),
@@ -356,9 +405,12 @@ fn spa_page_with_frontend(
   page_response.PageResponse(
     response: wisp.html_response(
       page_layout.document(
-        title: title,
+        title: seo.title(metadata),
         theme: theme,
-        head_children: [],
+        head_children: seo.head_children(
+          metadata,
+          option.Some(seo.site_url <> assets.social_image_href),
+        ),
         include_frontend: True,
         stylesheet_href: assets.stylesheet_href,
         additional_stylesheet_hrefs: additional_stylesheet_hrefs,

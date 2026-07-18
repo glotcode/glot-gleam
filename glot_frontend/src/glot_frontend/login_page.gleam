@@ -344,7 +344,7 @@ pub fn view(model: Model) -> Element(Msg) {
 
 fn intro_section() -> Element(Msg) {
   html.section([attribute.class("app-panel login-page__section")], [
-    html.h2([attribute.class("login-page__title")], [html.text("Login")]),
+    html.h1([attribute.class("login-page__title")], [html.text("Login")]),
     html.p([attribute.class("login-page__section-copy")], [
       html.text(
         "No account yet? An account will be created when you log in with email for the first time.",

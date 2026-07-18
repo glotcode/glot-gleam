@@ -1,6 +1,7 @@
 import gleam/json
 import gleam/option
 import gleam/time/timestamp.{type Timestamp}
+import glot_core/page/seo
 import glot_core/page/snippets
 import glot_core/pagination_model
 import glot_core/snippet/snippet_dto
@@ -63,6 +64,10 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
 pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   snippets.view(to_view_model(model, now))
+}
+
+pub fn metadata(model: Model, canonical_path: String) -> seo.Metadata {
+  seo.snippets(model.username, canonical_path)
 }
 
 fn load_page(

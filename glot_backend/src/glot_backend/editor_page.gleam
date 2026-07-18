@@ -1,4 +1,5 @@
 import gleam/json
+import gleam/option
 import glot_core/page/editor
 import lustre/attribute
 import lustre/element.{type Element}
@@ -7,8 +8,11 @@ pub fn title(view_model: editor.ViewModel) -> String {
   editor.title(view_model)
 }
 
-pub fn head_children(view_model: editor.ViewModel) -> List(Element(Nil)) {
-  editor.head_children(view_model)
+pub fn head_children(
+  view_model: editor.ViewModel,
+  social_image_url: String,
+) -> List(Element(Nil)) {
+  editor.head_children(view_model, option.Some(social_image_url))
 }
 
 pub fn app_attributes(

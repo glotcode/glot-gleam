@@ -13,16 +13,22 @@ pub fn view(load_ad load_ad: Bool) -> Element(msg) {
     html.main([attribute.class("home-page")], [
       html.section([attribute.class("home-hero")], [
         html.div([attribute.class("home-hero__inner")], [
-          html.div(
+          html.h1(
             [
               attribute.class("home-hero__logo"),
-              attribute.attribute("role", "img"),
-              attribute.attribute("aria-label", "glot.io"),
+              attribute.attribute(
+                "aria-label",
+                "glot.io online code playground",
+              ),
             ],
-            [],
+            [
+              html.span([attribute.class("visually-hidden")], [
+                html.text("glot.io online code playground"),
+              ]),
+            ],
           ),
           html.p([attribute.class("home-hero__tagline")], [
-            html.text("an "),
+            html.text("Run and share code in dozens of languages — "),
             html.a(
               [
                 attribute.class("home-hero__link"),
@@ -30,7 +36,7 @@ pub fn view(load_ad load_ad: Bool) -> Element(msg) {
               ],
               [html.text("open source")],
             ),
-            html.text(" code playground."),
+            html.text("."),
           ]),
         ]),
       ]),
@@ -42,12 +48,12 @@ pub fn view(load_ad load_ad: Bool) -> Element(msg) {
           feature_card(
             icons.play(),
             "Run code",
-            "The code is executed in a transient docker container without network.",
+            "Code runs in a temporary container with network access disabled.",
           ),
           feature_card(
             icons.share(),
             "Share snippets",
-            "Snippets can be saved and shared with others.",
+            "Save public or unlisted snippets and share them with a link.",
           ),
           feature_card(
             icons.cog_6_tooth(),

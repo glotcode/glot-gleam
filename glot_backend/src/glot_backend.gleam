@@ -16,6 +16,7 @@ import gleam/time/timestamp
 import glot_backend/api
 import glot_backend/context
 import glot_backend/erlang
+import glot_backend/file_system
 import glot_backend/helpers/db_helpers
 import glot_backend/helpers/response_helpers
 import glot_backend/job_tracker
@@ -243,6 +244,18 @@ pub fn handle_request(
         log_worker_subject,
         req,
       )
+    http.Get, ["robots.txt"] ->
+      public_static_file(
+        ctx.config.static_base_path,
+        "robots.txt",
+        "text/plain; charset=utf-8",
+      )
+    http.Get, ["sitemap.xml"] ->
+      public_static_file(
+        ctx.config.static_base_path,
+        "sitemap.xml",
+        "application/xml; charset=utf-8",
+      )
     http.Get, _ ->
       page.handle_request(
         db,
@@ -253,6 +266,21 @@ pub fn handle_request(
         req,
       )
     _, _ -> wisp.not_found()
+  }
+}
+
+fn public_static_file(
+  static_base_path: String,
+  filename: String,
+  content_type: String,
+) -> wisp.Response {
+  case file_system.read_file(static_base_path <> "/" <> filename) {
+    Ok(content) ->
+      wisp.response(200)
+      |> wisp.set_header("content-type", content_type)
+      |> wisp.set_header("cache-control", "public, max-age=3600")
+      |> wisp.string_body(content)
+    Error(_) -> wisp.not_found()
   }
 }
 

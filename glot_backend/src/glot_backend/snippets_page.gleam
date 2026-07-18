@@ -1,4 +1,6 @@
 import gleam/json
+import gleam/option
+import glot_core/page/seo
 import glot_core/page/site_chrome
 import glot_core/page/snippets
 import glot_core/page/top_bar
@@ -6,8 +8,11 @@ import glot_core/route
 import lustre/attribute
 import lustre/element.{type Element}
 
-pub fn title() -> String {
-  "glot.io - public snippets"
+pub fn metadata(
+  username: option.Option(String),
+  canonical_path: String,
+) -> seo.Metadata {
+  seo.snippets(username, canonical_path)
 }
 
 pub fn app_attributes(

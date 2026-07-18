@@ -11,6 +11,7 @@ import glot_core/helpers/uuid_helpers
 import glot_core/language
 import glot_core/page/editor_layout
 import glot_core/page/icons
+import glot_core/page/seo
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/route
@@ -68,15 +69,7 @@ pub fn from_snippet(response: snippet_dto.SnippetResponse) -> ViewModel {
 }
 
 pub fn title(view_model: ViewModel) -> String {
-  case view_model {
-    UnsupportedLanguage(language_slug) ->
-      "glot.io - new " <> language_slug <> " snippet"
-    LoadError(_) -> "glot.io - snippet"
-    NewSnippet(EditorModel(language:, ..)) ->
-      "glot.io - new " <> language.name(language) <> " snippet"
-    ExistingSnippet(EditorModel(title:, language:, ..)) ->
-      title <> " - " <> language.name(language) <> " snippet - glot.io"
-  }
+  seo.title(metadata(view_model))
 }
 
 pub fn encode(view_model: ViewModel) -> json.Json {
@@ -138,16 +131,39 @@ pub fn render(view_model: ViewModel) -> lustre_element.Element(Nil) {
 
 pub fn head_children(
   view_model: ViewModel,
+  social_image_url: option.Option(String),
 ) -> List(lustre_element.Element(Nil)) {
-  [
-    meta_name("description", description(view_model)),
-    meta_property("og:title", title(view_model)),
-    meta_property("og:description", description(view_model)),
-    meta_property("og:type", og_type(view_model)),
-    meta_property("og:url", canonical_url(view_model)),
-    canonical_link(canonical_url(view_model)),
-    ..article_meta(view_model)
-  ]
+  seo.append(
+    seo.head_children(metadata(view_model), social_image_url),
+    seo.append(article_meta(view_model), structured_data(view_model)),
+  )
+}
+
+pub fn metadata(view_model: ViewModel) -> seo.Metadata {
+  seo.metadata(
+    title: case view_model {
+      UnsupportedLanguage(language_slug) ->
+        "Unsupported " <> language_slug <> " language | glot.io"
+      LoadError(_) -> "Snippet unavailable | glot.io"
+      NewSnippet(EditorModel(language:, ..)) ->
+        "Run " <> language.name(language) <> " Online | glot.io"
+      ExistingSnippet(EditorModel(title:, language:, ..)) ->
+        snippet_page_title(title, language.name(language))
+    },
+    description: description(view_model),
+    canonical_path: canonical_path(view_model),
+    index: is_indexable(view_model),
+    open_graph_type: og_type(view_model),
+  )
+}
+
+fn is_indexable(view_model: ViewModel) -> Bool {
+  case view_model {
+    NewSnippet(_) -> True
+    ExistingSnippet(EditorModel(visibility: option.Some(visibility), ..)) ->
+      visibility == snippet_model.Public
+    UnsupportedLanguage(_) | LoadError(_) | ExistingSnippet(_) -> False
+  }
 }
 
 fn content(view_model: ViewModel) -> lustre_element.Element(Nil) {
@@ -381,9 +397,11 @@ fn description(view_model: ViewModel) -> String {
   case view_model {
     UnsupportedLanguage(language_slug) ->
       "Create a new " <> language_slug <> " snippet on glot.io."
-    LoadError(message) -> message
+    LoadError(_) -> "This code snippet is unavailable on glot.io."
     NewSnippet(model) ->
-      "Create a new " <> language.name(model.language) <> " snippet on glot.io."
+      "Write, run, save, and share "
+      <> language.name(model.language)
+      <> " code online with the glot.io open-source code playground."
     ExistingSnippet(model) -> snippet_summary(model)
   }
 }
@@ -391,7 +409,10 @@ fn description(view_model: ViewModel) -> String {
 fn snippet_summary(model: EditorModel) -> String {
   let file_count = list.length(model.files)
   let base =
-    model.title <> " is a " <> language.name(model.language) <> " snippet"
+    truncate(model.title, 70)
+    <> " is a "
+    <> language.name(model.language)
+    <> " snippet"
   let with_author = case model.owner_username {
     option.Some(owner) -> base <> " by @" <> owner
     option.None -> base
@@ -409,6 +430,18 @@ fn snippet_summary(model: EditorModel) -> String {
   with_count <> "."
 }
 
+fn snippet_page_title(title: String, language_name: String) -> String {
+  let suffix = " – " <> language_name <> " snippet | glot.io"
+  truncate(title, 60 - string.length(suffix)) <> suffix
+}
+
+fn truncate(value: String, max_length: Int) -> String {
+  case string.length(value) > max_length {
+    True -> string.slice(value, at_index: 0, length: max_length - 1) <> "…"
+    False -> value
+  }
+}
+
 fn og_type(view_model: ViewModel) -> String {
   case view_model {
     ExistingSnippet(_) -> "article"
@@ -416,9 +449,8 @@ fn og_type(view_model: ViewModel) -> String {
   }
 }
 
-fn canonical_url(view_model: ViewModel) -> String {
-  "https://glot.io"
-  <> case view_model {
+fn canonical_path(view_model: ViewModel) -> String {
+  case view_model {
     UnsupportedLanguage(language_slug) ->
       route.to_string(route.Public(route.NewSnippet(language_slug)))
     LoadError(_) -> "/snippets"
@@ -439,45 +471,78 @@ fn article_meta(view_model: ViewModel) -> List(lustre_element.Element(Nil)) {
   }
 }
 
+fn structured_data(view_model: ViewModel) -> List(lustre_element.Element(Nil)) {
+  case view_model {
+    ExistingSnippet(model)
+      if model.visibility == option.Some(snippet_model.Public)
+    -> {
+      let fields = [
+        #("@context", json.string("https://schema.org")),
+        #("@type", json.string("SoftwareSourceCode")),
+        #("name", json.string(model.title)),
+        #("description", json.string(snippet_summary(model))),
+        #("url", json.string(seo.site_url <> canonical_path(view_model))),
+        #("programmingLanguage", json.string(language.name(model.language))),
+        #("codeSampleType", json.string("full")),
+      ]
+      let fields = case model.owner_username {
+        option.Some(owner) -> [
+          #(
+            "author",
+            json.object([
+              #("@type", json.string("Person")),
+              #("name", json.string(owner)),
+            ]),
+          ),
+          ..fields
+        ]
+        option.None -> fields
+      }
+      let fields = case model.created_at {
+        option.Some(created_at) -> [
+          #("dateCreated", json.string(timestamp_label(created_at))),
+          ..fields
+        ]
+        option.None -> fields
+      }
+      let fields = case model.updated_at {
+        option.Some(updated_at) -> [
+          #("dateModified", json.string(timestamp_label(updated_at))),
+          ..fields
+        ]
+        option.None -> fields
+      }
+
+      [seo.json_ld(json.object(fields))]
+    }
+    _ -> []
+  }
+}
+
 fn collect_article_meta(
   model: EditorModel,
   acc: List(lustre_element.Element(Nil)),
 ) -> List(lustre_element.Element(Nil)) {
   let acc = case model.owner_username {
-    option.Some(owner) -> [meta_property("article:author", owner), ..acc]
+    option.Some(owner) -> [seo.meta_property("article:author", owner), ..acc]
     option.None -> acc
   }
   let acc = case model.created_at {
     option.Some(created_at) -> [
-      meta_property("article:published_time", timestamp_label(created_at)),
+      seo.meta_property("article:published_time", timestamp_label(created_at)),
       ..acc
     ]
     option.None -> acc
   }
   let acc = case model.updated_at {
     option.Some(updated_at) -> [
-      meta_property("article:modified_time", timestamp_label(updated_at)),
+      seo.meta_property("article:modified_time", timestamp_label(updated_at)),
       ..acc
     ]
     option.None -> acc
   }
 
   list.reverse(acc)
-}
-
-fn meta_name(name: String, content: String) -> lustre_element.Element(Nil) {
-  html.meta([attribute.name(name), attribute.content(content)])
-}
-
-fn meta_property(name: String, content: String) -> lustre_element.Element(Nil) {
-  html.meta([
-    attribute.attribute("property", name),
-    attribute.content(content),
-  ])
-}
-
-fn canonical_link(url: String) -> lustre_element.Element(Nil) {
-  html.link([attribute.rel("canonical"), attribute.href(url)])
 }
 
 fn timestamp_label(value: timestamp.Timestamp) -> String {

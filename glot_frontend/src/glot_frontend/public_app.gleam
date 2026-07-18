@@ -4,6 +4,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/refresh_session_dto.{type RefreshSessionResponse}
 import glot_core/auth/session_dto.{type SessionResponse}
+import glot_core/page/seo
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
 import glot_core/route
@@ -18,6 +19,7 @@ import glot_frontend/home_page
 import glot_frontend/keyboard_shortcuts
 import glot_frontend/login_page
 import glot_frontend/manage_snippets_page
+import glot_frontend/page_metadata
 import glot_frontend/page_visibility
 import glot_frontend/quick_action_scroll
 import glot_frontend/snippets_page
@@ -316,10 +318,8 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     SnippetsPageMsg(page_msg), SnippetsPage(page_model) -> {
       let #(new_page_model, page_effect) =
         snippets_page.update(page_model, page_msg)
-      #(
-        Model(..model, page_model: SnippetsPage(new_page_model)),
-        effect.map(page_effect, SnippetsPageMsg),
-      )
+      let next_model = Model(..model, page_model: SnippetsPage(new_page_model))
+      #(next_model, effect.map(page_effect, SnippetsPageMsg))
     }
     EditorPageMsg(page_msg), EditorPage(page_model) -> {
       let #(new_page_model, page_effect) =
@@ -328,9 +328,17 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
           page_msg,
           app_shell.current_user_id(model.session),
         )
+      let next_model = Model(..model, page_model: EditorPage(new_page_model))
+      let metadata_effect = case editor_page.affects_metadata(page_msg) {
+        True -> metadata_effect(next_model)
+        False -> effect.none()
+      }
       #(
-        Model(..model, page_model: EditorPage(new_page_model)),
-        effect.map(page_effect, EditorPageMsg),
+        next_model,
+        effect.batch([
+          effect.map(page_effect, EditorPageMsg),
+          metadata_effect,
+        ]),
       )
     }
 
@@ -339,24 +347,65 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         True -> #(model, browser_navigation.load(route.to_string(destination)))
         False -> {
           let #(page_model, page_effect) = init_page(destination)
-          #(
+          let next_model =
             Model(
               ..model,
               route: destination,
               page_model:,
               quick_action_query: "",
               quick_action_selected_index: 0,
-            ),
+            )
+          #(
+            next_model,
             effect.batch([
               app_dialog.close(top_bar.quick_actions_dialog_id),
               page_effect,
               app_shell.track_pageview(destination, PageviewTracked),
+              metadata_effect(next_model),
             ]),
           )
         }
       }
 
     _, _ -> #(model, effect.none())
+  }
+}
+
+fn metadata_effect(model: Model) -> Effect(Msg) {
+  page_metadata.apply(metadata(model))
+}
+
+fn metadata(model: Model) -> seo.Metadata {
+  case model.page_model {
+    HomePageModel(_) -> seo.home()
+    LoginPage(_) -> seo.login()
+    SnippetsPage(page_model) ->
+      snippets_page.metadata(page_model, route.to_string(model.route))
+    EditorPage(page_model) -> editor_page.metadata(page_model)
+    AccountPage(_) ->
+      seo.metadata(
+        title: "Account | glot.io",
+        description: "Secure glot.io account page.",
+        canonical_path: "/account",
+        index: False,
+        open_graph_type: "website",
+      )
+    ManageSnippetsPage(_) ->
+      seo.metadata(
+        title: "Your snippets | glot.io",
+        description: "Manage your glot.io code snippets.",
+        canonical_path: "/account/snippets",
+        index: False,
+        open_graph_type: "website",
+      )
+    EmptyPageModel ->
+      seo.metadata(
+        title: "Page not found | glot.io",
+        description: "The requested glot.io page could not be found.",
+        canonical_path: "/",
+        index: False,
+        open_graph_type: "website",
+      )
   }
 }
 

@@ -15,6 +15,8 @@ const code_mirror_entry = "js/custom_elements/glot-codemirror.ts"
 
 const styles_entry = "js/styles.ts"
 
+const social_image_entry = "assets/home-banner.jpg"
+
 pub type Assets {
   Assets(
     frontend_src: String,
@@ -23,6 +25,7 @@ pub type Assets {
     admin_frontend_preloads: List(String),
     code_mirror_preloads: List(String),
     stylesheet_href: String,
+    social_image_href: String,
     admin_stylesheet_hrefs: List(String),
   )
 }
@@ -33,6 +36,7 @@ pub fn load(static_base_path: String) -> Result(Assets, String) {
   use admin <- result.try(find_entry(manifest, admin_entry))
   use code_mirror <- result.try(find_entry(manifest, code_mirror_entry))
   use styles <- result.try(find_entry(manifest, styles_entry))
+  use social_image <- result.try(find_entry(manifest, social_image_entry))
   use stylesheet <- result.try(
     styles.css
     |> list.first
@@ -52,6 +56,7 @@ pub fn load(static_base_path: String) -> Result(Assets, String) {
     admin_frontend_preloads: imported_files(manifest, admin),
     code_mirror_preloads: code_mirror_preloads,
     stylesheet_href: static_url(stylesheet),
+    social_image_href: static_url(social_image.file),
     admin_stylesheet_hrefs: list.map(admin.css, static_url),
   ))
 }

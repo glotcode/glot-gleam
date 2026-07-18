@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
+Disallow: /account
+Disallow: /admin
+Disallow: /api
 
 Sitemap: https://glot.io/sitemap.xml
