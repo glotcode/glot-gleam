@@ -15,6 +15,15 @@ function savePreference(preference: ThemePreference) {
   );
 }
 
+export function applyThemePreference() {
+  const preference = readPreference();
+  if (preference === "system") {
+    document.documentElement.removeAttribute("data-theme");
+  } else {
+    document.documentElement.dataset.theme = preference;
+  }
+}
+
 class GlotThemePicker extends HTMLElement {
   private readonly select: HTMLSelectElement;
 
@@ -107,6 +116,8 @@ class GlotThemePicker extends HTMLElement {
 }
 
 export function initializeTheme() {
+  applyThemePreference();
+
   if (!customElements.get("glot-theme-picker")) {
     customElements.define("glot-theme-picker", GlotThemePicker);
   }
