@@ -53,12 +53,19 @@ pub fn shell(
 
   html.div([attribute.class("editor-page")], [
     html.div([attribute.class("editor-page__screen-glow")], []),
-    html.main([attribute.class("editor-shell")], [
-      html.div([attribute.class("editor-shell__workspace")], shell_children),
-      html.section([attribute.class("editor-sponsor")], [
-        carbon_ad.view(container_class: "editor-sponsor__ad", load_ad:),
-      ]),
-    ]),
+    html.main(
+      [
+        attribute.id("main-content"),
+        attribute.attribute("tabindex", "-1"),
+        attribute.class("editor-shell"),
+      ],
+      [
+        html.div([attribute.class("editor-shell__workspace")], shell_children),
+        html.section([attribute.class("editor-sponsor")], [
+          carbon_ad.view(container_class: "editor-sponsor__ad", load_ad:),
+        ]),
+      ],
+    ),
   ])
 }
 
@@ -104,7 +111,7 @@ pub fn tab_button(
   shell_button(
     class_name: class_name,
     attributes: [
-      attribute.attribute("aria-selected", bool_attribute(is_selected)),
+      attribute.attribute("aria-pressed", bool_attribute(is_selected)),
       ..attributes
     ],
     children: [html.span([], [html.text(label)])],
@@ -158,7 +165,7 @@ pub fn dialog_actions(children: List(Element(msg))) -> Element(msg) {
 }
 
 pub fn dialog_info_heading() -> Element(msg) {
-  html.label(
+  html.h2(
     [
       attribute.class(
         "editor-page__dialog-label editor-page__dialog-label--snippet-info",

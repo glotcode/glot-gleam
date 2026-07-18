@@ -10,3 +10,4 @@
 @import "./account.css" layer(pages);
 @import "./snippets.css" layer(pages);
 @import "./editor.css" layer(pages);
+@import "./accessibility.css" layer(overrides);

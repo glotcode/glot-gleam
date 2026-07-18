@@ -179,30 +179,37 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel snippets-page")], [
-        html.div([attribute.class("snippets-page__header")], [
-          html.div([], [
-            html.h2([attribute.class("snippets-page__title")], [
-              html.text("Your snippets"),
+    html.main(
+      [
+        attribute.id("main-content"),
+        attribute.attribute("tabindex", "-1"),
+        attribute.class("app-shell"),
+      ],
+      [
+        html.section([attribute.class("app-panel snippets-page")], [
+          html.div([attribute.class("snippets-page__header")], [
+            html.div([], [
+              html.h1([attribute.class("snippets-page__title")], [
+                html.text("Your snippets"),
+              ]),
+              html.p([attribute.class("snippets-page__status")], [
+                html.text("Manage snippets created in your account."),
+              ]),
             ]),
-            html.p([attribute.class("snippets-page__status")], [
-              html.text("Manage snippets created in your account."),
+            html.div([attribute.class("snippets-page__pagination")], [
+              pagination_button(
+                "Previous",
+                PreviousPageClicked,
+                can_go_previous(model),
+              ),
+              pagination_button("Next", NextPageClicked, can_go_next(model)),
             ]),
           ]),
-          html.div([attribute.class("snippets-page__pagination")], [
-            pagination_button(
-              "Previous",
-              PreviousPageClicked,
-              can_go_previous(model),
-            ),
-            pagination_button("Next", NextPageClicked, can_go_next(model)),
-          ]),
+          status_view(model),
+          snippets_table(model, now),
         ]),
-        status_view(model),
-        snippets_table(model, now),
-      ]),
-    ]),
+      ],
+    ),
     delete_confirmation_dialog(model),
   ])
 }
@@ -264,28 +271,37 @@ fn state_allows_pagination(state: State) -> Bool {
 
 fn status_view(model: Model) -> Element(Msg) {
   case model.state {
-    Loading ->
-      html.p([attribute.class("snippets-page__status")], [
-        html.text("Loading your snippets..."),
-      ])
+    Loading -> info_status("Loading your snippets...")
     Ready ->
       case pagination_model.items(model.page) {
-        [] ->
-          html.p([attribute.class("snippets-page__status")], [
-            html.text("You have not created any snippets yet."),
-          ])
-        _ -> html.p([attribute.class("snippets-page__status")], [])
+        [] -> info_status("You have not created any snippets yet.")
+        _ -> info_status("")
       }
-    Deleting(_) ->
-      html.p([attribute.class("snippets-page__status")], [
-        html.text("Deleting snippet..."),
-      ])
-    Error(message) ->
-      html.p(
-        [attribute.class("snippets-page__status snippets-page__status--error")],
-        [html.text(message)],
-      )
+    Deleting(_) -> info_status("Deleting snippet...")
+    Error(message) -> error_status(message)
   }
+}
+
+fn info_status(message: String) -> Element(Msg) {
+  html.p(
+    [
+      attribute.class("snippets-page__status"),
+      attribute.attribute("role", "status"),
+      attribute.attribute("aria-atomic", "true"),
+    ],
+    [html.text(message)],
+  )
+}
+
+fn error_status(message: String) -> Element(Msg) {
+  html.p(
+    [
+      attribute.class("snippets-page__status snippets-page__status--error"),
+      attribute.attribute("role", "alert"),
+      attribute.attribute("aria-atomic", "true"),
+    ],
+    [html.text(message)],
+  )
 }
 
 fn snippets_table(model: Model, now: Timestamp) -> Element(Msg) {
@@ -395,6 +411,7 @@ fn delete_confirmation_dialog(model: Model) -> Element(Msg) {
     [
       attribute.id(delete_dialog_id),
       attribute.class("app-dialog"),
+      attribute.attribute("aria-label", "Delete snippet"),
       event.on("close", decode.success(DeleteDialogClosed)),
     ],
     delete_confirmation_dialog_children(model.pending_delete),

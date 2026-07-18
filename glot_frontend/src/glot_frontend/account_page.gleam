@@ -611,14 +611,21 @@ pub fn update(
 pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell app-shell--narrow")], [
-      html.section([attribute.class("account-page")], [
-        html.h2([attribute.class("account-page__title")], [
-          html.text("Account"),
+    html.main(
+      [
+        attribute.id("main-content"),
+        attribute.attribute("tabindex", "-1"),
+        attribute.class("app-shell app-shell--narrow"),
+      ],
+      [
+        html.section([attribute.class("account-page")], [
+          html.h1([attribute.class("account-page__title")], [
+            html.text("Account"),
+          ]),
+          content(model, now),
         ]),
-        content(model, now),
-      ]),
-    ]),
+      ],
+    ),
   ])
 }
 
@@ -664,7 +671,7 @@ fn account_form(
 ) -> Element(Msg) {
   html.div([attribute.class("account-page__panels")], [
     html.section([attribute.class("app-panel")], [
-      html.h3([attribute.class("account-page__section-title")], [
+      html.h2([attribute.class("account-page__section-title")], [
         html.text("Account Info"),
       ]),
       account_row("Email", email_address_model.to_string(account.email)),
@@ -674,13 +681,13 @@ fn account_form(
       ),
     ]),
     html.section([attribute.class("app-panel")], [
-      html.h3([attribute.class("account-page__section-title")], [
+      html.h2([attribute.class("account-page__section-title")], [
         html.text("Account Settings"),
       ]),
       account_settings_form(model),
     ]),
     html.section([attribute.class("app-panel")], [
-      html.h3([attribute.class("account-page__section-title")], [
+      html.h2([attribute.class("account-page__section-title")], [
         html.text("Appearance"),
       ]),
       html.div([attribute.class("account-page__appearance")], [
@@ -697,7 +704,7 @@ fn account_form(
     case should_show_passkey_section(model.passkey_supported) {
       True ->
         html.section([attribute.class("app-panel")], [
-          html.h3([attribute.class("account-page__section-title")], [
+          html.h2([attribute.class("account-page__section-title")], [
             html.text("Passkeys"),
           ]),
           passkey_section(model, now),
@@ -705,19 +712,19 @@ fn account_form(
       False -> html.text("")
     },
     html.section([attribute.class("app-panel")], [
-      html.h3([attribute.class("account-page__section-title")], [
+      html.h2([attribute.class("account-page__section-title")], [
         html.text("Snippets"),
       ]),
       snippets_section(),
     ]),
     html.section([attribute.class("app-panel")], [
-      html.h3([attribute.class("account-page__section-title")], [
+      html.h2([attribute.class("account-page__section-title")], [
         html.text("Sessions"),
       ]),
       sessions_section(model, now),
     ]),
     html.section([attribute.class("app-panel")], [
-      html.h3([attribute.class("account-page__section-title")], [
+      html.h2([attribute.class("account-page__section-title")], [
         html.text("Danger Zone"),
       ]),
       delete_account_section(
@@ -754,6 +761,7 @@ fn account_settings_form(model: Model) -> Element(Msg) {
         attribute.id("account-username"),
         attribute.name("username"),
         attribute.type_("text"),
+        attribute.autocomplete("username"),
         attribute.value(model.username),
         event.on_input(UsernameChanged),
         attribute.disabled(is_busy(
@@ -998,21 +1006,9 @@ fn account_row(label: String, value: String) -> Element(Msg) {
 fn status_view(status: Status) -> Element(Msg) {
   case status {
     Loading | Idle -> html.text("")
-    Saving ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("Saving account..."),
-      ])
-    Saved ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("Account updated."),
-      ])
-    UsernameError(message) ->
-      html.p(
-        [attribute.class("account-page__status account-page__status--error")],
-        [
-          html.text(message),
-        ],
-      )
+    Saving -> account_status("Saving account...")
+    Saved -> account_status("Account updated.")
+    UsernameError(message) -> account_error_status(message)
     LoggingOut
     | SchedulingDelete
     | CancelingDelete
@@ -1020,6 +1016,28 @@ fn status_view(status: Status) -> Element(Msg) {
     | DeleteError(_)
     | LogoutError(_) -> html.text("")
   }
+}
+
+fn account_status(message: String) -> Element(Msg) {
+  html.p(
+    [
+      attribute.class("account-page__status"),
+      attribute.attribute("role", "status"),
+      attribute.attribute("aria-atomic", "true"),
+    ],
+    [html.text(message)],
+  )
+}
+
+fn account_error_status(message: String) -> Element(Msg) {
+  html.p(
+    [
+      attribute.class("account-page__status account-page__status--error"),
+      attribute.attribute("role", "alert"),
+      attribute.attribute("aria-atomic", "true"),
+    ],
+    [html.text(message)],
+  )
 }
 
 fn delete_account_section(

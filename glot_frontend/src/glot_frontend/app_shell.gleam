@@ -10,6 +10,7 @@ import glot_core/route
 import glot_frontend/api
 import glot_frontend/app_event
 import glot_frontend/string_helpers
+import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
 import lustre/element/html
@@ -159,5 +160,13 @@ pub fn apply_app_event(
 }
 
 pub fn not_found_view() -> Element(msg) {
-  html.div([], [html.h2([], [html.text("404 Not Found")])])
+  html.main(
+    [
+      attribute.id("main-content"),
+      attribute.attribute("tabindex", "-1"),
+    ],
+    [
+      html.h1([], [html.text("404 Not Found")]),
+    ],
+  )
 }

@@ -923,12 +923,16 @@ fn quick_actions_for_model(
 
 fn icon_action_button(
   class_name: String,
+  aria_label: String,
   msg: Msg,
   children: List(Element(Msg)),
 ) -> Element(Msg) {
   editor_layout.shell_button(
     class_name: class_name,
-    attributes: [event.on_click(msg)],
+    attributes: [
+      attribute.attribute("aria-label", aria_label),
+      event.on_click(msg),
+    ],
     children: children,
   )
 }
@@ -951,6 +955,7 @@ fn edit_metadata_dialog_view(model: RealModel) -> Element(Msg) {
     [
       attribute.id(edit_metadata_dialog_id),
       attribute.class("editor-page__dialog"),
+      attribute.attribute("aria-label", "Edit snippet metadata"),
       event.on("close", decode.success(EditMetadataDialogClosed)),
     ],
     [
@@ -960,7 +965,7 @@ fn edit_metadata_dialog_view(model: RealModel) -> Element(Msg) {
           event.on_submit(fn(_) { EditMetadataSubmitted }),
         ],
         [
-          html.label([attribute.class("editor-page__dialog-label")], [
+          html.h2([attribute.class("editor-page__dialog-label")], [
             html.text("Edit metadata"),
           ]),
           html.div([attribute.class("editor-page__dialog-section")], [
@@ -982,25 +987,32 @@ fn edit_metadata_dialog_view(model: RealModel) -> Element(Msg) {
             ]),
           ]),
           html.div([attribute.class("editor-page__dialog-section")], [
-            html.label([attribute.class("editor-page__dialog-sublabel")], [
+            html.p([attribute.class("editor-page__dialog-sublabel")], [
               html.text("Visibility"),
             ]),
-            html.div([attribute.class("editor-page__dialog-panel")], [
-              visibility_option(
-                "Public",
-                "Visible to everyone.",
-                snippet_model.Public,
-                model.save_visibility_draft,
-                EditMetadataVisibilitySelected,
-              ),
-              visibility_option(
-                "Unlisted",
-                "Available through the link only.",
-                snippet_model.Unlisted,
-                model.save_visibility_draft,
-                EditMetadataVisibilitySelected,
-              ),
-            ]),
+            html.div(
+              [
+                attribute.class("editor-page__dialog-panel"),
+                attribute.attribute("role", "group"),
+                attribute.attribute("aria-label", "Visibility"),
+              ],
+              [
+                visibility_option(
+                  "Public",
+                  "Visible to everyone.",
+                  snippet_model.Public,
+                  model.save_visibility_draft,
+                  EditMetadataVisibilitySelected,
+                ),
+                visibility_option(
+                  "Unlisted",
+                  "Available through the link only.",
+                  snippet_model.Unlisted,
+                  model.save_visibility_draft,
+                  EditMetadataVisibilitySelected,
+                ),
+              ],
+            ),
           ]),
           html.div([attribute.class("editor-page__dialog-actions")], [
             html.button(
@@ -1032,6 +1044,7 @@ fn add_entry_dialog_view(model: RealModel) -> Element(Msg) {
     [
       attribute.id(add_entry_dialog_id),
       attribute.class("editor-page__dialog"),
+      attribute.attribute("aria-label", "Add editor entry"),
       event.on("close", decode.success(AddEntryDialogClosed)),
     ],
     [
@@ -1041,18 +1054,25 @@ fn add_entry_dialog_view(model: RealModel) -> Element(Msg) {
           event.on_submit(fn(_) { AddEntrySubmitted }),
         ],
         [
-          html.div([attribute.class("editor-page__dialog-toggle-group")], [
-            toggle_button(
-              "File",
-              model.add_entry_kind == AddFileEntry,
-              AddFileEntry,
-            ),
-            toggle_button(
-              "stdin",
-              model.add_entry_kind == AddStdinEntry,
-              AddStdinEntry,
-            ),
-          ]),
+          html.div(
+            [
+              attribute.class("editor-page__dialog-toggle-group"),
+              attribute.attribute("role", "group"),
+              attribute.attribute("aria-label", "Entry type"),
+            ],
+            [
+              toggle_button(
+                "File",
+                model.add_entry_kind == AddFileEntry,
+                AddFileEntry,
+              ),
+              toggle_button(
+                "stdin",
+                model.add_entry_kind == AddStdinEntry,
+                AddStdinEntry,
+              ),
+            ],
+          ),
           add_entry_fields_view(model),
           html.div([attribute.class("editor-page__dialog-actions")], [
             html.button(
@@ -1085,6 +1105,7 @@ fn edit_entry_dialog_view(model: RealModel) -> Element(Msg) {
     [
       attribute.id(edit_entry_dialog_id),
       attribute.class("editor-page__dialog"),
+      attribute.attribute("aria-label", "Edit editor entry"),
       event.on("close", decode.success(EditEntryDialogClosed)),
     ],
     [
@@ -1107,6 +1128,7 @@ fn settings_dialog_view(model: RealModel) -> Element(Msg) {
     [
       attribute.id(settings_dialog_id),
       attribute.class("editor-page__dialog"),
+      attribute.attribute("aria-label", "Editor settings"),
       event.on("close", decode.success(SettingsDialogClosed)),
     ],
     [
@@ -1116,34 +1138,47 @@ fn settings_dialog_view(model: RealModel) -> Element(Msg) {
           event.on_submit(fn(_) { SettingsSubmitted }),
         ],
         [
-          html.label([attribute.class("editor-page__dialog-label")], [
+          html.h2([attribute.class("editor-page__dialog-label")], [
             html.text("Keyboard bindings"),
           ]),
-          html.div([attribute.class("editor-page__dialog-panel")], [
-            keyboard_bindings_option(
-              "Default",
-              "Standard CodeMirror shortcuts.",
-              editor_settings.DefaultBindings,
-              model.editor_settings_draft.keyboard_bindings,
-            ),
-            keyboard_bindings_option(
-              "Emacs",
-              "Enable Emacs-style editing commands.",
-              editor_settings.EmacsBindings,
-              model.editor_settings_draft.keyboard_bindings,
-            ),
-            keyboard_bindings_option(
-              "Vim",
-              "Enable modal Vim keybindings.",
-              editor_settings.VimBindings,
-              model.editor_settings_draft.keyboard_bindings,
-            ),
-          ]),
+          html.div(
+            [
+              attribute.class("editor-page__dialog-panel"),
+              attribute.attribute("role", "group"),
+              attribute.attribute("aria-label", "Keyboard bindings"),
+            ],
+            [
+              keyboard_bindings_option(
+                "Default",
+                "Standard CodeMirror shortcuts.",
+                editor_settings.DefaultBindings,
+                model.editor_settings_draft.keyboard_bindings,
+              ),
+              keyboard_bindings_option(
+                "Emacs",
+                "Enable Emacs-style editing commands.",
+                editor_settings.EmacsBindings,
+                model.editor_settings_draft.keyboard_bindings,
+              ),
+              keyboard_bindings_option(
+                "Vim",
+                "Enable modal Vim keybindings.",
+                editor_settings.VimBindings,
+                model.editor_settings_draft.keyboard_bindings,
+              ),
+            ],
+          ),
           html.div([attribute.class("editor-page__dialog-divider")], []),
           html.div([attribute.class("editor-page__dialog-section")], [
-            html.label([attribute.class("editor-page__dialog-label")], [
-              html.text("Run instructions"),
-            ]),
+            html.label(
+              [
+                attribute.for("editor-page-run-instructions-mode"),
+                attribute.class("editor-page__dialog-label"),
+              ],
+              [
+                html.text("Run instructions"),
+              ],
+            ),
             html.div([attribute.class("editor-page__dialog-panel")], [
               html.select(
                 [
@@ -1273,6 +1308,7 @@ fn save_dialog_view(
     [
       attribute.id(save_dialog_id),
       attribute.class("editor-page__dialog"),
+      attribute.attribute("aria-label", "Save snippet"),
       event.on("close", decode.success(SaveDialogClosed)),
     ],
     children,
@@ -1285,7 +1321,7 @@ fn save_dialog_children(
 ) -> List(Element(Msg)) {
   case current_user_id {
     option.None -> [
-      html.label([attribute.class("editor-page__dialog-label")], [
+      html.h2([attribute.class("editor-page__dialog-label")], [
         html.text("Save snippet"),
       ]),
       html.p([attribute.class("editor-page__dialog-copy")], [
@@ -1316,25 +1352,32 @@ fn save_dialog_children(
     option.Some(_) ->
       case can_choose_save_visibility(model, current_user_id) {
         True -> [
-          html.label([attribute.class("editor-page__dialog-label")], [
+          html.p([attribute.class("editor-page__dialog-label")], [
             html.text("Visibility"),
           ]),
-          html.div([attribute.class("editor-page__dialog-panel")], [
-            visibility_option(
-              "Public",
-              "Visible to everyone.",
-              snippet_model.Public,
-              model.save_visibility_draft,
-              SaveVisibilityDraftSelected,
-            ),
-            visibility_option(
-              "Unlisted",
-              "Available through the link only.",
-              snippet_model.Unlisted,
-              model.save_visibility_draft,
-              SaveVisibilityDraftSelected,
-            ),
-          ]),
+          html.div(
+            [
+              attribute.class("editor-page__dialog-panel"),
+              attribute.attribute("role", "group"),
+              attribute.attribute("aria-label", "Visibility"),
+            ],
+            [
+              visibility_option(
+                "Public",
+                "Visible to everyone.",
+                snippet_model.Public,
+                model.save_visibility_draft,
+                SaveVisibilityDraftSelected,
+              ),
+              visibility_option(
+                "Unlisted",
+                "Available through the link only.",
+                snippet_model.Unlisted,
+                model.save_visibility_draft,
+                SaveVisibilityDraftSelected,
+              ),
+            ],
+          ),
           html.div([attribute.class("editor-page__dialog-actions")], [
             html.button(
               [
@@ -1357,7 +1400,7 @@ fn save_dialog_children(
         ]
 
         False -> [
-          html.label([attribute.class("editor-page__dialog-label")], [
+          html.h2([attribute.class("editor-page__dialog-label")], [
             html.text("Save snippet"),
           ]),
           html.p([attribute.class("editor-page__dialog-copy")], [
@@ -1393,7 +1436,7 @@ fn restore_draft_dialog_view(model: RealModel, now: Timestamp) -> Element(Msg) {
   let children = case model.pending_restore_draft {
     option.Some(draft) -> [
       html.div([attribute.class("editor-page__dialog-form")], [
-        html.label([attribute.class("editor-page__dialog-label")], [
+        html.h2([attribute.class("editor-page__dialog-label")], [
           html.text("Restore draft"),
         ]),
         html.p([attribute.class("editor-page__dialog-copy")], [
@@ -1429,6 +1472,7 @@ fn restore_draft_dialog_view(model: RealModel, now: Timestamp) -> Element(Msg) {
     [
       attribute.id(restore_draft_dialog_id),
       attribute.class("editor-page__dialog"),
+      attribute.attribute("aria-label", "Restore draft"),
       event.on("close", decode.success(RestoreDraftClosed)),
     ],
     children,
@@ -1463,6 +1507,7 @@ fn snippet_info_dialog_view(model: RealModel) -> Element(Msg) {
     [
       attribute.id(snippet_info_dialog_id),
       attribute.class("editor-page__dialog"),
+      attribute.attribute("aria-label", "Snippet information"),
       event.on("close", decode.success(SnippetInfoClosed)),
     ],
     snippet_info_dialog_children(model),
@@ -1783,14 +1828,20 @@ fn timestamp_label(value: Timestamp) -> String {
 
 fn tabbar_children(model: RealModel) -> List(Element(Msg)) {
   [
-    icon_action_button("editor-shell__settings-button", SettingsClicked, [
-      icons.cog_6_tooth(),
-    ]),
+    icon_action_button(
+      "editor-shell__settings-button",
+      "Editor settings",
+      SettingsClicked,
+      [icons.cog_6_tooth()],
+    ),
     editor_layout.tab_scroll(tab_views(model)),
     selected_tab_action_button(model),
-    icon_action_button("editor-shell__tab-action-button", AddEntryClicked, [
-      icons.document_plus(),
-    ]),
+    icon_action_button(
+      "editor-shell__tab-action-button",
+      "Add editor entry",
+      AddEntryClicked,
+      [icons.document_plus()],
+    ),
   ]
 }
 

@@ -88,14 +88,14 @@ pub fn page_with_panel_class(
     [] ->
       html.div([attribute.class("admin-page__header")], [
         html.div([attribute.class("admin-page__heading")], [
-          html.h2([attribute.class("admin-page__title")], [html.text(title)]),
+          html.h1([attribute.class("admin-page__title")], [html.text(title)]),
           html.p([attribute.class("admin-page__intro")], [html.text(intro)]),
         ]),
       ])
     _ ->
       html.div([attribute.class("admin-page__header")], [
         html.div([attribute.class("admin-page__heading")], [
-          html.h2([attribute.class("admin-page__title")], [html.text(title)]),
+          html.h1([attribute.class("admin-page__title")], [html.text(title)]),
           html.p([attribute.class("admin-page__intro")], [html.text(intro)]),
         ]),
         html.div([attribute.class("admin-page__actions")], actions),
@@ -104,9 +104,16 @@ pub fn page_with_panel_class(
 
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class(section_class)], [header, ..content]),
-    ]),
+    html.main(
+      [
+        attribute.id("main-content"),
+        attribute.attribute("tabindex", "-1"),
+        attribute.class("app-shell"),
+      ],
+      [
+        html.section([attribute.class(section_class)], [header, ..content]),
+      ],
+    ),
   ])
 }
 
@@ -206,7 +213,14 @@ pub fn optional_raw_block(
 }
 
 pub fn status(message: String) -> Element(msg) {
-  html.p([attribute.class("admin-page__status")], [html.text(message)])
+  html.p(
+    [
+      attribute.class("admin-page__status"),
+      attribute.attribute("role", "status"),
+      attribute.attribute("aria-atomic", "true"),
+    ],
+    [html.text(message)],
+  )
 }
 
 pub fn blank_status() -> Element(msg) {
@@ -214,9 +228,14 @@ pub fn blank_status() -> Element(msg) {
 }
 
 pub fn error_status(message: String) -> Element(msg) {
-  html.p([attribute.class("admin-page__status admin-page__status--error")], [
-    html.text(message),
-  ])
+  html.p(
+    [
+      attribute.class("admin-page__status admin-page__status--error"),
+      attribute.attribute("role", "alert"),
+      attribute.attribute("aria-atomic", "true"),
+    ],
+    [html.text(message)],
+  )
 }
 
 pub fn empty_state(message: String) -> Element(msg) {

@@ -5,6 +5,8 @@ import lustre/element/svg
 pub fn cog_6_tooth() -> element.Element(msg) {
   svg.svg(
     [
+      attribute.attribute("aria-hidden", "true"),
+      attribute.attribute("focusable", "false"),
       attribute.attribute("classname", "size-6"),
       attribute.attribute("stroke", "currentColor"),
       attribute.attribute("strokewidth", "{1.5}"),
@@ -33,6 +35,8 @@ pub fn cog_6_tooth() -> element.Element(msg) {
 pub fn document_plus() -> element.Element(msg) {
   svg.svg(
     [
+      attribute.attribute("aria-hidden", "true"),
+      attribute.attribute("focusable", "false"),
       attribute.class("size-6"),
       attribute.attribute("stroke", "currentColor"),
       attribute.attribute("stroke-width", "1.5"),
@@ -56,6 +60,8 @@ pub fn document_plus() -> element.Element(msg) {
 pub fn play() -> element.Element(msg) {
   svg.svg(
     [
+      attribute.attribute("aria-hidden", "true"),
+      attribute.attribute("focusable", "false"),
       attribute.class("size-6"),
       attribute.attribute("stroke", "currentColor"),
       attribute.attribute("stroke-width", "1.5"),
@@ -79,6 +85,8 @@ pub fn play() -> element.Element(msg) {
 pub fn share() -> element.Element(msg) {
   svg.svg(
     [
+      attribute.attribute("aria-hidden", "true"),
+      attribute.attribute("focusable", "false"),
       attribute.class("size-6"),
       attribute.attribute("stroke", "currentColor"),
       attribute.attribute("stroke-width", "1.5"),
@@ -102,6 +110,8 @@ pub fn share() -> element.Element(msg) {
 pub fn globe_alt() -> element.Element(msg) {
   svg.svg(
     [
+      attribute.attribute("aria-hidden", "true"),
+      attribute.attribute("focusable", "false"),
       attribute.class("size-6"),
       attribute.attribute("stroke", "currentColor"),
       attribute.attribute("stroke-width", "1.5"),

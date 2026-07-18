@@ -1,6 +1,7 @@
 import glot_core/page/footer
 import glot_core/page/top_bar
 import glot_core/route
+import lustre/attribute
 import lustre/element.{type Element}
 import lustre/element/html
 
@@ -10,6 +11,9 @@ pub fn view(
   content content: Element(msg),
 ) -> Element(msg) {
   html.div([], [
+    html.a([attribute.class("skip-link"), attribute.href("#main-content")], [
+      html.text("Skip to main content"),
+    ]),
     top_bar.view(top_bar_model),
     content,
     footer.view(account_route: footer_account_route),

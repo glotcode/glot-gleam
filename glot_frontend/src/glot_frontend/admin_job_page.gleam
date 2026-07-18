@@ -624,6 +624,7 @@ fn create_job_dialog(model: Model) -> Element(Msg) {
     [
       attribute.id(create_job_dialog_id),
       attribute.class("app-dialog admin-page__dialog"),
+      attribute.attribute("aria-label", "Start new job"),
       event.on("close", decode.success(CreateJobDialogClosed)),
     ],
     [

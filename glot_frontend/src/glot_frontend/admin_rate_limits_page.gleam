@@ -382,6 +382,7 @@ fn edit_dialog(model: Model) -> Element(Msg) {
     [
       attribute.id(edit_dialog_id),
       attribute.class("app-dialog admin-page__dialog"),
+      attribute.attribute("aria-label", "Edit rate limit policy"),
       event.on("close", decode.success(EditDialogClosed)),
     ],
     [

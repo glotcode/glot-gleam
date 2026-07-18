@@ -7,25 +7,27 @@
   --theme-text-strong: light-dark(#002b36, #fdf6e3);
   --theme-text: light-dark(#073642, #eee8d5);
   --theme-text-muted: light-dark(#586e75, #93a1a1);
-  --theme-text-subtle: light-dark(#657b83, #839496);
-  --theme-text-disabled: light-dark(#839496, #586e75);
+  /* Secondary copy still meets 4.5:1 against its page and surface. */
+  --theme-text-subtle: light-dark(#586e75, #93a1a1);
+  --theme-text-disabled: light-dark(#586e75, #93a1a1);
   --theme-border: light-dark(#d8d1bd, #34505a);
   --theme-screen-line: light-dark(rgba(255, 255, 255, 0.12), rgba(147, 161, 161, 0.04));
   --theme-code-shadow: light-dark(rgba(255, 255, 255, 0.35), rgba(0, 43, 54, 0.35));
 
-  --color-accent: #268bd2;
-  --color-accent-hover: #6c71c4;
-  --color-focus: #2aa198;
+  /* Functional colors are theme-aware so text never relies on a mid-tone. */
+  --color-accent: light-dark(#006eb3, #4cb3f2);
+  --color-accent-hover: light-dark(#005b96, #66c3fa);
+  --color-focus: light-dark(#006f67, #42c7bd);
   --color-info: var(--color-accent);
   --color-info-soft: var(--color-accent-soft);
   --color-stdout: var(--color-info);
-  --color-stderr: #6c71c4;
-  --color-error: #dc322f;
+  --color-stderr: light-dark(#594fa6, #aaa5ef);
+  --color-error: light-dark(#b51d1a, #ff716e);
   --color-danger: var(--color-error);
-  --color-warning: #b58900;
-  --color-success: #859900;
-  --color-diagnostic: #cb4b16;
-  --color-on-accent: #fdf6e3;
+  --color-warning: light-dark(#765d00, #d9b82c);
+  --color-success: light-dark(#526700, #aac22c);
+  --color-diagnostic: light-dark(#9e3510, #f07a4f);
+  --color-on-accent: light-dark(#ffffff, #002b36);
   --color-on-image: #ffffff;
 
   --color-accent-soft: color-mix(in srgb, var(--color-accent) 10%, transparent);
@@ -41,7 +43,7 @@
   --color-warning-border: color-mix(in srgb, var(--color-warning) 35%, transparent);
   --color-success-soft: color-mix(in srgb, var(--color-success) 12%, transparent);
   --color-success-border: color-mix(in srgb, var(--color-success) 35%, transparent);
-  --color-focus-ring: color-mix(in srgb, var(--color-focus) 20%, transparent);
+  --color-focus-ring: var(--color-focus);
 
   --syntax-keyword: var(--color-success);
   --syntax-string: var(--color-focus);
@@ -51,7 +53,8 @@
 
   --theme-page-glow: color-mix(in srgb, var(--color-warning) 10%, transparent);
   --theme-screen-glow: color-mix(in srgb, var(--color-warning) 6%, transparent);
-  --overlay-image: rgba(0, 43, 54, 0.38);
+  /* Keeps white hero copy above 4.5:1 even over the image's lightest pixels. */
+  --overlay-image: rgba(0, 43, 54, 0.66);
   --overlay-backdrop: rgba(16, 24, 40, 0.42);
   --shadow-soft: rgba(0, 43, 54, 0.08);
   --shadow-panel: rgba(0, 43, 54, 0.12);

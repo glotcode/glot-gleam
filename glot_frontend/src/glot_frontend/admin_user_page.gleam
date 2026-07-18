@@ -535,6 +535,7 @@ fn delete_confirmation_dialog(model: Model) -> Element(Msg) {
     [
       attribute.id(delete_dialog_id),
       attribute.class("app-dialog"),
+      attribute.attribute("aria-label", "Delete account"),
       event.on("close", decode.success(DeleteDialogClosed)),
     ],
     delete_confirmation_dialog_children(model.pending_delete),

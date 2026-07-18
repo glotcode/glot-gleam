@@ -1,0 +1,211 @@
+/* Shared accessibility guarantees. Keep these in the final cascade layer. */
+
+html {
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow-wrap: anywhere;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 10000;
+  top: 0.5rem;
+  left: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--color-focus);
+  background: var(--theme-surface);
+  color: var(--theme-text-strong);
+  font-weight: 700;
+  transform: translateY(calc(-100% - 1rem));
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  text-shadow: none;
+}
+
+:where(
+  a[href],
+  button,
+  input:not([type="hidden"]),
+  select,
+  textarea,
+  summary,
+  [tabindex]:not([tabindex="-1"]),
+  [contenteditable="true"]
+):focus-visible,
+glot-codemirror:focus-within {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+:where(button, input:not([type="hidden"]), select, textarea) {
+  min-block-size: 2.75rem;
+  touch-action: manipulation;
+}
+
+button {
+  min-inline-size: 2.75rem;
+}
+
+:where(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+}
+
+:where(button, input, select, textarea)::placeholder {
+  color: var(--theme-text-muted);
+  opacity: 1;
+}
+
+/* Compact icon controls still expose an enhanced 44px touch target. */
+:where(.app-topbar__icon-button, .editor-shell__settings-button, .editor-shell__tab-action-button) {
+  min-inline-size: 2.75rem;
+}
+
+.editor-shell__bezel,
+.editor-shell__actions {
+  min-height: 2.75rem;
+  height: auto;
+}
+
+.editor-shell__tab,
+.editor-shell__tab-meta-button {
+  min-height: 2.75rem;
+}
+
+.editor-shell__tab:focus-visible,
+.editor-shell__tab-meta-button:focus-visible,
+glot-codemirror:focus-within {
+  outline-offset: -3px;
+}
+
+.site-footer__nav a,
+.admin-breadcrumbs__link,
+.snippets-table__action-link,
+.account-page__link {
+  display: inline-flex;
+  align-items: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
+
+.home-language {
+  height: auto;
+  min-height: 3.5rem;
+}
+
+.home-language__name {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:where(
+  .home-language,
+  .site-footer__nav a,
+  .admin-breadcrumbs__link,
+  .admin-table__link,
+  .snippets-table__action-link,
+  .editor-page__dialog-link,
+  .account-page__link
+) {
+  text-decoration-thickness: max(1px, 0.08em);
+  text-underline-offset: 0.18em;
+}
+
+:where(
+  .admin-breadcrumbs__link,
+  .admin-table__link,
+  .snippets-table__action-link,
+  .account-page__link
+):where(:hover, :focus-visible) {
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --theme-border: var(--theme-text-strong);
+    --color-accent-soft: transparent;
+    --color-danger-soft: transparent;
+    --color-warning-soft: transparent;
+    --color-success-soft: transparent;
+  }
+
+  :where(a[href]) {
+    text-decoration: underline;
+  }
+}
+
+@media (forced-colors: active) {
+  * {
+    text-shadow: none !important;
+  }
+
+  .app-page__screen-glow,
+  .editor-page__screen-glow {
+    display: none;
+  }
+
+  :where(
+    a[href],
+    button,
+    input:not([type="hidden"]),
+    select,
+    textarea,
+    summary,
+    [tabindex]:not([tabindex="-1"]),
+    [contenteditable="true"]
+  ):focus-visible,
+  glot-codemirror:focus-within {
+    outline: 3px solid Highlight;
+  }
+
+  :where(button, [role="button"], .home-language) {
+    border-color: ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+
+  :where(button, [role="button"], .home-language):disabled {
+    border-color: GrayText;
+    color: GrayText;
+  }
+
+  :where(a[href]) {
+    color: LinkText;
+    text-decoration: underline;
+  }
+
+  :where(
+    [aria-current="page"],
+    [aria-pressed="true"],
+    [aria-selected="true"],
+    .app-quick-actions__item--selected,
+    .editor-page__dialog-toggle--selected,
+    .editor-page__settings-option--selected,
+    .admin-page__chip--selected
+  ) {
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+}

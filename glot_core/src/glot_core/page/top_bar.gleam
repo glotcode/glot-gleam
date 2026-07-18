@@ -328,38 +328,44 @@ pub fn language_actions(
 
 pub fn view(model: ViewModel(msg)) -> Element(msg) {
   html.div([], [
-    html.header([attribute.class("app-topbar")], [
-      html.div([attribute.class("app-topbar__title-group")], [
-        html.button(
-          [
-            attribute.type_("button"),
-            attribute.class(
-              "app-topbar__icon-button app-topbar__icon-button--menu",
-            ),
-            attribute.attribute("aria-label", "Open quick actions"),
-            event.on_click(model.open_msg),
-          ],
-          [html.span([attribute.class("app-topbar__menu-icon")], [])],
-        ),
-        html.a(
-          [
-            attribute.class("app-topbar__brand"),
-            attribute.href("/"),
-          ],
-          [html.text("glot.io")],
-        ),
-      ]),
-      html.div([attribute.class("app-topbar__account")], [
-        html.a(
-          [
-            attribute.class("app-topbar__account-label"),
-            attribute.attribute("aria-label", "Account"),
-            route.href(model.account_route),
-          ],
-          [html.text(model.current_user_label)],
-        ),
-      ]),
-    ]),
+    html.nav(
+      [
+        attribute.class("app-topbar"),
+        attribute.attribute("aria-label", "Primary"),
+      ],
+      [
+        html.div([attribute.class("app-topbar__title-group")], [
+          html.button(
+            [
+              attribute.type_("button"),
+              attribute.class(
+                "app-topbar__icon-button app-topbar__icon-button--menu",
+              ),
+              attribute.attribute("aria-label", "Open quick actions"),
+              event.on_click(model.open_msg),
+            ],
+            [html.span([attribute.class("app-topbar__menu-icon")], [])],
+          ),
+          html.a(
+            [
+              attribute.class("app-topbar__brand"),
+              attribute.href("/"),
+            ],
+            [html.text("glot.io")],
+          ),
+        ]),
+        html.div([attribute.class("app-topbar__account")], [
+          html.a(
+            [
+              attribute.class("app-topbar__account-label"),
+              attribute.attribute("aria-label", "Account"),
+              route.href(model.account_route),
+            ],
+            [html.text(model.current_user_label)],
+          ),
+        ]),
+      ],
+    ),
     quick_actions_dialog(model),
   ])
 }
@@ -369,6 +375,7 @@ fn quick_actions_dialog(model: ViewModel(msg)) -> Element(msg) {
     [
       attribute.id(quick_actions_dialog_id),
       attribute.class("app-dialog app-quick-actions"),
+      attribute.attribute("aria-labelledby", "app-quick-actions-title"),
       event.on("close", decode.success(model.close_msg)),
     ],
     [
@@ -380,9 +387,13 @@ fn quick_actions_dialog(model: ViewModel(msg)) -> Element(msg) {
         [
           html.div([attribute.class("app-dialog__section")], [
             html.div([attribute.class("app-quick-actions__header")], [
-              html.p([attribute.class("app-dialog__label")], [
-                html.text("Quick actions"),
-              ]),
+              html.h2(
+                [
+                  attribute.id("app-quick-actions-title"),
+                  attribute.class("app-dialog__label"),
+                ],
+                [html.text("Quick actions")],
+              ),
               html.p([attribute.class("app-quick-actions__hint")], [
                 html.code([], [html.text("cmd+k")]),
                 html.text("|"),
@@ -398,8 +409,16 @@ fn quick_actions_dialog(model: ViewModel(msg)) -> Element(msg) {
                 [html.text("Close")],
               ),
             ]),
+            html.label(
+              [
+                attribute.for("app-quick-actions-search"),
+                attribute.class("visually-hidden"),
+              ],
+              [html.text("Search actions and languages")],
+            ),
             html.input([
-              attribute.type_("text"),
+              attribute.id("app-quick-actions-search"),
+              attribute.type_("search"),
               attribute.name("quick-actions-search"),
               attribute.class("app-quick-actions__search"),
               attribute.placeholder("Search actions and languages"),
@@ -429,9 +448,13 @@ fn quick_actions_dialog(model: ViewModel(msg)) -> Element(msg) {
                 render_sections(model.sections, model.selected_index, 0),
               )
             False ->
-              html.p([attribute.class("app-quick-actions__empty")], [
-                html.text("No matching actions."),
-              ])
+              html.p(
+                [
+                  attribute.class("app-quick-actions__empty"),
+                  attribute.attribute("role", "status"),
+                ],
+                [html.text("No matching actions.")],
+              )
           },
         ],
       ),

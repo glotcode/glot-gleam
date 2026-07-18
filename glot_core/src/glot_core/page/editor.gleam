@@ -171,26 +171,40 @@ fn content(view_model: ViewModel) -> lustre_element.Element(Nil) {
     UnsupportedLanguage(language_slug) ->
       html.div([attribute.class("app-page")], [
         html.div([attribute.class("app-page__screen-glow")], []),
-        html.main([attribute.class("app-shell app-shell--narrow")], [
-          html.section([attribute.class("app-panel")], [
-            html.h1([], [html.text("Unsupported language")]),
-            html.p([], [
-              html.text(
-                "No editor is available for language slug: " <> language_slug,
-              ),
+        html.main(
+          [
+            attribute.id("main-content"),
+            attribute.attribute("tabindex", "-1"),
+            attribute.class("app-shell app-shell--narrow"),
+          ],
+          [
+            html.section([attribute.class("app-panel")], [
+              html.h1([], [html.text("Unsupported language")]),
+              html.p([], [
+                html.text(
+                  "No editor is available for language slug: " <> language_slug,
+                ),
+              ]),
             ]),
-          ]),
-        ]),
+          ],
+        ),
       ])
     LoadError(message) ->
       html.div([attribute.class("app-page")], [
         html.div([attribute.class("app-page__screen-glow")], []),
-        html.main([attribute.class("app-shell app-shell--narrow")], [
-          html.section([attribute.class("app-panel")], [
-            html.h1([], [html.text("Snippet unavailable")]),
-            html.p([], [html.text(message)]),
-          ]),
-        ]),
+        html.main(
+          [
+            attribute.id("main-content"),
+            attribute.attribute("tabindex", "-1"),
+            attribute.class("app-shell app-shell--narrow"),
+          ],
+          [
+            html.section([attribute.class("app-panel")], [
+              html.h1([], [html.text("Snippet unavailable")]),
+              html.p([], [html.text(message)]),
+            ]),
+          ],
+        ),
       ])
     NewSnippet(model) | ExistingSnippet(model) ->
       content_for_model(model, view_model)
@@ -301,6 +315,7 @@ fn metadata_panel(model: EditorModel) -> lustre_element.Element(Nil) {
         [
           attribute.id("editor-page-snippet-info-dialog"),
           attribute.class("editor-page__dialog"),
+          attribute.attribute("aria-label", "Snippet information"),
         ],
         [
           editor_layout.dialog_form([
@@ -314,20 +329,28 @@ fn metadata_panel(model: EditorModel) -> lustre_element.Element(Nil) {
 
 fn tabbar_children(model: EditorModel) -> List(lustre_element.Element(Nil)) {
   [
-    icon_button("editor-shell__settings-button", [icons.cog_6_tooth()]),
+    icon_button("editor-shell__settings-button", "Editor settings", [
+      icons.cog_6_tooth(),
+    ]),
     editor_layout.tab_scroll(tab_views(model)),
     meta_button(),
-    icon_button("editor-shell__tab-action-button", [icons.document_plus()]),
+    icon_button("editor-shell__tab-action-button", "Add editor entry", [
+      icons.document_plus(),
+    ]),
   ]
 }
 
 fn icon_button(
   class_name: String,
+  aria_label: String,
   children: List(lustre_element.Element(Nil)),
 ) -> lustre_element.Element(Nil) {
   editor_layout.shell_button(
     class_name: class_name,
-    attributes: [attribute.disabled(True)],
+    attributes: [
+      attribute.attribute("aria-label", aria_label),
+      attribute.disabled(True),
+    ],
     children: children,
   )
 }

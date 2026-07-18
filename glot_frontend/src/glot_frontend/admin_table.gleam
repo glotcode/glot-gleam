@@ -32,12 +32,20 @@ pub fn open_column() -> Column {
 }
 
 pub fn table(columns: List(Column), rows: List(Element(msg))) -> Element(msg) {
-  html.div([attribute.class("admin-table__wrap")], [
-    html.table([attribute.class("admin-table")], [
-      html.thead([], [html.tr([], columns |> list.map(heading))]),
-      html.tbody([], rows),
-    ]),
-  ])
+  html.div(
+    [
+      attribute.class("admin-table__wrap"),
+      attribute.attribute("tabindex", "0"),
+      attribute.attribute("role", "region"),
+      attribute.attribute("aria-label", "Scrollable data table"),
+    ],
+    [
+      html.table([attribute.class("admin-table")], [
+        html.thead([], [html.tr([], columns |> list.map(heading))]),
+        html.tbody([], rows),
+      ]),
+    ],
+  )
 }
 
 pub fn row(cells: List(Element(msg))) -> Element(msg) {
@@ -180,7 +188,13 @@ pub fn open_link_cell(
 }
 
 fn heading(column: Column) -> Element(msg) {
-  html.th([attribute.class(heading_class(column))], [html.text(column.label)])
+  html.th(
+    [
+      attribute.class(heading_class(column)),
+      attribute.attribute("scope", "col"),
+    ],
+    [html.text(column.label)],
+  )
 }
 
 fn heading_class(column: Column) -> String {

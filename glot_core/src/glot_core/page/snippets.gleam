@@ -75,24 +75,31 @@ pub fn encode(view_model: ViewModel) -> json.Json {
 pub fn view(model: ViewModel) -> Element(msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell")], [
-      html.section([attribute.class("app-panel snippets-page")], [
-        html.div([attribute.class("snippets-page__header")], [
-          html.div([], [
-            html.h1([attribute.class("snippets-page__title")], [
-              html.text("Public snippets"),
+    html.main(
+      [
+        attribute.id("main-content"),
+        attribute.attribute("tabindex", "-1"),
+        attribute.class("app-shell"),
+      ],
+      [
+        html.section([attribute.class("app-panel snippets-page")], [
+          html.div([attribute.class("snippets-page__header")], [
+            html.div([], [
+              html.h1([attribute.class("snippets-page__title")], [
+                html.text("Public snippets"),
+              ]),
+              active_filter_view(model.username),
             ]),
-            active_filter_view(model.username),
+            html.div([attribute.class("snippets-page__pagination")], [
+              pagination_button("Previous", previous_page_route(model)),
+              pagination_button("Next", next_page_route(model)),
+            ]),
           ]),
-          html.div([attribute.class("snippets-page__pagination")], [
-            pagination_button("Previous", previous_page_route(model)),
-            pagination_button("Next", next_page_route(model)),
-          ]),
+          status_view(model),
+          snippets_table(pagination_model.items(model.page), model.now),
         ]),
-        status_view(model),
-        snippets_table(pagination_model.items(model.page), model.now),
-      ]),
-    ]),
+      ],
+    ),
   ])
 }
 
@@ -173,20 +180,38 @@ fn next_page_route(model: ViewModel) -> option.Option(route.Route) {
 fn status_view(model: ViewModel) -> Element(msg) {
   case model.state {
     Loading ->
-      html.p([attribute.class("snippets-page__status")], [
-        html.text("Loading snippets..."),
-      ])
+      html.p(
+        [
+          attribute.class("snippets-page__status"),
+          attribute.attribute("role", "status"),
+        ],
+        [html.text("Loading snippets...")],
+      )
     Ready ->
       case pagination_model.items(model.page) {
         [] ->
-          html.p([attribute.class("snippets-page__status")], [
-            html.text("No public snippets found."),
-          ])
-        _ -> html.p([attribute.class("snippets-page__status")], [])
+          html.p(
+            [
+              attribute.class("snippets-page__status"),
+              attribute.attribute("role", "status"),
+            ],
+            [html.text("No public snippets found.")],
+          )
+        _ ->
+          html.p(
+            [
+              attribute.class("snippets-page__status"),
+              attribute.attribute("role", "status"),
+            ],
+            [],
+          )
       }
     Error(message) ->
       html.p(
-        [attribute.class("snippets-page__status snippets-page__status--error")],
+        [
+          attribute.class("snippets-page__status snippets-page__status--error"),
+          attribute.attribute("role", "alert"),
+        ],
         [html.text(message)],
       )
   }

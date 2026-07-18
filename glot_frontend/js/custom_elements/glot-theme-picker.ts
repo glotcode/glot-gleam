@@ -54,7 +54,7 @@ class GlotThemePicker extends HTMLElement {
       }
 
       select {
-        min-height: 1.9rem;
+        min-height: 2.75rem;
         padding: 0.25rem 1.7rem 0.25rem 0.5rem;
         border: 1px solid var(--theme-border);
         border-radius: 0;
@@ -66,8 +66,14 @@ class GlotThemePicker extends HTMLElement {
       }
 
       select:focus-visible {
-        outline: 2px solid var(--color-focus);
-        outline-offset: 2px;
+        outline: 3px solid var(--color-focus);
+        outline-offset: 3px;
+      }
+
+      @media (forced-colors: active) {
+        select:focus-visible {
+          outline-color: Highlight;
+        }
       }
 
       @media (max-width: 560px) {

@@ -329,16 +329,23 @@ pub fn update(
 pub fn view(model: Model) -> Element(Msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
-    html.main([attribute.class("app-shell app-shell--narrow")], [
-      html.div([attribute.class("login-page__sections")], [
-        intro_section(),
-        email_section(model),
-        case show_passkey_section(model.passkey_supported) {
-          True -> passkey_section(model)
-          False -> html.text("")
-        },
-      ]),
-    ]),
+    html.main(
+      [
+        attribute.id("main-content"),
+        attribute.attribute("tabindex", "-1"),
+        attribute.class("app-shell app-shell--narrow"),
+      ],
+      [
+        html.div([attribute.class("login-page__sections")], [
+          intro_section(),
+          email_section(model),
+          case show_passkey_section(model.passkey_supported) {
+            True -> passkey_section(model)
+            False -> html.text("")
+          },
+        ]),
+      ],
+    ),
   ])
 }
 
@@ -355,7 +362,7 @@ fn intro_section() -> Element(Msg) {
 
 fn passkey_section(model: Model) -> Element(Msg) {
   html.section([attribute.class("app-panel login-page__section")], [
-    html.h3([attribute.class("login-page__section-title")], [
+    html.h2([attribute.class("login-page__section-title")], [
       html.text("Login by passkey"),
     ]),
     html.p([attribute.class("login-page__section-copy")], [
@@ -378,7 +385,7 @@ fn passkey_section(model: Model) -> Element(Msg) {
 
 fn email_section(model: Model) -> Element(Msg) {
   html.section([attribute.class("app-panel login-page__section")], [
-    html.h3([attribute.class("login-page__section-title")], [
+    html.h2([attribute.class("login-page__section-title")], [
       html.text("Login by email"),
     ]),
     html.p([attribute.class("login-page__section-copy")], [
@@ -423,6 +430,7 @@ fn email_fields(model: Model) -> List(Element(Msg)) {
       attribute.id("email"),
       attribute.name("email"),
       attribute.type_("email"),
+      attribute.autocomplete("email"),
       attribute.placeholder("you@example.com"),
       attribute.value(model.email),
       event.on_input(EmailChanged),
@@ -466,22 +474,10 @@ fn token_fields(model: Model) -> List(Element(Msg)) {
 fn status_view(status: Status) -> Element(Msg) {
   case status {
     Idle -> html.text("")
-    SendingToken ->
-      html.p([attribute.class("login-page__status")], [
-        html.text("Sending login email..."),
-      ])
-    LoggingIn ->
-      html.p([attribute.class("login-page__status")], [
-        html.text("Logging in..."),
-      ])
-    StatusInfo(message) ->
-      html.p([attribute.class("login-page__status")], [
-        html.text(message),
-      ])
-    StatusError(message) ->
-      html.p([attribute.class("login-page__status login-page__status--error")], [
-        html.text(message),
-      ])
+    SendingToken -> info_status("Sending login email...")
+    LoggingIn -> info_status("Logging in...")
+    StatusInfo(message) -> info_status(message)
+    StatusError(message) -> error_status(message)
   }
 }
 
@@ -502,23 +498,34 @@ fn token_status_view(status: Status) -> Element(Msg) {
 fn passkey_status_view(passkey_status: PasskeyStatus) -> Element(Msg) {
   case passkey_status {
     PasskeyIdle -> html.text("")
-    StartingPasskey ->
-      html.p([attribute.class("login-page__status")], [
-        html.text("Preparing passkey login..."),
-      ])
+    StartingPasskey -> info_status("Preparing passkey login...")
     WaitingForPasskey ->
-      html.p([attribute.class("login-page__status")], [
-        html.text("Complete the passkey prompt from your browser or device."),
-      ])
-    FinishingPasskey ->
-      html.p([attribute.class("login-page__status")], [
-        html.text("Logging in with passkey..."),
-      ])
-    PasskeyError(message) ->
-      html.p([attribute.class("login-page__status login-page__status--error")], [
-        html.text(message),
-      ])
+      info_status("Complete the passkey prompt from your browser or device.")
+    FinishingPasskey -> info_status("Logging in with passkey...")
+    PasskeyError(message) -> error_status(message)
   }
+}
+
+fn info_status(message: String) -> Element(Msg) {
+  html.p(
+    [
+      attribute.class("login-page__status"),
+      attribute.attribute("role", "status"),
+      attribute.attribute("aria-atomic", "true"),
+    ],
+    [html.text(message)],
+  )
+}
+
+fn error_status(message: String) -> Element(Msg) {
+  html.p(
+    [
+      attribute.class("login-page__status login-page__status--error"),
+      attribute.attribute("role", "alert"),
+      attribute.attribute("aria-atomic", "true"),
+    ],
+    [html.text(message)],
+  )
 }
 
 fn is_submitting(status: Status) -> Bool {
