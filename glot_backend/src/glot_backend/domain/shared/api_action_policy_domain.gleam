@@ -249,6 +249,14 @@ fn public_policy(action: public_action.PublicAction) -> ApiActionPolicy {
           account_model.ReadOnly,
         ]),
       )
+    public_action.SubmitContactAction ->
+      public_action_policy(
+        AllowedAccountStates([
+          account_model.Active,
+          account_model.ReadOnly,
+          account_model.Suspended,
+        ]),
+      )
     public_action.LoginAction ->
       public_action_policy(
         AllowedAccountStates([

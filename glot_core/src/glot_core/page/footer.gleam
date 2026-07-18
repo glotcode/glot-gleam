@@ -22,6 +22,20 @@ pub fn view(account_route account_route: route.Route) -> Element(msg) {
           [html.text("Public snippets")],
         ),
         html.a([route.href(account_route)], [html.text("Account")]),
+        html.a([route.href(route.Public(route.Contact))], [
+          html.text("Contact"),
+        ]),
+        html.a([route.href(route.Public(route.Privacy))], [
+          html.text("Privacy"),
+        ]),
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class("site-footer__link-button"),
+            attribute.data("cookie-notice-settings", ""),
+          ],
+          [html.text("Cookie notice")],
+        ),
       ],
     ),
   ])

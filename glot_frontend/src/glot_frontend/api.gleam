@@ -35,6 +35,7 @@ import glot_core/auth/login_token_dto
 import glot_core/auth/passkey_dto
 import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_dto
+import glot_core/contact_dto
 import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/pageview_dto
 import glot_core/pagination_model
@@ -86,6 +87,16 @@ pub fn send_login_token(
     )
 
   send_public_api_request(req, login_token_dto.encode, nil_decoder(), to_msg)
+}
+
+pub fn submit_contact(
+  request: contact_dto.ContactRequest,
+  to_msg: fn(ApiResponse(Nil)) -> msg,
+) -> effect.Effect(msg) {
+  let req =
+    PublicApiRequest(action: public_action.SubmitContactAction, data: request)
+
+  send_public_api_request(req, contact_dto.encode, nil_decoder(), to_msg)
 }
 
 pub fn track_pageview(

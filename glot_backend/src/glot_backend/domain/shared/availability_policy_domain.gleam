@@ -90,6 +90,8 @@ fn api_surface(action: api_action.ApiAction) -> ApiSurface {
       AuthenticationApiSurface
     api_action.PublicAction(public_action.SendLoginTokenAction) ->
       AuthenticationApiSurface
+    api_action.PublicAction(public_action.SubmitContactAction) ->
+      AuthenticationApiSurface
     api_action.PublicAction(public_action.LoginAction) ->
       AuthenticationApiSurface
     api_action.PublicAction(public_action.RunAction) -> PublicReadApiSurface
@@ -128,6 +130,8 @@ fn page_surface(page_route: route.Route) -> PageSurface {
   case page_route {
     route.Admin(_) -> AdminPageSurface
     route.Public(route.Login) -> LoginPageSurface
+    route.Public(route.Contact) -> LoginPageSurface
+    route.Public(route.Privacy) -> LoginPageSurface
     route.NotFound(_) -> NotFoundPageSurface
     route.Public(_) | route.Account(_) -> GeneralPageSurface
   }

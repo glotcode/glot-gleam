@@ -8,6 +8,8 @@
 @import "./maintenance.css" layer(pages);
 @import "./home.css" layer(pages);
 @import "./account.css" layer(pages);
+@import "./contact.css" layer(pages);
+@import "./privacy.css" layer(pages);
 @import "./snippets.css" layer(pages);
 @import "./editor.css" layer(pages);
 @import "./accessibility.css" layer(overrides);

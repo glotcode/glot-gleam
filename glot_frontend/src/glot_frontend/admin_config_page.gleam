@@ -95,6 +95,7 @@ pub type EmailFields {
   EmailFields(
     from_address: String,
     from_name: String,
+    contact_address: String,
     default_timeout_ms: String,
   )
 }
@@ -315,6 +316,7 @@ pub type Msg {
   EmailLoaded(api.ApiResponse(email_config_dto.EmailConfigResponse))
   EmailFromAddressChanged(String)
   EmailFromNameChanged(String)
+  EmailContactAddressChanged(String)
   EmailDefaultTimeoutMsChanged(String)
   EmailResetClicked
   EmailSaveClicked
@@ -1865,6 +1867,18 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       effect.none(),
     )
 
+    EmailContactAddressChanged(value) -> #(
+      Model(
+        ..model,
+        email: EmailSection(
+          ..model.email,
+          draft: EmailFields(..model.email.draft, contact_address: value),
+          state: mutation.Idle,
+        ),
+      ),
+      effect.none(),
+    )
+
     EmailDefaultTimeoutMsChanged(value) -> #(
       Model(
         ..model,
@@ -2502,7 +2516,7 @@ fn email_section_view(section: EmailSection, status: Status) -> Element(Msg) {
 
   config_section(
     title: "Email",
-    subtitle: "Stores the sender address, optional sender name, and fallback timeout used for outbound email.",
+    subtitle: "Stores outbound email settings and the private recipient for privacy requests.",
     badge: section_badge(section.state, dirty, idle_text(is_empty)),
     fields: html.div([attribute.class("admin-page__field-grid")], [
       admin_ui.text_input(
@@ -2518,6 +2532,13 @@ fn email_section_view(section: EmailSection, status: Status) -> Element(Msg) {
         value: section.draft.from_name,
         placeholder: "",
         on_input: EmailFromNameChanged,
+      ),
+      admin_ui.text_input(
+        label: "Contact address",
+        help: "Optional private recipient for submissions from the public contact form. This value is never returned by the public API.",
+        value: section.draft.contact_address,
+        placeholder: "",
+        on_input: EmailContactAddressChanged,
       ),
       admin_ui.text_input(
         label: "Default timeout",
@@ -2854,6 +2875,7 @@ fn email_fields_from_response(
   EmailFields(
     from_address: response.from_address,
     from_name: option.unwrap(response.from_name, ""),
+    contact_address: option.unwrap(response.contact_address, ""),
     default_timeout_ms: int.to_string(response.default_timeout_ms),
   )
 }
@@ -2918,6 +2940,10 @@ fn validate_email_fields(
       Ok(email_config_dto.UpsertEmailConfigRequest(
         from_address: fields.from_address,
         from_name: case fields.from_name {
+          "" -> option.None
+          value -> option.Some(value)
+        },
+        contact_address: case fields.contact_address {
           "" -> option.None
           value -> option.Some(value)
         },
@@ -3328,7 +3354,12 @@ fn empty_email_section() -> EmailSection {
 }
 
 fn empty_email_fields() -> EmailFields {
-  EmailFields(from_address: "", from_name: "", default_timeout_ms: "")
+  EmailFields(
+    from_address: "",
+    from_name: "",
+    contact_address: "",
+    default_timeout_ms: "",
+  )
 }
 
 fn loaded_status(model: Model) -> Status {

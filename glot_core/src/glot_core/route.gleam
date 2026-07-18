@@ -13,6 +13,8 @@ pub type Route {
 
 pub type PublicRoute {
   Home
+  Contact
+  Privacy
   Login
   Snippets(
     after: option.Option(String),
@@ -54,6 +56,8 @@ pub type AdminRoute {
 pub fn from_uri(uri: Uri) -> Route {
   case uri.path_segments(uri.path) {
     [] | [""] -> Public(Home)
+    ["contact"] -> Public(Contact)
+    ["privacy"] -> Public(Privacy)
     ["login"] -> Public(Login)
     ["account"] -> Account(AccountHome)
     ["admin"] -> Admin(AdminHome)
@@ -167,6 +171,8 @@ pub fn is_account_route(route: Route) -> Bool {
 fn public_route_to_string(route: PublicRoute) -> String {
   case route {
     Home -> "/"
+    Contact -> "/contact"
+    Privacy -> "/privacy"
     Login -> "/login"
     Snippets(after:, before:, username:) -> {
       let query = snippet_query_string(after, before, username)
@@ -221,6 +227,8 @@ fn admin_route_to_string(route: AdminRoute) -> String {
 fn public_route_name(route: PublicRoute) -> String {
   case route {
     Home -> "home"
+    Contact -> "contact"
+    Privacy -> "privacy"
     Login -> "login"
     Snippets(_, _, _) -> "snippets"
     NewSnippet(_) -> "new_snippet"

@@ -11,6 +11,7 @@ import glot_core/validation_error
 pub type EmailTemplateName {
   LoginTokenTemplate
   AccountDeletedTemplate
+  ContactTemplate
 }
 
 pub type EmailTemplate {
@@ -27,6 +28,7 @@ pub fn to_db_name(name: EmailTemplateName) -> String {
   case name {
     LoginTokenTemplate -> "login_token"
     AccountDeletedTemplate -> "account_deleted"
+    ContactTemplate -> "contact"
   }
 }
 
@@ -36,6 +38,7 @@ pub fn from_db_name(
   case name {
     "login_token" -> Ok(LoginTokenTemplate)
     "account_deleted" -> Ok(AccountDeletedTemplate)
+    "contact" -> Ok(ContactTemplate)
     _ -> Error(validation_error.UnknownEmailTemplate(name))
   }
 }
@@ -44,11 +47,18 @@ pub fn supported_tokens(name: EmailTemplateName) -> List(String) {
   case name {
     LoginTokenTemplate -> ["token"]
     AccountDeletedTemplate -> []
+    ContactTemplate -> [
+      "email",
+      "topic",
+      "message",
+      "user_id",
+      "request_id",
+    ]
   }
 }
 
 pub fn list_names() -> List(EmailTemplateName) {
-  [LoginTokenTemplate, AccountDeletedTemplate]
+  [LoginTokenTemplate, AccountDeletedTemplate, ContactTemplate]
 }
 
 pub fn are_supported_tokens(

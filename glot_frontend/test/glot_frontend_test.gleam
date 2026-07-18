@@ -50,6 +50,13 @@ pub fn admin_rate_limits_route_to_string_test() {
     == "/admin/rate-limits"
 }
 
+pub fn privacy_route_to_string_test() {
+  assert route.to_string(route.Public(route.Privacy)) == "/privacy"
+  assert route.to_string(route.Public(route.Contact)) == "/contact"
+  assert route.name(route.Public(route.Privacy)) == "privacy"
+  assert route.name(route.Public(route.Contact)) == "contact"
+}
+
 pub fn admin_route_to_string_test() {
   assert route.to_string(route.Admin(route.AdminHome)) == "/admin"
 }

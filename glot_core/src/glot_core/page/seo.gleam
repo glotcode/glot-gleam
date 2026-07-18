@@ -78,6 +78,26 @@ pub fn login() -> Metadata {
   )
 }
 
+pub fn privacy() -> Metadata {
+  metadata(
+    title: "Privacy policy | glot.io",
+    description: "How glot.io handles personal data, cookies, local storage, and Carbon Ads.",
+    canonical_path: "/privacy",
+    index: True,
+    open_graph_type: "website",
+  )
+}
+
+pub fn contact() -> Metadata {
+  metadata(
+    title: "Contact | glot.io",
+    description: "Contact glot.io about privacy, security vulnerabilities, or general questions.",
+    canonical_path: "/contact",
+    index: True,
+    open_graph_type: "website",
+  )
+}
+
 pub fn snippets(
   username: option.Option(String),
   canonical_path: String,

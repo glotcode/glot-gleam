@@ -557,6 +557,16 @@ pub fn run(
         |> result.try(fn(_) {
           runtime.handlers.app_config.upsert_entry(
             "email",
+            "contact_address",
+            json.nullable(config.contact_address, json.string)
+              |> json.to_string(),
+            updated_at,
+          )
+          |> result.map_error(error.database_command_error)
+        })
+        |> result.try(fn(_) {
+          runtime.handlers.app_config.upsert_entry(
+            "email",
             "default_timeout_ms",
             json.int(config.default_timeout_ms) |> json.to_string(),
             updated_at,

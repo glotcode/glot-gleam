@@ -1,4 +1,5 @@
 import { initializeTheme } from "./custom_elements/glot-theme-picker";
+import { initializePrivacyElements } from "./custom_elements/glot-privacy";
 
 let codeMirrorImport: Promise<unknown> | null = null;
 
@@ -42,5 +43,6 @@ export function start(main: () => unknown) {
   });
 
   main();
+  initializePrivacyElements();
   loadCodeMirrorIfPresent(document);
 }

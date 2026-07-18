@@ -4,6 +4,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/refresh_session_dto.{type RefreshSessionResponse}
 import glot_core/auth/session_dto.{type SessionResponse}
+import glot_core/page/privacy
 import glot_core/page/seo
 import glot_core/page/site_chrome
 import glot_core/page/top_bar
@@ -14,6 +15,7 @@ import glot_frontend/app_dialog
 import glot_frontend/app_shell
 import glot_frontend/browser_navigation
 import glot_frontend/clock
+import glot_frontend/contact_page
 import glot_frontend/editor_page
 import glot_frontend/home_page
 import glot_frontend/keyboard_shortcuts
@@ -52,6 +54,8 @@ type Model {
 
 type PageModel {
   HomePageModel(home_page.Model)
+  ContactPageModel(contact_page.Model)
+  PrivacyPageModel
   LoginPage(login_page.Model)
   AccountPage(account_page.Model)
   ManageSnippetsPage(manage_snippets_page.Model)
@@ -80,6 +84,13 @@ fn init_public_page(
     route.Home -> {
       let #(model, page_effect) = home_page.init()
       #(HomePageModel(model), effect.map(page_effect, HomePageMsg))
+    }
+    route.Contact -> {
+      let #(model, page_effect) = contact_page.init()
+      #(ContactPageModel(model), effect.map(page_effect, ContactPageMsg))
+    }
+    route.Privacy -> {
+      #(PrivacyPageModel, effect.none())
     }
     route.Login -> {
       let #(model, page_effect) = login_page.init()
@@ -170,6 +181,7 @@ type Msg {
   QuickActionSelected(QuickActionTarget)
   EditorRunShortcutPressed
   HomePageMsg(home_page.Msg)
+  ContactPageMsg(contact_page.Msg)
   LoginPageMsg(login_page.Msg)
   AccountPageMsg(account_page.Msg)
   ManageSnippetsPageMsg(manage_snippets_page.Msg)
@@ -283,6 +295,14 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
         effect.map(page_effect, HomePageMsg),
       )
     }
+    ContactPageMsg(page_msg), ContactPageModel(page_model) -> {
+      let #(new_page_model, page_effect) =
+        contact_page.update(page_model, page_msg)
+      #(
+        Model(..model, page_model: ContactPageModel(new_page_model)),
+        effect.map(page_effect, ContactPageMsg),
+      )
+    }
     LoginPageMsg(page_msg), LoginPage(page_model) -> {
       let #(new_page_model, page_effect, event) =
         login_page.update(page_model, page_msg)
@@ -378,6 +398,8 @@ fn metadata_effect(model: Model) -> Effect(Msg) {
 fn metadata(model: Model) -> seo.Metadata {
   case model.page_model {
     HomePageModel(_) -> seo.home()
+    ContactPageModel(_) -> seo.contact()
+    PrivacyPageModel -> seo.privacy()
     LoginPage(_) -> seo.login()
     SnippetsPage(page_model) ->
       snippets_page.metadata(page_model, route.to_string(model.route))
@@ -437,6 +459,9 @@ fn view(model: Model) -> Element(Msg) {
   let content = case model.page_model {
     HomePageModel(page_model) ->
       home_page.view(page_model) |> element.map(HomePageMsg)
+    ContactPageModel(page_model) ->
+      contact_page.view(page_model) |> element.map(ContactPageMsg)
+    PrivacyPageModel -> privacy.view()
     LoginPage(page_model) ->
       login_page.view(page_model) |> element.map(LoginPageMsg)
     AccountPage(page_model) ->
@@ -490,6 +515,8 @@ fn page_actions(
         })
       })
     HomePageModel(_)
+    | ContactPageModel(_)
+    | PrivacyPageModel
     | LoginPage(_)
     | AccountPage(_)
     | ManageSnippetsPage(_)

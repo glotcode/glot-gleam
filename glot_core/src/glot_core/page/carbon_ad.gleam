@@ -18,7 +18,7 @@ pub fn view(
             attribute.attribute("async", ""),
             attribute.type_("text/javascript"),
             attribute.src(
-              "//cdn.carbonads.com/carbon.js?serve=CKYIE2JM&placement=glotio&format=cover",
+              "https://cdn.carbonads.com/carbon.js?serve=CKYIE2JM&placement=glotio&format=cover",
             ),
             attribute.id("_carbonads_js"),
           ],

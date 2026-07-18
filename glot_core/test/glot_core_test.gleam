@@ -8,6 +8,7 @@ import glot_core/admin_action
 import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/auth/user_model
+import glot_core/contact_dto
 import glot_core/effect_trace_dto
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
@@ -87,6 +88,55 @@ pub fn public_action_from_string_round_trips_test() {
     public_action.to_string,
     public_action.from_string,
   )
+}
+
+pub fn contact_validation_normalizes_valid_input_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let request =
+    contact_dto.ContactRequest(
+      email: "  Visitor@Example.com ",
+      topic: "privacy",
+      message: "  Please delete my data.  ",
+      website: "",
+    )
+
+  assert contact_dto.validate(request, is_email)
+    == Ok(contact_dto.ValidatedContact(
+      email: email_address_model.EmailAddress("visitor@example.com"),
+      topic: contact_dto.Privacy,
+      message: "Please delete my data.",
+    ))
+}
+
+pub fn contact_validation_rejects_oversized_message_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let request =
+    contact_dto.ContactRequest(
+      email: "visitor@example.com",
+      topic: "general",
+      message: repeat_string("x", contact_dto.max_message_length + 1),
+      website: "",
+    )
+
+  assert contact_dto.validate(request, is_email)
+    == Error(validation_error.FieldTooLong(
+      "message",
+      contact_dto.max_message_length,
+    ))
+}
+
+pub fn contact_validation_rejects_unknown_topic_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let request =
+    contact_dto.ContactRequest(
+      email: "visitor@example.com",
+      topic: "billing",
+      message: "Hello",
+      website: "",
+    )
+
+  assert contact_dto.validate(request, is_email)
+    == Error(validation_error.InvalidContactTopic)
 }
 
 pub fn public_action_from_string_rejects_admin_and_unknown_values_test() {

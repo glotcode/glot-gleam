@@ -33,10 +33,12 @@ pub fn upsert_email_config(
   ))
   use _ <- program.and_then(validate_request(ctx, request))
   let from_name = normalize_from_name(request.from_name)
+  let contact_address = normalize_optional_string(request.contact_address)
   use _ <- program.and_then(app_config_effect.upsert_email_config(
     dynamic_config.EmailConfig(
       from_address: request.from_address,
       from_name: from_name,
+      contact_address: contact_address,
       default_timeout_ms: request.default_timeout_ms,
     ),
     ctx.timestamp,
@@ -46,6 +48,7 @@ pub fn upsert_email_config(
   program.succeed(email_config_dto.EmailConfigResponse(
     from_address: request.from_address,
     from_name: from_name,
+    contact_address: contact_address,
     default_timeout_ms: request.default_timeout_ms,
   ))
 }
@@ -70,6 +73,12 @@ fn validate_request(
     max_default_timeout_ms,
   ))
 
+  use _ <- program.and_then(validate_optional_email(
+    ctx,
+    request.contact_address,
+    "contactAddress",
+  ))
+
   case string.trim(request.from_address) {
     "" ->
       program.fail(error.validation(validation_error.EmptyField("fromAddress")))
@@ -85,6 +94,22 @@ fn validate_request(
           program.fail(
             error.validation(validation_error.InvalidEmail("fromAddress")),
           )
+      }
+  }
+}
+
+fn validate_optional_email(
+  ctx: context.Context,
+  value: option.Option(String),
+  field: String,
+) -> program_types.Program(Nil) {
+  case normalize_optional_string(value) {
+    option.None -> program.succeed(Nil)
+    option.Some(address) ->
+      case email_address_model.from_string(ctx.regexes.is_email, address) {
+        option.Some(_) -> program.succeed(Nil)
+        option.None ->
+          program.fail(error.validation(validation_error.InvalidEmail(field)))
       }
   }
 }
@@ -114,6 +139,12 @@ fn require_max(
 }
 
 fn normalize_from_name(value: option.Option(String)) -> option.Option(String) {
+  normalize_optional_string(value)
+}
+
+fn normalize_optional_string(
+  value: option.Option(String),
+) -> option.Option(String) {
   case value {
     option.Some(name) ->
       case string.trim(name) {

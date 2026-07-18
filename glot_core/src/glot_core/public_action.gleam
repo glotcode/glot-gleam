@@ -24,6 +24,7 @@ pub type PublicAction {
   CreateSnippetAction
   UpdateSnippetAction
   DeleteSnippetAction
+  SubmitContactAction
   SendLoginTokenAction
   LoginAction
   BeginPasskeyRegistrationAction
@@ -54,6 +55,7 @@ pub fn list() -> List(PublicAction) {
     CreateSnippetAction,
     UpdateSnippetAction,
     DeleteSnippetAction,
+    SubmitContactAction,
     SendLoginTokenAction,
     LoginAction,
     BeginPasskeyRegistrationAction,
@@ -97,6 +99,7 @@ pub fn to_string(action: PublicAction) -> String {
     CreateSnippetAction -> "create_snippet"
     UpdateSnippetAction -> "update_snippet"
     DeleteSnippetAction -> "delete_snippet"
+    SubmitContactAction -> "submit_contact"
     SendLoginTokenAction -> "send_login_token"
     LoginAction -> "login"
     BeginPasskeyRegistrationAction -> "begin_passkey_registration"
@@ -128,6 +131,7 @@ pub fn from_string(action: String) -> option.Option(PublicAction) {
     "create_snippet" -> option.Some(CreateSnippetAction)
     "update_snippet" -> option.Some(UpdateSnippetAction)
     "delete_snippet" -> option.Some(DeleteSnippetAction)
+    "submit_contact" -> option.Some(SubmitContactAction)
     "send_login_token" -> option.Some(SendLoginTokenAction)
     "login" -> option.Some(LoginAction)
     "begin_passkey_registration" -> option.Some(BeginPasskeyRegistrationAction)
@@ -163,6 +167,7 @@ pub fn server_timing_policy(
     | DeleteAccountPasskeyAction
     | ScheduleDeleteAccountAction
     | CancelDeleteAccountAction
+    | SubmitContactAction
     | SendLoginTokenAction
     | LoginAction
     | BeginPasskeyRegistrationAction

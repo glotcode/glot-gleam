@@ -2,6 +2,7 @@ import gleam/erlang/process
 import gleam/http/request
 import gleam/list
 import gleam/option
+import glot_backend/contact_page
 import glot_backend/context
 import glot_backend/domain/shared/availability_policy_domain
 import glot_backend/dynamic_config
@@ -23,6 +24,7 @@ import glot_backend/page_error_presenter
 import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/page_theme.{type PageTheme}
+import glot_backend/privacy_page
 import glot_backend/request_context
 import glot_backend/server_timing
 import glot_backend/snippets_page
@@ -226,6 +228,66 @@ fn handle_page_request_with_runtime(
             frontend_preloads: assets.frontend_preloads,
             app_attributes: [],
             app_children: [home_page.view()],
+          ),
+          200,
+        ),
+        status_code: 200,
+        render_mode: "ssr",
+        effects: [],
+        info: state.info_fields,
+        warnings: state.warning_fields,
+        debug: state.debug_fields,
+        error: option.None,
+      )
+    }
+    route.Public(route.Contact) -> {
+      let state = empty_page_state()
+      page_response.PageResponse(
+        response: wisp.html_response(
+          page_layout.document(
+            title: contact_page.title(),
+            theme: page_request.theme,
+            head_children: seo.head_children(
+              contact_page.metadata(),
+              option.None,
+            ),
+            include_frontend: True,
+            stylesheet_href: assets.stylesheet_href,
+            additional_stylesheet_hrefs: [],
+            frontend_src: assets.frontend_src,
+            frontend_preloads: assets.frontend_preloads,
+            app_attributes: [],
+            app_children: [contact_page.view()],
+          ),
+          200,
+        ),
+        status_code: 200,
+        render_mode: "ssr",
+        effects: [],
+        info: state.info_fields,
+        warnings: state.warning_fields,
+        debug: state.debug_fields,
+        error: option.None,
+      )
+    }
+    route.Public(route.Privacy) -> {
+      let state = empty_page_state()
+      page_response.PageResponse(
+        response: wisp.html_response(
+          page_layout.document(
+            title: privacy_page.title(),
+            theme: page_request.theme,
+            head_children: seo.head_children(
+              privacy_page.metadata(),
+              option.None,
+            ),
+            include_frontend: True,
+            stylesheet_href: assets.stylesheet_href,
+            additional_stylesheet_hrefs: [],
+            frontend_src: assets.frontend_src,
+            frontend_preloads: assets.frontend_preloads,
+            app_attributes: [],
+            app_children: [privacy_page.view()],
           ),
           200,
         ),

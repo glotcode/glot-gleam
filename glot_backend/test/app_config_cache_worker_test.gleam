@@ -491,6 +491,7 @@ fn test_dynamic_config() -> dynamic_config.DynamicConfig {
     email: option.Some(dynamic_config.EmailConfig(
       from_address: "sender@example.com",
       from_name: option.Some("Sender"),
+      contact_address: option.None,
       default_timeout_ms: 60_000,
     )),
     rate_limit_policies: dict.from_list([
@@ -571,6 +572,7 @@ fn updated_dynamic_config() -> dynamic_config.DynamicConfig {
     email: option.Some(dynamic_config.EmailConfig(
       from_address: "updated-sender@example.com",
       from_name: option.Some("Updated Sender"),
+      contact_address: option.None,
       default_timeout_ms: 45_000,
     )),
     rate_limit_policies: dict.from_list([

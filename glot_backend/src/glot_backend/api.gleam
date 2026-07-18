@@ -71,6 +71,7 @@ import glot_backend/domain/auth/logout_domain
 import glot_backend/domain/auth/refresh_session_domain
 import glot_backend/domain/auth/send_login_token_domain
 import glot_backend/domain/auth/session_issue_domain
+import glot_backend/domain/contact/submit_contact_domain
 import glot_backend/domain/navigation/track_pageview_domain
 import glot_backend/domain/run_code/get_language_version_domain
 import glot_backend/domain/run_code/run_domain
@@ -303,6 +304,13 @@ fn handle_public_api_request(
         delete_snippet_domain.request_from_dynamic(data),
       )
       delete_snippet_domain.delete_snippet(request_ctx, request)
+      |> program.map(fn(_) { NoContentResponse })
+    }
+    public_action.SubmitContactAction -> {
+      use request <- program.and_then(
+        submit_contact_domain.request_from_dynamic(data),
+      )
+      submit_contact_domain.submit_contact(request_ctx, request)
       |> program.map(fn(_) { NoContentResponse })
     }
     public_action.SendLoginTokenAction -> {

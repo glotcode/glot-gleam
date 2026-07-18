@@ -37,6 +37,7 @@ import glot_backend/domain/cleanup/clean_login_tokens_domain
 import glot_backend/domain/cleanup/clean_run_log_domain
 import glot_backend/domain/cleanup/clean_sessions_domain
 import glot_backend/domain/cleanup/clean_user_actions_domain
+import glot_backend/domain/contact/submit_contact_domain
 import glot_backend/domain/job/job_manager_domain
 import glot_backend/domain/job/periodic_job_manager_domain
 import glot_backend/domain/run_code/get_language_version_domain
@@ -94,6 +95,7 @@ import glot_core/auth/refresh_session_dto
 import glot_core/auth/session_model
 import glot_core/auth/user_model
 import glot_core/availability_mode
+import glot_core/contact_dto
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/job/job_model
@@ -541,6 +543,11 @@ pub fn app_config_decodes_email_config_test() {
       ),
       app_config.AppConfigEntry(
         namespace: "email",
+        key: "contact_address",
+        value: "\"contact@example.com\"",
+      ),
+      app_config.AppConfigEntry(
+        namespace: "email",
         key: "default_timeout_ms",
         value: "45000",
       ),
@@ -550,6 +557,7 @@ pub fn app_config_decodes_email_config_test() {
     == dynamic_config.EmailConfig(
       from_address: "sender@example.com",
       from_name: option.Some("Sender"),
+      contact_address: option.Some("contact@example.com"),
       default_timeout_ms: 45_000,
     )
 }
@@ -561,6 +569,7 @@ pub fn app_config_uses_default_email_config_test() {
     == dynamic_config.EmailConfig(
       from_address: "glot@glot.io",
       from_name: option.Some("glot"),
+      contact_address: option.None,
       default_timeout_ms: 60_000,
     )
 }
@@ -894,6 +903,7 @@ pub fn upsert_email_config_allows_admin_role_test() {
     email_config_dto.UpsertEmailConfigRequest(
       from_address: "sender@example.com",
       from_name: option.Some("Sender"),
+      contact_address: option.Some("contact@example.com"),
       default_timeout_ms: 45_000,
     )
 
@@ -911,6 +921,7 @@ pub fn upsert_email_config_allows_admin_role_test() {
     == Ok(email_config_dto.EmailConfigResponse(
       from_address: request.from_address,
       from_name: request.from_name,
+      contact_address: request.contact_address,
       default_timeout_ms: request.default_timeout_ms,
     ))
   assert updated_db.user_action_count == 1
@@ -1202,6 +1213,61 @@ pub fn send_login_token_for_suspended_user_returns_account_state_error_test() {
       )),
     )
   assert db.write_steps == []
+}
+
+pub fn anonymous_contact_queues_email_and_audit_action_test() {
+  let user_action_id = must_uuid("00000000-0000-0000-0000-000000000541")
+  let job_id = must_uuid("00000000-0000-0000-0000-000000000542")
+  let ctx = anonymous_test_context()
+  let db = TestDb(..empty_test_db(), next_uuids: [user_action_id, job_id])
+  let request =
+    contact_dto.ContactRequest(
+      email: "visitor@example.com",
+      topic: "privacy",
+      message: "Please tell me what data you hold about me.",
+      website: "",
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      submit_contact_domain.submit_contact(
+        request_context.new(ctx, db.dynamic_config),
+        request,
+      ),
+      ctx,
+      db,
+    )
+
+  assert run_result == Ok(Nil)
+  assert dict.has_key(updated_db.jobs, uuid_key(job_id))
+  assert updated_db.user_action_count == 1
+}
+
+pub fn contact_honeypot_is_acknowledged_without_email_test() {
+  let user_action_id = must_uuid("00000000-0000-0000-0000-000000000543")
+  let ctx = anonymous_test_context()
+  let db = TestDb(..empty_test_db(), next_uuids: [user_action_id])
+  let request =
+    contact_dto.ContactRequest(
+      email: "bot@example.com",
+      topic: "general",
+      message: "Automated message",
+      website: "https://spam.example",
+    )
+
+  let #(run_result, updated_db) =
+    run_test_program(
+      submit_contact_domain.submit_contact(
+        request_context.new(ctx, db.dynamic_config),
+        request,
+      ),
+      ctx,
+      db,
+    )
+
+  assert run_result == Ok(Nil)
+  assert dict.is_empty(updated_db.jobs)
+  assert updated_db.user_action_count == 1
 }
 
 pub fn new_login_token_inherits_shared_attempt_count_test() {
@@ -2575,6 +2641,16 @@ fn default_email_templates() -> Dict(String, email_template.EmailTemplate) {
         updated_at: test_system_time(),
       ),
     ),
+    #(
+      email_template.to_db_name(email_template.ContactTemplate),
+      email_template.EmailTemplate(
+        name: email_template.ContactTemplate,
+        subject_template: "Contact form submission: {{topic}}",
+        text_body_template: "Topic: {{topic}}\nSubmitted email (not verified): {{email}}\nAuthenticated user ID: {{user_id}}\nRequest ID: {{request_id}}\n\n{{message}}",
+        html_body_template: option.None,
+        updated_at: test_system_time(),
+      ),
+    ),
   ])
 }
 
@@ -3182,7 +3258,20 @@ fn test_email_config() -> dynamic_config.EmailConfig {
   dynamic_config.EmailConfig(
     from_address: "sender@example.com",
     from_name: option.Some("Sender"),
+    contact_address: option.Some("contact@example.com"),
     default_timeout_ms: 60_000,
+  )
+}
+
+fn anonymous_test_context() -> context.Context {
+  context.Context(
+    ..test_context(),
+    client_info: context.ClientInfo(
+      session_token: option.None,
+      ip: option.Some("127.0.0.1"),
+      user_agent: option.Some("gleeunit"),
+      referrer: option.None,
+    ),
   )
 }
 

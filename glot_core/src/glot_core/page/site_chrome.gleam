@@ -17,5 +17,6 @@ pub fn view(
     top_bar.view(top_bar_model),
     content,
     footer.view(account_route: footer_account_route),
+    element.element("glot-cookie-notice", [], []),
   ])
 }

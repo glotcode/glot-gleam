@@ -72,6 +72,7 @@ pub type EmailConfig {
   EmailConfig(
     from_address: String,
     from_name: option.Option(String),
+    contact_address: option.Option(String),
     default_timeout_ms: Int,
   )
 }
@@ -260,6 +261,7 @@ fn default_email_config() -> EmailConfig {
   EmailConfig(
     from_address: "glot@glot.io",
     from_name: option.Some("glot"),
+    contact_address: option.None,
     default_timeout_ms: 60_000,
   )
 }
@@ -705,6 +707,11 @@ fn decode_email_entry(
       decode_optional_string_entry("email", entry)
       |> result.map(fn(from_name) {
         option.Some(EmailConfig(..current, from_name: from_name))
+      })
+    "contact_address" ->
+      decode_optional_string_entry("email", entry)
+      |> result.map(fn(value) {
+        option.Some(EmailConfig(..current, contact_address: value))
       })
     "default_timeout_ms" ->
       decode_int_entry("email", entry)
