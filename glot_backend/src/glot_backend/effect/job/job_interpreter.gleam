@@ -23,7 +23,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.JobEffectName(job_algebra.ListJobsEffectName),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -32,7 +32,7 @@ pub fn run(
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(job_algebra.ListJobsEffectName),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -48,7 +48,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.JobEffectName(job_algebra.SummarizeJobsEffectName),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -57,7 +57,7 @@ pub fn run(
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(job_algebra.SummarizeJobsEffectName),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -73,7 +73,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.JobEffectName(job_algebra.GetNextJobEffectName),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -82,7 +82,7 @@ pub fn run(
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(job_algebra.GetNextJobEffectName),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -100,7 +100,7 @@ pub fn run(
               effect_trace.JobEffectName(
                 job_algebra.GetExpiredRunningJobEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -111,7 +111,7 @@ pub fn run(
             effect_trace.JobEffectName(
               job_algebra.GetExpiredRunningJobEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -127,7 +127,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.JobEffectName(job_algebra.GetJobByIdEffectName),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -136,7 +136,7 @@ pub fn run(
           program_state.add_effect_measurement(
             state,
             effect_trace.JobEffectName(job_algebra.GetJobByIdEffectName),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -150,7 +150,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.JobEffectName(job_algebra.CreateJobEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -163,7 +163,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.JobEffectName(job_algebra.UpdateJobEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -176,7 +176,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.JobEffectName(job_algebra.DeleteJobEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -189,7 +189,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.JobEffectName(job_algebra.DeleteBeforeEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

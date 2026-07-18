@@ -6,6 +6,7 @@ import gleam/time/timestamp
 import gleeunit
 import glot_backend/api
 import glot_backend/app_config
+import glot_backend/cache_outcome
 import glot_backend/context
 import glot_backend/crypto_token
 import glot_backend/effect/admin_log/admin_log_handlers
@@ -80,6 +81,33 @@ pub fn measurement_aggregation_test() {
   ] = state.effect_measurements
   assert first >= 0
   assert second >= 0
+}
+
+pub fn server_timing_labels_non_effectful_time_test() {
+  assert string.starts_with(
+    server_timing.prepare([], 1_000_000),
+    "Pure;desc=\"Non-effectful\";dur=",
+  )
+}
+
+pub fn external_effect_category_is_short_test() {
+  assert effect_trace.effect_category_to_string(effect_trace.ExternalCategory)
+    == "external"
+}
+
+pub fn server_timing_formats_uuid_v7_test() {
+  let measurement =
+    effect_trace.EffectMeasurement(
+      name: effect_trace.BasicEffectName(basic_algebra.UuidV7EffectName),
+      category: effect_trace.RuntimeCategory,
+      source: option.None,
+      duration_ns: 1_000_000,
+    )
+
+  assert string.contains(
+    server_timing.prepare([measurement], 1_000_000),
+    "Runtime;desc=\"UUIDv7\";dur=",
+  )
 }
 
 pub fn measures_effects_in_success_test() {
@@ -158,13 +186,15 @@ pub fn rolled_back_transaction_effect_is_marked_test() {
         [
           effect_trace.EffectMeasurement(
             name: effect_trace.BasicEffectName(basic_algebra.NewTokenEffectName),
-            category: effect_trace.UtilEffectCategory,
+            category: effect_trace.RuntimeCategory,
+            source: option.None,
             duration_ns: 5,
           ),
         ],
         rolled_back: True,
       ),
-      category: effect_trace.DbWriteEffectCategory,
+      category: effect_trace.WriteCategory,
+      source: option.Some(effect_trace.DatabaseEffectSource),
       duration_ns: 10,
     )
 
@@ -176,7 +206,46 @@ pub fn rolled_back_transaction_effect_is_marked_test() {
   assert string.contains(encoded, "\"rolled_back\":true")
 
   let timing = server_timing.prepare([rolled_back_measurement], 10)
-  assert string.contains(timing, "TxRollback;dur=")
+  assert string.contains(timing, "Transaction;desc=\"Begin\"")
+  assert string.contains(timing, "Transaction;desc=\"Rollback\";dur=")
+}
+
+pub fn empty_transaction_server_timing_has_no_empty_entry_test() {
+  let measurement =
+    effect_trace.EffectMeasurement(
+      name: effect_trace.TransactionEffectName(
+        transaction_algebra.RunEffectName,
+        [],
+        rolled_back: False,
+      ),
+      category: effect_trace.WriteCategory,
+      source: option.Some(effect_trace.DatabaseEffectSource),
+      duration_ns: 10,
+    )
+
+  let timing = server_timing.prepare([measurement], 10)
+
+  assert !string.contains(timing, ",,")
+  assert string.contains(timing, "Transaction;desc=\"Begin\"")
+  assert string.contains(timing, "Transaction;desc=\"Commit\";dur=")
+}
+
+pub fn cache_read_effect_provenance_is_serialized_test() {
+  let measurement =
+    effect_trace.EffectMeasurement(
+      name: effect_trace.BasicEffectName(basic_algebra.NewTokenEffectName),
+      category: effect_trace.ReadCategory,
+      source: option.Some(effect_trace.CacheEffectSource(
+        cache_outcome.StaleCacheHit,
+      )),
+      duration_ns: 5,
+    )
+    |> effect_trace.encode_effect_measurement
+    |> json.to_string
+
+  assert string.contains(measurement, "\"category\":\"read\"")
+  assert string.contains(measurement, "\"source\":\"cache\"")
+  assert string.contains(measurement, "\"cache_outcome\":\"stale_hit\"")
 }
 
 pub fn api_error_status_mapping_test() {

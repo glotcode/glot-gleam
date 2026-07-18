@@ -20,7 +20,7 @@ pub type State {
     cache: cache_worker_state.Keyed(
       language_module.Language,
       run.RunResult,
-      Reply,
+      cache_worker_support.Lookup(Reply),
       Bool,
     ),
     refresh_queue: List(language_module.Language),
@@ -29,7 +29,10 @@ pub type State {
 }
 
 pub type Command {
-  Reply(reply_to: process.Subject(Reply), result: Reply)
+  Reply(
+    reply_to: process.Subject(cache_worker_support.Lookup(Reply)),
+    result: cache_worker_support.Lookup(Reply),
+  )
   StartFetch(language: language_module.Language, timeout_ms: Int)
   ScheduleTick(delay_ms: Int)
   ScheduleRefreshNext(
@@ -71,7 +74,7 @@ pub fn docker_run_configured(state: State) -> Bool {
 pub fn on_get(
   state: State,
   language: language_module.Language,
-  reply: process.Subject(Reply),
+  reply: process.Subject(cache_worker_support.Lookup(Reply)),
   now_ns: Int,
   can_fetch: Bool,
   can_update: Bool,
@@ -90,12 +93,15 @@ pub fn on_get(
     )
 
   case decision {
-    cache_worker_support.ReplyNow(result, start_refresh) -> {
+    cache_worker_support.ReplyNow(result, start_refresh, outcome) -> {
       let #(next_state, refresh_commands) = case start_refresh && can_update {
         True -> start_fetch_if_idle(state, language, True)
         False -> #(state, [])
       }
-      #(next_state, [Reply(reply, result), ..refresh_commands])
+      #(next_state, [
+        Reply(reply, cache_worker_support.Lookup(result, outcome)),
+        ..refresh_commands
+      ])
     }
     cache_worker_support.AwaitFetch(_, start_fetch_now) -> {
       let state = State(..state, cache: cache)
@@ -170,7 +176,13 @@ pub fn on_fetch_completed(
   }
 
   let waiters = cache_worker_support.fetch_outcome_waiters(fetch_outcome)
-  let reply_commands = list.map(waiters, fn(reply) { Reply(reply, result) })
+  let reply_commands =
+    list.map(waiters, fn(waiter) {
+      Reply(
+        waiter.reply_to,
+        cache_worker_support.Lookup(result, waiter.outcome),
+      )
+    })
 
   case result {
     Ok(_run_result) -> {

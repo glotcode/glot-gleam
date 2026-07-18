@@ -25,7 +25,7 @@ pub fn run(
               effect_trace.AdminLogEffectName(
                 admin_log_algebra.ListApiLogsEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -36,7 +36,7 @@ pub fn run(
             effect_trace.AdminLogEffectName(
               admin_log_algebra.ListApiLogsEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -54,7 +54,7 @@ pub fn run(
               effect_trace.AdminLogEffectName(
                 admin_log_algebra.GetApiLogEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -65,7 +65,7 @@ pub fn run(
             effect_trace.AdminLogEffectName(
               admin_log_algebra.GetApiLogEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -83,7 +83,7 @@ pub fn run(
               effect_trace.AdminLogEffectName(
                 admin_log_algebra.ListRunLogsEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -94,7 +94,7 @@ pub fn run(
             effect_trace.AdminLogEffectName(
               admin_log_algebra.ListRunLogsEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -112,7 +112,7 @@ pub fn run(
               effect_trace.AdminLogEffectName(
                 admin_log_algebra.GetRunLogEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -123,7 +123,7 @@ pub fn run(
             effect_trace.AdminLogEffectName(
               admin_log_algebra.GetRunLogEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -141,7 +141,7 @@ pub fn run(
               effect_trace.AdminLogEffectName(
                 admin_log_algebra.ListJobLogsEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -152,7 +152,7 @@ pub fn run(
             effect_trace.AdminLogEffectName(
               admin_log_algebra.ListJobLogsEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -170,7 +170,7 @@ pub fn run(
               effect_trace.AdminLogEffectName(
                 admin_log_algebra.GetJobLogEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -181,7 +181,7 @@ pub fn run(
             effect_trace.AdminLogEffectName(
               admin_log_algebra.GetJobLogEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )

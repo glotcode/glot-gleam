@@ -37,13 +37,14 @@ pub fn add_debug_fields(state: State, fields: log.Fields) -> State {
 pub fn add_effect_measurement(
   state: State,
   name: effect_trace.EffectName,
-  category: effect_trace.EffectCategory,
+  kind: effect_trace.EffectKind,
   started_at_ns: Int,
 ) -> State {
   let duration_ns = int.max(erlang.perf_counter_ns() - started_at_ns, 0)
+  let #(category, source) = effect_trace.effect_kind_details(kind)
 
   State(..state, effect_measurements: [
-    effect_trace.EffectMeasurement(name:, category:, duration_ns:),
+    effect_trace.EffectMeasurement(name:, category:, source:, duration_ns:),
     ..state.effect_measurements
   ])
 }

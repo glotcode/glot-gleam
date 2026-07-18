@@ -11,6 +11,7 @@ import glot_backend/erlang
 import glot_backend/helpers/db_helpers
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker/core
+import glot_backend/worker/cache_worker_support
 import pog
 import wisp
 
@@ -19,12 +20,16 @@ const call_timeout_ms = 5000
 pub type Message {
   GetConfig(
     reply: process.Subject(
-      Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+      cache_worker_support.Lookup(
+        Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+      ),
     ),
   )
   Refresh(
     reply: process.Subject(
-      Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+      cache_worker_support.Lookup(
+        Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+      ),
     ),
   )
   Tick
@@ -105,13 +110,24 @@ pub fn supervised(
 pub fn get_config(
   subject: process.Subject(Message),
 ) -> Result(dynamic_config.DynamicConfig, db_error.DbQueryError) {
+  let cache_worker_support.Lookup(value:, ..) = lookup_config(subject)
+  value
+}
+
+pub fn lookup_config(
+  subject: process.Subject(Message),
+) -> cache_worker_support.Lookup(
+  Result(dynamic_config.DynamicConfig, db_error.DbQueryError),
+) {
   process.call(subject, call_timeout_ms, GetConfig)
 }
 
 pub fn refresh(
   subject: process.Subject(Message),
 ) -> Result(dynamic_config.DynamicConfig, db_error.DbQueryError) {
-  process.call(subject, call_timeout_ms, Refresh)
+  let cache_worker_support.Lookup(value:, ..) =
+    process.call(subject, call_timeout_ms, Refresh)
+  value
 }
 
 fn handle_message(

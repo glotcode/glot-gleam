@@ -26,7 +26,7 @@ pub fn run(
               effect_trace.EmailTemplateEffectName(
                 email_template_algebra.ListEmailTemplatesEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -37,7 +37,7 @@ pub fn run(
             effect_trace.EmailTemplateEffectName(
               email_template_algebra.ListEmailTemplatesEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -56,7 +56,7 @@ pub fn run(
               effect_trace.EmailTemplateEffectName(
                 email_template_algebra.GetEmailTemplateByNameEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -67,7 +67,7 @@ pub fn run(
             effect_trace.EmailTemplateEffectName(
               email_template_algebra.GetEmailTemplateByNameEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -86,7 +86,7 @@ pub fn run(
               effect_trace.EmailTemplateEffectName(
                 email_template_algebra.UpdateEmailTemplateEffectName,
               ),
-              effect_trace.DbWriteEffectCategory,
+              effect_trace.DatabaseWriteEffect,
               started_at,
             ),
           )
@@ -97,7 +97,7 @@ pub fn run(
             effect_trace.EmailTemplateEffectName(
               email_template_algebra.UpdateEmailTemplateEffectName,
             ),
-            effect_trace.DbWriteEffectCategory,
+            effect_trace.DatabaseWriteEffect,
             started_at,
           ),
         )

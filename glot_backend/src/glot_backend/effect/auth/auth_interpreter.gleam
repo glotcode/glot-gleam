@@ -25,7 +25,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.AuthEffectName(auth_algebra.GetUserByEmailEffectName),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -34,7 +34,7 @@ pub fn run(
           program_state.add_effect_measurement(
             state,
             effect_trace.AuthEffectName(auth_algebra.GetUserByEmailEffectName),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -50,7 +50,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.AuthEffectName(auth_algebra.GetUserByIdEffectName),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -59,7 +59,7 @@ pub fn run(
           program_state.add_effect_measurement(
             state,
             effect_trace.AuthEffectName(auth_algebra.GetUserByIdEffectName),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -76,7 +76,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.AuthEffectName(auth_algebra.ListUsersEffectName),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -85,7 +85,7 @@ pub fn run(
           program_state.add_effect_measurement(
             state,
             effect_trace.AuthEffectName(auth_algebra.ListUsersEffectName),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -104,7 +104,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.ListLoginTokensByEmailEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -115,7 +115,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.ListLoginTokensByEmailEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -134,7 +134,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.GetPasskeyCredentialByCredentialIdEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -145,7 +145,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.GetPasskeyCredentialByCredentialIdEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -163,7 +163,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.ListPasskeyCredentialsByUserIdEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -174,7 +174,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.ListPasskeyCredentialsByUserIdEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -202,7 +202,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.ListSessionsByUserIdEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -213,7 +213,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.ListSessionsByUserIdEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -231,7 +231,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.GetPasskeyChallengeByIdEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -242,7 +242,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.GetPasskeyChallengeByIdEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -261,7 +261,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.GetSessionByTokenEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -272,7 +272,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.GetSessionByTokenEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -290,7 +290,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.GetSessionByTokenForUpdateEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -301,7 +301,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.GetSessionByTokenForUpdateEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -320,7 +320,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.GetSessionByPreviousTokenEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -331,7 +331,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.GetSessionByPreviousTokenEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -349,7 +349,7 @@ pub fn run(
               effect_trace.AuthEffectName(
                 auth_algebra.GetSessionByPreviousTokenForUpdateEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -360,7 +360,7 @@ pub fn run(
             effect_trace.AuthEffectName(
               auth_algebra.GetSessionByPreviousTokenForUpdateEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -374,7 +374,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.CreateUserEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -387,7 +387,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.CreateAccountEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -400,7 +400,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.UpdateAccountEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -413,7 +413,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.UpdateUserEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -428,7 +428,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.DeleteSessionsByAccountIdEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -451,7 +451,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.DeleteExpiredSessionsEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -466,7 +466,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.DeleteUsersByAccountIdEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -479,7 +479,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.DeleteAccountEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -492,7 +492,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.CreateSessionEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -505,7 +505,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.UpdateSessionEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -518,7 +518,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.DeleteSessionEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -531,7 +531,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.CreateLoginTokenEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -549,7 +549,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.CreatePasskeyCredentialEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -567,7 +567,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.CreatePasskeyChallengeEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -582,7 +582,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.DeletePasskeyCredentialEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -595,7 +595,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.AuthEffectName(auth_algebra.UpdateLoginTokenEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -613,7 +613,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.UpdatePasskeyCredentialEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -628,7 +628,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.DeleteLoginTokensBeforeEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -643,7 +643,7 @@ pub fn run(
           effect_trace.AuthEffectName(
             auth_algebra.DeletePasskeyChallengeEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

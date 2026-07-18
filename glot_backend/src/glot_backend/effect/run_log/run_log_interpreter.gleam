@@ -21,7 +21,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.RunLogEffectName(run_log_algebra.CreateRunLogEffectName),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -36,7 +36,7 @@ pub fn run(
           effect_trace.RunLogEffectName(
             run_log_algebra.DeleteRunLogBeforeEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

@@ -39,7 +39,7 @@ pub fn run(
             transaction_state.effect_measurements,
             rolled_back: result.is_error(transaction_result),
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         )
 

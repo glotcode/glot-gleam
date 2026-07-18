@@ -30,7 +30,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.BasicEffectName(basic_algebra.NewTokenEffectName),
-          effect_trace.UtilEffectCategory,
+          effect_trace.RuntimeEffect,
           started_at,
         ),
       )
@@ -43,7 +43,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.BasicEffectName(basic_algebra.SystemTimeEffectName),
-          effect_trace.UtilEffectCategory,
+          effect_trace.RuntimeEffect,
           started_at,
         ),
       )
@@ -56,7 +56,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.BasicEffectName(basic_algebra.UuidV7EffectName),
-          effect_trace.UtilEffectCategory,
+          effect_trace.RuntimeEffect,
           started_at,
         ),
       )
@@ -71,7 +71,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.BasicEffectName(basic_algebra.LogEffectName(level)),
-              effect_trace.LogEffectCategory,
+              effect_trace.LogEffect,
               started_at,
             ),
           )
@@ -84,7 +84,7 @@ pub fn run(
             program_state.add_effect_measurement(
               state,
               effect_trace.BasicEffectName(basic_algebra.LogEffectName(level)),
-              effect_trace.LogEffectCategory,
+              effect_trace.LogEffect,
               started_at,
             ),
           )
@@ -101,7 +101,7 @@ pub fn run(
                   effect_trace.BasicEffectName(basic_algebra.LogEffectName(
                     level,
                   )),
-                  effect_trace.LogEffectCategory,
+                  effect_trace.LogEffect,
                   started_at,
                 ),
               )

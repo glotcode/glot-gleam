@@ -2,24 +2,33 @@ import gleam/dict
 import gleam/erlang/process
 import gleam/list
 import gleam/option
+import glot_backend/cache_outcome.{type CacheOutcome}
+
+pub type Lookup(value) {
+  Lookup(value: value, outcome: CacheOutcome)
+}
 
 pub type CacheEntry(value) {
   CacheEntry(value: value, refreshed_at_ns: Int)
 }
 
+pub type Waiter(reply) {
+  Waiter(reply_to: process.Subject(reply), outcome: CacheOutcome)
+}
+
 pub type InFlight(reply, meta) {
-  InFlight(waiters: List(process.Subject(reply)), meta: meta)
+  InFlight(waiters: List(Waiter(reply)), meta: meta)
 }
 
 pub type LookupDecision(reply, immediate, meta) {
-  ReplyNow(immediate: immediate, start_refresh: Bool)
+  ReplyNow(immediate: immediate, start_refresh: Bool, outcome: CacheOutcome)
   AwaitFetch(in_flight: InFlight(reply, meta), start_fetch: Bool)
 }
 
 pub type FetchOutcome(value, reply, err) {
   FetchOutcome(
     cache_entry: option.Option(CacheEntry(value)),
-    waiters: List(process.Subject(reply)),
+    waiters: List(Waiter(reply)),
     error: option.Option(err),
   )
 }
@@ -32,7 +41,18 @@ pub fn with_waiter(
   in_flight: InFlight(reply, meta),
   reply: process.Subject(reply),
 ) -> InFlight(reply, meta) {
-  InFlight(waiters: [reply, ..in_flight.waiters], meta: in_flight.meta)
+  with_waiter_outcome(in_flight, reply, cache_outcome.CacheMissJoined)
+}
+
+fn with_waiter_outcome(
+  in_flight: InFlight(reply, meta),
+  reply: process.Subject(reply),
+  outcome: CacheOutcome,
+) -> InFlight(reply, meta) {
+  InFlight(
+    waiters: [Waiter(reply_to: reply, outcome: outcome), ..in_flight.waiters],
+    meta: in_flight.meta,
+  )
 }
 
 pub fn ensure_in_flight(
@@ -53,8 +73,15 @@ pub fn ensure_in_flight_with_waiter(
   let #(next_in_flight, should_start_fetch) =
     ensure_in_flight(in_flight, default_meta)
 
+  let outcome = case should_start_fetch {
+    True -> cache_outcome.CacheMissFetched
+    False -> cache_outcome.CacheMissJoined
+  }
+
   #(
-    option.map(next_in_flight, fn(in_flight) { with_waiter(in_flight, reply) }),
+    option.map(next_in_flight, fn(in_flight) {
+      with_waiter_outcome(in_flight, reply, outcome)
+    }),
     should_start_fetch,
   )
 }
@@ -88,11 +115,8 @@ pub fn put_keyed_in_flight(
   dict.insert(in_flights, key, in_flight)
 }
 
-pub fn reply_waiters(
-  waiters: List(process.Subject(reply)),
-  result: reply,
-) -> Nil {
-  list.each(waiters, fn(reply) { process.send(reply, result) })
+pub fn reply_waiters(waiters: List(Waiter(reply)), result: reply) -> Nil {
+  list.each(waiters, fn(waiter) { process.send(waiter.reply_to, result) })
 }
 
 pub fn single_lookup(
@@ -107,24 +131,38 @@ pub fn single_lookup(
   default_meta: meta,
 ) -> LookupDecision(reply, immediate, meta) {
   case cache_entry {
-    option.Some(entry) ->
+    option.Some(entry) -> {
+      let stale = is_stale(entry, now_ns, refresh_interval_ms)
       ReplyNow(
         immediate: on_cache_hit(entry.value),
-        start_refresh: is_stale(entry, now_ns, refresh_interval_ms),
+        start_refresh: stale,
+        outcome: case stale {
+          True -> cache_outcome.StaleCacheHit
+          False -> cache_outcome.CacheHit
+        },
       )
+    }
     option.None ->
       case in_flight {
         option.Some(in_flight) ->
-          AwaitFetch(with_waiter(in_flight, reply), start_fetch: False)
+          AwaitFetch(
+            with_waiter_outcome(in_flight, reply, cache_outcome.CacheMissJoined),
+            start_fetch: False,
+          )
         option.None ->
           case can_fetch {
             True ->
               AwaitFetch(
                 new_in_flight(default_meta)
-                  |> with_waiter(reply),
+                  |> with_waiter_outcome(reply, cache_outcome.CacheMissFetched),
                 start_fetch: True,
               )
-            False -> ReplyNow(on_miss_unavailable, start_refresh: False)
+            False ->
+              ReplyNow(
+                on_miss_unavailable,
+                start_refresh: False,
+                outcome: cache_outcome.CacheUnavailable,
+              )
           }
       }
   }
@@ -207,7 +245,7 @@ pub fn finish_keyed_fetch(
 
 pub fn fetch_outcome_waiters(
   outcome: FetchOutcome(value, reply, err),
-) -> List(process.Subject(reply)) {
+) -> List(Waiter(reply)) {
   outcome.waiters
 }
 

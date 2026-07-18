@@ -13,6 +13,8 @@ type EffectTableRow {
   EffectTableRow(
     name: String,
     category: String,
+    source: option.Option(String),
+    cache_outcome: option.Option(String),
     duration_ns: option.Option(Int),
     is_rollback: Bool,
   )
@@ -46,7 +48,14 @@ fn effects_table(
 }
 
 fn effect_row(row: EffectTableRow) -> Element(msg) {
-  let EffectTableRow(name:, category:, duration_ns:, is_rollback:) = row
+  let EffectTableRow(
+    name:,
+    category:,
+    source:,
+    cache_outcome:,
+    duration_ns:,
+    is_rollback:,
+  ) = row
   let extra_attributes = case is_rollback {
     True -> [attribute.class("admin-table__row--rollback")]
     False -> []
@@ -55,6 +64,12 @@ fn effect_row(row: EffectTableRow) -> Element(msg) {
   admin_table.row_with(extra_attributes, [
     admin_table.cell(name_column(), [admin_table.primary_value(name)]),
     admin_table.cell(category_column(), [admin_table.value(category)]),
+    admin_table.cell(source_column(), [
+      admin_table.value(option.unwrap(source, "-")),
+    ]),
+    admin_table.cell(cache_outcome_column(), [
+      admin_table.value(option.unwrap(cache_outcome, "-")),
+    ]),
     admin_table.cell(duration_column(), [
       html.text(optional_duration_label(duration_ns)),
     ]),
@@ -62,7 +77,13 @@ fn effect_row(row: EffectTableRow) -> Element(msg) {
 }
 
 fn effect_columns() -> List(admin_table.Column) {
-  [name_column(), category_column(), duration_column()]
+  [
+    name_column(),
+    category_column(),
+    source_column(),
+    cache_outcome_column(),
+    duration_column(),
+  ]
 }
 
 fn name_column() -> admin_table.Column {
@@ -71,6 +92,14 @@ fn name_column() -> admin_table.Column {
 
 fn category_column() -> admin_table.Column {
   admin_table.column("Category")
+}
+
+fn source_column() -> admin_table.Column {
+  admin_table.column("Source")
+}
+
+fn cache_outcome_column() -> admin_table.Column {
+  admin_table.column("Cache outcome")
 }
 
 fn duration_column() -> admin_table.Column {
@@ -111,6 +140,8 @@ fn effect_rows_for_measurement(
         EffectTableRow(
           name: "tx_begin",
           category: effect_measurement.category,
+          source: effect_measurement.source,
+          cache_outcome: effect_measurement.cache_outcome,
           duration_ns: option.None,
           is_rollback: False,
         )
@@ -119,6 +150,8 @@ fn effect_rows_for_measurement(
         EffectTableRow(
           name: end_name,
           category: effect_measurement.category,
+          source: effect_measurement.source,
+          cache_outcome: effect_measurement.cache_outcome,
           duration_ns: option.Some(tx_duration_ns),
           is_rollback: rolled_back,
         )
@@ -130,6 +163,8 @@ fn effect_rows_for_measurement(
       EffectTableRow(
         name: effect_measurement.name,
         category: effect_measurement.category,
+        source: effect_measurement.source,
+        cache_outcome: effect_measurement.cache_outcome,
         duration_ns: option.Some(effect_measurement.duration_ns),
         is_rollback: False,
       ),

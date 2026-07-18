@@ -50,7 +50,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.EmailEffectName(email_algebra.SendEmailEffectName),
-          effect_trace.EmailEffectCategory,
+          effect_trace.EmailCallEffect,
           started_at,
         ),
       )

@@ -36,7 +36,7 @@ pub fn run(
           effect_trace.WebauthnEffectName(
             webauthn_algebra.NewRegistrationChallengeEffectName,
           ),
-          effect_trace.UtilEffectCategory,
+          effect_trace.RuntimeEffect,
           started_at,
         ),
       )
@@ -59,7 +59,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.WebauthnEffectName(webauthn_algebra.RegisterEffectName),
-          effect_trace.UtilEffectCategory,
+          effect_trace.RuntimeEffect,
           started_at,
         ),
       )
@@ -86,7 +86,7 @@ pub fn run(
           effect_trace.WebauthnEffectName(
             webauthn_algebra.NewAuthenticationChallengeEffectName,
           ),
-          effect_trace.UtilEffectCategory,
+          effect_trace.RuntimeEffect,
           started_at,
         ),
       )
@@ -117,7 +117,7 @@ pub fn run(
           effect_trace.WebauthnEffectName(
             webauthn_algebra.AuthenticateEffectName,
           ),
-          effect_trace.UtilEffectCategory,
+          effect_trace.RuntimeEffect,
           started_at,
         ),
       )

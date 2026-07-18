@@ -25,7 +25,7 @@ pub fn run(
               effect_trace.UserActionEffectName(
                 user_action_algebra.CountUserActionsEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -36,7 +36,7 @@ pub fn run(
             effect_trace.UserActionEffectName(
               user_action_algebra.CountUserActionsEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -52,7 +52,7 @@ pub fn run(
           effect_trace.UserActionEffectName(
             user_action_algebra.CreateUserActionEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -67,7 +67,7 @@ pub fn run(
           effect_trace.UserActionEffectName(
             user_action_algebra.DeleteBeforeEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

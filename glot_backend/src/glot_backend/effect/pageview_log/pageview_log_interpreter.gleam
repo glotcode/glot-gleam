@@ -23,7 +23,7 @@ pub fn run(
           effect_trace.PageviewLogEffectName(
             pageview_log_algebra.DeletePageviewLogBeforeEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

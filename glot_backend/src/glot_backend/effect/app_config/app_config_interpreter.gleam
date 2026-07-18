@@ -11,6 +11,7 @@ import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/cache_worker_support
 import glot_core/availability_mode
 import glot_core/public_action
 
@@ -24,14 +25,20 @@ pub fn run(
   case effect {
     app_config_algebra.GetDynamicConfig(next:) -> {
       let started_at = erlang.perf_counter_ns()
-      let result = case runtime.app_config_cache_subject {
-        option.Some(subject) -> app_config_cache_worker.get_config(subject)
-        option.None ->
+      let #(result, category) = case runtime.app_config_cache_subject {
+        option.Some(subject) -> {
+          let cache_worker_support.Lookup(value: result, outcome:) =
+            app_config_cache_worker.lookup_config(subject)
+          #(result, effect_trace.CacheReadEffect(outcome))
+        }
+        option.None -> #(
           runtime.handlers.app_config.list_entries()
-          |> result.try(fn(entries) {
-            dynamic_config.from_entries(entries)
-            |> result.map_error(db_error.DbQueryError)
-          })
+            |> result.try(fn(entries) {
+              dynamic_config.from_entries(entries)
+              |> result.map_error(db_error.DbQueryError)
+            }),
+          effect_trace.DatabaseReadEffect,
+        )
       }
 
       continue(
@@ -41,7 +48,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.GetDynamicConfigEffectName,
           ),
-          effect_trace.DbReadEffectCategory,
+          category,
           started_at,
         ),
       )
@@ -65,7 +72,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertDebugConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -112,7 +119,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertAvailabilityConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -193,7 +200,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertAuthConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -235,7 +242,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertPasskeyConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -322,7 +329,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertCleanupConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -364,7 +371,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertLogWorkerConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -419,7 +426,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertLanguageVersionCacheWorkerConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -448,7 +455,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertRateLimitPolicyEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -490,7 +497,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertDockerRunConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -523,7 +530,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertCloudflareConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -565,7 +572,7 @@ pub fn run(
           effect_trace.AppConfigEffectName(
             app_config_algebra.UpsertEmailConfigEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

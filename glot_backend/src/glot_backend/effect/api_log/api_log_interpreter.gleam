@@ -23,7 +23,7 @@ pub fn run(
           effect_trace.ApiLogEffectName(
             api_log_algebra.DeleteApiLogBeforeEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

@@ -5,6 +5,7 @@ import gleam/option
 import gleam/regexp
 import gleam/time/timestamp
 import gleeunit
+import glot_backend/cache_outcome
 import glot_backend/context
 import glot_backend/dynamic_config
 import glot_backend/effect/error/run_request_error
@@ -266,7 +267,10 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
 
   run_core_commands(commands)
   assert process.receive_forever(waiter)
-    == Error(run_request_error.ServerRunRequestError)
+    == cache_worker_support.Lookup(
+      Error(run_request_error.ServerRunRequestError),
+      cache_outcome.CacheMissJoined,
+    )
   let language_version_cache_worker_core.State(cache:, refresh_language:, ..) =
     next_state
   assert dict.size(cache_worker_state.keyed_cache_entries(cache)) == 1

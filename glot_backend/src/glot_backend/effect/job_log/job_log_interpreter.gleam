@@ -23,7 +23,7 @@ pub fn run(
           effect_trace.JobLogEffectName(
             job_log_algebra.DeleteJobLogBeforeEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

@@ -25,7 +25,7 @@ pub fn run(
               effect_trace.JobTypePolicyEffectName(
                 job_type_policy_algebra.ListJobTypePoliciesEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -36,7 +36,7 @@ pub fn run(
             effect_trace.JobTypePolicyEffectName(
               job_type_policy_algebra.ListJobTypePoliciesEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -55,7 +55,7 @@ pub fn run(
               effect_trace.JobTypePolicyEffectName(
                 job_type_policy_algebra.GetJobTypePolicyByJobTypeEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -66,7 +66,7 @@ pub fn run(
             effect_trace.JobTypePolicyEffectName(
               job_type_policy_algebra.GetJobTypePolicyByJobTypeEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -84,7 +84,7 @@ pub fn run(
               effect_trace.JobTypePolicyEffectName(
                 job_type_policy_algebra.UpsertJobTypePolicyEffectName,
               ),
-              effect_trace.DbWriteEffectCategory,
+              effect_trace.DatabaseWriteEffect,
               started_at,
             ),
           )
@@ -95,7 +95,7 @@ pub fn run(
             effect_trace.JobTypePolicyEffectName(
               job_type_policy_algebra.UpsertJobTypePolicyEffectName,
             ),
-            effect_trace.DbWriteEffectCategory,
+            effect_trace.DatabaseWriteEffect,
             started_at,
           ),
         )

@@ -23,7 +23,7 @@ pub fn run(
           effect_trace.SnippetEffectName(
             snippet_algebra.GetSnippetByIdEffectName,
           ),
-          effect_trace.DbReadEffectCategory,
+          effect_trace.DatabaseReadEffect,
           started_at,
         ),
       )
@@ -38,7 +38,7 @@ pub fn run(
           effect_trace.SnippetEffectName(
             snippet_algebra.GetSnippetBySlugEffectName,
           ),
-          effect_trace.DbReadEffectCategory,
+          effect_trace.DatabaseReadEffect,
           started_at,
         ),
       )
@@ -53,7 +53,7 @@ pub fn run(
           effect_trace.SnippetEffectName(
             snippet_algebra.GetAdminSnippetBySlugEffectName,
           ),
-          effect_trace.DbReadEffectCategory,
+          effect_trace.DatabaseReadEffect,
           started_at,
         ),
       )
@@ -66,7 +66,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.SnippetEffectName(snippet_algebra.ListSnippetsEffectName),
-          effect_trace.DbReadEffectCategory,
+          effect_trace.DatabaseReadEffect,
           started_at,
         ),
       )
@@ -81,7 +81,7 @@ pub fn run(
           effect_trace.SnippetEffectName(
             snippet_algebra.ListAdminSnippetsEffectName,
           ),
-          effect_trace.DbReadEffectCategory,
+          effect_trace.DatabaseReadEffect,
           started_at,
         ),
       )
@@ -96,7 +96,7 @@ pub fn run(
           effect_trace.SnippetEffectName(
             snippet_algebra.DeleteSnippetEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -111,7 +111,7 @@ pub fn run(
           effect_trace.SnippetEffectName(
             snippet_algebra.DeleteSnippetsByAccountIdEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -126,7 +126,7 @@ pub fn run(
           effect_trace.SnippetEffectName(
             snippet_algebra.CreateSnippetEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -141,7 +141,7 @@ pub fn run(
           effect_trace.SnippetEffectName(
             snippet_algebra.UpdateSnippetEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

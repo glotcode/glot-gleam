@@ -6,6 +6,7 @@ import glot_core/admin_action
 import glot_core/api_action
 import glot_core/auth/account_model
 import glot_core/auth/user_model
+import glot_core/effect_trace_dto
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
@@ -25,6 +26,27 @@ pub fn new_slug_test() {
     timestamp.from_unix_seconds_and_nanoseconds(1_775_312_436, 567_890_000)
 
   assert snippet_model.new_slug(ts) == "hhan9vius2"
+}
+
+pub fn effect_trace_decoder_accepts_legacy_measurements_test() {
+  let json =
+    "{\"effects\":[{\"category\":\"db_read\",\"name\":\"get_dynamic_config\",\"duration_ns\":5}]}"
+  let assert option.Some(effect_trace_dto.EffectTraceResponse(effects: [effect])) =
+    effect_trace_dto.from_json_string(option.Some(json))
+
+  assert effect.source == option.None
+  assert effect.cache_outcome == option.None
+}
+
+pub fn effect_trace_decoder_reads_structured_provenance_test() {
+  let json =
+    "{\"effects\":[{\"category\":\"read\",\"name\":\"get_dynamic_config\",\"source\":\"cache\",\"cache_outcome\":\"hit\",\"duration_ns\":5}]}"
+  let assert option.Some(effect_trace_dto.EffectTraceResponse(effects: [effect])) =
+    effect_trace_dto.from_json_string(option.Some(json))
+
+  assert effect.category == "read"
+  assert effect.source == option.Some("cache")
+  assert effect.cache_outcome == option.Some("hit")
 }
 
 pub fn new_slug_truncates_to_microseconds_test() {

@@ -53,9 +53,9 @@ pub fn single_lookup(
       default_meta,
     )
   {
-    cache_worker_support.ReplyNow(immediate, start_refresh) -> #(
+    cache_worker_support.ReplyNow(immediate, start_refresh, outcome) -> #(
       state,
-      cache_worker_support.ReplyNow(immediate, start_refresh),
+      cache_worker_support.ReplyNow(immediate, start_refresh, outcome),
     )
     cache_worker_support.AwaitFetch(in_flight, start_fetch) -> #(
       Single(..state, in_flight: option.Some(in_flight)),
@@ -94,9 +94,9 @@ pub fn keyed_lookup(
       default_meta,
     )
   {
-    cache_worker_support.ReplyNow(immediate, start_refresh) -> #(
+    cache_worker_support.ReplyNow(immediate, start_refresh, outcome) -> #(
       state,
-      cache_worker_support.ReplyNow(immediate, start_refresh),
+      cache_worker_support.ReplyNow(immediate, start_refresh, outcome),
     )
     cache_worker_support.AwaitFetch(in_flight, start_fetch) -> {
       let next_state =

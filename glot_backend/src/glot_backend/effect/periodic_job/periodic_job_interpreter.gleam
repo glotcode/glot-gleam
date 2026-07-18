@@ -25,7 +25,7 @@ pub fn run(
               effect_trace.PeriodicJobEffectName(
                 periodic_job_algebra.ListPeriodicJobsEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -36,7 +36,7 @@ pub fn run(
             effect_trace.PeriodicJobEffectName(
               periodic_job_algebra.ListPeriodicJobsEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -54,7 +54,7 @@ pub fn run(
               effect_trace.PeriodicJobEffectName(
                 periodic_job_algebra.GetNextPeriodicJobEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -65,7 +65,7 @@ pub fn run(
             effect_trace.PeriodicJobEffectName(
               periodic_job_algebra.GetNextPeriodicJobEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -83,7 +83,7 @@ pub fn run(
               effect_trace.PeriodicJobEffectName(
                 periodic_job_algebra.GetPeriodicJobByIdEffectName,
               ),
-              effect_trace.DbReadEffectCategory,
+              effect_trace.DatabaseReadEffect,
               started_at,
             ),
           )
@@ -94,7 +94,7 @@ pub fn run(
             effect_trace.PeriodicJobEffectName(
               periodic_job_algebra.GetPeriodicJobByIdEffectName,
             ),
-            effect_trace.DbReadEffectCategory,
+            effect_trace.DatabaseReadEffect,
             started_at,
           ),
         )
@@ -110,7 +110,7 @@ pub fn run(
           effect_trace.PeriodicJobEffectName(
             periodic_job_algebra.CreatePeriodicJobEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -125,7 +125,7 @@ pub fn run(
           effect_trace.PeriodicJobEffectName(
             periodic_job_algebra.UpdatePeriodicJobEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

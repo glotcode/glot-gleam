@@ -23,7 +23,7 @@ pub fn run(
           effect_trace.AnalyticsEffectName(
             analytics_algebra.GetMaxCompletedMetricsDayEffectName,
           ),
-          effect_trace.DbReadEffectCategory,
+          effect_trace.DatabaseReadEffect,
           started_at,
         ),
       )
@@ -38,7 +38,7 @@ pub fn run(
           effect_trace.AnalyticsEffectName(
             analytics_algebra.GetFirstMetricsSourceDayEffectName,
           ),
-          effect_trace.DbReadEffectCategory,
+          effect_trace.DatabaseReadEffect,
           started_at,
         ),
       )
@@ -53,7 +53,7 @@ pub fn run(
           effect_trace.AnalyticsEffectName(
             analytics_algebra.InsertMetricsPageviewDayEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -68,7 +68,7 @@ pub fn run(
           effect_trace.AnalyticsEffectName(
             analytics_algebra.InsertMetricsProductEventDayEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -83,7 +83,7 @@ pub fn run(
           effect_trace.AnalyticsEffectName(
             analytics_algebra.InsertMetricsRunDayEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -98,7 +98,7 @@ pub fn run(
           effect_trace.AnalyticsEffectName(
             analytics_algebra.InsertMetricsReliabilityPageDayEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -113,7 +113,7 @@ pub fn run(
           effect_trace.AnalyticsEffectName(
             analytics_algebra.InsertMetricsReliabilityApiDayEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )
@@ -128,7 +128,7 @@ pub fn run(
           effect_trace.AnalyticsEffectName(
             analytics_algebra.InsertMetricsCompletedDayEffectName,
           ),
-          effect_trace.DbWriteEffectCategory,
+          effect_trace.DatabaseWriteEffect,
           started_at,
         ),
       )

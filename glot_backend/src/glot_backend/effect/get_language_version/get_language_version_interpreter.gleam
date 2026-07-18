@@ -7,6 +7,7 @@ import glot_backend/effect/program_state
 import glot_backend/effect/program_types
 import glot_backend/effect/runtime
 import glot_backend/erlang
+import glot_backend/worker/cache_worker_support
 import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
 import glot_core/language
 import glot_core/run
@@ -29,10 +30,18 @@ pub fn run(
       next,
     ) -> {
       let started_at = erlang.perf_counter_ns()
-      let run_result = case runtime.language_version_cache_subject {
-        option.Some(subject) ->
-          language_version_cache_worker.get_language_version(subject, language)
-        option.None ->
+      let #(run_result, category) = case
+        runtime.language_version_cache_subject
+      {
+        option.Some(subject) -> {
+          let cache_worker_support.Lookup(value: run_result, outcome:) =
+            language_version_cache_worker.lookup_language_version(
+              subject,
+              language,
+            )
+          #(run_result, effect_trace.CacheReadEffect(outcome))
+        }
+        option.None -> #(
           case docker_run_config {
             option.Some(docker_run) ->
               runtime.handlers.docker_run.run_code(
@@ -47,7 +56,9 @@ pub fn run(
               wisp.log_error("Missing docker_run app_config")
               Error(run_request_error.ServerRunRequestError)
             }
-          }
+          },
+          effect_trace.DockerCallEffect,
+        )
       }
 
       continue(
@@ -57,7 +68,7 @@ pub fn run(
           effect_trace.GetLanguageVersionEffectName(
             get_language_version_algebra.GetLanguageVersionEffectName,
           ),
-          effect_trace.DockerRunEffectCategory,
+          category,
           started_at,
         ),
       )

@@ -13,6 +13,7 @@ import glot_backend/effect/error/run_request_error
 import glot_backend/erlang
 import glot_backend/server_mode
 import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
+import glot_backend/worker/cache_worker_support
 import glot_backend/worker/language_version_cache_worker/core
 import glot_core/language as language_module
 import glot_core/run
@@ -24,7 +25,9 @@ pub type Message {
   GetLanguageVersion(
     language: language_module.Language,
     reply: process.Subject(
-      Result(run.RunResult, run_request_error.RunRequestError),
+      cache_worker_support.Lookup(
+        Result(run.RunResult, run_request_error.RunRequestError),
+      ),
     ),
   )
   RefreshConfig
@@ -117,6 +120,17 @@ pub fn get_language_version(
   subject: process.Subject(Message),
   language: language_module.Language,
 ) -> Result(run.RunResult, run_request_error.RunRequestError) {
+  let cache_worker_support.Lookup(value:, ..) =
+    lookup_language_version(subject, language)
+  value
+}
+
+pub fn lookup_language_version(
+  subject: process.Subject(Message),
+  language: language_module.Language,
+) -> cache_worker_support.Lookup(
+  Result(run.RunResult, run_request_error.RunRequestError),
+) {
   process.call(subject, call_timeout_ms, fn(reply) {
     GetLanguageVersion(language:, reply:)
   })
@@ -125,7 +139,7 @@ pub fn get_language_version(
 fn default_deps() -> Deps {
   Deps(
     fetch_language_version: fetch_language_version,
-    get_config: app_config_cache_worker.get_config,
+    get_config: get_config,
     now_ns: erlang.perf_counter_ns,
     supported_languages: language_module.list,
   )
@@ -178,7 +192,7 @@ fn fetch_language_version(
   language: language_module.Language,
   timeout_ms: Int,
 ) -> Result(run.RunResult, run_request_error.RunRequestError) {
-  app_config_cache_worker.get_config(app_config_cache_subject)
+  get_config(app_config_cache_subject)
   |> result.map_error(map_query_error)
   |> result.try(fn(config) {
     case dynamic_config.docker_run_config(config) {
@@ -194,6 +208,12 @@ fn fetch_language_version(
       }
     }
   })
+}
+
+fn get_config(
+  subject: process.Subject(app_config_cache_worker.Message),
+) -> Result(dynamic_config.DynamicConfig, db_error.DbQueryError) {
+  app_config_cache_worker.get_config(subject)
 }
 
 fn run_request(language: language_module.Language) -> run.RunRequest {

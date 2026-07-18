@@ -12,14 +12,21 @@ pub type Reply =
 
 pub type State {
   State(
-    cache: cache_worker_state.Single(dynamic_config.DynamicConfig, Reply, Nil),
+    cache: cache_worker_state.Single(
+      dynamic_config.DynamicConfig,
+      cache_worker_support.Lookup(Reply),
+      Nil,
+    ),
   )
 }
 
 pub type Command {
   ScheduleTick(delay_ms: Int)
   StartFetch
-  Reply(reply_to: process.Subject(Reply), result: Reply)
+  Reply(
+    reply_to: process.Subject(cache_worker_support.Lookup(Reply)),
+    result: cache_worker_support.Lookup(Reply),
+  )
   LogRefreshError(err: db_error.DbQueryError)
 }
 
@@ -29,7 +36,7 @@ pub fn new() -> State {
 
 pub fn on_get(
   state: State,
-  reply: process.Subject(Reply),
+  reply: process.Subject(cache_worker_support.Lookup(Reply)),
   now_ns: Int,
   can_fetch: Bool,
 ) -> #(State, List(Command)) {
@@ -46,13 +53,16 @@ pub fn on_get(
     )
 
   case decision {
-    cache_worker_support.ReplyNow(result, start_refresh) -> {
+    cache_worker_support.ReplyNow(result, start_refresh, outcome) -> {
       let #(next_state, refresh_commands) = case start_refresh && can_fetch {
         True -> start_fetch_if_idle(state)
         False -> #(state, [])
       }
 
-      #(next_state, [Reply(reply, result), ..refresh_commands])
+      #(next_state, [
+        Reply(reply, cache_worker_support.Lookup(result, outcome)),
+        ..refresh_commands
+      ])
     }
     cache_worker_support.AwaitFetch(_, start_fetch) -> {
       let next_state = State(cache: cache)
@@ -67,7 +77,7 @@ pub fn on_get(
 
 pub fn on_refresh_requested(
   state: State,
-  reply: process.Subject(Reply),
+  reply: process.Subject(cache_worker_support.Lookup(Reply)),
   can_fetch: Bool,
 ) -> #(State, List(Command)) {
   let #(cache, should_start_fetch) =
@@ -121,12 +131,22 @@ pub fn on_fetch_completed(
   case result {
     Ok(config) -> #(
       next_state,
-      list.map(waiters, fn(reply) { Reply(reply, Ok(config)) }),
+      list.map(waiters, fn(waiter) {
+        Reply(
+          waiter.reply_to,
+          cache_worker_support.Lookup(Ok(config), waiter.outcome),
+        )
+      }),
     )
     Error(err) -> {
       #(next_state, [
         LogRefreshError(err),
-        ..list.map(waiters, fn(reply) { Reply(reply, Error(err)) })
+        ..list.map(waiters, fn(waiter) {
+          Reply(
+            waiter.reply_to,
+            cache_worker_support.Lookup(Error(err), waiter.outcome),
+          )
+        })
       ])
     }
   }

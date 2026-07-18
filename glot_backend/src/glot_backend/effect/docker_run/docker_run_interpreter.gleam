@@ -41,7 +41,7 @@ pub fn run(
         program_state.add_effect_measurement(
           state,
           effect_trace.DockerRunEffectName(docker_run_algebra.RunCodeEffectName),
-          effect_trace.DockerRunEffectCategory,
+          effect_trace.DockerCallEffect,
           started_at,
         ),
       )

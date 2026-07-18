@@ -3,6 +3,7 @@ import gleam/erlang/process
 import gleam/list
 import gleam/option
 import gleeunit
+import glot_backend/cache_outcome
 import glot_backend/dynamic_config
 import glot_backend/effect/error/db_error
 import glot_backend/server_mode
@@ -161,6 +162,19 @@ pub fn core_cold_miss_starts_fetch_and_waits_test() {
   assert count_reply(commands) == 0
   let app_config_cache_worker_core.State(cache:) = state
   assert cache_worker_state.single_in_flight(cache) != option.None
+
+  let #(_state, completed_commands) =
+    app_config_cache_worker_core.on_fetch_completed(
+      state,
+      1,
+      Ok(test_dynamic_config()),
+    )
+  run_core_commands(completed_commands)
+  assert process.receive_forever(reply)
+    == cache_worker_support.Lookup(
+      Ok(test_dynamic_config()),
+      cache_outcome.CacheMissFetched,
+    )
 }
 
 pub fn core_stale_hit_replies_immediately_and_refreshes_test() {
@@ -178,7 +192,11 @@ pub fn core_stale_hit_replies_immediately_and_refreshes_test() {
 
   assert count_start_fetch(commands) == 1
   run_core_commands(commands)
-  assert process.receive_forever(reply) == Ok(test_dynamic_config())
+  assert process.receive_forever(reply)
+    == cache_worker_support.Lookup(
+      Ok(test_dynamic_config()),
+      cache_outcome.StaleCacheHit,
+    )
   let app_config_cache_worker_core.State(cache:) = next_state
   assert cache_worker_state.single_in_flight(cache) != option.None
 }
@@ -206,7 +224,10 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
 
   run_core_commands(commands)
   assert process.receive_forever(waiter)
-    == Error(db_error.DbQueryError("refresh failed"))
+    == cache_worker_support.Lookup(
+      Error(db_error.DbQueryError("refresh failed")),
+      cache_outcome.CacheMissJoined,
+    )
   let app_config_cache_worker_core.State(cache:) = next_state
   assert cache_worker_state.single_in_flight(cache) == option.None
   assert cache_worker_state.single_cache_entry(cache) != option.None
@@ -214,7 +235,11 @@ pub fn core_failed_refresh_keeps_stale_cache_test() {
     app_config_cache_worker_core.on_get(next_state, reply, 1, True)
   assert count_reply(lookup_commands) == 1
   run_core_commands(lookup_commands)
-  assert process.receive_forever(reply) == Ok(test_dynamic_config())
+  assert process.receive_forever(reply)
+    == cache_worker_support.Lookup(
+      Ok(test_dynamic_config()),
+      cache_outcome.CacheHit,
+    )
   assert lookup_state == next_state
 }
 
