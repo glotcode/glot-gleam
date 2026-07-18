@@ -24,7 +24,7 @@ const editorTheme = EditorView.theme({
   ".cm-content": {
     caretColor: "var(--color-accent)",
     fontFamily: '"Lucida Console", Monaco, "Courier New", monospace',
-    fontSize: "14px",
+    fontSize: "16px",
     lineHeight: "1.6",
     textShadow: "0 0 4px var(--theme-code-shadow)"
   },
