@@ -1517,8 +1517,8 @@ fn snippet_info_dialog_view(model: RealModel) -> Element(Msg) {
 fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
   case model.slug {
     option.Some(_) -> [
-      editor_layout.dialog_info_heading(),
       editor_layout.dialog_form([
+        editor_layout.dialog_info_heading(),
         editor_layout.dialog_panel([
           snippet_info_row("Title", model.title),
           snippet_info_row("Language", language.name(model.language)),
@@ -1554,8 +1554,8 @@ fn snippet_info_dialog_children(model: RealModel) -> List(Element(Msg)) {
     ]
 
     option.None -> [
-      editor_layout.dialog_info_heading(),
       editor_layout.dialog_form([
+        editor_layout.dialog_info_heading(),
         editor_layout.dialog_panel([
           snippet_info_row("Title", model.title),
           snippet_info_row("Language", language.name(model.language)),
@@ -2457,7 +2457,7 @@ fn console_content(
 
     Saving -> console_block("", "Saving snippet...")
 
-    Saved(slug) -> console_block("", "Saved snippet: " <> slug)
+    Saved(_) -> console_block("", "Saved")
 
     SaveIdle -> run_console_content(version_info, run_state)
   }
