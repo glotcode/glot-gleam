@@ -228,6 +228,7 @@ a.snippets-table__cell:hover {
 @media (max-width: 760px) {
   .snippets-page__header {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .snippets-page__filters {
@@ -310,3 +311,16 @@ a.snippets-table__cell:hover {
   }
 }
 
+@media (max-width: 420px) {
+  .snippets-table__row,
+  .snippets-table__row--manage {
+    padding: 0.85rem;
+  }
+
+  .snippets-table__action-link,
+  .snippets-table__action-button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+  }
+}

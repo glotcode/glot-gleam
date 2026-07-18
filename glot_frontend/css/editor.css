@@ -68,12 +68,17 @@
 }
 
 .app-topbar__account-label {
+  display: block;
+  max-width: min(12rem, 42vw);
   padding: 0.2rem 0.45rem;
+  overflow: hidden;
   border: 1px solid var(--theme-border);
   background: var(--color-accent-soft);
   color: var(--color-accent);
   font-weight: 700;
   text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .editor-page__title-row {
@@ -723,6 +728,8 @@
 
   .app-topbar {
     flex-wrap: nowrap;
+    padding-right: max(0.5rem, env(safe-area-inset-right));
+    padding-left: max(0.5rem, env(safe-area-inset-left));
   }
 
   .app-topbar__account {
@@ -734,6 +741,38 @@
     width: calc(100vw - 1rem);
     margin-left: 0.5rem;
     padding-top: 0.5rem;
+  }
+
+  .editor-shell__bezel {
+    padding: 0 0.65rem;
+  }
+
+  .editor-page__dialog {
+    width: calc(100vw - 1rem);
+    max-width: none;
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .editor-page__dialog-form {
+    padding: 0.9rem;
+  }
+
+  .editor-page__dialog-actions {
+    flex-wrap: wrap;
+  }
+
+  .editor-page__dialog-button {
+    flex: 1 1 8rem;
+  }
+
+  .editor-page__dialog-toggle-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .editor-page__dialog-toggle {
+    min-width: 0;
   }
 
 }
@@ -763,5 +802,58 @@
   .editor-shell__console-header,
   .editor-shell__result-header {
     padding: 0.35rem 0.75rem;
+  }
+}
+
+@media (max-width: 720px) {
+  .editor-page,
+  .editor-shell__editor {
+    min-height: 0;
+  }
+
+  .editor-shell__editor {
+    height: clamp(18rem, 48dvh, 32rem);
+  }
+
+  .editor-shell__console {
+    min-height: 8rem;
+  }
+
+  .editor-sponsor {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-topbar__title-group {
+    gap: 0.55rem;
+    min-width: 0;
+  }
+
+  .app-topbar__brand {
+    font-size: 0.82rem;
+  }
+
+  .app-topbar__account-label {
+    max-width: 38vw;
+  }
+
+  .editor-page__title {
+    font-size: 0.88rem;
+    letter-spacing: 0.08em;
+  }
+
+  .editor-shell__action-button {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+
+  .editor-page__dialog-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .editor-page__dialog-button {
+    width: 100%;
   }
 }

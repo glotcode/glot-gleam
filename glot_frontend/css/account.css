@@ -231,3 +231,32 @@
   font-weight: 700;
 }
 
+@media (max-width: 520px) {
+  .account-page__row {
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+    align-items: start;
+  }
+
+  .account-page__passkey-item {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.8rem;
+  }
+
+  .account-page__passkey-item .account-page__button {
+    align-self: stretch;
+  }
+
+  .login-page__button,
+  .account-page__form > .account-page__button,
+  .account-page__logout .account-page__button,
+  .account-page__danger-zone .account-page__button {
+    align-self: stretch;
+  }
+
+  .login-page__button,
+  .account-page__button {
+    text-align: center;
+  }
+}

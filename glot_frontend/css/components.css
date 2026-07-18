@@ -220,3 +220,67 @@
   min-height: 0;
   overflow: auto;
 }
+
+@media (max-width: 600px) {
+  .app-shell,
+  .app-shell--narrow {
+    width: calc(100vw - 1rem);
+    padding-top: 0.75rem;
+  }
+
+  .app-panel {
+    gap: 0.85rem;
+    padding: 1rem;
+    box-shadow: 0 0.8rem 2rem var(--shadow-panel);
+  }
+
+  .app-dialog,
+  .app-quick-actions {
+    width: calc(100vw - 1rem);
+    max-width: none;
+  }
+
+  .app-dialog__form {
+    padding: 1rem;
+  }
+
+  .app-dialog__actions {
+    flex-wrap: wrap;
+  }
+
+  .app-dialog__button {
+    flex: 1 1 8rem;
+  }
+
+  .app-quick-actions {
+    height: calc(100dvh - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .app-quick-actions__header {
+    flex-wrap: wrap;
+  }
+
+  .app-quick-actions__hint {
+    display: none;
+  }
+
+  .app-quick-actions__close {
+    margin-left: auto;
+  }
+
+  .app-quick-actions__item {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-dialog__actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .app-dialog__button {
+    width: 100%;
+  }
+}

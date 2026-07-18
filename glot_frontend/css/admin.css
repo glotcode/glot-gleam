@@ -750,6 +750,36 @@
 }
 
 @media (max-width: 700px) {
+  .admin-breadcrumbs-shell {
+    width: calc(100vw - 1rem);
+    padding-top: 0.5rem;
+  }
+
+  .admin-breadcrumbs {
+    padding: 0.6rem 0.75rem;
+  }
+
+  .admin-page__header,
+  .admin-page__actions,
+  .admin-filters__row,
+  .admin-filters__actions {
+    align-items: stretch;
+  }
+
+  .admin-page__actions,
+  .admin-filters__actions {
+    width: 100%;
+  }
+
+  .admin-page__actions > *,
+  .admin-filters__actions > * {
+    flex: 1 1 10rem;
+  }
+
+  .admin-page__summary {
+    margin-right: 0;
+  }
+
   .admin-page__summary-row {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.25rem;
@@ -773,5 +803,87 @@
   .admin-snippet-page__file-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .admin-table__wrap {
+    overflow: visible;
+  }
+
+  .admin-table {
+    display: block;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tbody {
+    display: grid;
+    gap: 0.8rem;
+  }
+
+  .admin-table__row {
+    display: grid;
+    padding: 0.2rem 0.85rem;
+    border: 1px solid var(--theme-border);
+    background: var(--theme-surface);
+    box-shadow: 0 0.75rem 1.75rem var(--shadow-soft);
+  }
+
+  .admin-table__row:hover {
+    background: var(--theme-surface);
+  }
+
+  .admin-table .admin-table__cell {
+    display: grid;
+    grid-template-columns: minmax(5.5rem, 0.4fr) minmax(0, 1fr);
+    gap: 0.75rem;
+    width: auto;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--theme-surface-muted);
+    white-space: normal;
+    text-align: left;
+  }
+
+  .admin-table .admin-table__cell:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-table__label {
+    display: block;
+    color: var(--theme-text-disabled);
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .admin-table__cell--title .admin-table__value {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-jobs-page__summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-page__summary-row {
+    font-size: 0.9rem;
+  }
+
+  .admin-table .admin-table__cell {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+
+  .admin-page__button,
+  .admin-page__chip {
+    text-align: center;
   }
 }
