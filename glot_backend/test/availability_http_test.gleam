@@ -200,6 +200,8 @@ pub fn public_page_uses_public_frontend_entry_test() {
   assert string.contains(body, "/static/assets/test-admin.js") == False
   assert string.contains(body, "/static/assets/test-shared.js")
   assert string.contains(body, "/static/assets/test-codemirror.js") == False
+  assert string.contains(body, "/static/assets/test-styles.css")
+  assert string.contains(body, "/static/assets/test-admin.css") == False
 }
 
 pub fn admin_page_uses_admin_frontend_entry_test() {
@@ -209,6 +211,8 @@ pub fn admin_page_uses_admin_frontend_entry_test() {
   assert string.contains(body, "/static/assets/test-frontend.js") == False
   assert string.contains(body, "/static/assets/test-shared.js")
   assert string.contains(body, "/static/assets/test-codemirror.js") == False
+  assert string.contains(body, "/static/assets/test-styles.css")
+  assert string.contains(body, "/static/assets/test-admin.css")
 }
 
 pub fn static_assets_loads_codemirror_entry_and_imports_test() {
@@ -317,6 +321,6 @@ fn test_static_base_path() -> String {
 fn write_test_manifest() -> Result(Nil, String) {
   file_system.write_file(
     test_static_base_path() <> "/manifest.json",
-    "{\"js/public.ts\":{\"file\":\"assets/test-frontend.js\",\"imports\":[\"_shared.js\"]},\"js/admin.ts\":{\"file\":\"assets/test-admin.js\",\"imports\":[\"_shared.js\"]},\"js/custom_elements/glot-codemirror.ts\":{\"file\":\"assets/test-codemirror.js\",\"imports\":[\"_shared.js\",\"_codemirror-shared.js\"]},\"js/styles.ts\":{\"file\":\"assets/empty.js\",\"css\":[\"assets/test-styles.css\"]},\"_shared.js\":{\"file\":\"assets/test-shared.js\"},\"_codemirror-shared.js\":{\"file\":\"assets/test-codemirror-shared.js\"}}",
+    "{\"js/public.ts\":{\"file\":\"assets/test-frontend.js\",\"imports\":[\"_shared.js\"]},\"js/admin.ts\":{\"file\":\"assets/test-admin.js\",\"css\":[\"assets/test-admin.css\"],\"imports\":[\"_shared.js\"]},\"js/custom_elements/glot-codemirror.ts\":{\"file\":\"assets/test-codemirror.js\",\"imports\":[\"_shared.js\",\"_codemirror-shared.js\"]},\"js/styles.ts\":{\"file\":\"assets/empty.js\",\"css\":[\"assets/test-styles.css\"]},\"_shared.js\":{\"file\":\"assets/test-shared.js\"},\"_codemirror-shared.js\":{\"file\":\"assets/test-codemirror-shared.js\"}}",
   )
 }

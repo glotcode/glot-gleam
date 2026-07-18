@@ -23,6 +23,7 @@ pub type Assets {
     admin_frontend_preloads: List(String),
     code_mirror_preloads: List(String),
     stylesheet_href: String,
+    admin_stylesheet_hrefs: List(String),
   )
 }
 
@@ -51,6 +52,7 @@ pub fn load(static_base_path: String) -> Result(Assets, String) {
     admin_frontend_preloads: imported_files(manifest, admin),
     code_mirror_preloads: code_mirror_preloads,
     stylesheet_href: static_url(stylesheet),
+    admin_stylesheet_hrefs: list.map(admin.css, static_url),
   ))
 }
 

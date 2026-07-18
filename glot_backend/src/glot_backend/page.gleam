@@ -171,6 +171,7 @@ fn handle_page_request_with_runtime(
             head_children: [],
             include_frontend: True,
             stylesheet_href: assets.stylesheet_href,
+            additional_stylesheet_hrefs: [],
             frontend_src: assets.frontend_src,
             frontend_preloads: assets.frontend_preloads,
             app_attributes: [],
@@ -316,6 +317,7 @@ fn spa_page(
     title,
     assets.frontend_src,
     assets.frontend_preloads,
+    [],
   )
 }
 
@@ -328,6 +330,7 @@ fn admin_spa_page(
     title,
     assets.admin_frontend_src,
     assets.admin_frontend_preloads,
+    assets.admin_stylesheet_hrefs,
   )
 }
 
@@ -336,6 +339,7 @@ fn spa_page_with_frontend(
   title: String,
   frontend_src: String,
   frontend_preloads: List(String),
+  additional_stylesheet_hrefs: List(String),
 ) -> page_response.PageResponse {
   let state = empty_page_state()
   page_response.PageResponse(
@@ -345,6 +349,7 @@ fn spa_page_with_frontend(
         head_children: [],
         include_frontend: True,
         stylesheet_href: assets.stylesheet_href,
+        additional_stylesheet_hrefs: additional_stylesheet_hrefs,
         frontend_src: frontend_src,
         frontend_preloads: frontend_preloads,
         app_attributes: [],
@@ -388,6 +393,7 @@ fn run_page_program(
             head_children: head_children(value),
             include_frontend: True,
             stylesheet_href: assets.stylesheet_href,
+            additional_stylesheet_hrefs: [],
             frontend_src: assets.frontend_src,
             frontend_preloads: frontend_preloads,
             app_attributes: app_attributes(value),
