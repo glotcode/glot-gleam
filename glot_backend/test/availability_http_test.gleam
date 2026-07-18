@@ -169,7 +169,9 @@ pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
     )
   let app_config_subject = start_app_config_worker(availability)
   let db = pog.named_connection(process.new_name("availability_http_db"))
-  let request = simulate.request(http.Get, "/snippets")
+  let request =
+    simulate.request(http.Get, "/snippets")
+    |> http_request.set_cookie("glot_theme", "dark")
 
   let response =
     page.handle_request(
@@ -186,6 +188,7 @@ pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
 
   let body = simulate.read_body(response)
   assert string.contains(body, "maintenance-page__shell")
+  assert string.contains(body, "data-theme=\"dark\"")
   assert string.contains(body, "/static/glot_frontend.js") == False
   assert string.contains(body, "/static/assets/test-styles.css")
   assert string.contains(body, "Temporarily unavailable")
@@ -197,17 +200,28 @@ pub fn public_page_uses_public_frontend_entry_test() {
   let body = page_body("/login")
 
   assert string.contains(body, "content=\"light dark\" name=\"color-scheme\"")
-  assert string.contains(body, "glot.color-theme")
-  assert string.contains(
-    body,
-    "</script><link href=\"/static/assets/test-styles.css\"",
-  )
+  assert string.contains(body, "localStorage") == False
+  assert string.contains(body, "data-theme=") == False
   assert string.contains(body, "/static/assets/test-frontend.js")
   assert string.contains(body, "/static/assets/test-admin.js") == False
   assert string.contains(body, "/static/assets/test-shared.js")
   assert string.contains(body, "/static/assets/test-codemirror.js") == False
   assert string.contains(body, "/static/assets/test-styles.css")
   assert string.contains(body, "/static/assets/test-admin.css") == False
+}
+
+pub fn page_renders_valid_theme_cookie_test() {
+  let light_body = page_body_with_theme("/login", "light")
+  let dark_body = page_body_with_theme("/login", "dark")
+
+  assert string.contains(light_body, "data-theme=\"light\"")
+  assert string.contains(dark_body, "data-theme=\"dark\"")
+}
+
+pub fn page_ignores_invalid_theme_cookie_test() {
+  let body = page_body_with_theme("/login", "sepia")
+
+  assert string.contains(body, "data-theme=") == False
 }
 
 pub fn admin_page_uses_admin_frontend_entry_test() {
@@ -233,6 +247,17 @@ pub fn static_assets_loads_codemirror_entry_and_imports_test() {
 }
 
 fn page_body(path: String) -> String {
+  page_body_with_optional_theme(path, option.None)
+}
+
+fn page_body_with_theme(path: String, theme: String) -> String {
+  page_body_with_optional_theme(path, option.Some(theme))
+}
+
+fn page_body_with_optional_theme(
+  path: String,
+  theme: option.Option(String),
+) -> String {
   let assert Ok(_) = write_test_manifest()
   let availability =
     dynamic_config.AvailabilityConfig(
@@ -240,6 +265,12 @@ fn page_body(path: String) -> String {
       message: "",
       retry_after_seconds: option.None,
     )
+  let request = case theme {
+    option.Some(theme) ->
+      simulate.request(http.Get, path)
+      |> http_request.set_cookie("glot_theme", theme)
+    option.None -> simulate.request(http.Get, path)
+  }
   let response =
     page.handle_request(
       pog.named_connection(process.new_name("frontend_entry_http_db")),
@@ -247,7 +278,7 @@ fn page_body(path: String) -> String {
       start_app_config_worker(availability),
       process.new_subject(),
       process.new_subject(),
-      simulate.request(http.Get, path),
+      request,
     )
 
   assert response.status == 200

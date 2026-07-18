@@ -1,12 +1,13 @@
 import gleam/list
+import gleam/option
+import glot_backend/page_theme.{type PageTheme}
 import lustre/attribute
 import lustre/element
 import lustre/element/html
 
-const theme_bootstrap = "try{let theme=localStorage.getItem('glot.color-theme');if(theme==='light'||theme==='dark')document.documentElement.dataset.theme=theme}catch{}"
-
 pub fn document(
   title title: String,
+  theme theme: option.Option(PageTheme),
   head_children head_children: List(element.Element(msg)),
   include_frontend include_frontend: Bool,
   stylesheet_href stylesheet_href: String,
@@ -29,7 +30,6 @@ pub fn document(
           attribute.content("light dark"),
         ]),
         html.title([], title),
-        html.script([], theme_bootstrap),
         html.link([
           attribute.rel("stylesheet"),
           attribute.href(stylesheet_href),
@@ -61,7 +61,15 @@ pub fn document(
     False -> []
   }
 
-  html.html([attribute.lang("en")], [
+  let html_attributes = case theme {
+    option.Some(theme) -> [
+      attribute.lang("en"),
+      attribute.data("theme", page_theme.to_string(theme)),
+    ]
+    option.None -> [attribute.lang("en")]
+  }
+
+  html.html(html_attributes, [
     html.head([], list.append(base_head, list.append(head_children, tail_head))),
     html.body([], [
       html.div([attribute.id("app"), ..app_attributes], app_children),

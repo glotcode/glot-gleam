@@ -5,6 +5,7 @@ import glot_backend/effect/error
 import glot_backend/effect/program_state
 import glot_backend/page_layout
 import glot_backend/page_response
+import glot_backend/page_theme.{type PageTheme}
 import glot_core/route
 import lustre/attribute
 import lustre/element
@@ -14,6 +15,7 @@ import wisp
 pub fn unavailable_page_response(
   state: program_state.State,
   stylesheet_href: String,
+  theme: option.Option(PageTheme),
   message: String,
   retry_after_seconds: option.Option(Int),
 ) -> page_response.PageResponse {
@@ -21,6 +23,7 @@ pub fn unavailable_page_response(
     wisp.html_response(
       page_layout.document(
         title: "glot.io - unavailable",
+        theme: theme,
         head_children: [],
         include_frontend: False,
         stylesheet_href: stylesheet_href,

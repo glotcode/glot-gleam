@@ -1,36 +1,18 @@
-type ThemePreference = "system" | "light" | "dark";
-
-const storageKey = "glot.color-theme";
+import {
+  readThemeCookie,
+  serializeThemeCookie,
+  type ThemePreference,
+} from "./glot-theme-preference.mjs";
 
 function readPreference(): ThemePreference {
-  try {
-    const stored = window.localStorage.getItem(storageKey);
-    if (stored === "light" || stored === "dark") return stored;
-  } catch {
-    // Storage can be unavailable in privacy-restricted contexts.
-  }
-
-  return "system";
-}
-
-function applyPreference(preference: ThemePreference) {
-  if (preference === "system") {
-    document.documentElement.removeAttribute("data-theme");
-  } else {
-    document.documentElement.dataset.theme = preference;
-  }
+  return readThemeCookie(document.cookie);
 }
 
 function savePreference(preference: ThemePreference) {
-  try {
-    if (preference === "system") {
-      window.localStorage.removeItem(storageKey);
-    } else {
-      window.localStorage.setItem(storageKey, preference);
-    }
-  } catch {
-    // Storage can be unavailable in privacy-restricted contexts.
-  }
+  document.cookie = serializeThemeCookie(
+    preference,
+    window.location.protocol === "https:",
+  );
 }
 
 class GlotThemePicker extends HTMLElement {
@@ -125,8 +107,6 @@ class GlotThemePicker extends HTMLElement {
 }
 
 export function initializeTheme() {
-  applyPreference(readPreference());
-
   if (!customElements.get("glot-theme-picker")) {
     customElements.define("glot-theme-picker", GlotThemePicker);
   }

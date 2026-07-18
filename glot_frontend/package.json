@@ -7,6 +7,7 @@
     "dev": "concurrently -k \"npm run watch:build\" \"vite\"",
     "watch:build": "watchexec --watch src --watch ../glot_core/src --watch gleam.toml --watch ../glot_core/gleam.toml --exts gleam,toml,mjs -- ../build_frontend.sh",
     "build": "vite build",
+    "test:javascript": "node --test js/custom_elements/*.test.mjs",
     "test:codemirror": "node --test js/custom_elements/glot-codemirror-document.test.mjs"
   },
   "type": "module",
