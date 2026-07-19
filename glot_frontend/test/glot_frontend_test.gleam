@@ -2,6 +2,7 @@ import gleam/option
 import gleam/regexp
 import gleeunit
 import glot_core/email/email_address_model
+import glot_core/loadable
 import glot_core/route
 import glot_frontend/account_page
 import glot_frontend/contact_page
@@ -150,6 +151,20 @@ pub fn login_page_show_passkey_section_reflects_browser_support_test() {
 pub fn account_page_show_passkey_section_reflects_browser_support_test() {
   assert account_page.should_show_passkey_section(True)
   assert !account_page.should_show_passkey_section(False)
+}
+
+pub fn account_page_delays_initial_loading_indicator_test() {
+  let #(model, _) = account_page.init()
+  let account_page.Model(account:, account_loading_indicator:, ..) = model
+
+  assert account == loadable.Loading
+  assert !delayed_loading.is_visible(account_loading_indicator)
+
+  let #(model, _, _) =
+    account_page.update(model, account_page.AccountLoadingDelayElapsed(1))
+  let account_page.Model(account_loading_indicator:, ..) = model
+
+  assert delayed_loading.is_visible(account_loading_indicator)
 }
 
 pub fn contact_page_prefills_empty_email_test() {

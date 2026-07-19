@@ -12,10 +12,12 @@ import glot_core/auth/session_dto
 import glot_core/auth/user_model
 import glot_core/email/email_address_model
 import glot_core/helpers/timestamp_helpers
+import glot_core/loadable
 import glot_core/route
 import glot_core/validation_error
 import glot_frontend/api
 import glot_frontend/app_event
+import glot_frontend/delayed_loading
 import glot_frontend/passkey
 import lustre/attribute
 import lustre/effect.{type Effect}
@@ -27,29 +29,30 @@ import youid/uuid
 
 pub type Model {
   Model(
-    account: option.Option(account_dto.AccountResponse),
+    account: loadable.Loadable(account_dto.AccountResponse),
     username: String,
     status: Status,
+    account_loading_indicator: delayed_loading.State,
     danger_zone_expanded: Bool,
     passkey_supported: Bool,
     current_session_id: option.Option(uuid.Uuid),
     sessions: List(account_session_dto.AccountSessionResponse),
     sessions_status: SessionsStatus,
+    sessions_loading_indicator: delayed_loading.State,
     passkey_setup_status: PasskeySetupStatus,
     passkeys: List(passkey_dto.AccountPasskeyResponse),
     passkeys_status: PasskeysStatus,
+    passkeys_loading_indicator: delayed_loading.State,
   )
 }
 
 pub type Status {
-  Loading
   Idle
   Saving
   LoggingOut
   SchedulingDelete
   CancelingDelete
   Saved
-  LoadError(String)
   UsernameError(String)
   DeleteError(String)
   LogoutError(String)
@@ -80,13 +83,16 @@ pub type PasskeysStatus {
 
 pub type Msg {
   AccountLoaded(api.ApiResponse(account_dto.AccountResponse))
+  AccountLoadingDelayElapsed(Int)
   SessionLoaded(api.ApiResponse(option.Option(session_dto.SessionResponse)))
   AccountSessionsLoaded(
     api.ApiResponse(account_session_dto.ListAccountSessionsResponse),
   )
+  SessionsLoadingDelayElapsed(Int)
   AccountPasskeysLoaded(
     api.ApiResponse(passkey_dto.ListAccountPasskeysResponse),
   )
+  PasskeysLoadingDelayElapsed(Int)
   UsernameChanged(String)
   UsernameSubmitted
   AccountUpdated(api.ApiResponse(account_dto.AccountResponse))
@@ -114,33 +120,58 @@ pub type Msg {
 
 pub fn init() -> #(Model, Effect(Msg)) {
   let passkey_supported = passkey.is_supported()
+  let #(account_loading_indicator, account_delay_effect) =
+    delayed_loading.start(delayed_loading.idle(), AccountLoadingDelayElapsed)
+  let #(sessions_loading_indicator, sessions_delay_effect) =
+    delayed_loading.start(delayed_loading.idle(), SessionsLoadingDelayElapsed)
+  let #(passkeys_loading_indicator, passkeys_delay_effects) = case
+    should_show_passkey_section(passkey_supported)
+  {
+    True -> {
+      let #(indicator, delay_effect) =
+        delayed_loading.start(
+          delayed_loading.idle(),
+          PasskeysLoadingDelayElapsed,
+        )
+      #(indicator, [delay_effect])
+    }
+    False -> #(delayed_loading.idle(), [])
+  }
   let passkey_effects = case should_show_passkey_section(passkey_supported) {
-    True -> [api.list_account_passkeys(AccountPasskeysLoaded)]
+    True -> [
+      api.list_account_passkeys(AccountPasskeysLoaded),
+      ..passkeys_delay_effects
+    ]
     False -> []
   }
   let effects = [
     api.get_account(AccountLoaded),
     api.get_session(SessionLoaded),
     api.list_account_sessions(AccountSessionsLoaded),
+    account_delay_effect,
+    sessions_delay_effect,
     ..passkey_effects
   ]
 
   #(
     Model(
-      account: option.None,
+      account: loadable.Loading,
       username: "",
-      status: Loading,
+      status: Idle,
+      account_loading_indicator:,
       danger_zone_expanded: False,
       passkey_supported: passkey_supported,
       current_session_id: option.None,
       sessions: [],
       sessions_status: LoadingSessions,
+      sessions_loading_indicator:,
       passkey_setup_status: PasskeySetupIdle,
       passkeys: [],
       passkeys_status: case passkey_supported {
         True -> LoadingPasskeys
         False -> IdlePasskeys
       },
+      passkeys_loading_indicator:,
     ),
     effect.batch(effects),
   )
@@ -157,9 +188,12 @@ pub fn update(
           #(
             Model(
               ..model,
-              account: option.Some(account),
+              account: loadable.Loaded(account),
               username: account.username,
               status: Idle,
+              account_loading_indicator: delayed_loading.finish(
+                model.account_loading_indicator,
+              ),
             ),
             effect.none(),
             app_event.NoAppEvent,
@@ -167,17 +201,41 @@ pub fn update(
         }
 
         api.ApiFailure(error) -> #(
-          Model(..model, status: LoadError(api.error_message(error))),
+          Model(
+            ..model,
+            account: loadable.LoadError(api.error_message(error)),
+            account_loading_indicator: delayed_loading.finish(
+              model.account_loading_indicator,
+            ),
+          ),
           effect.none(),
           app_event.NoAppEvent,
         )
 
         api.HttpFailure(_) -> #(
-          Model(..model, status: LoadError("Could not load account.")),
+          Model(
+            ..model,
+            account: loadable.LoadError("Could not load account."),
+            account_loading_indicator: delayed_loading.finish(
+              model.account_loading_indicator,
+            ),
+          ),
           effect.none(),
           app_event.NoAppEvent,
         )
       }
+
+    AccountLoadingDelayElapsed(generation) -> #(
+      Model(
+        ..model,
+        account_loading_indicator: delayed_loading.reveal(
+          model.account_loading_indicator,
+          generation,
+        ),
+      ),
+      effect.none(),
+      app_event.NoAppEvent,
+    )
 
     SessionLoaded(result) ->
       case result {
@@ -207,6 +265,9 @@ pub fn update(
             ..model,
             sessions: response.sessions,
             sessions_status: IdleSessions,
+            sessions_loading_indicator: delayed_loading.finish(
+              model.sessions_loading_indicator,
+            ),
           ),
           effect.none(),
           app_event.NoAppEvent,
@@ -216,6 +277,9 @@ pub fn update(
           Model(
             ..model,
             sessions_status: SessionsError(api.error_message(error)),
+            sessions_loading_indicator: delayed_loading.finish(
+              model.sessions_loading_indicator,
+            ),
           ),
           effect.none(),
           app_event.NoAppEvent,
@@ -225,11 +289,26 @@ pub fn update(
           Model(
             ..model,
             sessions_status: SessionsError("Could not load sessions."),
+            sessions_loading_indicator: delayed_loading.finish(
+              model.sessions_loading_indicator,
+            ),
           ),
           effect.none(),
           app_event.NoAppEvent,
         )
       }
+
+    SessionsLoadingDelayElapsed(generation) -> #(
+      Model(
+        ..model,
+        sessions_loading_indicator: delayed_loading.reveal(
+          model.sessions_loading_indicator,
+          generation,
+        ),
+      ),
+      effect.none(),
+      app_event.NoAppEvent,
+    )
 
     AccountPasskeysLoaded(result) ->
       case result {
@@ -238,6 +317,9 @@ pub fn update(
             ..model,
             passkeys: response.passkeys,
             passkeys_status: IdlePasskeys,
+            passkeys_loading_indicator: delayed_loading.finish(
+              model.passkeys_loading_indicator,
+            ),
           ),
           effect.none(),
           app_event.NoAppEvent,
@@ -247,6 +329,9 @@ pub fn update(
           Model(
             ..model,
             passkeys_status: PasskeysError(api.error_message(error)),
+            passkeys_loading_indicator: delayed_loading.finish(
+              model.passkeys_loading_indicator,
+            ),
           ),
           effect.none(),
           app_event.NoAppEvent,
@@ -256,11 +341,26 @@ pub fn update(
           Model(
             ..model,
             passkeys_status: PasskeysError("Could not load passkeys."),
+            passkeys_loading_indicator: delayed_loading.finish(
+              model.passkeys_loading_indicator,
+            ),
           ),
           effect.none(),
           app_event.NoAppEvent,
         )
       }
+
+    PasskeysLoadingDelayElapsed(generation) -> #(
+      Model(
+        ..model,
+        passkeys_loading_indicator: delayed_loading.reveal(
+          model.passkeys_loading_indicator,
+          generation,
+        ),
+      ),
+      effect.none(),
+      app_event.NoAppEvent,
+    )
 
     UsernameChanged(username) -> #(
       Model(..model, username: username, status: Idle),
@@ -306,7 +406,7 @@ pub fn update(
           #(
             Model(
               ..model,
-              account: option.Some(account),
+              account: loadable.Loaded(account),
               username: account.username,
               status: Saved,
             ),
@@ -399,15 +499,26 @@ pub fn update(
 
     FinishedPasskeyRegistration(result) ->
       case result {
-        api.ApiSuccess(_) -> #(
-          Model(
-            ..model,
-            passkey_setup_status: PasskeySaved,
-            passkeys_status: LoadingPasskeys,
-          ),
-          api.list_account_passkeys(AccountPasskeysLoaded),
-          app_event.NoAppEvent,
-        )
+        api.ApiSuccess(_) -> {
+          let #(passkeys_loading_indicator, delay_effect) =
+            delayed_loading.start(
+              model.passkeys_loading_indicator,
+              PasskeysLoadingDelayElapsed,
+            )
+          #(
+            Model(
+              ..model,
+              passkey_setup_status: PasskeySaved,
+              passkeys_status: LoadingPasskeys,
+              passkeys_loading_indicator:,
+            ),
+            effect.batch([
+              api.list_account_passkeys(AccountPasskeysLoaded),
+              delay_effect,
+            ]),
+            app_event.NoAppEvent,
+          )
+        }
 
         api.ApiFailure(error) -> #(
           Model(
@@ -443,14 +554,26 @@ pub fn update(
 
     DeletedSession(_id, result) ->
       case result {
-        api.ApiSuccess(_) -> #(
-          Model(..model, sessions_status: LoadingSessions),
-          effect.batch([
-            api.get_session(SessionLoaded),
-            api.list_account_sessions(AccountSessionsLoaded),
-          ]),
-          app_event.RefreshSession,
-        )
+        api.ApiSuccess(_) -> {
+          let #(sessions_loading_indicator, delay_effect) =
+            delayed_loading.start(
+              model.sessions_loading_indicator,
+              SessionsLoadingDelayElapsed,
+            )
+          #(
+            Model(
+              ..model,
+              sessions_status: LoadingSessions,
+              sessions_loading_indicator:,
+            ),
+            effect.batch([
+              api.get_session(SessionLoaded),
+              api.list_account_sessions(AccountSessionsLoaded),
+              delay_effect,
+            ]),
+            app_event.RefreshSession,
+          )
+        }
 
         api.ApiFailure(error) -> #(
           Model(
@@ -484,11 +607,25 @@ pub fn update(
 
     DeletedPasskey(_id, result) ->
       case result {
-        api.ApiSuccess(_) -> #(
-          Model(..model, passkeys_status: LoadingPasskeys),
-          api.list_account_passkeys(AccountPasskeysLoaded),
-          app_event.NoAppEvent,
-        )
+        api.ApiSuccess(_) -> {
+          let #(passkeys_loading_indicator, delay_effect) =
+            delayed_loading.start(
+              model.passkeys_loading_indicator,
+              PasskeysLoadingDelayElapsed,
+            )
+          #(
+            Model(
+              ..model,
+              passkeys_status: LoadingPasskeys,
+              passkeys_loading_indicator:,
+            ),
+            effect.batch([
+              api.list_account_passkeys(AccountPasskeysLoaded),
+              delay_effect,
+            ]),
+            app_event.NoAppEvent,
+          )
+        }
 
         api.ApiFailure(error) -> #(
           Model(
@@ -630,13 +767,20 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
 }
 
 fn content(model: Model, now: Timestamp) -> Element(Msg) {
-  case model.account, model.status {
-    option.None, Loading ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("Loading account..."),
-      ])
+  case
+    model.account,
+    delayed_loading.is_visible(model.account_loading_indicator)
+  {
+    loadable.Loading, True ->
+      html.p(
+        [
+          attribute.class("account-page__status"),
+          attribute.attribute("role", "status"),
+        ],
+        [html.text("Loading account...")],
+      )
 
-    option.None, LoadError(message) ->
+    loadable.LoadError(message), _ ->
       html.div([attribute.class("account-page__empty")], [
         html.p(
           [attribute.class("account-page__status account-page__status--error")],
@@ -655,12 +799,9 @@ fn content(model: Model, now: Timestamp) -> Element(Msg) {
         ),
       ])
 
-    option.None, _ ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("No account loaded."),
-      ])
+    loadable.NotLoaded, _ | loadable.Loading, False -> html.text("")
 
-    option.Some(account), _ -> account_form(model, account, now)
+    loadable.Loaded(account), _ -> account_form(model, account, now)
   }
 }
 
@@ -799,7 +940,12 @@ fn passkey_section(model: Model, now: Timestamp) -> Element(Msg) {
     ]),
     passkeys_status_view(model.passkeys_status),
     passkey_setup_status_view(model.passkey_setup_status),
-    passkeys_list(model.passkeys, model.passkeys_status, now),
+    passkeys_list(
+      model.passkeys,
+      model.passkeys_status,
+      delayed_loading.is_visible(model.passkeys_loading_indicator),
+      now,
+    ),
     html.button(
       [
         attribute.type_("button"),
@@ -820,20 +966,20 @@ fn passkey_section(model: Model, now: Timestamp) -> Element(Msg) {
 fn passkeys_list(
   passkeys: List(passkey_dto.AccountPasskeyResponse),
   passkeys_status: PasskeysStatus,
+  show_loading: Bool,
   now: Timestamp,
 ) -> Element(Msg) {
-  case passkeys_status, passkeys {
-    LoadingPasskeys, [] ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("Loading passkeys..."),
-      ])
+  case passkeys_status, passkeys, show_loading {
+    LoadingPasskeys, [], True -> account_status("Loading passkeys...")
 
-    _, [] ->
+    LoadingPasskeys, [], False -> html.text("")
+
+    _, [], _ ->
       html.p([attribute.class("account-page__status")], [
         html.text("No passkeys added yet."),
       ])
 
-    _, _ ->
+    _, _, _ ->
       html.div(
         [attribute.class("account-page__passkey-list")],
         list.map(passkeys, fn(passkey) {
@@ -914,6 +1060,7 @@ fn sessions_section(model: Model, now: Timestamp) -> Element(Msg) {
       model.sessions,
       model.current_session_id,
       model.sessions_status,
+      delayed_loading.is_visible(model.sessions_loading_indicator),
       now,
     ),
     logout_section(model.status, model.sessions_status),
@@ -924,20 +1071,20 @@ fn sessions_list(
   sessions: List(account_session_dto.AccountSessionResponse),
   current_session_id: option.Option(uuid.Uuid),
   sessions_status: SessionsStatus,
+  show_loading: Bool,
   now: Timestamp,
 ) -> Element(Msg) {
-  case sessions_status, sessions {
-    LoadingSessions, [] ->
-      html.p([attribute.class("account-page__status")], [
-        html.text("Loading sessions..."),
-      ])
+  case sessions_status, sessions, show_loading {
+    LoadingSessions, [], True -> account_status("Loading sessions...")
 
-    _, [] ->
+    LoadingSessions, [], False -> html.text("")
+
+    _, [], _ ->
       html.p([attribute.class("account-page__status")], [
         html.text("No active sessions found."),
       ])
 
-    _, _ ->
+    _, _, _ ->
       html.div(
         [attribute.class("account-page__passkey-list")],
         list.map(sessions, fn(account_session) {
@@ -1005,14 +1152,13 @@ fn account_row(label: String, value: String) -> Element(Msg) {
 
 fn status_view(status: Status) -> Element(Msg) {
   case status {
-    Loading | Idle -> html.text("")
+    Idle -> html.text("")
     Saving -> account_status("Saving account...")
     Saved -> account_status("Account updated.")
     UsernameError(message) -> account_error_status(message)
     LoggingOut
     | SchedulingDelete
     | CancelingDelete
-    | LoadError(_)
     | DeleteError(_)
     | LogoutError(_) -> html.text("")
   }
@@ -1177,14 +1323,8 @@ fn delete_status_view(status: Status) -> Element(Msg) {
           html.text(message),
         ],
       )
-    Loading
-    | Idle
-    | Saving
-    | LoggingOut
-    | Saved
-    | LoadError(_)
-    | UsernameError(_)
-    | LogoutError(_) -> html.text("")
+    Idle | Saving | LoggingOut | Saved | UsernameError(_) | LogoutError(_) ->
+      html.text("")
   }
 }
 
@@ -1241,13 +1381,11 @@ fn logout_status_view(status: Status) -> Element(Msg) {
           html.text(message),
         ],
       )
-    Loading
-    | Idle
+    Idle
     | Saving
     | SchedulingDelete
     | CancelingDelete
     | Saved
-    | LoadError(_)
     | UsernameError(_)
     | DeleteError(_) -> html.text("")
   }
@@ -1398,13 +1536,7 @@ fn is_busy(
 ) -> Bool {
   case status {
     Saving | LoggingOut | SchedulingDelete | CancelingDelete -> True
-    Loading
-    | Idle
-    | Saved
-    | LoadError(_)
-    | UsernameError(_)
-    | DeleteError(_)
-    | LogoutError(_) ->
+    Idle | Saved | UsernameError(_) | DeleteError(_) | LogoutError(_) ->
       case passkey_setup_status {
         StartingPasskeySetup | CreatingPasskey | SavingPasskey -> True
         PasskeySetupIdle | PasskeySaved | PasskeySetupError(_) ->
