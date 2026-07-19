@@ -9,6 +9,11 @@
   inset: 0;
 }
 
+.editor-page__loading {
+  margin: 0;
+  color: var(--theme-text-muted);
+}
+
 .app-topbar {
   position: relative;
   z-index: 1;

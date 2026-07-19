@@ -22,6 +22,7 @@ import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/api
 import glot_frontend/app_dialog
+import glot_frontend/delayed_loading
 import glot_frontend/duration_label
 import glot_frontend/editor_draft
 import glot_frontend/editor_settings
@@ -53,7 +54,7 @@ const editor_id = "editor-page-codemirror"
 
 pub type Model {
   UnsupportedLanguage(String)
-  LoadingSnippet(String, editor_settings.EditorSettings)
+  LoadingSnippet(String, editor_settings.EditorSettings, delayed_loading.State)
   LoadError(String)
   SupportedLanguage(RealModel)
 }
@@ -150,10 +151,21 @@ pub fn init_existing(slug: String) -> #(Model, Effect(Msg)) {
   let settings = editor_settings.load()
   case init_existing_from_ssr(settings) {
     option.Some(initialized) -> initialized
-    option.None -> #(
-      LoadingSnippet(slug, settings),
-      api.get_snippet(snippet_dto.GetSnippetRequest(slug: slug), SnippetLoaded),
-    )
+    option.None -> {
+      let #(loading_indicator, delay_effect) =
+        delayed_loading.start(delayed_loading.idle(), fn(generation) {
+          SnippetLoadingDelayElapsed(slug, generation)
+        })
+      #(
+        LoadingSnippet(slug, settings, loading_indicator),
+        effect.batch([
+          api.get_snippet(snippet_dto.GetSnippetRequest(slug: slug), fn(result) {
+            SnippetLoaded(slug, result)
+          }),
+          delay_effect,
+        ]),
+      )
+    }
   }
 }
 
@@ -201,7 +213,8 @@ fn take_ssr_view_model() -> option.Option(editor_ssr.ViewModel) {
 }
 
 pub type Msg {
-  SnippetLoaded(api.ApiResponse(snippet_dto.SnippetResponse))
+  SnippetLoaded(String, api.ApiResponse(snippet_dto.SnippetResponse))
+  SnippetLoadingDelayElapsed(String, Int)
   EditMetadataClicked
   TitleDraftChanged(String)
   EditMetadataVisibilitySelected(snippet_model.Visibility)
@@ -249,7 +262,7 @@ pub type Msg {
 
 pub fn affects_metadata(msg: Msg) -> Bool {
   case msg {
-    SnippetLoaded(_) | EditMetadataSubmitted | SaveFinished(_) -> True
+    SnippetLoaded(_, _) | EditMetadataSubmitted | SaveFinished(_) -> True
     _ -> False
   }
 }
@@ -260,25 +273,41 @@ pub fn update(
   current_user_id: option.Option(Uuid),
 ) -> #(Model, Effect(Msg)) {
   case model, msg {
-    LoadingSnippet(_, settings), SnippetLoaded(result) -> {
-      case result {
-        api.ApiSuccess(response) ->
+    LoadingSnippet(current_slug, settings, _), SnippetLoaded(slug, result) -> {
+      case current_slug == slug, result {
+        False, _ -> #(model, effect.none())
+        True, api.ApiSuccess(response) ->
           existing_model_from_response(response, settings)
 
-        api.ApiFailure(error) -> #(
+        True, api.ApiFailure(error) -> #(
           LoadError(api.error_message(error)),
           effect.none(),
         )
 
-        api.HttpFailure(_) -> #(
+        True, api.HttpFailure(_) -> #(
           LoadError("Could not load snippet."),
           effect.none(),
         )
       }
     }
 
+    LoadingSnippet(current_slug, settings, loading_indicator),
+      SnippetLoadingDelayElapsed(slug, generation)
+    ->
+      case current_slug == slug {
+        True -> #(
+          LoadingSnippet(
+            current_slug,
+            settings,
+            delayed_loading.reveal(loading_indicator, generation),
+          ),
+          effect.none(),
+        )
+        False -> #(model, effect.none())
+      }
+
     UnsupportedLanguage(_), _ -> #(model, effect.none())
-    LoadingSnippet(_, _), _ -> #(model, effect.none())
+    LoadingSnippet(_, _, _), _ -> #(model, effect.none())
     LoadError(_), _ -> #(model, effect.none())
     SupportedLanguage(model), _ ->
       update_helper(model, msg, current_user_id)
@@ -292,7 +321,10 @@ pub fn update_helper(
   current_user_id: option.Option(Uuid),
 ) -> #(RealModel, Effect(Msg)) {
   case msg {
-    SnippetLoaded(_) -> #(model, effect.none())
+    SnippetLoaded(_, _) | SnippetLoadingDelayElapsed(_, _) -> #(
+      model,
+      effect.none(),
+    )
 
     EditMetadataClicked -> #(
       RealModel(
@@ -702,8 +734,8 @@ pub fn view(
   case model {
     UnsupportedLanguage(lang) ->
       html.div([], [html.text("Unsupported language: " <> lang)])
-    LoadingSnippet(_slug, _settings) ->
-      html.div([], [html.text("Loading snippet...")])
+    LoadingSnippet(_, _, loading_indicator) ->
+      loading_snippet_view(delayed_loading.is_visible(loading_indicator))
     LoadError(message) -> html.div([], [html.text(message)])
     SupportedLanguage(model) -> view_helper(model, current_user_id, now)
   }
@@ -713,7 +745,7 @@ pub fn metadata(model: Model) -> seo.Metadata {
   case model {
     UnsupportedLanguage(language_slug) ->
       editor_ssr.metadata(editor_ssr.UnsupportedLanguage(language_slug))
-    LoadingSnippet(slug, _) ->
+    LoadingSnippet(slug, _, _) ->
       seo.metadata(
         title: "Loading snippet | glot.io",
         description: "Loading a code snippet on glot.io.",
@@ -745,6 +777,34 @@ fn to_ssr_view_model(model: RealModel) -> editor_ssr.ViewModel {
   case model.slug {
     option.Some(_) -> editor_ssr.ExistingSnippet(ssr_model)
     option.None -> editor_ssr.NewSnippet(ssr_model)
+  }
+}
+
+fn loading_snippet_view(show_loading: Bool) -> Element(msg) {
+  case show_loading {
+    False -> element.none()
+    True ->
+      html.div([attribute.class("app-page")], [
+        html.div([attribute.class("app-page__screen-glow")], []),
+        html.main(
+          [
+            attribute.id("main-content"),
+            attribute.attribute("tabindex", "-1"),
+            attribute.class("app-shell app-shell--narrow"),
+          ],
+          [
+            html.section([attribute.class("app-panel")], [
+              html.p(
+                [
+                  attribute.class("editor-page__loading"),
+                  attribute.attribute("role", "status"),
+                ],
+                [html.text("Loading snippet...")],
+              ),
+            ]),
+          ],
+        ),
+      ])
   }
 }
 
@@ -849,7 +909,7 @@ pub fn quick_actions(
 ) -> List(top_bar.Action(Msg)) {
   case model {
     SupportedLanguage(model) -> quick_actions_for_model(model, current_user_id)
-    UnsupportedLanguage(_) | LoadingSnippet(_, _) | LoadError(_) -> []
+    UnsupportedLanguage(_) | LoadingSnippet(_, _, _) | LoadError(_) -> []
   }
 }
 

@@ -6,6 +6,7 @@ import glot_core/route
 import glot_frontend/account_page
 import glot_frontend/contact_page
 import glot_frontend/delayed_loading
+import glot_frontend/editor_page
 import glot_frontend/login_page
 import glot_frontend/snippets_page
 import glot_frontend/string_helpers
@@ -69,6 +70,20 @@ pub fn snippets_page_ignores_loading_timer_from_previous_route_test() {
       snippets_page.LoadingDelayElapsed(first_request, 1),
     )
   let snippets_page.Model(loading_indicator:, ..) = model_after_old_timer
+
+  assert !delayed_loading.is_visible(loading_indicator)
+}
+
+pub fn editor_page_ignores_loading_timer_from_previous_slug_test() {
+  let #(model, _) = editor_page.init_existing("second")
+  let #(model_after_old_timer, _) =
+    editor_page.update(
+      model,
+      editor_page.SnippetLoadingDelayElapsed("first", 1),
+      option.None,
+    )
+  let assert editor_page.LoadingSnippet(_, _, loading_indicator) =
+    model_after_old_timer
 
   assert !delayed_loading.is_visible(loading_indicator)
 }
