@@ -1,9 +1,11 @@
 import gleam/dynamic/decode
 import gleam/json
 import gleam/option
+import gleam/regexp
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/session_model
 import glot_core/auth/user_model
+import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/helpers/timestamp_helpers
 import glot_core/helpers/uuid_helpers
 import youid/uuid
@@ -11,6 +13,7 @@ import youid/uuid
 pub type SessionUserResponse {
   SessionUserResponse(
     id: uuid.Uuid,
+    email: EmailAddress,
     username: String,
     role: user_model.UserRole,
   )
@@ -29,6 +32,7 @@ pub fn from_session(session: session_model.HydratedSession) -> SessionResponse {
     id: session.identity.id,
     user: SessionUserResponse(
       id: session.user.identity.id,
+      email: session.user.identity.email,
       username: session.user.identity.username,
       role: session.user.identity.role,
     ),
@@ -55,6 +59,7 @@ pub fn decoder() -> decode.Decoder(SessionResponse) {
 fn encode_session_user(user: SessionUserResponse) -> json.Json {
   json.object([
     #("id", json.string(uuid.to_string(user.id))),
+    #("email", email_address_model.encode(user.email)),
     #("username", json.string(user.username)),
     #("role", json.string(user_model.role_to_string(user.role))),
   ])
@@ -62,10 +67,16 @@ fn encode_session_user(user: SessionUserResponse) -> json.Json {
 
 fn session_user_decoder() -> decode.Decoder(SessionUserResponse) {
   use id <- decode.field("id", uuid_helpers.decoder())
+  use email <- decode.field("email", email_address_model.decoder(is_email()))
   use username <- decode.field("username", decode.string)
   use role <- decode.field("role", user_role_decoder())
 
-  decode.success(SessionUserResponse(id:, username:, role:))
+  decode.success(SessionUserResponse(id:, email:, username:, role:))
+}
+
+fn is_email() -> regexp.Regexp {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  is_email
 }
 
 fn user_role_decoder() -> decode.Decoder(user_model.UserRole) {

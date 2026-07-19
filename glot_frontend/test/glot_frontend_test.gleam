@@ -4,6 +4,7 @@ import gleeunit
 import glot_core/email/email_address_model
 import glot_core/route
 import glot_frontend/account_page
+import glot_frontend/contact_page
 import glot_frontend/login_page
 import glot_frontend/string_helpers
 
@@ -96,4 +97,38 @@ pub fn login_page_show_passkey_section_reflects_browser_support_test() {
 pub fn account_page_show_passkey_section_reflects_browser_support_test() {
   assert account_page.should_show_passkey_section(True)
   assert !account_page.should_show_passkey_section(False)
+}
+
+pub fn contact_page_prefills_empty_email_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let assert option.Some(email) =
+    email_address_model.from_string(is_email, "user@example.com")
+  let #(model, _) = contact_page.init(option.None)
+  let contact_page.Model(email:, ..) =
+    contact_page.session_loaded(model, option.Some(email))
+
+  assert email == "user@example.com"
+}
+
+pub fn contact_page_does_not_replace_entered_email_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let assert option.Some(email) =
+    email_address_model.from_string(is_email, "user@example.com")
+  let #(model, _) = contact_page.init(option.None)
+  let #(model, _) =
+    contact_page.update(model, contact_page.EmailChanged("other@example.com"))
+  let contact_page.Model(email:, ..) =
+    contact_page.session_loaded(model, option.Some(email))
+
+  assert email == "other@example.com"
+}
+
+pub fn contact_page_initializes_with_authenticated_email_test() {
+  let assert Ok(is_email) = regexp.from_string(email_address_model.pattern)
+  let assert option.Some(email) =
+    email_address_model.from_string(is_email, "user@example.com")
+  let #(contact_page.Model(email:, ..), _) =
+    contact_page.init(option.Some(email))
+
+  assert email == "user@example.com"
 }

@@ -69,9 +69,12 @@ type QuickActionTarget {
   TriggerEditorAction(editor_page.Msg)
 }
 
-fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
+fn init_page(
+  route: route.Route,
+  session: app_shell.SessionState,
+) -> #(PageModel, Effect(Msg)) {
   case route {
-    route.Public(public_route) -> init_public_page(public_route)
+    route.Public(public_route) -> init_public_page(public_route, session)
     route.Account(account_route) -> init_account_page(account_route)
     route.Admin(_) | route.NotFound(_) -> #(EmptyPageModel, effect.none())
   }
@@ -79,6 +82,7 @@ fn init_page(route: route.Route) -> #(PageModel, Effect(Msg)) {
 
 fn init_public_page(
   public_route: route.PublicRoute,
+  session: app_shell.SessionState,
 ) -> #(PageModel, Effect(Msg)) {
   case public_route {
     route.Home -> {
@@ -86,7 +90,8 @@ fn init_public_page(
       #(HomePageModel(model), effect.map(page_effect, HomePageMsg))
     }
     route.Contact -> {
-      let #(model, page_effect) = contact_page.init()
+      let #(model, page_effect) =
+        contact_page.init(app_shell.current_user_email(session))
       #(ContactPageModel(model), effect.map(page_effect, ContactPageMsg))
     }
     route.Privacy -> {
@@ -138,7 +143,8 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
     Ok(uri) -> route.from_uri(uri)
     Error(_) -> route.Public(route.Home)
   }
-  let #(page_model, page_effect) = init_page(current_route)
+  let initial_session = app_shell.LoadingSession
+  let #(page_model, page_effect) = init_page(current_route, initial_session)
   let navigation_effect =
     modem.init(fn(uri) { uri |> route.from_uri |> UserNavigatedTo })
 
@@ -146,7 +152,7 @@ fn init(_flags: Flags) -> #(Model, Effect(Msg)) {
     Model(
       route: current_route,
       page_model:,
-      session: app_shell.LoadingSession,
+      session: initial_session,
       now: clock.now(),
       page_visible: page_visibility.document_is_visible(),
       heartbeat_in_flight: False,
@@ -227,7 +233,11 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     SessionLoaded(result), _ -> {
       let session = app_shell.session_from_response(result)
-      #(Model(..model, session:, heartbeat_in_flight: False), effect.none())
+      let page_model = page_session_loaded(model.page_model, session)
+      #(
+        Model(..model, session:, page_model:, heartbeat_in_flight: False),
+        effect.none(),
+      )
     }
 
     SessionRefreshed(result), _ ->
@@ -366,7 +376,7 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       case route.is_admin_route(destination) {
         True -> #(model, browser_navigation.load(route.to_string(destination)))
         False -> {
-          let #(page_model, page_effect) = init_page(destination)
+          let #(page_model, page_effect) = init_page(destination, model.session)
           let next_model =
             Model(
               ..model,
@@ -388,6 +398,20 @@ fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
 
     _, _ -> #(model, effect.none())
+  }
+}
+
+fn page_session_loaded(
+  page_model: PageModel,
+  session: app_shell.SessionState,
+) -> PageModel {
+  case page_model {
+    ContactPageModel(contact_model) ->
+      ContactPageModel(contact_page.session_loaded(
+        contact_model,
+        app_shell.current_user_email(session),
+      ))
+    _ -> page_model
   }
 }
 

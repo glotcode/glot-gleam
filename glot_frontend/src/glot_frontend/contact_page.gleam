@@ -1,8 +1,9 @@
 import gleam/int
 import gleam/list
+import gleam/option
 import gleam/regexp
 import glot_core/contact_dto
-import glot_core/email/email_address_model
+import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/page/contact
 import glot_core/validation_error
 import glot_frontend/api
@@ -38,10 +39,12 @@ pub type Msg {
   SubmissionFinished(api.ApiResponse(Nil))
 }
 
-pub fn init() -> #(Model, Effect(Msg)) {
+pub fn init(email: option.Option(EmailAddress)) -> #(Model, Effect(Msg)) {
   #(
     Model(
-      email: "",
+      email: email
+        |> option.map(email_address_model.to_string)
+        |> option.unwrap(""),
       topic: contact_dto.topic_to_string(contact_dto.Privacy),
       message: "",
       website: "",
@@ -49,6 +52,17 @@ pub fn init() -> #(Model, Effect(Msg)) {
     ),
     effect.none(),
   )
+}
+
+pub fn session_loaded(
+  model: Model,
+  email: option.Option(EmailAddress),
+) -> Model {
+  case model.email, email {
+    "", option.Some(email) ->
+      Model(..model, email: email_address_model.to_string(email))
+    _, _ -> model
+  }
 }
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {

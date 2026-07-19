@@ -3,6 +3,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/auth/session_dto.{type SessionResponse}
 import glot_core/auth/user_model
+import glot_core/email/email_address_model.{type EmailAddress}
 import glot_core/helpers/timestamp_helpers
 import glot_core/page/top_bar
 import glot_core/pageview_dto
@@ -52,6 +53,15 @@ pub fn is_admin(session: SessionState) -> Bool {
 pub fn current_user_id(session: SessionState) -> option.Option(uuid.Uuid) {
   case session {
     AuthenticatedSession(session) -> option.Some(session.user.id)
+    LoadingSession | AnonymousSession | SessionError -> option.None
+  }
+}
+
+pub fn current_user_email(
+  session: SessionState,
+) -> option.Option(EmailAddress) {
+  case session {
+    AuthenticatedSession(session) -> option.Some(session.user.email)
     LoadingSession | AnonymousSession | SessionError -> option.None
   }
 }
