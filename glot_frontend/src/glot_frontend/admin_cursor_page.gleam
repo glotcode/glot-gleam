@@ -1,7 +1,7 @@
 import gleam/option
 import glot_core/pagination_model
 import glot_frontend/api
-import glot_frontend/loadable
+import glot_core/loadable
 import lustre/effect.{type Effect, none}
 
 pub fn ensure_loaded(

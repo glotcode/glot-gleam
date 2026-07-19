@@ -12,7 +12,7 @@ import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
 import glot_frontend/app_dialog
-import glot_frontend/loadable
+import glot_core/loadable
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}

@@ -4,12 +4,14 @@ import gleam/option
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
+import glot_core/loadable
 import glot_core/pagination_model
 import glot_core/route
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
 import glot_frontend/api
 import glot_frontend/app_dialog
+import glot_frontend/delayed_loading
 import lustre/attribute
 import lustre/effect.{type Effect}
 import lustre/element.{type Element}
@@ -23,42 +25,50 @@ const delete_dialog_id = "manage-snippets-page-delete-dialog"
 
 pub type Model {
   Model(
-    page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
+    page: loadable.Loadable(
+      pagination_model.CursorPage(snippet_dto.SnippetResponse),
+    ),
     after: option.Option(String),
     before: option.Option(String),
-    state: State,
     pending_delete: option.Option(snippet_dto.SnippetResponse),
+    deleting_slug: option.Option(String),
+    mutation_error: option.Option(String),
+    request: Request,
+    loading_indicator: delayed_loading.State,
   )
 }
 
-pub type State {
-  Loading
-  Ready
-  Deleting(String)
-  Error(String)
+pub opaque type Request {
+  Request(after: option.Option(String), before: option.Option(String))
 }
 
 pub fn init(
   after after: option.Option(String),
   before before: option.Option(String),
 ) -> #(Model, Effect(Msg)) {
+  let request = Request(after:, before:)
+  let #(loading_indicator, delay_effect) =
+    delayed_loading.start(delayed_loading.idle(), fn(generation) {
+      LoadingDelayElapsed(request, generation)
+    })
   let model =
     Model(
-      page: pagination_model.InitialCursorPage(
-        items: [],
-        next_cursor: option.None,
-      ),
+      page: loadable.Loading,
       after: after,
       before: before,
-      state: Loading,
       pending_delete: option.None,
+      deleting_slug: option.None,
+      mutation_error: option.None,
+      request:,
+      loading_indicator:,
     )
 
-  #(model, load_page(after, before))
+  #(model, effect.batch([load_page(request), delay_effect]))
 }
 
 pub type Msg {
-  SnippetsLoaded(api.ApiResponse(snippet_dto.ListSnippetsResponse))
+  SnippetsLoaded(Request, api.ApiResponse(snippet_dto.ListSnippetsResponse))
+  LoadingDelayElapsed(Request, Int)
   NextPageClicked
   PreviousPageClicked
   DeleteClicked(String)
@@ -70,37 +80,56 @@ pub type Msg {
 
 pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
   case msg {
-    SnippetsLoaded(result) ->
-      case result {
-        api.ApiSuccess(response) -> #(
+    SnippetsLoaded(request, result) ->
+      case request == model.request, result {
+        False, _ -> #(model, effect.none())
+        True, api.ApiSuccess(response) -> #(
           Model(
             ..model,
-            page: response.page,
-            state: Ready,
+            page: loadable.Loaded(response.page),
             pending_delete: option.None,
+            mutation_error: option.None,
+            loading_indicator: delayed_loading.finish(model.loading_indicator),
           ),
           effect.none(),
         )
-        api.ApiFailure(error) -> #(
+        True, api.ApiFailure(error) -> #(
           Model(
             ..model,
-            state: Error(api.error_message(error)),
+            page: loadable.LoadError(api.error_message(error)),
             pending_delete: option.None,
+            loading_indicator: delayed_loading.finish(model.loading_indicator),
           ),
           effect.none(),
         )
-        api.HttpFailure(_) -> #(
+        True, api.HttpFailure(_) -> #(
           Model(
             ..model,
-            state: Error("Could not load your snippets."),
+            page: loadable.LoadError("Could not load your snippets."),
             pending_delete: option.None,
+            loading_indicator: delayed_loading.finish(model.loading_indicator),
           ),
           effect.none(),
         )
       }
 
+    LoadingDelayElapsed(request, generation) ->
+      case request == model.request {
+        True -> #(
+          Model(
+            ..model,
+            loading_indicator: delayed_loading.reveal(
+              model.loading_indicator,
+              generation,
+            ),
+          ),
+          effect.none(),
+        )
+        False -> #(model, effect.none())
+      }
+
     NextPageClicked ->
-      case pagination_model.next_cursor(model.page) {
+      case next_cursor(model) {
         option.Some(next_cursor) -> #(
           model,
           navigate_to(
@@ -112,7 +141,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
 
     PreviousPageClicked ->
-      case pagination_model.previous_cursor(model.page) {
+      case previous_cursor(model) {
         option.Some(previous_cursor) -> #(
           model,
           navigate_to(
@@ -124,7 +153,7 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
       }
 
     DeleteClicked(slug) ->
-      case find_snippet(model.page, slug) {
+      case find_loaded_snippet(model.page, slug) {
         option.Some(snippet) -> #(
           Model(..model, pending_delete: option.Some(snippet)),
           app_dialog.open(delete_dialog_id),
@@ -140,7 +169,11 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
     )
 
     DeleteConfirmed(slug) -> #(
-      Model(..model, state: Deleting(slug)),
+      Model(
+        ..model,
+        deleting_slug: option.Some(slug),
+        mutation_error: option.None,
+      ),
       effect.batch([
         app_dialog.close(delete_dialog_id),
         api.delete_snippet(
@@ -152,23 +185,38 @@ pub fn update(model: Model, msg: Msg) -> #(Model, Effect(Msg)) {
 
     DeleteFinished(_, result) ->
       case result {
-        api.ApiSuccess(_) -> #(
-          Model(..model, state: Loading, pending_delete: option.None),
-          load_page(model.after, model.before),
-        )
+        api.ApiSuccess(_) -> {
+          let #(loading_indicator, delay_effect) =
+            delayed_loading.start(model.loading_indicator, fn(generation) {
+              LoadingDelayElapsed(model.request, generation)
+            })
+          #(
+            Model(
+              ..model,
+              page: loadable.Loading,
+              pending_delete: option.None,
+              deleting_slug: option.None,
+              mutation_error: option.None,
+              loading_indicator:,
+            ),
+            effect.batch([load_page(model.request), delay_effect]),
+          )
+        }
         api.ApiFailure(error) -> #(
           Model(
             ..model,
-            state: Error(api.error_message(error)),
             pending_delete: option.None,
+            deleting_slug: option.None,
+            mutation_error: option.Some(api.error_message(error)),
           ),
           effect.none(),
         )
         api.HttpFailure(_) -> #(
           Model(
             ..model,
-            state: Error("Could not delete snippet."),
             pending_delete: option.None,
+            deleting_slug: option.None,
+            mutation_error: option.Some("Could not delete snippet."),
           ),
           effect.none(),
         )
@@ -206,7 +254,7 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
             ]),
           ]),
           status_view(model),
-          snippets_table(model, now),
+          content_view(model, now),
         ]),
       ],
     ),
@@ -214,16 +262,13 @@ pub fn view(model: Model, now: Timestamp) -> Element(Msg) {
   ])
 }
 
-fn load_page(
-  after: option.Option(String),
-  before: option.Option(String),
-) -> Effect(Msg) {
+fn load_page(request: Request) -> Effect(Msg) {
   api.list_session_snippets(
     snippet_dto.ListSessionSnippetsRequest(pagination: pagination_from_cursors(
-      after,
-      before,
+      request.after,
+      request.before,
     )),
-    SnippetsLoaded,
+    fn(result) { SnippetsLoaded(request, result) },
   )
 }
 
@@ -249,36 +294,48 @@ fn pagination_from_cursors(
 }
 
 fn can_go_previous(model: Model) -> Bool {
-  case pagination_model.previous_cursor(model.page) {
-    option.None -> False
-    _ -> state_allows_pagination(model.state)
+  case previous_cursor(model), model.deleting_slug {
+    option.Some(_), option.None -> True
+    _, _ -> False
   }
 }
 
 fn can_go_next(model: Model) -> Bool {
-  case pagination_model.next_cursor(model.page) {
-    option.Some(_) -> state_allows_pagination(model.state)
-    option.None -> False
+  case next_cursor(model), model.deleting_slug {
+    option.Some(_), option.None -> True
+    _, _ -> False
   }
 }
 
-fn state_allows_pagination(state: State) -> Bool {
-  case state {
-    Loading | Deleting(_) -> False
-    Ready | Error(_) -> True
+fn previous_cursor(model: Model) -> option.Option(pagination_model.Cursor) {
+  case model.page {
+    loadable.Loaded(page) -> pagination_model.previous_cursor(page)
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) -> option.None
+  }
+}
+
+fn next_cursor(model: Model) -> option.Option(pagination_model.Cursor) {
+  case model.page {
+    loadable.Loaded(page) -> pagination_model.next_cursor(page)
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) -> option.None
   }
 }
 
 fn status_view(model: Model) -> Element(Msg) {
-  case model.state {
-    Loading -> info_status("Loading your snippets...")
-    Ready ->
-      case pagination_model.items(model.page) {
-        [] -> info_status("You have not created any snippets yet.")
-        _ -> info_status("")
-      }
-    Deleting(_) -> info_status("Deleting snippet...")
-    Error(message) -> error_status(message)
+  case
+    model.mutation_error,
+    model.deleting_slug,
+    model.page,
+    delayed_loading.is_visible(model.loading_indicator)
+  {
+    option.Some(message), _, _, _ -> error_status(message)
+    _, option.Some(_), _, _ -> info_status("Deleting snippet...")
+    _, _, loadable.LoadError(message), _ -> error_status(message)
+    _, _, loadable.Loading, True -> info_status("Loading your snippets...")
+    _, _, loadable.NotLoaded, _
+    | _, _, loadable.Loading, False
+    | _, _, loadable.Loaded(_), _
+    -> info_status("")
   }
 }
 
@@ -304,9 +361,33 @@ fn error_status(message: String) -> Element(Msg) {
   )
 }
 
-fn snippets_table(model: Model, now: Timestamp) -> Element(Msg) {
-  let deleting_slug = deleting_slug(model.state)
+fn content_view(model: Model, now: Timestamp) -> Element(Msg) {
+  case model.page {
+    loadable.Loaded(page) ->
+      case pagination_model.items(page) {
+        [] -> empty_state("You have not created any snippets yet.")
+        _ -> snippets_table(page, model.deleting_slug, now)
+      }
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) ->
+      html.div([attribute.class("snippets-page__content")], [])
+  }
+}
 
+fn empty_state(message: String) -> Element(Msg) {
+  html.div(
+    [
+      attribute.class("snippets-page__empty"),
+      attribute.attribute("role", "status"),
+    ],
+    [html.p([], [html.text(message)])],
+  )
+}
+
+fn snippets_table(
+  page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
+  deleting_slug: option.Option(String),
+  now: Timestamp,
+) -> Element(Msg) {
   html.div([attribute.class("snippets-table snippets-table--manage")], [
     html.div(
       [attribute.class("snippets-table__head snippets-table__head--manage")],
@@ -329,7 +410,7 @@ fn snippets_table(model: Model, now: Timestamp) -> Element(Msg) {
       ],
     ),
     html.div([attribute.class("snippets-table__body")], {
-      pagination_model.items(model.page)
+      pagination_model.items(page)
       |> list.map(fn(snippet) { snippet_row(snippet, deleting_slug, now) })
     }),
   ])
@@ -498,23 +579,22 @@ fn navigate_to(
   modem.push(path, query, option.None)
 }
 
-fn deleting_slug(state: State) -> option.Option(String) {
-  case state {
-    Deleting(slug) -> option.Some(slug)
-    Loading | Ready | Error(_) -> option.None
-  }
-}
-
-fn find_snippet(
-  page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
+fn find_loaded_snippet(
+  state: loadable.Loadable(
+    pagination_model.CursorPage(snippet_dto.SnippetResponse),
+  ),
   slug: String,
 ) -> option.Option(snippet_dto.SnippetResponse) {
-  case
-    page
-    |> pagination_model.items
-    |> list.find(fn(snippet) { snippet.slug == slug })
-  {
-    Ok(snippet) -> option.Some(snippet)
-    _ -> option.None
+  case state {
+    loadable.Loaded(page) ->
+      case
+        page
+        |> pagination_model.items
+        |> list.find(fn(snippet) { snippet.slug == slug })
+      {
+        Ok(snippet) -> option.Some(snippet)
+        _ -> option.None
+      }
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) -> option.None
   }
 }

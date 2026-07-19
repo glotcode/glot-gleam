@@ -5,7 +5,7 @@ import glot_core/admin/email_template_dto
 import glot_frontend/admin_format
 import glot_frontend/admin_ui
 import glot_frontend/api
-import glot_frontend/loadable
+import glot_core/loadable
 import glot_frontend/mutation
 import lustre/attribute
 import lustre/effect.{type Effect}

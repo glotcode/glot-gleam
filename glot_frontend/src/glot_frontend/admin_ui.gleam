@@ -2,7 +2,7 @@ import gleam/list
 import gleam/option
 import glot_core/pagination_model
 import glot_frontend/json_helpers
-import glot_frontend/loadable
+import glot_core/loadable
 import glot_frontend/mutation
 import lustre/attribute
 import lustre/element.{type Element}

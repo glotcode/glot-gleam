@@ -6,6 +6,7 @@ import gleam/string
 import gleam/time/timestamp.{type Timestamp}
 import glot_core/helpers/timestamp_helpers
 import glot_core/language
+import glot_core/loadable
 import glot_core/pagination_model
 import glot_core/route
 import glot_core/snippet/snippet_dto
@@ -15,18 +16,13 @@ import lustre/element/html
 
 const page_limit = 10
 
-pub type State {
-  Loading
-  Ready
-  Error(String)
-}
-
 pub type ViewModel {
   ViewModel(
-    page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
+    page: loadable.Loadable(
+      pagination_model.CursorPage(snippet_dto.SnippetResponse),
+    ),
     username: option.Option(String),
     now: Timestamp,
-    state: State,
   )
 }
 
@@ -52,27 +48,28 @@ pub fn decoder() -> decode.Decoder(ViewModel) {
   )
   use username <- decode.field("username", decode.optional(decode.string))
   use now <- decode.field("now", timestamp_helpers.decoder())
-  use state <- decode.field("state", state_decoder())
-  decode.success(ViewModel(page:, username:, now:, state:))
+  use page <- decode.field("state", state_decoder(page))
+  decode.success(ViewModel(page:, username:, now:))
 }
 
 pub fn encode(view_model: ViewModel) -> json.Json {
+  let page = loaded_page_or_empty(view_model.page)
   json.object([
     #(
       "page",
       pagination_model.encode_page(
-        view_model.page,
+        page,
         "snippets",
         snippet_dto.encode_response,
       ),
     ),
     #("username", json.nullable(view_model.username, json.string)),
     #("now", timestamp_helpers.encode(view_model.now)),
-    #("state", encode_state(view_model.state)),
+    #("state", encode_state(view_model.page)),
   ])
 }
 
-pub fn view(model: ViewModel) -> Element(msg) {
+pub fn view(model: ViewModel, show_loading: Bool) -> Element(msg) {
   html.div([attribute.class("app-page")], [
     html.div([attribute.class("app-page__screen-glow")], []),
     html.main(
@@ -95,8 +92,8 @@ pub fn view(model: ViewModel) -> Element(msg) {
               pagination_button("Next", next_page_route(model)),
             ]),
           ]),
-          status_view(model),
-          snippets_table(pagination_model.items(model.page), model.now),
+          status_view(model, show_loading),
+          content_view(model),
         ]),
       ],
     ),
@@ -124,24 +121,29 @@ fn pagination_from_cursors(
   }
 }
 
-fn state_decoder() -> decode.Decoder(State) {
+fn state_decoder(
+  page: pagination_model.CursorPage(snippet_dto.SnippetResponse),
+) -> decode.Decoder(
+  loadable.Loadable(pagination_model.CursorPage(snippet_dto.SnippetResponse)),
+) {
   use kind <- decode.field("kind", decode.string)
   case kind {
-    "loading" -> decode.success(Loading)
-    "ready" -> decode.success(Ready)
+    "loading" -> decode.success(loadable.Loading)
+    "ready" -> decode.success(loadable.Loaded(page))
     "error" -> {
       use message <- decode.field("message", decode.string)
-      decode.success(Error(message))
+      decode.success(loadable.LoadError(message))
     }
-    _ -> decode.failure(Loading, "SnippetsPageState")
+    _ -> decode.failure(loadable.Loading, "SnippetsPageState")
   }
 }
 
-fn encode_state(state: State) -> json.Json {
+fn encode_state(state: loadable.Loadable(a)) -> json.Json {
   case state {
-    Loading -> json.object([#("kind", json.string("loading"))])
-    Ready -> json.object([#("kind", json.string("ready"))])
-    Error(message) ->
+    loadable.NotLoaded | loadable.Loading ->
+      json.object([#("kind", json.string("loading"))])
+    loadable.Loaded(_) -> json.object([#("kind", json.string("ready"))])
+    loadable.LoadError(message) ->
       json.object([
         #("kind", json.string("error")),
         #("message", json.string(message)),
@@ -150,7 +152,7 @@ fn encode_state(state: State) -> json.Json {
 }
 
 fn previous_page_route(model: ViewModel) -> option.Option(route.Route) {
-  case pagination_model.previous_cursor(model.page) {
+  case pagination_model.previous_cursor(loaded_page_or_empty(model.page)) {
     option.Some(previous_cursor) ->
       option.Some(
         route.Public(route.Snippets(
@@ -164,7 +166,7 @@ fn previous_page_route(model: ViewModel) -> option.Option(route.Route) {
 }
 
 fn next_page_route(model: ViewModel) -> option.Option(route.Route) {
-  case pagination_model.next_cursor(model.page) {
+  case pagination_model.next_cursor(loaded_page_or_empty(model.page)) {
     option.Some(next_cursor) ->
       option.Some(
         route.Public(route.Snippets(
@@ -177,9 +179,9 @@ fn next_page_route(model: ViewModel) -> option.Option(route.Route) {
   }
 }
 
-fn status_view(model: ViewModel) -> Element(msg) {
-  case model.state {
-    Loading ->
+fn status_view(model: ViewModel, show_loading: Bool) -> Element(msg) {
+  case model.page, show_loading {
+    loadable.Loading, True ->
       html.p(
         [
           attribute.class("snippets-page__status"),
@@ -187,26 +189,9 @@ fn status_view(model: ViewModel) -> Element(msg) {
         ],
         [html.text("Loading snippets...")],
       )
-    Ready ->
-      case pagination_model.items(model.page) {
-        [] ->
-          html.p(
-            [
-              attribute.class("snippets-page__status"),
-              attribute.attribute("role", "status"),
-            ],
-            [html.text("No public snippets found.")],
-          )
-        _ ->
-          html.p(
-            [
-              attribute.class("snippets-page__status"),
-              attribute.attribute("role", "status"),
-            ],
-            [],
-          )
-      }
-    Error(message) ->
+    loadable.NotLoaded, _ | loadable.Loading, False | loadable.Loaded(_), _ ->
+      html.p([attribute.class("snippets-page__status")], [])
+    loadable.LoadError(message), _ ->
       html.p(
         [
           attribute.class("snippets-page__status snippets-page__status--error"),
@@ -214,6 +199,40 @@ fn status_view(model: ViewModel) -> Element(msg) {
         ],
         [html.text(message)],
       )
+  }
+}
+
+fn content_view(model: ViewModel) -> Element(msg) {
+  case model.page {
+    loadable.Loaded(page) ->
+      case pagination_model.items(page) {
+        [] -> empty_state("No public snippets found.")
+        snippets -> snippets_table(snippets, model.now)
+      }
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) ->
+      html.div([attribute.class("snippets-page__content")], [])
+  }
+}
+
+fn empty_state(message: String) -> Element(msg) {
+  html.div(
+    [
+      attribute.class("snippets-page__empty"),
+      attribute.attribute("role", "status"),
+    ],
+    [html.p([], [html.text(message)])],
+  )
+}
+
+fn loaded_page_or_empty(
+  state: loadable.Loadable(
+    pagination_model.CursorPage(snippet_dto.SnippetResponse),
+  ),
+) -> pagination_model.CursorPage(snippet_dto.SnippetResponse) {
+  case state {
+    loadable.Loaded(page) -> page
+    loadable.NotLoaded | loadable.Loading | loadable.LoadError(_) ->
+      empty_page()
   }
 }
 

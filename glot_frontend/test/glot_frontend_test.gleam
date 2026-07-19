@@ -5,7 +5,9 @@ import glot_core/email/email_address_model
 import glot_core/route
 import glot_frontend/account_page
 import glot_frontend/contact_page
+import glot_frontend/delayed_loading
 import glot_frontend/login_page
+import glot_frontend/snippets_page
 import glot_frontend/string_helpers
 
 pub fn main() -> Nil {
@@ -33,6 +35,42 @@ pub fn truncate_stem_middle_truncates_to_requested_length_test() {
 pub fn truncate_stem_middle_handles_tiny_lengths_test() {
   assert string_helpers.truncate_stem_middle("abcdef", 4) == "abcd"
   assert string_helpers.truncate_stem_middle("abcdef", 2) == "ab"
+}
+
+pub fn delayed_loading_only_reveals_current_generation_test() {
+  let #(first_load, _) =
+    delayed_loading.start(delayed_loading.idle(), fn(id) { id })
+  let #(second_load, _) = delayed_loading.start(first_load, fn(id) { id })
+
+  assert !delayed_loading.is_visible(first_load)
+  assert !delayed_loading.is_visible(delayed_loading.reveal(second_load, 1))
+  assert delayed_loading.is_visible(delayed_loading.reveal(second_load, 2))
+  assert !delayed_loading.is_visible(delayed_loading.finish(second_load))
+}
+
+pub fn snippets_page_ignores_loading_timer_from_previous_route_test() {
+  let #(first_model, _) =
+    snippets_page.init(
+      after: option.Some("first"),
+      before: option.None,
+      username: option.None,
+    )
+  let snippets_page.Model(request: first_request, ..) = first_model
+  let #(second_model, _) =
+    snippets_page.init(
+      after: option.Some("second"),
+      before: option.None,
+      username: option.None,
+    )
+
+  let #(model_after_old_timer, _) =
+    snippets_page.update(
+      second_model,
+      snippets_page.LoadingDelayElapsed(first_request, 1),
+    )
+  let snippets_page.Model(loading_indicator:, ..) = model_after_old_timer
+
+  assert !delayed_loading.is_visible(loading_indicator)
 }
 
 pub fn snippets_route_to_string_includes_username_query_test() {
