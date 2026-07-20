@@ -1,7 +1,7 @@
 import gleam/option.{type Option}
-import glot_backend/effect/effect_trace
-import glot_backend/effect/error
-import glot_backend/log
+import glot_backend/system/effect/effect_trace
+import glot_backend/system/effect/error
+import glot_backend/system/effect/log
 import wisp
 
 pub type PageResponse {

@@ -14,7 +14,11 @@ pub fn main() -> Nil {
 }
 ```
 
-Further documentation can be found at <https://hexdocs.pm/glot_backend>.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the feature layout, dependency
+direction, effect boundaries, and composition rules.
+
+Further generated documentation can be found at
+<https://hexdocs.pm/glot_backend>.
 
 ## Development
 

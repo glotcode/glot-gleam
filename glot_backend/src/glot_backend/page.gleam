@@ -2,22 +2,14 @@ import gleam/erlang/process
 import gleam/http/request
 import gleam/list
 import gleam/option
-import glot_backend/contact_page
-import glot_backend/context
-import glot_backend/domain/shared/availability_policy_domain
-import glot_backend/dynamic_config
+import glot_backend/app_config/effect/effect as app_config_effect
+import glot_backend/app_config/model/config as dynamic_config
+import glot_backend/app_config/worker/cache/worker as app_config_cache_worker
+import glot_backend/contact/page as contact_page
 import glot_backend/editor_page
-import glot_backend/effect/app_config/app_config_effect
-import glot_backend/effect/basic/basic_handlers
-import glot_backend/effect/effect_trace
-import glot_backend/effect/interpreter
-import glot_backend/effect/program
-import glot_backend/effect/program_state
-import glot_backend/effect/program_types
-import glot_backend/effect/runtime
-import glot_backend/effect/total_program
-import glot_backend/erlang
 import glot_backend/home_page
+import glot_backend/logging/ingestion/ports/sink.{type Sink}
+import glot_backend/logging/page_log/model/entry as page_log_entry
 import glot_backend/page/editor_page_domain
 import glot_backend/page/snippets_page_domain
 import glot_backend/page_error_presenter
@@ -25,13 +17,24 @@ import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/page_theme.{type PageTheme}
 import glot_backend/privacy_page
-import glot_backend/request_context
-import glot_backend/server_timing
+import glot_backend/request_policy/availability as availability_policy
+import glot_backend/run_code/worker/language_version_cache/worker as language_version_cache_worker
 import glot_backend/snippets_page
 import glot_backend/static_assets
-import glot_backend/worker/app_config_cache_worker/worker as app_config_cache_worker
-import glot_backend/worker/language_version_cache_worker/worker as language_version_cache_worker
-import glot_backend/worker/log_worker
+import glot_backend/system/effect/adapter/cache_ports
+import glot_backend/system/effect/adapter/service_ports as service_ports_adapter
+import glot_backend/system/effect/basic/basic_handlers
+import glot_backend/system/effect/effect_trace
+import glot_backend/system/effect/interpreter
+import glot_backend/system/effect/program
+import glot_backend/system/effect/program_state
+import glot_backend/system/effect/program_types
+import glot_backend/system/effect/runtime
+import glot_backend/system/effect/total_program
+import glot_backend/system/http/server_timing
+import glot_backend/system/request/context
+import glot_backend/system/request/hydrated_context as request_context
+import glot_backend/system/runtime/erlang
 import glot_core/page/seo
 import glot_core/route
 import lustre/attribute
@@ -50,7 +53,7 @@ pub fn handle_request(
   language_version_cache_subject: process.Subject(
     language_version_cache_worker.Message,
   ),
-  log_worker_subject: process.Subject(log_worker.Message),
+  log_sink: Sink,
   req: wisp.Request,
 ) -> wisp.Response {
   let page_request = page_request_from_request(req)
@@ -65,7 +68,7 @@ pub fn handle_request(
   let total_duration_ns = erlang.perf_counter_ns() - ctx.started_at
   insert_log_entry(
     ctx,
-    log_worker_subject,
+    log_sink,
     page_request,
     page_response,
     total_duration_ns,
@@ -107,7 +110,10 @@ fn handle_page_request(
   page_request: PageRequest,
 ) -> page_response.PageResponse {
   let runtime =
-    runtime.new(db, app_config_cache_subject, language_version_cache_subject)
+    runtime.new(service_ports_adapter.new(
+      db,
+      cache_ports.new(app_config_cache_subject, language_version_cache_subject),
+    ))
 
   case static_assets.load(ctx.config.static_base_path) {
     Ok(assets) -> {
@@ -116,7 +122,7 @@ fn handle_page_request(
         |> interpreter.run(runtime, ctx)
 
       case page_result {
-        Ok(#(request_ctx, availability_policy_domain.AllowPage)) ->
+        Ok(#(request_ctx, availability_policy.AllowPage)) ->
           handle_page_request_with_runtime(
             runtime,
             request_ctx,
@@ -126,10 +132,7 @@ fn handle_page_request(
           |> prepend_effects(availability_state.effect_measurements)
         Ok(#(
           _,
-          availability_policy_domain.UnavailablePage(
-            message,
-            retry_after_seconds,
-          ),
+          availability_policy.UnavailablePage(message, retry_after_seconds),
         )) ->
           page_error_presenter.unavailable_page_response(
             availability_state,
@@ -156,12 +159,12 @@ fn page_config_and_availability(
 ) -> program_types.Program(
   #(
     request_context.RequestContext,
-    availability_policy_domain.PageAvailabilityDecision,
+    availability_policy.PageAvailabilityDecision,
   ),
 ) {
   use config <- program.and_then(app_config_effect.get_dynamic_config())
   let request_ctx = request_context.new(ctx, config)
-  availability_policy_domain.evaluate_page_route(
+  availability_policy.evaluate_page_route(
     dynamic_config.availability_config(config),
     page_route,
   )
@@ -548,26 +551,17 @@ fn empty_page_state() -> program_state.State {
 
 fn insert_log_entry(
   ctx: context.Context,
-  log_worker_subject: process.Subject(log_worker.Message),
+  log_sink: Sink,
   page_request: PageRequest,
   page_response: page_response.PageResponse,
   total_duration_ns: Int,
 ) -> Nil {
-  case process.subject_owner(log_worker_subject) {
-    Ok(_) -> {
-      process.send(
-        log_worker_subject,
-        log_worker.InsertPage(prepare_log_entry(
-          ctx,
-          page_request,
-          page_response,
-          total_duration_ns,
-        )),
-      )
-      Nil
-    }
-    Error(_) -> wisp.log_error("Log worker unavailable")
-  }
+  log_sink.write_page(prepare_log_entry(
+    ctx,
+    page_request,
+    page_response,
+    total_duration_ns,
+  ))
 }
 
 fn prepare_log_entry(
@@ -575,8 +569,8 @@ fn prepare_log_entry(
   page_request: PageRequest,
   page_response: page_response.PageResponse,
   total_duration_ns: Int,
-) -> log_worker.PageLogEntry {
-  log_worker.PageLogEntry(
+) -> page_log_entry.Entry {
+  page_log_entry.Entry(
     id: basic_handlers.uuid_v7(ctx.timestamp),
     request_id: ctx.request_id,
     created_at: ctx.timestamp,

@@ -1,10 +1,10 @@
-import glot_backend/domain/snippet/get_snippet_domain
-import glot_backend/effect/error
-import glot_backend/effect/error/request_error
-import glot_backend/effect/error/resource_error
-import glot_backend/effect/program
-import glot_backend/effect/total_program
-import glot_backend/request_context
+import glot_backend/snippet/domain/get as get_snippet_domain
+import glot_backend/system/effect/error
+import glot_backend/system/effect/error/request_error
+import glot_backend/system/effect/error/resource_error
+import glot_backend/system/effect/program
+import glot_backend/system/effect/total_program
+import glot_backend/system/request/hydrated_context as request_context
 import glot_core/page/editor
 import glot_core/snippet/snippet_dto
 

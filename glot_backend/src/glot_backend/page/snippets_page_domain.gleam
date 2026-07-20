@@ -1,10 +1,10 @@
 import gleam/option
-import glot_backend/domain/snippet/list_public_snippets_domain
-import glot_backend/effect/error
-import glot_backend/effect/error/request_error
-import glot_backend/effect/program
-import glot_backend/effect/total_program
-import glot_backend/request_context
+import glot_backend/snippet/domain/list_public as list_public_snippets_domain
+import glot_backend/system/effect/error
+import glot_backend/system/effect/error/request_error
+import glot_backend/system/effect/program
+import glot_backend/system/effect/total_program
+import glot_backend/system/request/hydrated_context as request_context
 import glot_core/loadable
 import glot_core/page/snippets
 

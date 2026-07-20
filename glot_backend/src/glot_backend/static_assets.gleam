@@ -3,7 +3,7 @@ import gleam/dynamic/decode
 import gleam/json
 import gleam/list
 import gleam/result
-import glot_backend/file_system
+import glot_backend/system/file_system
 
 const manifest_path = "/manifest.json"
 

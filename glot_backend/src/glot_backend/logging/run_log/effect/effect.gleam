@@ -1,0 +1,93 @@
+import gleam/option.{type Option}
+import gleam/time/timestamp.{type Timestamp}
+import glot_backend/logging/effect/effect as logging_effect
+import glot_backend/logging/run_log/effect/algebra as run_log_algebra
+import glot_backend/system/effect/error
+import glot_backend/system/effect/error/db_error
+import glot_backend/system/effect/program_types
+import glot_core/admin/run_log_dto
+import glot_core/run_log_model.{type RunLog}
+import youid/uuid.{type Uuid}
+
+pub fn create(run_log: RunLog) -> program_types.Program(Nil) {
+  program_types.Impure(program_types.DbEffect(create_effect(run_log, next)))
+}
+
+pub fn create_tx(run_log: RunLog) -> program_types.TransactionProgram(Nil) {
+  program_types.TxImpure(create_effect(run_log, tx_next))
+}
+
+pub fn list(
+  request: run_log_dto.ListRunLogsRequest,
+) -> program_types.Program(List(RunLog)) {
+  program_types.Impure(
+    program_types.DbEffect(list_effect(request, program_types.Pure)),
+  )
+}
+
+pub fn get(id: Uuid) -> program_types.Program(Option(RunLog)) {
+  program_types.Impure(
+    program_types.DbEffect(get_effect(id, program_types.Pure)),
+  )
+}
+
+pub fn delete_before(before: Timestamp) -> program_types.Program(Nil) {
+  program_types.Impure(
+    program_types.DbEffect(delete_before_effect(before, next)),
+  )
+}
+
+fn next(
+  result: Result(Nil, db_error.DbCommandError),
+) -> program_types.Program(Nil) {
+  case result {
+    Ok(_) -> program_types.Pure(Nil)
+    Error(err) -> program_types.Fail(error.database_command_error(err))
+  }
+}
+
+fn tx_next(
+  result: Result(Nil, db_error.DbCommandError),
+) -> program_types.TransactionProgram(Nil) {
+  case result {
+    Ok(_) -> program_types.TxPure(Nil)
+    Error(err) -> program_types.TxFail(error.database_command_error(err))
+  }
+}
+
+fn create_effect(
+  run_log: RunLog,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  logging_effect.run_log(run_log_algebra.CreateRunLog(
+    run_log: run_log,
+    next: next,
+  ))
+}
+
+fn list_effect(
+  request: run_log_dto.ListRunLogsRequest,
+  next: fn(List(RunLog)) -> next,
+) -> program_types.DbEffect(next) {
+  logging_effect.run_log(run_log_algebra.ListRunLogs(
+    request: request,
+    next: next,
+  ))
+}
+
+fn get_effect(
+  id: Uuid,
+  next: fn(Option(RunLog)) -> next,
+) -> program_types.DbEffect(next) {
+  logging_effect.run_log(run_log_algebra.GetRunLog(id: id, next: next))
+}
+
+fn delete_before_effect(
+  before: Timestamp,
+  next: fn(Result(Nil, db_error.DbCommandError)) -> next,
+) -> program_types.DbEffect(next) {
+  logging_effect.run_log(run_log_algebra.DeleteRunLogBefore(
+    before: before,
+    next: next,
+  ))
+}

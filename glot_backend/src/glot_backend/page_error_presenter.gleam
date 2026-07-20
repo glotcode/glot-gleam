@@ -1,11 +1,11 @@
 import gleam/int
 import gleam/option
 import gleam/string
-import glot_backend/effect/error
-import glot_backend/effect/program_state
 import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/page_theme.{type PageTheme}
+import glot_backend/system/effect/error
+import glot_backend/system/effect/program_state
 import glot_core/route
 import lustre/attribute
 import lustre/element

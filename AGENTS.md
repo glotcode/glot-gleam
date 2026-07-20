@@ -10,6 +10,8 @@ Repository instructions for future agent sessions.
 
 ## Backend Conventions
 
+- Follow the feature organization and dependency boundaries documented in
+  `glot_backend/ARCHITECTURE.md`.
 - Prefer domain types from `glot_core` over duplicating equivalent backend-local types.
 - `glot_backend/program/handlers.gleam` is the boundary where SQL rows should be converted into domain types.
 - Keep generated SQL row types confined to the DB layer when possible.
@@ -23,6 +25,23 @@ Repository instructions for future agent sessions.
 - Keep transaction bodies as declarative and free of business logic as possible. Prepare domain decisions and mutation programs in small helpers, then execute the composed mutations together in one transaction.
 - Prefer returning and composing `TransactionProgram` values. Use `transaction_program.sequence` for ordered mutations and `and_then` only when a later operation depends on an earlier result.
 - Keep reads required for locking or atomic decisions, such as `FOR UPDATE` queries, inside the same transaction as their mutations. Isolate the decision and mutation preparation from the transaction orchestration in small helpers.
+
+### Feature Effect Boundaries
+
+- When a feature has multiple effect algebras, combine them in the feature-root
+  `effect/algebra.gleam` and expose one global effect variant for the feature.
+- Subfeature effect modules must construct global effects through the
+  feature-root `effect/effect.gleam`. They must not construct the feature's
+  `program_types` variant directly.
+- The feature-root interpreter must accept a feature-owned `Ports` bundle when
+  it needs multiple dependencies. System interpreters must pass the bundle,
+  not extract and pass its individual ports.
+- Subfeature algebras own their operation trace names and string conversions.
+  The feature-root algebra combines those names, and the global trace module
+  depends only on the feature-root algebra.
+- Adding an operation or subfeature to an existing bundled feature must not add
+  another global DB effect, global trace variant, or individual system-level
+  port.
 
 ## Generated Files
 

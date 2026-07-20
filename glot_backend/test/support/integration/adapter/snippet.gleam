@@ -1,0 +1,51 @@
+import gleam/option
+import glot_backend/snippet/ports/store
+import support/integration/adapter/state
+import support/integration/adapter/unexpected
+import support/integration/store/snippet
+
+pub fn defaults() -> store.Store {
+  store.Store(
+    get_snippet_by_id: fn(_) { unexpected.query("snippet.get_by_id") },
+    get_snippet_by_slug: fn(_) { unexpected.query("snippet.get_by_slug") },
+    get_admin_snippet_by_slug: fn(_) {
+      unexpected.query("snippet.get_admin_by_slug")
+    },
+    list_snippets: fn(_, _) { unexpected.query("snippet.list") },
+    list_admin_snippets: fn(_, _) { unexpected.query("snippet.list_admin") },
+    delete_snippet: fn(_) { unexpected.command("snippet.delete") },
+    delete_snippets_by_account_id: fn(_) {
+      unexpected.command("snippet.delete_by_account_id")
+    },
+    create_snippet: fn(_) { unexpected.command("snippet.create") },
+    update_snippet: fn(_) { unexpected.command("snippet.update") },
+  )
+}
+
+pub fn new(test_state: state.State) -> store.Store {
+  store.Store(
+    get_snippet_by_id: fn(_) { Ok(option.None) },
+    get_snippet_by_slug: fn(_) { Ok(option.None) },
+    get_admin_snippet_by_slug: fn(_) { Ok(option.None) },
+    list_snippets: fn(_, _) { Ok([]) },
+    list_admin_snippets: fn(_, _) { Ok([]) },
+    delete_snippet: fn(id) {
+      state.update(test_state, fn(db) { snippet.delete_snippet_by_id(db, id) })
+      Ok(Nil)
+    },
+    delete_snippets_by_account_id: fn(account_id) {
+      state.update(test_state, fn(db) {
+        snippet.delete_snippets_by_account_id(db, account_id)
+      })
+      Ok(Nil)
+    },
+    create_snippet: fn(value) {
+      state.update(test_state, fn(db) { snippet.insert_snippet(db, value) })
+      Ok(Nil)
+    },
+    update_snippet: fn(value) {
+      state.update(test_state, fn(db) { snippet.insert_snippet(db, value) })
+      Ok(Nil)
+    },
+  )
+}
