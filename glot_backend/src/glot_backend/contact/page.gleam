@@ -1,7 +1,7 @@
-import glot_core/page/contact
-import glot_core/page/seo
-import glot_core/page/site_chrome
-import glot_core/page/top_bar
+import glot_web/page/contact
+import glot_web/page/seo
+import glot_web/page/site_chrome
+import glot_web/page/top_bar
 import glot_core/route
 import lustre/element.{type Element}
 

@@ -7,6 +7,7 @@ import glot_backend/page_theme.{type PageTheme}
 import glot_backend/system/effect/error
 import glot_backend/system/effect/program_state
 import glot_core/route
+import glot_web/route as web_route
 import lustre/attribute
 import lustre/element
 import lustre/element/html
@@ -48,14 +49,14 @@ pub fn unavailable_page_response(
                 html.a(
                   [
                     attribute.class("maintenance-page__link"),
-                    route.href(route.Public(route.Login)),
+                    web_route.href(route.Public(route.Login)),
                   ],
                   [html.text("Login")],
                 ),
                 html.a(
                   [
                     attribute.class("maintenance-page__link"),
-                    route.href(route.Admin(route.AdminHome)),
+                    web_route.href(route.Admin(route.AdminHome)),
                   ],
                   [html.text("Admin")],
                 ),

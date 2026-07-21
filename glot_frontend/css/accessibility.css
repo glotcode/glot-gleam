@@ -43,17 +43,23 @@ body {
   [contenteditable="true"]
 ):focus-visible,
 glot-codemirror:focus-within {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 3px;
+  outline: var(--focus-ring-width) solid var(--color-focus);
+  outline-offset: var(--focus-ring-offset);
 }
 
 :where(button, input:not([type="hidden"]), select, textarea) {
-  min-block-size: 2.75rem;
+  min-block-size: var(--control-min-size);
   touch-action: manipulation;
 }
 
 button {
-  min-inline-size: 2.75rem;
+  min-inline-size: var(--control-min-size);
+}
+
+:where(input, select, textarea)[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  outline: var(--focus-ring-width) solid var(--color-danger-soft);
+  outline-offset: 1px;
 }
 
 :where(button, input, select, textarea):disabled {
@@ -67,24 +73,24 @@ button {
 
 /* Compact icon controls still expose an enhanced 44px touch target. */
 :where(.app-topbar__icon-button, .editor-shell__settings-button, .editor-shell__tab-action-button) {
-  min-inline-size: 2.75rem;
+  min-inline-size: var(--control-min-size);
 }
 
 .editor-shell__bezel,
 .editor-shell__actions {
-  min-height: 2.75rem;
+  min-height: var(--control-min-size);
   height: auto;
 }
 
 .editor-shell__tab,
 .editor-shell__tab-meta-button {
-  min-height: 2.75rem;
+  min-height: var(--control-min-size);
 }
 
 .editor-shell__tab:focus-visible,
 .editor-shell__tab-meta-button:focus-visible,
 glot-codemirror:focus-within {
-  outline-offset: -3px;
+  outline-offset: calc(-1 * var(--focus-ring-offset));
 }
 
 .site-footer__nav a,
@@ -93,8 +99,8 @@ glot-codemirror:focus-within {
 .account-page__link {
   display: inline-flex;
   align-items: center;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
+  min-width: var(--control-min-size);
+  min-height: var(--control-min-size);
 }
 
 .home-language {
@@ -134,9 +140,9 @@ glot-codemirror:focus-within {
   *::before,
   *::after {
     scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
+    animation-duration: var(--motion-reduced-duration) !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: var(--motion-reduced-duration) !important;
     transition-delay: 0ms !important;
   }
 }
@@ -176,7 +182,7 @@ glot-codemirror:focus-within {
     [contenteditable="true"]
   ):focus-visible,
   glot-codemirror:focus-within {
-    outline: 3px solid Highlight;
+    outline: var(--focus-ring-width) solid Highlight;
   }
 
   :where(button, [role="button"], .home-language) {

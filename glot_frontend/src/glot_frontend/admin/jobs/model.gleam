@@ -1,0 +1,53 @@
+import gleam/option
+import glot_core/admin/job_dto
+import glot_core/admin/job_log_dto
+import glot_core/pagination_model
+import glot_frontend/admin/request_generation.{type Generation}
+import youid/uuid
+
+pub type Model {
+  Model(
+    job_id: uuid.Uuid,
+    job: option.Option(job_dto.JobDetailResponse),
+    job_status: Status,
+    logs_page: pagination_model.CursorPage(job_log_dto.JobLogResponse),
+    logs_status: Status,
+    create_job_editor: option.Option(CreateJobEditor),
+    logs_generation: Generation,
+    create_generation: Generation,
+  )
+}
+
+pub type Status {
+  NotLoaded
+  Loading
+  Ready
+  LoadError(String)
+}
+
+pub type CreateJobEditor {
+  CreateJobEditor(
+    source_job_id: uuid.Uuid,
+    draft: CreateJobDraft,
+    state: CreateJobState,
+  )
+}
+
+pub type CreateJobDraft {
+  CreateJobDraft(
+    periodic_job_id: option.Option(uuid.Uuid),
+    job_type: String,
+    payload: String,
+    max_attempts: String,
+    timeout_seconds: String,
+    run_date: String,
+    run_time: String,
+  )
+}
+
+pub type CreateJobState {
+  CreateJobIdle
+  CreateJobSaving
+  CreateJobError(String)
+  CreateJobSaved(job_dto.JobDetailResponse)
+}

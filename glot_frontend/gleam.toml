@@ -15,6 +15,7 @@ target = "javascript"
 
 [dependencies]
 glot_core = { path = "../glot_core" }
+glot_web = { path = "../glot_web" }
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
 gleam_regexp = ">= 1.0.0 and < 2.0.0"
 lustre = ">= 5.4.0 and < 6.0.0"

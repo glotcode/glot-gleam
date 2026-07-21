@@ -5,7 +5,7 @@ import glot_backend/system/effect/error/resource_error
 import glot_backend/system/effect/program
 import glot_backend/system/effect/total_program
 import glot_backend/system/request/hydrated_context as request_context
-import glot_core/page/editor
+import glot_web/page/editor
 import glot_core/snippet/snippet_dto
 
 pub fn load_new_view_model(

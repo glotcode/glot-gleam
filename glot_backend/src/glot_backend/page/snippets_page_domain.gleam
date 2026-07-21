@@ -6,7 +6,7 @@ import glot_backend/system/effect/program
 import glot_backend/system/effect/total_program
 import glot_backend/system/request/hydrated_context as request_context
 import glot_core/loadable
-import glot_core/page/snippets
+import glot_web/page/snippets
 
 pub fn load_view_model(
   request_ctx: request_context.RequestContext,

@@ -5,9 +5,13 @@
   "main": "js/main.ts",
   "scripts": {
     "dev": "concurrently -k \"npm run watch:build\" \"vite\"",
-    "watch:build": "watchexec --watch src --watch ../glot_core/src --watch gleam.toml --watch ../glot_core/gleam.toml --exts gleam,toml,mjs -- ../build_frontend.sh",
+    "watch:build": "watchexec --watch src --watch ../glot_core/src --watch ../glot_web/src --watch gleam.toml --watch ../glot_core/gleam.toml --watch ../glot_web/gleam.toml --exts gleam,toml,mjs -- ../build_frontend.sh",
     "build": "vite build",
-    "test:javascript": "node --test js/custom_elements/*.test.mjs",
+    "test": "npm run check:boundaries && npm run check:css && npm run test:gleam && npm run test:javascript",
+    "check:boundaries": "node scripts/check-managed-boundaries.mjs",
+    "check:css": "node scripts/check-css-architecture.mjs",
+    "test:gleam": "gleam test",
+    "test:javascript": "node --test js/custom_elements/*.test.mjs src/glot_frontend/platform/*_ffi.test.mjs",
     "test:codemirror": "node --test js/custom_elements/glot-codemirror-document.test.mjs"
   },
   "type": "module",

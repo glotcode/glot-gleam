@@ -1,5 +1,4 @@
 import gleam/option
-import lustre/effect.{type Effect, none}
 
 pub type Loadable(data) {
   NotLoaded
@@ -20,16 +19,6 @@ pub fn fold(
     Loading -> loading
     Loaded(data) -> loaded(data)
     LoadError(message) -> failed(message)
-  }
-}
-
-pub fn ensure_loaded(
-  state: Loadable(data),
-  load_effect: Effect(msg),
-) -> #(Loadable(data), Effect(msg)) {
-  case state {
-    NotLoaded -> #(Loading, load_effect)
-    Loading | Loaded(_) | LoadError(_) -> #(state, none())
   }
 }
 

@@ -1,0 +1,140 @@
+{
+  "features": [
+    {
+      "name": "account",
+      "modules": [
+        "src/glot_frontend/account/command.gleam",
+        "src/glot_frontend/account/message.gleam",
+        "src/glot_frontend/account/model.gleam",
+        "src/glot_frontend/account/update.gleam"
+      ]
+    },
+    {
+      "name": "application lifecycle",
+      "modules": [
+        "src/glot_frontend/app/admin_managed.gleam",
+        "src/glot_frontend/app/public_managed.gleam",
+        "src/glot_frontend/app/quick_actions_managed.gleam",
+        "src/glot_frontend/app/runtime.gleam"
+      ]
+    },
+    {
+      "name": "admin command algebra",
+      "modules": [
+        "src/glot_frontend/admin/command.gleam",
+        "src/glot_frontend/admin/effect/config.gleam",
+        "src/glot_frontend/admin/effect/content.gleam",
+        "src/glot_frontend/admin/effect/jobs.gleam",
+        "src/glot_frontend/admin/effect/logs.gleam",
+        "src/glot_frontend/admin/effect/users.gleam",
+        "src/glot_frontend/admin/local_datetime.gleam"
+      ]
+    },
+    {
+      "name": "admin managed features",
+      "modules": [
+        "src/glot_frontend/admin/api_logs/detail_managed.gleam",
+        "src/glot_frontend/admin/api_logs/list_managed.gleam",
+        "src/glot_frontend/admin/email_templates/detail_managed.gleam",
+        "src/glot_frontend/admin/email_templates/list_managed.gleam",
+        "src/glot_frontend/admin/config/page_managed.gleam",
+        "src/glot_frontend/admin/job_logs/detail_managed.gleam",
+        "src/glot_frontend/admin/job_logs/list_managed.gleam",
+        "src/glot_frontend/admin/jobs/list_managed.gleam",
+        "src/glot_frontend/admin/jobs/policies_managed.gleam",
+        "src/glot_frontend/admin/request_generation.gleam",
+        "src/glot_frontend/admin/cursor_request.gleam",
+        "src/glot_frontend/admin/run_logs/detail_managed.gleam",
+        "src/glot_frontend/admin/run_logs/list_managed.gleam",
+        "src/glot_frontend/admin/snippets/detail_managed.gleam",
+        "src/glot_frontend/admin/snippets/list_managed.gleam",
+        "src/glot_frontend/admin/users/list_managed.gleam",
+        "src/glot_frontend/admin/jobs/constants.gleam",
+        "src/glot_frontend/admin/jobs/model.gleam",
+        "src/glot_frontend/admin/jobs/message.gleam",
+        "src/glot_frontend/admin/jobs/managed.gleam",
+        "src/glot_frontend/admin/periodic_jobs/model.gleam",
+        "src/glot_frontend/admin/periodic_jobs/message.gleam",
+        "src/glot_frontend/admin/periodic_jobs/managed.gleam",
+        "src/glot_frontend/admin/periodic_jobs/list_managed.gleam",
+        "src/glot_frontend/admin/rate_limits/constants.gleam",
+        "src/glot_frontend/admin/rate_limits/model.gleam",
+        "src/glot_frontend/admin/rate_limits/message.gleam",
+        "src/glot_frontend/admin/rate_limits/managed.gleam",
+        "src/glot_frontend/admin/users/constants.gleam",
+        "src/glot_frontend/admin/users/model.gleam",
+        "src/glot_frontend/admin/users/message.gleam",
+        "src/glot_frontend/admin/users/managed.gleam",
+        "src/glot_frontend/admin/router_managed.gleam"
+      ]
+    },
+    {
+      "name": "account snippets",
+      "modules": [
+        "src/glot_frontend/account/snippets/command.gleam",
+        "src/glot_frontend/account/snippets/managed.gleam",
+        "src/glot_frontend/account/snippets/message.gleam",
+        "src/glot_frontend/account/snippets/model.gleam"
+      ]
+    },
+    {
+      "name": "editor",
+      "modules": [
+        "src/glot_frontend/public/editor/command.gleam",
+        "src/glot_frontend/public/editor/draft.gleam",
+        "src/glot_frontend/public/editor/draft_policy.gleam",
+        "src/glot_frontend/public/editor/draft_workflow.gleam",
+        "src/glot_frontend/public/editor/file_workflow.gleam",
+        "src/glot_frontend/public/editor/initialization.gleam",
+        "src/glot_frontend/public/editor/loading_workflow.gleam",
+        "src/glot_frontend/public/editor/message.gleam",
+        "src/glot_frontend/public/editor/model.gleam",
+        "src/glot_frontend/public/editor/run_instructions.gleam",
+        "src/glot_frontend/public/editor/save_workflow.gleam",
+        "src/glot_frontend/public/editor/settings.gleam",
+        "src/glot_frontend/public/editor/update.gleam"
+      ]
+    },
+    {
+      "name": "public contact",
+      "modules": [
+        "src/glot_frontend/public/contact/command.gleam",
+        "src/glot_frontend/public/contact/managed.gleam",
+        "src/glot_frontend/public/contact/message.gleam",
+        "src/glot_frontend/public/contact/model.gleam"
+      ]
+    },
+    {
+      "name": "public login",
+      "modules": [
+        "src/glot_frontend/public/login/command.gleam",
+        "src/glot_frontend/public/login/managed.gleam",
+        "src/glot_frontend/public/login/message.gleam",
+        "src/glot_frontend/public/login/model.gleam"
+      ]
+    },
+    {
+      "name": "public snippets",
+      "modules": [
+        "src/glot_frontend/public/snippets/command.gleam",
+        "src/glot_frontend/public/snippets/managed.gleam",
+        "src/glot_frontend/public/snippets/message.gleam",
+        "src/glot_frontend/public/snippets/model.gleam"
+      ]
+    }
+  ],
+  "forbiddenImports": [
+    "glot_frontend/api/account",
+    "glot_frontend/api/admin/",
+    "glot_frontend/api/public",
+    "glot_frontend/platform/",
+    "/draft_store",
+    "/interpreter",
+    "/persistence",
+    "/production_ports",
+    "/settings_store",
+    "delayed_loading_effect",
+    "lustre/effect",
+    "modem"
+  ]
+}

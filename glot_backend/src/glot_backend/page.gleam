@@ -35,7 +35,7 @@ import glot_backend/system/http/server_timing
 import glot_backend/system/request/context
 import glot_backend/system/request/hydrated_context as request_context
 import glot_backend/system/runtime/erlang
-import glot_core/page/seo
+import glot_web/page/seo
 import glot_core/route
 import lustre/attribute
 import lustre/element

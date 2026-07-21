@@ -27,7 +27,8 @@ packages = [
   { name = "gleeunit", version = "1.11.0", build_tools = ["gleam"], requirements = ["gleam_stdlib"], otp_app = "gleeunit", source = "hex", outer_checksum = "EC31ABA74256AEA531EDF8169931D775BBB384FED0A8A1BDC4DD9354E3E21826" },
   { name = "glexer", version = "2.4.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "splitter"], otp_app = "glexer", source = "hex", outer_checksum = "5AB2401BF251699746B3551EF699ECC1D94FE2897C15041F181614B089125CA0" },
   { name = "glisten", version = "9.0.1", build_tools = ["gleam"], requirements = ["gleam_erlang", "gleam_otp", "gleam_stdlib", "logging"], otp_app = "glisten", source = "hex", outer_checksum = "7795AA50830656F3A0316A6B26595F893C83272DA901B3405E31339CAA31A10B" },
-  { name = "glot_core", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_regexp", "gleam_stdlib", "gleam_time", "lustre", "youid"], source = "local", path = "../glot_core" },
+  { name = "glot_core", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_regexp", "gleam_stdlib", "gleam_time", "youid"], source = "local", path = "../glot_core" },
+  { name = "glot_web", version = "1.0.0", build_tools = ["gleam"], requirements = ["gleam_json", "gleam_stdlib", "gleam_time", "glot_core", "lustre", "youid"], source = "local", path = "../glot_web" },
   { name = "gramps", version = "6.0.1", build_tools = ["gleam"], requirements = ["gleam_crypto", "gleam_erlang", "gleam_http", "gleam_stdlib"], otp_app = "gramps", source = "hex", outer_checksum = "D55636072DEE173F6586A5679D3C02EC7A0DE3F8646B78C351B72908FF223DF7" },
   { name = "houdini", version = "1.2.1", build_tools = ["gleam"], requirements = [], otp_app = "houdini", source = "hex", outer_checksum = "6F8AC2F12974567FB744BEA66AC93CEB76AAEA19AD28564623F76CDA9BC26A85" },
   { name = "hpack_erl", version = "0.3.0", build_tools = ["rebar3"], requirements = [], otp_app = "hpack", source = "hex", outer_checksum = "D6137D7079169D8C485C6962DFE261AF5B9EF60FBC557344511C1E65E3D95FB0" },
@@ -72,6 +73,7 @@ gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
 gleam_time = { version = ">= 1.6.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 glot_core = { path = "../glot_core" }
+glot_web = { path = "../glot_web" }
 lustre = { version = ">= 5.4.0 and < 6.0.0" }
 mist = { version = ">= 6.0.2 and < 7.0.0" }
 parrot = { version = ">= 2.1.2 and < 3.0.0" }

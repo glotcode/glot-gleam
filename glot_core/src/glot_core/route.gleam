@@ -1,7 +1,6 @@
 import gleam/list
 import gleam/option
 import gleam/uri.{type Uri}
-import lustre/attribute.{type Attribute}
 import youid/uuid
 
 pub type Route {
@@ -134,10 +133,6 @@ pub fn name(route: Route) -> String {
     Admin(admin_route) -> admin_route_name(admin_route)
     NotFound(_) -> "not_found"
   }
-}
-
-pub fn href(route: Route) -> Attribute(msg) {
-  attribute.href(to_string(route))
 }
 
 pub fn path_and_query(route: Route) -> #(String, option.Option(String)) {

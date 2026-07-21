@@ -45,6 +45,11 @@
   --color-success-border: color-mix(in srgb, var(--color-success) 35%, transparent);
   --color-focus-ring: var(--color-focus);
 
+  --focus-ring-width: 3px;
+  --focus-ring-offset: 3px;
+  --control-min-size: 2.75rem;
+  --motion-reduced-duration: 0.01ms;
+
   --syntax-keyword: var(--color-success);
   --syntax-string: var(--color-focus);
   --syntax-number: var(--color-accent-hover);

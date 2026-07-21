@@ -11,6 +11,8 @@ between them.
 - `glot_frontend` — JavaScript-target Gleam application and browser assets,
   built with Lustre and Vite.
 - `glot_core` — domain types and helpers shared by the backend and frontend.
+- `glot_web` — shared Lustre presentation used by server-side and browser
+  rendering; it depends on `glot_core`, never the reverse.
 
 The backend is organized by feature. See
 [Backend architecture](glot_backend/ARCHITECTURE.md) for its dependency rules,

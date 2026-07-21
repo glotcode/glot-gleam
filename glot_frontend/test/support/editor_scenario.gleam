@@ -1,0 +1,372 @@
+import gleam/list
+import gleam/option
+import gleam/string
+import glot_core/language
+import glot_core/run
+import glot_core/snippet/snippet_dto
+import glot_core/snippet/snippet_model
+import glot_frontend/api/response
+import glot_frontend/public/editor/command
+import glot_frontend/public/editor/draft
+import glot_frontend/public/editor/execution
+import glot_frontend/public/editor/message
+import glot_frontend/public/editor/model
+import glot_frontend/public/editor/page
+import glot_frontend/public/editor/settings
+import support/managed_scenario
+import youid/uuid.{type Uuid}
+
+/// Managed reads stay pending until a scenario supplies a fixture response.
+/// The callback is the same callback used by the production interpreter.
+pub type PendingEffect {
+  LoadEnvironment(fn(String, settings.EditorSettings) -> message.Msg)
+  LoadNewDraft(
+    String,
+    fn(option.Option(draft.StoredEditorDraft)) -> message.Msg,
+  )
+  GetSnippet(
+    snippet_dto.GetSnippetRequest,
+    fn(response.Response(snippet_dto.SnippetResponse)) -> message.Msg,
+  )
+  RunCode(run.RunRequest, fn(response.Response(run.RunResult)) -> message.Msg)
+  GetLanguageVersion(
+    run.GetLanguageVersionRequest,
+    fn(response.Response(run.RunResult)) -> message.Msg,
+  )
+  CreateSnippet(
+    snippet_dto.CreateSnippetRequest,
+    fn(response.Response(snippet_dto.SnippetResponse)) -> message.Msg,
+  )
+  UpdateSnippet(
+    snippet_dto.UpdateSnippetRequest,
+    fn(response.Response(snippet_dto.SnippetResponse)) -> message.Msg,
+  )
+  LoadExistingDraft(
+    String,
+    fn(option.Option(draft.StoredEditorDraft)) -> message.Msg,
+  )
+}
+
+/// Browser effects are recorded as data so scenarios can assert user-visible
+/// consequences without installing a DOM, navigation, or storage mock.
+pub type ObservedEffect {
+  DraftSaved(model.RealModel)
+  DraftCleared(model.RealModel)
+  ExistingDraftCleared(String)
+  SettingsSaved(settings.EditorSettings)
+  DialogOpened(String)
+  DialogOpenedNextFrame(String)
+  DialogClosed(String)
+  ElementFocused(String)
+  Navigated(String)
+  MessageScheduled(Int, message.Msg)
+}
+
+pub type ScheduledEffect {
+  Scheduled(Int, message.Msg)
+}
+
+pub opaque type Scenario {
+  Scenario(
+    core: managed_scenario.Scenario(model.Model, PendingEffect, ObservedEffect),
+    current_user_id: option.Option(Uuid),
+    scheduled: List(ScheduledEffect),
+  )
+}
+
+pub fn start(
+  initial_model: model.Model,
+  current_user_id: option.Option(Uuid),
+) -> Scenario {
+  Scenario(managed_scenario.new(initial_model), current_user_id, [])
+}
+
+pub fn start_with_command(
+  initial_model: model.Model,
+  current_user_id: option.Option(Uuid),
+  initial_command: command.Command(message.Msg),
+) -> Scenario {
+  start(initial_model, current_user_id)
+  |> interpret(initial_command)
+}
+
+/// Simulate a user or browser message and interpret every synchronous command.
+/// API commands remain pending until completed with one of the response helpers.
+pub fn dispatch(scenario: Scenario, msg: message.Msg) -> Scenario {
+  let update = fn(model, msg) {
+    page.update_managed(model, msg, scenario.current_user_id)
+  }
+  let #(next_model, next_command) = update(model(scenario), msg)
+  interpret(
+    Scenario(
+      ..scenario,
+      core: managed_scenario.replace_model(scenario.core, next_model),
+    ),
+    next_command,
+  )
+}
+
+pub fn model(scenario: Scenario) -> model.Model {
+  managed_scenario.model(scenario.core)
+}
+
+pub fn pending(scenario: Scenario) -> List(PendingEffect) {
+  managed_scenario.pending(scenario.core)
+}
+
+pub fn observed(scenario: Scenario) -> List(ObservedEffect) {
+  managed_scenario.observed(scenario.core)
+}
+
+pub fn scheduled(scenario: Scenario) -> List(ScheduledEffect) {
+  scenario.scheduled
+}
+
+pub fn deliver_next_scheduled(scenario: Scenario) -> Scenario {
+  let assert [Scheduled(_, msg), ..remaining] = scenario.scheduled
+  Scenario(..scenario, scheduled: remaining)
+  |> dispatch(msg)
+}
+
+pub fn respond_to_run(
+  scenario: Scenario,
+  fixture: response.Response(run.RunResult),
+) -> Scenario {
+  respond_to_run_at(scenario, 0, fixture)
+}
+
+pub fn respond_to_environment(
+  scenario: Scenario,
+  raw_ssr: String,
+  settings: settings.EditorSettings,
+) -> Scenario {
+  let assert [LoadEnvironment(complete), ..remaining] = pending(scenario)
+  Scenario(
+    ..scenario,
+    core: managed_scenario.replace_pending(scenario.core, remaining),
+  )
+  |> dispatch(complete(raw_ssr, settings))
+}
+
+pub fn respond_to_new_draft(
+  scenario: Scenario,
+  fixture: option.Option(draft.StoredEditorDraft),
+) -> Scenario {
+  let assert [LoadNewDraft(_, complete), ..remaining] = pending(scenario)
+  Scenario(
+    ..scenario,
+    core: managed_scenario.replace_pending(scenario.core, remaining),
+  )
+  |> dispatch(complete(fixture))
+}
+
+pub fn respond_to_get_snippet(
+  scenario: Scenario,
+  fixture: response.Response(snippet_dto.SnippetResponse),
+) -> Scenario {
+  let assert [GetSnippet(_, complete), ..remaining] = pending(scenario)
+  Scenario(
+    ..scenario,
+    core: managed_scenario.replace_pending(scenario.core, remaining),
+  )
+  |> dispatch(complete(fixture))
+}
+
+/// Complete a particular pending run. This is useful for proving that stale,
+/// out-of-order responses cannot overwrite newer state.
+pub fn respond_to_run_at(
+  scenario: Scenario,
+  index: Int,
+  fixture: response.Response(run.RunResult),
+) -> Scenario {
+  let #(before, selected_and_after) = list.split(pending(scenario), index)
+  let assert [RunCode(_, complete), ..after] = selected_and_after
+  Scenario(
+    ..scenario,
+    core: managed_scenario.replace_pending(
+      scenario.core,
+      list.append(before, after),
+    ),
+  )
+  |> dispatch(complete(fixture))
+}
+
+pub fn respond_to_language_version(
+  scenario: Scenario,
+  fixture: response.Response(run.RunResult),
+) -> Scenario {
+  let assert [GetLanguageVersion(_, complete), ..remaining] = pending(scenario)
+  Scenario(
+    ..scenario,
+    core: managed_scenario.replace_pending(scenario.core, remaining),
+  )
+  |> dispatch(complete(fixture))
+}
+
+pub fn respond_to_create(
+  scenario: Scenario,
+  fixture: response.Response(snippet_dto.SnippetResponse),
+) -> Scenario {
+  respond_to_create_at(scenario, 0, fixture)
+}
+
+pub fn respond_to_create_at(
+  scenario: Scenario,
+  index: Int,
+  fixture: response.Response(snippet_dto.SnippetResponse),
+) -> Scenario {
+  let #(before, selected_and_after) = list.split(pending(scenario), index)
+  let assert [CreateSnippet(_, complete), ..after] = selected_and_after
+  Scenario(
+    ..scenario,
+    core: managed_scenario.replace_pending(
+      scenario.core,
+      list.append(before, after),
+    ),
+  )
+  |> dispatch(complete(fixture))
+}
+
+pub fn respond_to_update(
+  scenario: Scenario,
+  fixture: response.Response(snippet_dto.SnippetResponse),
+) -> Scenario {
+  respond_to_update_at(scenario, 0, fixture)
+}
+
+pub fn respond_to_update_at(
+  scenario: Scenario,
+  index: Int,
+  fixture: response.Response(snippet_dto.SnippetResponse),
+) -> Scenario {
+  let #(before, selected_and_after) = list.split(pending(scenario), index)
+  let assert [UpdateSnippet(_, complete), ..after] = selected_and_after
+  Scenario(
+    ..scenario,
+    core: managed_scenario.replace_pending(
+      scenario.core,
+      list.append(before, after),
+    ),
+  )
+  |> dispatch(complete(fixture))
+}
+
+pub fn respond_to_existing_draft(
+  scenario: Scenario,
+  fixture: option.Option(draft.StoredEditorDraft),
+) -> Scenario {
+  let assert [LoadExistingDraft(_, complete), ..remaining] = pending(scenario)
+  Scenario(
+    ..scenario,
+    core: managed_scenario.replace_pending(scenario.core, remaining),
+  )
+  |> dispatch(complete(fixture))
+}
+
+/// Use at the end of a scenario to reject forgotten or unexpected API work.
+pub fn assert_no_pending_effects(scenario: Scenario) -> Nil {
+  let assert [] = pending(scenario)
+  let assert [] = scenario.scheduled
+  Nil
+}
+
+pub fn new_editor(lang: language.Language) -> model.Model {
+  let file = snippet_model.default_file(lang)
+  let run_instructions = language.run_instructions(lang, file.name, [])
+  model.SupportedLanguage(model.RealModel(
+    slug: option.None,
+    owner_user_id: option.None,
+    owner_username: option.None,
+    title: "Hello World",
+    title_draft: "Hello World",
+    language: lang,
+    visibility: snippet_model.Unlisted,
+    created_at: option.None,
+    updated_at: option.None,
+    files: [file],
+    stdin: option.None,
+    editor_revision: 0,
+    editor_external_revision: 0,
+    selected_tab: model.FileTab(0),
+    add_entry_kind: model.AddFileEntry,
+    add_entry_filename: "",
+    edit_entry_filename: file.name,
+    editor_settings: settings.defaults(),
+    editor_settings_draft: settings.defaults(),
+    run_instructions_override: option.None,
+    run_instructions_mode_draft: model.DefaultRunInstructions,
+    run_instructions_draft: model.RunInstructionsDraft(
+      build_commands_text: string.join(run_instructions.build_commands, "\n"),
+      run_command: run_instructions.run_command,
+    ),
+    save_visibility_draft: snippet_model.Unlisted,
+    pending_restore_draft: option.None,
+    version_info: option.None,
+    run_generation: 0,
+    run_state: execution.Idle,
+    save_generation: 0,
+    save_state: execution.SaveIdle,
+  ))
+}
+
+fn interpret(
+  scenario: Scenario,
+  next_command: command.Command(message.Msg),
+) -> Scenario {
+  case next_command {
+    command.None -> scenario
+    command.Batch(commands) -> list.fold(commands, scenario, interpret)
+    command.LoadEnvironment(complete) ->
+      append_pending(scenario, LoadEnvironment(complete))
+    command.LoadNewDraft(language_slug, complete) ->
+      append_pending(scenario, LoadNewDraft(language_slug, complete))
+    command.GetSnippet(request, complete) ->
+      append_pending(scenario, GetSnippet(request, complete))
+    command.RunCode(request, complete) ->
+      append_pending(scenario, RunCode(request, complete))
+    command.GetLanguageVersion(request, complete) ->
+      append_pending(scenario, GetLanguageVersion(request, complete))
+    command.CreateSnippet(request, complete) ->
+      append_pending(scenario, CreateSnippet(request, complete))
+    command.UpdateSnippet(request, complete) ->
+      append_pending(scenario, UpdateSnippet(request, complete))
+    command.LoadExistingDraft(slug, complete) ->
+      append_pending(scenario, LoadExistingDraft(slug, complete))
+    command.SaveDraft(value) -> append_observed(scenario, DraftSaved(value))
+    command.ClearDraft(value) -> append_observed(scenario, DraftCleared(value))
+    command.ClearExistingDraft(slug) ->
+      append_observed(scenario, ExistingDraftCleared(slug))
+    command.SaveSettings(value) ->
+      append_observed(scenario, SettingsSaved(value))
+    command.OpenDialog(id) -> append_observed(scenario, DialogOpened(id))
+    command.OpenDialogNextFrame(id) ->
+      append_observed(scenario, DialogOpenedNextFrame(id))
+    command.CloseDialog(id) -> append_observed(scenario, DialogClosed(id))
+    command.Focus(id) -> append_observed(scenario, ElementFocused(id))
+    command.Navigate(path) -> append_observed(scenario, Navigated(path))
+    command.Schedule(milliseconds, msg) -> {
+      let scenario =
+        Scenario(
+          ..scenario,
+          scheduled: list.append(scenario.scheduled, [
+            Scheduled(milliseconds, msg),
+          ]),
+        )
+      append_observed(scenario, MessageScheduled(milliseconds, msg))
+    }
+  }
+}
+
+fn append_pending(scenario: Scenario, effect: PendingEffect) -> Scenario {
+  Scenario(
+    ..scenario,
+    core: managed_scenario.append_pending(scenario.core, effect),
+  )
+}
+
+fn append_observed(scenario: Scenario, effect: ObservedEffect) -> Scenario {
+  Scenario(
+    ..scenario,
+    core: managed_scenario.append_observed(scenario.core, effect),
+  )
+}

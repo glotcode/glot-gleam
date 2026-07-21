@@ -1,6 +1,6 @@
 import gleam/json
 import gleam/option
-import glot_core/page/editor
+import glot_web/page/editor
 import lustre/attribute
 import lustre/element.{type Element}
 
