@@ -6,6 +6,7 @@ import gleam/json
 import gleam/option
 import gleam/string
 import glot_backend/api/handler as api
+import glot_backend/app_config/model/config as dynamic_config
 import glot_backend/request_policy/model/config as request_policy_config
 import glot_core/availability_mode
 import pog
@@ -19,7 +20,6 @@ pub fn api_returns_503_with_retry_after_in_read_only_mode_test() {
       message: "Scheduled platform maintenance.",
       retry_after_seconds: option.Some(600),
     )
-  let app_config_subject = http_support.start_app_config_worker(availability)
   let db = pog.named_connection(process.new_name("availability_http_db"))
   let request =
     simulate.request(http.Post, "/api/mux")
@@ -32,10 +32,11 @@ pub fn api_returns_503_with_retry_after_in_read_only_mode_test() {
 
   let response =
     api.handle_request(
-      db,
+      http_support.test_runtime(
+        db,
+        http_support.test_dynamic_config(availability),
+      ),
       http_support.test_context(),
-      app_config_subject,
-      process.new_subject(),
       http_support.no_op_log_sink(),
       request,
     )
@@ -58,10 +59,11 @@ pub fn api_rejects_non_json_content_type_test() {
 
   let response =
     api.handle_request(
-      pog.named_connection(process.new_name("content_type_http_db")),
+      http_support.test_runtime(
+        pog.named_connection(process.new_name("content_type_http_db")),
+        dynamic_config.empty(),
+      ),
       http_support.test_context(),
-      process.new_subject(),
-      process.new_subject(),
       http_support.no_op_log_sink(),
       request,
     )
@@ -91,10 +93,11 @@ pub fn api_accepts_json_content_type_with_charset_test() {
 
   let response =
     api.handle_request(
-      pog.named_connection(process.new_name("content_type_http_db")),
+      http_support.test_runtime(
+        pog.named_connection(process.new_name("content_type_http_db")),
+        http_support.test_dynamic_config(availability),
+      ),
       http_support.test_context(),
-      http_support.start_app_config_worker(availability),
-      process.new_subject(),
       http_support.no_op_log_sink(),
       request,
     )

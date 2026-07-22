@@ -1,10 +1,8 @@
-import gleam/erlang/process
 import gleam/http/request
 import gleam/list
 import gleam/option
 import glot_backend/app_config/effect/effect as app_config_effect
 import glot_backend/app_config/model/config as dynamic_config
-import glot_backend/app_config/worker/cache/worker as app_config_cache_worker
 import glot_backend/contact/page as contact_page
 import glot_backend/editor_page
 import glot_backend/home_page
@@ -18,28 +16,24 @@ import glot_backend/page_response
 import glot_backend/page_theme.{type PageTheme}
 import glot_backend/privacy_page
 import glot_backend/request_policy/availability as availability_policy
-import glot_backend/run_code/worker/language_version_cache/worker as language_version_cache_worker
 import glot_backend/snippets_page
 import glot_backend/static_assets
-import glot_backend/system/effect/adapter/cache_ports
-import glot_backend/system/effect/adapter/service_ports as service_ports_adapter
 import glot_backend/system/effect/basic/basic_handlers
 import glot_backend/system/effect/effect_trace
 import glot_backend/system/effect/interpreter
 import glot_backend/system/effect/program
 import glot_backend/system/effect/program_state
 import glot_backend/system/effect/program_types
-import glot_backend/system/effect/runtime
+import glot_backend/system/effect/runtime.{type Runtime}
 import glot_backend/system/effect/total_program
 import glot_backend/system/http/server_timing
 import glot_backend/system/request/context
 import glot_backend/system/request/hydrated_context as request_context
 import glot_backend/system/runtime/erlang
-import glot_web/page/seo
 import glot_core/route
+import glot_web/page/seo
 import lustre/attribute
 import lustre/element
-import pog
 import wisp
 
 pub type PageRequest {
@@ -47,24 +41,13 @@ pub type PageRequest {
 }
 
 pub fn handle_request(
-  db: pog.Connection,
+  effect_runtime: Runtime,
   ctx: context.Context,
-  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
-  language_version_cache_subject: process.Subject(
-    language_version_cache_worker.Message,
-  ),
   log_sink: Sink,
   req: wisp.Request,
 ) -> wisp.Response {
   let page_request = page_request_from_request(req)
-  let page_response =
-    handle_page_request(
-      db,
-      ctx,
-      app_config_cache_subject,
-      language_version_cache_subject,
-      page_request,
-    )
+  let page_response = handle_page_request(effect_runtime, ctx, page_request)
   let total_duration_ns = erlang.perf_counter_ns() - ctx.started_at
   insert_log_entry(
     ctx,
@@ -101,30 +84,20 @@ fn page_request_from_request(req: wisp.Request) -> PageRequest {
 }
 
 fn handle_page_request(
-  db: pog.Connection,
+  effect_runtime: Runtime,
   ctx: context.Context,
-  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
-  language_version_cache_subject: process.Subject(
-    language_version_cache_worker.Message,
-  ),
   page_request: PageRequest,
 ) -> page_response.PageResponse {
-  let runtime =
-    runtime.new(service_ports_adapter.new(
-      db,
-      cache_ports.new(app_config_cache_subject, language_version_cache_subject),
-    ))
-
   case static_assets.load(ctx.config.static_base_path) {
     Ok(assets) -> {
       let #(page_result, availability_state) =
         page_config_and_availability(ctx, page_request.route)
-        |> interpreter.run(runtime, ctx)
+        |> interpreter.run(effect_runtime, ctx)
 
       case page_result {
         Ok(#(request_ctx, availability_policy.AllowPage)) ->
           handle_page_request_with_runtime(
-            runtime,
+            effect_runtime,
             request_ctx,
             page_request,
             assets,
@@ -172,7 +145,7 @@ fn page_config_and_availability(
 }
 
 fn handle_page_request_with_runtime(
-  runtime: runtime.Runtime,
+  runtime: Runtime,
   request_ctx: request_context.RequestContext,
   page_request: PageRequest,
   assets: static_assets.Assets,
@@ -499,7 +472,7 @@ fn spa_page_with_frontend(
 fn run_page_program(
   page_name: String,
   total_program: total_program.TotalProgram(a),
-  runtime: runtime.Runtime,
+  runtime: Runtime,
   ctx: context.Context,
   assets: static_assets.Assets,
   theme: option.Option(PageTheme),

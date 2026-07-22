@@ -1,5 +1,4 @@
 import gleam/bit_array
-import gleam/erlang/process
 import gleam/json
 import gleam/string
 import glot_backend/admin/adapter/api/handler as admin_api_handler
@@ -11,42 +10,27 @@ import glot_backend/api/presenter/error as api_error_presenter
 import glot_backend/api/presenter/response as response_presenter
 import glot_backend/app_config/effect/effect as app_config_effect
 import glot_backend/app_config/model/config as dynamic_config
-import glot_backend/app_config/worker/cache/worker as app_config_cache_worker
 import glot_backend/logging/ingestion/ports/sink.{type Sink}
 import glot_backend/request_policy/availability as availability_policy
-import glot_backend/run_code/worker/language_version_cache/worker as language_version_cache_worker
-import glot_backend/system/effect/adapter/cache_ports
-import glot_backend/system/effect/adapter/service_ports as service_ports_adapter
 import glot_backend/system/effect/error
 import glot_backend/system/effect/interpreter
 import glot_backend/system/effect/program
 import glot_backend/system/effect/program_types
-import glot_backend/system/effect/runtime
+import glot_backend/system/effect/runtime.{type Runtime}
 import glot_backend/system/request/context
 import glot_backend/system/request/hydrated_context as request_context
 import glot_backend/system/runtime/erlang
 import glot_core/api_action
-import pog
 import wisp
 
 pub fn handle_request(
-  db: pog.Connection,
+  effect_runtime: Runtime,
   ctx: context.Context,
-  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
-  language_version_cache_subject: process.Subject(
-    language_version_cache_worker.Message,
-  ),
   log_sink: Sink,
   req: wisp.Request,
 ) -> wisp.Response {
   use <- wisp.require_content_type(req, "application/json")
   use api_request <- require_api_request(ctx, req)
-  let effect_runtime =
-    runtime.new(service_ports_adapter.new(
-      db,
-      cache_ports.new(app_config_cache_subject, language_version_cache_subject),
-    ))
-
   let #(api_result, state) =
     handle_api_request(ctx, api_request)
     |> interpreter.run(effect_runtime, ctx)

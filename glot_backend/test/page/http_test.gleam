@@ -20,7 +20,6 @@ pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
       message: "Scheduled platform maintenance.",
       retry_after_seconds: option.Some(600),
     )
-  let app_config_subject = http_support.start_app_config_worker(availability)
   let db = pog.named_connection(process.new_name("availability_http_db"))
   let request =
     simulate.request(http.Get, "/snippets")
@@ -28,10 +27,11 @@ pub fn page_returns_503_with_retry_after_in_maintenance_mode_test() {
 
   let response =
     page.handle_request(
-      db,
+      http_support.test_runtime(
+        db,
+        http_support.test_dynamic_config(availability),
+      ),
       http_support.test_context(),
-      app_config_subject,
-      process.new_subject(),
       http_support.no_op_log_sink(),
       request,
     )

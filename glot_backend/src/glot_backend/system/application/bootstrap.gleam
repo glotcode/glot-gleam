@@ -7,12 +7,17 @@ import gleam/option
 import gleam/regexp
 import gleam/string
 import gleam/time/timestamp
+import glot_backend/app_config/adapter/cache/worker as app_config_cache_adapter
 import glot_backend/job/adapter/tracker/worker as job_tracker_adapter
 import glot_backend/logging/ingestion/adapter/worker/sink as logging_worker_sink
+import glot_backend/run_code/adapter/cache/worker as language_version_cache_adapter
 import glot_backend/system/application/router
 import glot_backend/system/application/shutdown
 import glot_backend/system/application/supervisor
 import glot_backend/system/database as db_helpers
+import glot_backend/system/effect/adapter/service_ports as service_ports_adapter
+import glot_backend/system/effect/cache_ports
+import glot_backend/system/effect/runtime
 import glot_backend/system/http/response as response_helpers
 import glot_backend/system/lifecycle/request_tracker/adapter/worker as request_tracker_adapter
 import glot_backend/system/lifecycle/server_mode/adapter/worker as server_mode_adapter
@@ -75,6 +80,14 @@ pub fn start() {
   let app_config_cache_worker_name = process.new_name("app_config_cache_worker")
   let app_config_cache_subject =
     process.named_subject(app_config_cache_worker_name)
+  let app_config_cache = app_config_cache_adapter.new(app_config_cache_subject)
+  let language_version_cache =
+    language_version_cache_adapter.new(language_version_cache_subject)
+  let effect_runtime =
+    runtime.new(service_ports_adapter.new(
+      db,
+      cache_ports.new(app_config_cache, language_version_cache),
+    ))
   let mist_handler = fn(conn: request.Request(mist.Connection)) {
     wisp_mist.handler(
       fn(req: request.Request(wisp.Connection)) {
@@ -90,10 +103,8 @@ pub fn start() {
           )
 
         router.handle_request(
-          db,
+          effect_runtime,
           ctx,
-          app_config_cache_subject,
-          language_version_cache_subject,
           log_sink,
           request_tracker,
           server_mode,
@@ -114,6 +125,10 @@ pub fn start() {
     supervisor.start(supervisor.Config(
       postgres: postgres,
       db: db,
+      effect_runtime: effect_runtime,
+      app_config_cache: app_config_cache,
+      job_tracker: job_tracker,
+      server_mode: server_mode,
       migrations_directory: migrations_directory,
       seeds_directory: seeds_directory,
       app: config,

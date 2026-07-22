@@ -5,15 +5,18 @@ import gleam/option
 import gleam/regexp
 import gleam/time/timestamp
 import glot_backend/app_config/model/config as dynamic_config
-import glot_backend/app_config/worker/cache/worker as app_config_cache_worker
+import glot_backend/app_config/ports/cache
 import glot_backend/logging/ingestion/ports/sink.{type Sink}
 import glot_backend/page
 import glot_backend/request_policy/model/config as request_policy_config
+import glot_backend/system/cache/cache_outcome
+import glot_backend/system/effect/adapter/service_ports as service_ports_adapter
+import glot_backend/system/effect/cache_ports
+import glot_backend/system/effect/runtime.{type Runtime}
 import glot_backend/system/file_system
 import glot_backend/system/lifecycle/request_tracker/ports/request_tracker.{
   type RequestTracker,
 }
-import glot_backend/system/lifecycle/server_mode/adapter/worker as server_mode_adapter
 import glot_backend/system/lifecycle/server_mode/model as server_mode
 import glot_backend/system/lifecycle/server_mode/worker as server_mode_worker
 import glot_backend/system/request/context
@@ -49,10 +52,11 @@ pub fn page_body_with_optional_theme(
   }
   let response =
     page.handle_request(
-      pog.named_connection(process.new_name("frontend_entry_http_db")),
+      test_runtime(
+        pog.named_connection(process.new_name("frontend_entry_http_db")),
+        test_dynamic_config(availability),
+      ),
       test_context(),
-      start_app_config_worker(availability),
-      process.new_subject(),
       no_op_log_sink(),
       request,
     )
@@ -78,25 +82,22 @@ pub fn no_op_request_tracker() -> RequestTracker {
   )
 }
 
-pub fn start_app_config_worker(
-  availability: request_policy_config.AvailabilityConfig,
-) -> process.Subject(app_config_cache_worker.Message) {
-  let server_mode_name = process.new_name("availability_http_server_mode")
-  let assert Ok(_) = server_mode_worker.start(server_mode_name)
-  let server_mode_subject = process.named_subject(server_mode_name)
-
-  let worker_name = process.new_name("availability_http_app_config_worker")
-  let assert Ok(_) =
-    app_config_cache_worker.start_with_deps(
-      worker_name,
-      server_mode_adapter.new(server_mode_subject),
-      app_config_cache_worker.Deps(
-        fetch_config: fn() { Ok(test_dynamic_config(availability)) },
-        now_ns: fn() { 0 },
+pub fn test_runtime(
+  db: pog.Connection,
+  config: dynamic_config.DynamicConfig,
+) -> Runtime {
+  runtime.new(service_ports_adapter.new(
+    db,
+    cache_ports.CachePorts(
+      app_config_cache: option.Some(
+        cache.Cache(
+          lookup: fn() { #(Ok(config), cache_outcome.CacheHit) },
+          refresh: fn() { Ok(config) },
+        ),
       ),
-    )
-
-  process.named_subject(worker_name)
+      language_version_cache: option.None,
+    ),
+  ))
 }
 
 pub fn start_server_mode(

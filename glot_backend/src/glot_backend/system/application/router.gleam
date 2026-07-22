@@ -1,11 +1,9 @@
-import gleam/erlang/process
 import gleam/http
 import glot_backend/api/handler as api
-import glot_backend/app_config/worker/cache/worker as app_config_cache_worker
 import glot_backend/logging/ingestion/ports/sink.{type Sink}
 import glot_backend/page
-import glot_backend/run_code/worker/language_version_cache/worker as language_version_cache_worker
 import glot_backend/system/application/middleware
+import glot_backend/system/effect/runtime.{type Runtime}
 import glot_backend/system/file_system
 import glot_backend/system/lifecycle/request_tracker/ports/request_tracker.{
   type RequestTracker,
@@ -14,16 +12,11 @@ import glot_backend/system/lifecycle/server_mode/ports/controller.{
   type Controller,
 }
 import glot_backend/system/request/context
-import pog
 import wisp
 
 pub fn handle_request(
-  db: pog.Connection,
+  effect_runtime: Runtime,
   ctx: context.Context,
-  app_config_cache_subject: process.Subject(app_config_cache_worker.Message),
-  language_version_cache_subject: process.Subject(
-    language_version_cache_worker.Message,
-  ),
   log_sink: Sink,
   request_tracker: RequestTracker,
   server_mode: Controller,
@@ -33,14 +26,7 @@ pub fn handle_request(
 
   case req.method, wisp.path_segments(req) {
     http.Post, ["api", "mux"] ->
-      api.handle_request(
-        db,
-        ctx,
-        app_config_cache_subject,
-        language_version_cache_subject,
-        log_sink,
-        req,
-      )
+      api.handle_request(effect_runtime, ctx, log_sink, req)
     http.Get, ["robots.txt"] ->
       public_static_file(
         ctx.config.static_base_path,
@@ -53,15 +39,7 @@ pub fn handle_request(
         "sitemap.xml",
         "application/xml; charset=utf-8",
       )
-    http.Get, _ ->
-      page.handle_request(
-        db,
-        ctx,
-        app_config_cache_subject,
-        language_version_cache_subject,
-        log_sink,
-        req,
-      )
+    http.Get, _ -> page.handle_request(effect_runtime, ctx, log_sink, req)
     _, _ -> wisp.not_found()
   }
 }

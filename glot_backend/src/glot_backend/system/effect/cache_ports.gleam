@@ -11,6 +11,16 @@ pub type CachePorts {
   )
 }
 
+pub fn new(
+  app_config_cache: Cache,
+  language_version_cache: LanguageVersionCache,
+) -> CachePorts {
+  CachePorts(
+    app_config_cache: option.Some(app_config_cache),
+    language_version_cache: option.Some(language_version_cache),
+  )
+}
+
 pub fn without_caches() -> CachePorts {
   CachePorts(app_config_cache: option.None, language_version_cache: option.None)
 }

@@ -2,6 +2,7 @@ import gleam/erlang/process
 import gleam/http
 import gleam/http/request as http_request
 import gleam/json
+import glot_backend/app_config/model/config as dynamic_config
 import glot_backend/system/application/router
 import glot_backend/system/lifecycle/server_mode/adapter/worker as server_mode_adapter
 import glot_backend/system/lifecycle/server_mode/model as server_mode
@@ -19,10 +20,11 @@ pub fn app_rejects_mismatched_origin_test() {
 
   let response =
     router.handle_request(
-      pog.named_connection(process.new_name("csrf_http_db")),
+      http_support.test_runtime(
+        pog.named_connection(process.new_name("csrf_http_db")),
+        dynamic_config.empty(),
+      ),
       http_support.test_context(),
-      process.new_subject(),
-      process.new_subject(),
       http_support.no_op_log_sink(),
       http_support.no_op_request_tracker(),
       server_mode_adapter.new(server_mode_subject),
@@ -41,10 +43,11 @@ pub fn app_accepts_matching_origin_test() {
 
   let response =
     router.handle_request(
-      pog.named_connection(process.new_name("csrf_http_db")),
+      http_support.test_runtime(
+        pog.named_connection(process.new_name("csrf_http_db")),
+        dynamic_config.empty(),
+      ),
       http_support.test_context(),
-      process.new_subject(),
-      process.new_subject(),
       http_support.no_op_log_sink(),
       http_support.no_op_request_tracker(),
       server_mode_adapter.new(server_mode_subject),
