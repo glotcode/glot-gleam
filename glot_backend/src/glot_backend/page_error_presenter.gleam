@@ -1,16 +1,11 @@
 import gleam/int
 import gleam/option
 import gleam/string
-import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/page_theme.{type PageTheme}
 import glot_backend/system/effect/error
 import glot_backend/system/effect/program_state
-import glot_core/route
-import glot_web/route as web_route
-import lustre/attribute
-import lustre/element
-import lustre/element/html
+import glot_web/page/server
 import wisp
 
 pub fn unavailable_page_response(
@@ -22,48 +17,16 @@ pub fn unavailable_page_response(
 ) -> page_response.PageResponse {
   let response =
     wisp.html_response(
-      page_layout.document(
-        title: "glot.io - unavailable",
-        theme: theme,
-        head_children: [],
-        include_frontend: False,
-        stylesheet_href: stylesheet_href,
-        additional_stylesheet_hrefs: [],
-        frontend_src: "",
-        frontend_preloads: [],
-        app_attributes: [attribute.class("maintenance-page")],
-        app_children: [
-          html.main([attribute.class("maintenance-page__shell")], [
-            html.section([attribute.class("maintenance-page__panel")], [
-              html.p([attribute.class("maintenance-page__eyebrow")], [
-                html.text("Availability mode"),
-              ]),
-              html.h1([attribute.class("maintenance-page__title")], [
-                html.text("Temporarily unavailable"),
-              ]),
-              html.p([attribute.class("maintenance-page__message")], [
-                html.text(message),
-              ]),
-              availability_retry_after_view(retry_after_seconds),
-              html.div([attribute.class("maintenance-page__actions")], [
-                html.a(
-                  [
-                    attribute.class("maintenance-page__link"),
-                    web_route.href(route.Public(route.Login)),
-                  ],
-                  [html.text("Login")],
-                ),
-                html.a(
-                  [
-                    attribute.class("maintenance-page__link"),
-                    web_route.href(route.Admin(route.AdminHome)),
-                  ],
-                  [html.text("Admin")],
-                ),
-              ]),
-            ]),
-          ]),
-        ],
+      server.unavailable_document(
+        server.RenderConfig(
+          theme: option.map(theme, page_theme.to_string),
+          stylesheet_href: stylesheet_href,
+          additional_stylesheet_hrefs: [],
+          frontend_src: "",
+          frontend_preloads: [],
+        ),
+        message,
+        retry_after_seconds,
       ),
       503,
     )
@@ -106,32 +69,4 @@ pub fn internal_page_error(
     debug: state.debug_fields,
     error: option.Some(err),
   )
-}
-
-fn availability_retry_after_view(
-  retry_after_seconds: option.Option(Int),
-) -> element.Element(Nil) {
-  case retry_after_seconds {
-    option.Some(seconds) ->
-      html.p([attribute.class("maintenance-page__message")], [
-        html.text(
-          "Please try again in about " <> retry_after_text(seconds) <> ".",
-        ),
-      ])
-    option.None ->
-      html.p([attribute.class("maintenance-page__message")], [
-        html.text("Please try again shortly."),
-      ])
-  }
-}
-
-fn retry_after_text(seconds: Int) -> String {
-  case seconds >= 3600 {
-    True -> int.to_string(seconds / 3600) <> " hour(s)"
-    False ->
-      case seconds >= 60 {
-        True -> int.to_string(seconds / 60) <> " minute(s)"
-        False -> int.to_string(seconds) <> " second(s)"
-      }
-  }
 }

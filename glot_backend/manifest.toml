@@ -74,7 +74,6 @@ gleam_time = { version = ">= 1.6.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 glot_core = { path = "../glot_core" }
 glot_web = { path = "../glot_web" }
-lustre = { version = ">= 5.4.0 and < 6.0.0" }
 mist = { version = ">= 6.0.2 and < 7.0.0" }
 parrot = { version = ">= 2.1.2 and < 3.0.0" }
 pog = { version = ">= 4.1.0 and < 5.0.0" }

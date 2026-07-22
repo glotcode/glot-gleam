@@ -3,20 +3,14 @@ import gleam/list
 import gleam/option
 import glot_backend/app_config/effect/effect as app_config_effect
 import glot_backend/app_config/model/config as dynamic_config
-import glot_backend/contact/page as contact_page
-import glot_backend/editor_page
-import glot_backend/home_page
 import glot_backend/logging/ingestion/ports/sink.{type Sink}
 import glot_backend/logging/page_log/model/entry as page_log_entry
 import glot_backend/page/editor_page_domain
 import glot_backend/page/snippets_page_domain
 import glot_backend/page_error_presenter
-import glot_backend/page_layout
 import glot_backend/page_response
 import glot_backend/page_theme.{type PageTheme}
-import glot_backend/privacy_page
 import glot_backend/request_policy/availability as availability_policy
-import glot_backend/snippets_page
 import glot_backend/static_assets
 import glot_backend/system/effect/basic/basic_handlers
 import glot_backend/system/effect/effect_trace
@@ -32,8 +26,7 @@ import glot_backend/system/request/hydrated_context as request_context
 import glot_backend/system/runtime/erlang
 import glot_core/route
 import glot_web/page/seo
-import lustre/attribute
-import lustre/element
+import glot_web/page/server
 import wisp
 
 pub type PageRequest {
@@ -187,23 +180,9 @@ fn handle_page_request_with_runtime(
       let state = empty_page_state()
       page_response.PageResponse(
         response: wisp.html_response(
-          page_layout.document(
-            title: home_page.title(),
-            theme: page_request.theme,
-            head_children: seo.append(
-              seo.head_children(
-                home_page.metadata(),
-                option.Some(social_image_url),
-              ),
-              [seo.home_structured_data()],
-            ),
-            include_frontend: True,
-            stylesheet_href: assets.stylesheet_href,
-            additional_stylesheet_hrefs: [],
-            frontend_src: assets.frontend_src,
-            frontend_preloads: assets.frontend_preloads,
-            app_attributes: [],
-            app_children: [home_page.view()],
+          server.home_document(
+            public_render_config(assets, page_request.theme),
+            social_image_url,
           ),
           200,
         ),
@@ -220,21 +199,10 @@ fn handle_page_request_with_runtime(
       let state = empty_page_state()
       page_response.PageResponse(
         response: wisp.html_response(
-          page_layout.document(
-            title: contact_page.title(),
-            theme: page_request.theme,
-            head_children: seo.head_children(
-              contact_page.metadata(),
-              option.None,
-            ),
-            include_frontend: True,
-            stylesheet_href: assets.stylesheet_href,
-            additional_stylesheet_hrefs: [],
-            frontend_src: assets.frontend_src,
-            frontend_preloads: assets.frontend_preloads,
-            app_attributes: [],
-            app_children: [contact_page.view()],
-          ),
+          server.contact_document(public_render_config(
+            assets,
+            page_request.theme,
+          )),
           200,
         ),
         status_code: 200,
@@ -250,21 +218,10 @@ fn handle_page_request_with_runtime(
       let state = empty_page_state()
       page_response.PageResponse(
         response: wisp.html_response(
-          page_layout.document(
-            title: privacy_page.title(),
-            theme: page_request.theme,
-            head_children: seo.head_children(
-              privacy_page.metadata(),
-              option.None,
-            ),
-            include_frontend: True,
-            stylesheet_href: assets.stylesheet_href,
-            additional_stylesheet_hrefs: [],
-            frontend_src: assets.frontend_src,
-            frontend_preloads: assets.frontend_preloads,
-            app_attributes: [],
-            app_children: [privacy_page.view()],
-          ),
+          server.privacy_document(public_render_config(
+            assets,
+            page_request.theme,
+          )),
           200,
         ),
         status_code: 200,
@@ -316,25 +273,14 @@ fn handle_page_request_with_runtime(
         ),
         runtime,
         ctx,
-        assets,
-        page_request.theme,
-        assets.frontend_preloads,
         fn(view_model) {
-          snippets_page.metadata(
-            view_model.username,
+          server.snippets_document(
+            public_render_config(assets, page_request.theme),
+            view_model,
             route.to_string(page_request.route),
+            social_image_url,
           )
-          |> seo.title
         },
-        fn(view_model) {
-          snippets_page.metadata(
-            view_model.username,
-            route.to_string(page_request.route),
-          )
-          |> seo.head_children(option.Some(social_image_url))
-        },
-        snippets_page.app_attributes,
-        snippets_page.render,
       )
     route.Public(route.NewSnippet(language_slug)) ->
       run_page_program(
@@ -342,15 +288,19 @@ fn handle_page_request_with_runtime(
         editor_page_domain.load_new_view_model(language_slug),
         runtime,
         ctx,
-        assets,
-        page_request.theme,
-        list.append(assets.frontend_preloads, assets.code_mirror_preloads),
-        editor_page.title,
         fn(view_model) {
-          editor_page.head_children(view_model, social_image_url)
+          server.editor_document(
+            render_config(
+              assets,
+              page_request.theme,
+              assets.frontend_src,
+              list.append(assets.frontend_preloads, assets.code_mirror_preloads),
+              [],
+            ),
+            view_model,
+            social_image_url,
+          )
         },
-        editor_page.app_attributes,
-        editor_page.render,
       )
     route.Public(route.Snippet(slug)) ->
       run_page_program(
@@ -358,15 +308,19 @@ fn handle_page_request_with_runtime(
         editor_page_domain.load_existing_view_model(request_ctx, slug),
         runtime,
         ctx,
-        assets,
-        page_request.theme,
-        list.append(assets.frontend_preloads, assets.code_mirror_preloads),
-        editor_page.title,
         fn(view_model) {
-          editor_page.head_children(view_model, social_image_url)
+          server.editor_document(
+            render_config(
+              assets,
+              page_request.theme,
+              assets.frontend_src,
+              list.append(assets.frontend_preloads, assets.code_mirror_preloads),
+              [],
+            ),
+            view_model,
+            social_image_url,
+          )
         },
-        editor_page.app_attributes,
-        editor_page.render,
       )
     route.NotFound(_) -> {
       let state = empty_page_state()
@@ -442,20 +396,16 @@ fn spa_page_with_frontend(
   let state = empty_page_state()
   page_response.PageResponse(
     response: wisp.html_response(
-      page_layout.document(
-        title: seo.title(metadata),
-        theme: theme,
-        head_children: seo.head_children(
-          metadata,
-          option.Some(seo.site_url <> assets.social_image_href),
+      server.spa_document(
+        render_config(
+          assets,
+          theme,
+          frontend_src,
+          frontend_preloads,
+          additional_stylesheet_hrefs,
         ),
-        include_frontend: True,
-        stylesheet_href: assets.stylesheet_href,
-        additional_stylesheet_hrefs: additional_stylesheet_hrefs,
-        frontend_src: frontend_src,
-        frontend_preloads: frontend_preloads,
-        app_attributes: [],
-        app_children: [],
+        metadata,
+        seo.site_url <> assets.social_image_href,
       ),
       200,
     ),
@@ -474,13 +424,7 @@ fn run_page_program(
   total_program: total_program.TotalProgram(a),
   runtime: Runtime,
   ctx: context.Context,
-  assets: static_assets.Assets,
-  theme: option.Option(PageTheme),
-  frontend_preloads: List(String),
-  title: fn(a) -> String,
-  head_children: fn(a) -> List(element.Element(Nil)),
-  app_attributes: fn(a) -> List(attribute.Attribute(Nil)),
-  render: fn(a) -> element.Element(Nil),
+  render_document: fn(a) -> String,
 ) -> page_response.PageResponse {
   let #(result, state) =
     total_program
@@ -490,21 +434,7 @@ fn run_page_program(
   case result {
     Ok(value) ->
       page_response.PageResponse(
-        response: wisp.html_response(
-          page_layout.document(
-            title: title(value),
-            theme: theme,
-            head_children: head_children(value),
-            include_frontend: True,
-            stylesheet_href: assets.stylesheet_href,
-            additional_stylesheet_hrefs: [],
-            frontend_src: assets.frontend_src,
-            frontend_preloads: frontend_preloads,
-            app_attributes: app_attributes(value),
-            app_children: [render(value)],
-          ),
-          200,
-        ),
+        response: wisp.html_response(render_document(value), 200),
         status_code: 200,
         render_mode: "ssr",
         effects: state.effect_measurements,
@@ -516,6 +446,35 @@ fn run_page_program(
     Error(err) ->
       page_error_presenter.internal_page_error(page_name, err, state)
   }
+}
+
+fn public_render_config(
+  assets: static_assets.Assets,
+  theme: option.Option(PageTheme),
+) -> server.RenderConfig {
+  render_config(
+    assets,
+    theme,
+    assets.frontend_src,
+    assets.frontend_preloads,
+    [],
+  )
+}
+
+fn render_config(
+  assets: static_assets.Assets,
+  theme: option.Option(PageTheme),
+  frontend_src: String,
+  frontend_preloads: List(String),
+  additional_stylesheet_hrefs: List(String),
+) -> server.RenderConfig {
+  server.RenderConfig(
+    theme: option.map(theme, page_theme.to_string),
+    stylesheet_href: assets.stylesheet_href,
+    additional_stylesheet_hrefs: additional_stylesheet_hrefs,
+    frontend_src: frontend_src,
+    frontend_preloads: frontend_preloads,
+  )
 }
 
 fn empty_page_state() -> program_state.State {
