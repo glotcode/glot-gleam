@@ -1,3 +1,4 @@
+import gleam/list
 import gleam/option
 import glot_core/api_action
 import glot_core/language
@@ -9,11 +10,14 @@ import glot_frontend/public/editor/document
 import glot_frontend/public/editor/execution
 import glot_frontend/public/editor/file_workflow
 import glot_frontend/public/editor/message.{
-  type Msg, RunFinished, RunSubmitted, SourceCodeChanged, TabSelected,
-  VersionRunFinished,
+  type Msg, RunFinished, RunSubmitted, SourceCodeChanged, TabKeyPressed,
+  TabSelected, VersionRunFinished,
 }
-import glot_frontend/public/editor/model.{type RealModel, RealModel}
+import glot_frontend/public/editor/model.{
+  type EditorTab, type RealModel, RealModel,
+}
 import glot_frontend/public/editor/run_instructions
+import glot_frontend/public/editor/tab_semantics
 import youid/uuid.{type Uuid}
 
 pub fn update(
@@ -22,15 +26,18 @@ pub fn update(
   _current_user_id: option.Option(Uuid),
 ) -> #(RealModel, command.Command(Msg)) {
   case msg {
-    TabSelected(tab) -> #(
-      RealModel(
-        ..model,
-        selected_tab: tab,
-        edit_entry_filename: document.default_file_name(model.files, tab),
-        editor_external_revision: model.editor_external_revision + 1,
-      ),
-      command.none(),
-    )
+    TabSelected(tab) -> #(select_tab(model, tab), command.none())
+
+    TabKeyPressed(current, key) -> {
+      let tabs = editor_tabs(model)
+      case tab_semantics.keyboard_destination(tabs, current, key) {
+        option.Some(tab) -> #(
+          select_tab(model, tab),
+          command.Focus(tab_semantics.tab_id(tab)),
+        )
+        option.None -> #(model, command.none())
+      }
+    }
 
     SourceCodeChanged(source_code, revision) -> {
       let next_model =
@@ -119,5 +126,29 @@ pub fn update(
     }
 
     _ -> #(model, command.none())
+  }
+}
+
+fn select_tab(model: RealModel, tab: EditorTab) -> RealModel {
+  RealModel(
+    ..model,
+    selected_tab: tab,
+    edit_entry_filename: document.default_file_name(model.files, tab),
+    editor_external_revision: model.editor_external_revision + 1,
+  )
+}
+
+fn editor_tabs(model: RealModel) -> List(EditorTab) {
+  let file_tabs = file_tabs(list.length(model.files), 0)
+  case model.stdin {
+    option.Some(_) -> list.append(file_tabs, [model.StdinTab])
+    option.None -> file_tabs
+  }
+}
+
+fn file_tabs(count: Int, index: Int) -> List(EditorTab) {
+  case index >= count {
+    True -> []
+    False -> [model.FileTab(index), ..file_tabs(count, index + 1)]
   }
 }

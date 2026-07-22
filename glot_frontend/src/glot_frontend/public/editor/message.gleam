@@ -55,6 +55,7 @@ pub type Msg {
   SnippetInfoDismissed
   SnippetInfoClosed
   TabSelected(EditorTab)
+  TabKeyPressed(EditorTab, String)
   SourceCodeChanged(String, Int)
   RunSubmitted
   RunFinished(Int, api_response.Response(run.RunResult))

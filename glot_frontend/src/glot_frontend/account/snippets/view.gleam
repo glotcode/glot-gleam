@@ -132,28 +132,48 @@ fn snippets_table(
   deleting_slug: option.Option(String),
   now: Timestamp,
 ) -> Element(Msg) {
-  html.div([attribute.class("snippets-table snippets-table--manage")], [
-    html.div(
-      [attribute.class("snippets-table__head snippets-table__head--manage")],
-      [
-        html.span([attribute.class("snippets-table__heading")], [
-          html.text("Language"),
-        ]),
-        html.span([attribute.class("snippets-table__heading")], [
-          html.text("Title"),
-        ]),
-        html.span([attribute.class("snippets-table__heading")], [
-          html.text("Visibility"),
-        ]),
-        html.span([attribute.class("snippets-table__heading")], [
-          html.text("Updated"),
-        ]),
-        html.span([attribute.class("snippets-table__heading")], [
-          html.text("Actions"),
-        ]),
-      ],
-    ),
-    html.div([attribute.class("snippets-table__body")], {
+  html.table([attribute.class("snippets-table snippets-table--manage")], [
+    html.caption([attribute.class("visually-hidden")], [
+      html.text("Your snippets"),
+    ]),
+    html.thead([], [
+      html.tr(
+        [attribute.class("snippets-table__head snippets-table__head--manage")],
+        [
+          html.th(
+            [attribute.class("snippets-table__heading"), attribute.scope("col")],
+            [
+              html.text("Language"),
+            ],
+          ),
+          html.th(
+            [attribute.class("snippets-table__heading"), attribute.scope("col")],
+            [
+              html.text("Title"),
+            ],
+          ),
+          html.th(
+            [attribute.class("snippets-table__heading"), attribute.scope("col")],
+            [
+              html.text("Visibility"),
+            ],
+          ),
+          html.th(
+            [attribute.class("snippets-table__heading"), attribute.scope("col")],
+            [
+              html.text("Updated"),
+            ],
+          ),
+          html.th(
+            [attribute.class("snippets-table__heading"), attribute.scope("col")],
+            [
+              html.text("Actions"),
+            ],
+          ),
+        ],
+      ),
+    ]),
+    html.tbody([attribute.class("snippets-table__body")], {
       pagination_model.items(page)
       |> list.map(fn(snippet) { snippet_row(snippet, deleting_slug, now) })
     }),
@@ -167,68 +187,62 @@ fn snippet_row(
 ) -> Element(Msg) {
   let is_deleting = deleting_slug == option.Some(snippet.slug)
 
-  html.div(
-    [attribute.class("snippets-table__row snippets-table__row--manage")],
-    [
-      snippet_cell_link(
-        "snippets-table__cell snippets-table__cell--language",
-        "Language",
-        route.Public(route.Snippet(snippet.slug)),
-        language.name(snippet.data.language),
-      ),
-      snippet_cell_link(
-        "snippets-table__cell snippets-table__cell--title",
-        "Title",
-        route.Public(route.Snippet(snippet.slug)),
-        snippet.data.title,
-      ),
-      html.span([attribute.class("snippets-table__cell")], [
-        html.span([attribute.class("snippets-table__cell-label")], [
-          html.text("Visibility"),
-        ]),
-        html.span([attribute.class("snippets-table__cell-value")], [
-          html.text(snippet_model.visibility_to_string(snippet.data.visibility)),
-        ]),
+  html.tr([attribute.class("snippets-table__row snippets-table__row--manage")], [
+    snippet_cell_link(
+      "snippets-table__cell snippets-table__cell--language",
+      "Language",
+      route.Public(route.Snippet(snippet.slug)),
+      language.name(snippet.data.language),
+    ),
+    snippet_cell_link(
+      "snippets-table__cell snippets-table__cell--title",
+      "Title",
+      route.Public(route.Snippet(snippet.slug)),
+      snippet.data.title,
+    ),
+    html.td([attribute.class("snippets-table__cell")], [
+      html.span([attribute.class("snippets-table__cell-label")], [
+        html.text("Visibility"),
       ]),
-      snippet_cell_link(
-        "snippets-table__cell",
-        "Updated",
-        route.Public(route.Snippet(snippet.slug)),
-        timestamp_helpers.relative_label(snippet.updated_at, now),
-      ),
-      html.div(
-        [attribute.class("snippets-table__cell snippets-table__actions")],
-        [
-          html.span([attribute.class("snippets-table__cell-label")], [
-            html.text("Actions"),
-          ]),
-          html.div([attribute.class("snippets-table__action-group")], [
-            html.a(
-              [
-                attribute.class("snippets-table__action-link"),
-                web_route.href(route.Public(route.Snippet(snippet.slug))),
-              ],
-              [html.text("Edit")],
-            ),
-            html.button(
-              [
-                attribute.type_("button"),
-                attribute.class("snippets-table__action-button"),
-                attribute.disabled(is_deleting),
-                event.on_click(DeleteClicked(snippet.slug)),
-              ],
-              [
-                html.text(case is_deleting {
-                  True -> "Deleting..."
-                  False -> "Delete"
-                }),
-              ],
-            ),
-          ]),
-        ],
-      ),
-    ],
-  )
+      html.span([attribute.class("snippets-table__cell-value")], [
+        html.text(snippet_model.visibility_to_string(snippet.data.visibility)),
+      ]),
+    ]),
+    snippet_cell_link(
+      "snippets-table__cell",
+      "Updated",
+      route.Public(route.Snippet(snippet.slug)),
+      timestamp_helpers.relative_label(snippet.updated_at, now),
+    ),
+    html.td([attribute.class("snippets-table__cell snippets-table__actions")], [
+      html.span([attribute.class("snippets-table__cell-label")], [
+        html.text("Actions"),
+      ]),
+      html.div([attribute.class("snippets-table__action-group")], [
+        html.a(
+          [
+            attribute.class("snippets-table__action-link"),
+            web_route.href(route.Public(route.Snippet(snippet.slug))),
+          ],
+          [html.text("Edit")],
+        ),
+        html.button(
+          [
+            attribute.type_("button"),
+            attribute.class("snippets-table__action-button"),
+            attribute.disabled(is_deleting),
+            event.on_click(DeleteClicked(snippet.slug)),
+          ],
+          [
+            html.text(case is_deleting {
+              True -> "Deleting..."
+              False -> "Delete"
+            }),
+          ],
+        ),
+      ]),
+    ]),
+  ])
 }
 
 fn delete_confirmation_dialog(model: snippets_model.Model) -> Element(Msg) {
@@ -292,13 +306,21 @@ fn snippet_cell_link(
   destination: route.Route,
   value: String,
 ) -> Element(Msg) {
-  html.a([attribute.class(class_name), web_route.href(destination)], [
-    html.span([attribute.class("snippets-table__cell-label")], [
-      html.text(cell_label),
-    ]),
-    html.span([attribute.class("snippets-table__cell-value")], [
-      html.text(value),
-    ]),
+  html.td([attribute.class(class_name)], [
+    html.a(
+      [
+        attribute.class("snippets-table__cell-link"),
+        web_route.href(destination),
+      ],
+      [
+        html.span([attribute.class("snippets-table__cell-label")], [
+          html.text(cell_label),
+        ]),
+        html.span([attribute.class("snippets-table__cell-value")], [
+          html.text(value),
+        ]),
+      ],
+    ),
   ])
 }
 

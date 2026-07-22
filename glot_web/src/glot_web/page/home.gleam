@@ -74,9 +74,15 @@ pub fn view(load_ad load_ad: Bool) -> Element(msg) {
             ),
           ]),
         ]),
-        html.section([attribute.class("home-section home-sponsor")], [
-          carbon_ad.view(container_class: "home-sponsor__ad", load_ad:),
-        ]),
+        html.aside(
+          [
+            attribute.class("home-section home-sponsor"),
+            attribute.attribute("aria-label", "Sponsored"),
+          ],
+          [
+            carbon_ad.view(container_class: "home-sponsor__ad", load_ad:),
+          ],
+        ),
         html.section([attribute.class("home-section home-languages")], [
           html.h2([attribute.class("home-section__title")], [
             html.text("Select a language"),

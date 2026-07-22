@@ -1,5 +1,6 @@
 import gleam/list
 import gleam/option
+import gleam/string
 import gleam/time/timestamp
 import glot_core/language
 import glot_core/run
@@ -104,17 +105,50 @@ pub fn populated_editor_dialogs_satisfy_the_markup_accessibility_contract_test()
   assert_accessible(populated)
 }
 
+pub fn editor_states_keep_landmarks_and_expose_a_complete_tab_pattern_test() {
+  let error_document =
+    model.LoadError("Could not load snippet.")
+    |> render
+  assert string.contains(error_document, "<main ")
+  assert string.contains(error_document, "id=\"main-content\"")
+  assert string.contains(error_document, "<h1>Snippet unavailable</h1>")
+
+  let unsupported_document =
+    model.UnsupportedLanguage("fixture")
+    |> render
+  assert string.contains(unsupported_document, "<main ")
+  assert string.contains(unsupported_document, "id=\"main-content\"")
+  assert string.contains(unsupported_document, "<h1>Unsupported language</h1>")
+
+  let editor_document = editor_scenario_model() |> render
+  assert string.contains(editor_document, "role=\"tablist\"")
+  assert string.contains(editor_document, "role=\"tab\"")
+  assert string.contains(editor_document, "aria-selected=\"true\"")
+  assert string.contains(
+    editor_document,
+    "aria-controls=\"editor-source-panel\"",
+  )
+  assert string.contains(editor_document, "role=\"tabpanel\"")
+  assert string.contains(
+    editor_document,
+    "aria-labelledby=\"editor-file-tab-0\"",
+  )
+}
+
 fn editor_scenario_model() -> model.Model {
   editor_scenario.new_editor(language.JavaScript)
 }
 
 fn assert_accessible(editor_model: model.Model) {
-  let document =
-    view.view(
-      editor_model,
-      option.Some(editor_fixture.owner_id()),
-      timestamp.from_unix_seconds(300),
-    )
-    |> element.to_document_string
+  let document = render(editor_model)
   assert accessibility.audit_fragment(document) == []
+}
+
+fn render(editor_model: model.Model) -> String {
+  view.view(
+    editor_model,
+    option.Some(editor_fixture.owner_id()),
+    timestamp.from_unix_seconds(300),
+  )
+  |> element.to_document_string
 }

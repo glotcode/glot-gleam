@@ -224,6 +224,7 @@ fn content_for_model(
     ],
     pre_tabbar_children: [metadata_panel(model)],
     tabbar_children: tabbar_children(model),
+    active_tab_id: "editor-file-tab-0",
     editor: lustre_element.element(
       "glot-codemirror",
       [
@@ -385,20 +386,46 @@ fn metadata_item(
 }
 
 fn tab_views(model: EditorModel) -> List(lustre_element.Element(Nil)) {
-  let file_tabs =
-    model.files
-    |> list.map(fn(file) { tab_button(tab_label(file.name), True) })
+  let file_tabs = file_tab_views(model.files, 0)
 
   case model.stdin {
-    option.Some(_) -> list.append(file_tabs, [tab_button("<stdin>", False)])
+    option.Some(_) ->
+      list.append(file_tabs, [
+        tab_button("<stdin>", False, "editor-stdin-tab"),
+      ])
     option.None -> file_tabs
   }
 }
 
-fn tab_button(label: String, is_selected: Bool) -> lustre_element.Element(Nil) {
-  editor_layout.tab_button(label: label, is_selected: is_selected, attributes: [
-    attribute.disabled(True),
-  ])
+fn file_tab_views(
+  files: List(snippet_model.File),
+  index: Int,
+) -> List(lustre_element.Element(Nil)) {
+  case files {
+    [] -> []
+    [file, ..rest] -> [
+      tab_button(
+        tab_label(file.name),
+        index == 0,
+        "editor-file-tab-" <> int.to_string(index),
+      ),
+      ..file_tab_views(rest, index + 1)
+    ]
+  }
+}
+
+fn tab_button(
+  label: String,
+  is_selected: Bool,
+  id: String,
+) -> lustre_element.Element(Nil) {
+  editor_layout.tab_button(
+    label: label,
+    is_selected: is_selected,
+    id: id,
+    panel_id: "editor-source-panel",
+    attributes: [attribute.disabled(True)],
+  )
 }
 
 fn collect_metadata_items(

@@ -21,8 +21,8 @@ import glot_frontend/public/editor/message.{
   SaveVisibilityDraftSelected, SelectedTabActionClicked, SettingsCancelled,
   SettingsClicked, SettingsDialogClosed, SettingsSubmitted, SnippetInfoClicked,
   SnippetInfoClosed, SnippetInfoDismissed, SnippetLoaded,
-  SnippetLoadingDelayElapsed, SourceCodeChanged, TabSelected, TitleDraftChanged,
-  VersionRunFinished,
+  SnippetLoadingDelayElapsed, SourceCodeChanged, TabKeyPressed, TabSelected,
+  TitleDraftChanged, VersionRunFinished,
 }
 import glot_frontend/public/editor/metadata_update
 import glot_frontend/public/editor/model.{
@@ -141,6 +141,7 @@ pub fn update_helper(
     | SaveFinished(_, _) -> save_update.update(model, msg, current_user_id)
 
     TabSelected(_)
+    | TabKeyPressed(_, _)
     | SourceCodeChanged(_, _)
     | RunSubmitted
     | RunFinished(_, _)

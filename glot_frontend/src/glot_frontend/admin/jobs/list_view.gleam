@@ -171,14 +171,14 @@ fn filtered_status_text(
 }
 
 fn summary_card(stat: SummaryStat) -> Element(Msg) {
-  html.article(
+  html.dl(
     [attribute.class("admin-page__policy admin-jobs-page__summary-card")],
     [
-      html.span([attribute.class("admin-jobs-page__summary-label")], [
+      html.dt([attribute.class("admin-jobs-page__summary-label")], [
         html.text(stat.label),
       ]),
-      html.div([attribute.class("admin-jobs-page__summary-value-row")], [
-        html.strong([attribute.class("admin-jobs-page__summary-value")], [
+      html.dd([attribute.class("admin-jobs-page__summary-value-row")], [
+        html.span([attribute.class("admin-jobs-page__summary-value")], [
           html.text(int.to_string(stat.value)),
         ]),
         html.span([attribute.class(summary_tone_class(stat.tone))], [

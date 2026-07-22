@@ -1,3 +1,4 @@
+import gleam/dynamic/decode
 import gleam/list
 import gleam/option
 import gleam/string
@@ -6,13 +7,14 @@ import glot_frontend/public/editor/execution
 import glot_frontend/public/editor/files as editor_files
 import glot_frontend/public/editor/message.{
   type Msg, AddEntryClicked, SelectedTabActionClicked, SettingsClicked,
-  TabSelected,
+  TabKeyPressed, TabSelected,
 }
 import glot_frontend/public/editor/model.{
   type EditorTab, type RealModel, type RunInstructionsMode, AddFileEntry,
   AddStdinEntry, CustomRunInstructions, DefaultRunInstructions, FileTab,
   StdinTab,
 }
+import glot_frontend/public/editor/tab_semantics
 import glot_web/page/editor_layout
 import glot_web/page/icons
 import lustre/attribute
@@ -89,9 +91,30 @@ pub fn tab_button(
   tab: EditorTab,
   is_selected: Bool,
 ) -> Element(Msg) {
-  editor_layout.tab_button(label: label, is_selected: is_selected, attributes: [
-    event.on_click(TabSelected(tab)),
-  ])
+  editor_layout.tab_button(
+    label: label,
+    is_selected: is_selected,
+    id: tab_semantics.tab_id(tab),
+    panel_id: tab_semantics.panel_id,
+    attributes: [
+      event.on_click(TabSelected(tab)),
+      event.advanced("keydown", {
+        use key <- decode.field("key", decode.string)
+        let handled =
+          key == "Home"
+          || key == "End"
+          || key == "ArrowRight"
+          || key == "ArrowDown"
+          || key == "ArrowLeft"
+          || key == "ArrowUp"
+        decode.success(event.handler(
+          TabKeyPressed(tab, key),
+          prevent_default: handled,
+          stop_propagation: False,
+        ))
+      }),
+    ],
+  )
 }
 
 pub fn selected_tab_action_button(model: RealModel) -> Element(Msg) {

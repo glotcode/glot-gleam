@@ -21,6 +21,7 @@ import glot_frontend/public/editor/save_dialog_view
 import glot_frontend/public/editor/settings as editor_settings
 import glot_frontend/public/editor/settings_dialog_view
 import glot_frontend/public/editor/snippet_info_view
+import glot_frontend/public/editor/tab_semantics
 import glot_frontend/public/editor/workspace_view
 import glot_frontend/ui/delayed_loading
 import glot_web/page/editor_layout
@@ -38,12 +39,31 @@ pub fn view(
   case model {
     Initializing(_) -> element.none()
     UnsupportedLanguage(lang) ->
-      html.div([], [html.text("Unsupported language: " <> lang)])
+      unavailable_view("Unsupported language", "Unsupported language: " <> lang)
     LoadingSnippet(_, _, loading_indicator) ->
       loading_snippet_view(delayed_loading.is_visible(loading_indicator))
-    LoadError(message) -> html.div([], [html.text(message)])
+    LoadError(message) -> unavailable_view("Snippet unavailable", message)
     SupportedLanguage(model) -> view_helper(model, current_user_id, now)
   }
+}
+
+fn unavailable_view(title: String, message: String) -> Element(msg) {
+  html.div([attribute.class("app-page")], [
+    html.div([attribute.class("app-page__screen-glow")], []),
+    html.main(
+      [
+        attribute.id("main-content"),
+        attribute.attribute("tabindex", "-1"),
+        attribute.class("app-shell app-shell--narrow"),
+      ],
+      [
+        html.section([attribute.class("app-panel")], [
+          html.h1([], [html.text(title)]),
+          html.p([], [html.text(message)]),
+        ]),
+      ],
+    ),
+  ])
 }
 
 fn loading_snippet_view(show_loading: Bool) -> Element(msg) {
@@ -59,7 +79,7 @@ fn loading_snippet_view(show_loading: Bool) -> Element(msg) {
             attribute.class("app-shell app-shell--narrow"),
           ],
           [
-            html.section([attribute.class("app-panel")], [
+            html.div([attribute.class("app-panel")], [
               html.p(
                 [
                   attribute.class("editor-page__loading"),
@@ -122,6 +142,7 @@ fn view_helper(
       snippet_info_view.dialog(model),
     ],
     tabbar_children: workspace_view.tabbar_children(model),
+    active_tab_id: tab_semantics.tab_id(model.selected_tab),
     editor: element.element(
       "glot-codemirror",
       [

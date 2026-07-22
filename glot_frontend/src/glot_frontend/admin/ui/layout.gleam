@@ -142,21 +142,18 @@ pub fn summary_card_with_class(
   title: String,
   value: String,
 ) -> Element(msg) {
-  html.article([attribute.class(class_name <> " admin-info-card")], [
-    html.span([attribute.class("admin-info-label")], [html.text(title)]),
-    html.strong(
-      [attribute.class("admin-info-value admin-info-value--summary")],
-      [
-        html.text(value),
-      ],
-    ),
+  html.dl([attribute.class(class_name <> " admin-info-card")], [
+    html.dt([attribute.class("admin-info-label")], [html.text(title)]),
+    html.dd([attribute.class("admin-info-value admin-info-value--summary")], [
+      html.text(value),
+    ]),
   ])
 }
 
 pub fn detail_item(label: String, value: String) -> Element(msg) {
-  html.div([attribute.class("admin-page__policy admin-info-item")], [
-    html.span([attribute.class("admin-info-label")], [html.text(label)]),
-    html.span([attribute.class("admin-info-value")], [html.text(value)]),
+  html.dl([attribute.class("admin-page__policy admin-info-item")], [
+    html.dt([attribute.class("admin-info-label")], [html.text(label)]),
+    html.dd([attribute.class("admin-info-value")], [html.text(value)]),
   ])
 }
 
@@ -165,10 +162,12 @@ pub fn detail_link_item(
   value: String,
   extra_attributes: List(attribute.Attribute(msg)),
 ) -> Element(msg) {
-  html.div([attribute.class("admin-page__policy admin-info-item")], [
-    html.span([attribute.class("admin-info-label")], [html.text(label)]),
-    html.a([attribute.class("admin-info-value"), ..extra_attributes], [
-      html.text(value),
+  html.dl([attribute.class("admin-page__policy admin-info-item")], [
+    html.dt([attribute.class("admin-info-label")], [html.text(label)]),
+    html.dd([attribute.class("admin-info-value")], [
+      html.a([attribute.class("admin-info-value"), ..extra_attributes], [
+        html.text(value),
+      ]),
     ]),
   ])
 }

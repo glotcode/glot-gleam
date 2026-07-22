@@ -37,6 +37,7 @@ pub fn shell(
   title_actions title_actions: List(Element(msg)),
   pre_tabbar_children pre_tabbar_children: List(Element(msg)),
   tabbar_children tabbar_children: List(Element(msg)),
+  active_tab_id active_tab_id: String,
   editor editor: Element(msg),
   action_buttons action_buttons: List(Element(msg)),
   console console: Element(msg),
@@ -46,7 +47,7 @@ pub fn shell(
     |> list.append(pre_tabbar_children)
     |> list.append([
       tabbar(tabbar_children),
-      editor_surface(editor),
+      editor_surface(editor, active_tab_id),
       action_bar(action_buttons),
       console,
     ])
@@ -61,9 +62,13 @@ pub fn shell(
       ],
       [
         html.div([attribute.class("editor-shell__workspace")], shell_children),
-        html.section([attribute.class("editor-sponsor")], [
-          carbon_ad.view(container_class: "editor-sponsor__ad", load_ad:),
-        ]),
+        html.aside(
+          [
+            attribute.class("editor-sponsor"),
+            attribute.attribute("aria-label", "Sponsored"),
+          ],
+          [carbon_ad.view(container_class: "editor-sponsor__ad", load_ad:)],
+        ),
       ],
     ),
   ])
@@ -94,13 +99,22 @@ pub fn tabbar(children: List(Element(msg))) -> Element(msg) {
 
 pub fn tab_scroll(tabs: List(Element(msg))) -> Element(msg) {
   html.div([attribute.class("editor-shell__tab-scroll")], [
-    html.div([attribute.class("editor-shell__tab-strip")], tabs),
+    html.div(
+      [
+        attribute.class("editor-shell__tab-strip"),
+        attribute.attribute("role", "tablist"),
+        attribute.attribute("aria-label", "Editor files"),
+      ],
+      tabs,
+    ),
   ])
 }
 
 pub fn tab_button(
   label label: String,
   is_selected is_selected: Bool,
+  id id: String,
+  panel_id panel_id: String,
   attributes attributes: List(attribute.Attribute(msg)),
 ) -> Element(msg) {
   let class_name = case is_selected {
@@ -111,7 +125,14 @@ pub fn tab_button(
   shell_button(
     class_name: class_name,
     attributes: [
-      attribute.attribute("aria-pressed", bool_attribute(is_selected)),
+      attribute.id(id),
+      attribute.attribute("role", "tab"),
+      attribute.attribute("aria-selected", bool_attribute(is_selected)),
+      attribute.attribute("aria-controls", panel_id),
+      attribute.attribute("tabindex", case is_selected {
+        True -> "0"
+        False -> "-1"
+      }),
       ..attributes
     ],
     children: [html.span([], [html.text(label)])],
@@ -134,8 +155,20 @@ pub fn tab_meta_button(
   )
 }
 
-pub fn editor_surface(content: Element(msg)) -> Element(msg) {
-  html.div([attribute.class("editor-shell__editor")], [content])
+pub fn editor_surface(
+  content: Element(msg),
+  active_tab_id: String,
+) -> Element(msg) {
+  html.div(
+    [
+      attribute.id("editor-source-panel"),
+      attribute.class("editor-shell__editor"),
+      attribute.attribute("role", "tabpanel"),
+      attribute.attribute("aria-labelledby", active_tab_id),
+      attribute.attribute("tabindex", "0"),
+    ],
+    [content],
+  )
 }
 
 pub fn action_bar(buttons: List(Element(msg))) -> Element(msg) {

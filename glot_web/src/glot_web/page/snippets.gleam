@@ -266,22 +266,39 @@ fn snippets_table(
   snippets: List(snippet_dto.SnippetResponse),
   now: Timestamp,
 ) -> Element(msg) {
-  html.div([attribute.class("snippets-table")], [
-    html.div([attribute.class("snippets-table__head")], [
-      html.span([attribute.class("snippets-table__heading")], [
-        html.text("Language"),
-      ]),
-      html.span([attribute.class("snippets-table__heading")], [
-        html.text("Title"),
-      ]),
-      html.span([attribute.class("snippets-table__heading")], [
-        html.text("Created"),
-      ]),
-      html.span([attribute.class("snippets-table__heading")], [
-        html.text("Username"),
+  html.table([attribute.class("snippets-table")], [
+    html.caption([attribute.class("visually-hidden")], [
+      html.text("Public snippets"),
+    ]),
+    html.thead([], [
+      html.tr([attribute.class("snippets-table__head")], [
+        html.th(
+          [attribute.class("snippets-table__heading"), attribute.scope("col")],
+          [
+            html.text("Language"),
+          ],
+        ),
+        html.th(
+          [attribute.class("snippets-table__heading"), attribute.scope("col")],
+          [
+            html.text("Title"),
+          ],
+        ),
+        html.th(
+          [attribute.class("snippets-table__heading"), attribute.scope("col")],
+          [
+            html.text("Created"),
+          ],
+        ),
+        html.th(
+          [attribute.class("snippets-table__heading"), attribute.scope("col")],
+          [
+            html.text("Username"),
+          ],
+        ),
       ]),
     ]),
-    html.div([attribute.class("snippets-table__body")], {
+    html.tbody([attribute.class("snippets-table__body")], {
       snippets |> list.map(fn(snippet) { snippet_row(snippet, now) })
     }),
   ])
@@ -291,7 +308,7 @@ fn snippet_row(
   snippet: snippet_dto.SnippetResponse,
   now: Timestamp,
 ) -> Element(msg) {
-  html.div([attribute.class("snippets-table__row")], [
+  html.tr([attribute.class("snippets-table__row")], [
     snippet_cell_link(
       "snippets-table__cell snippets-table__cell--language",
       "Language",
@@ -310,25 +327,37 @@ fn snippet_row(
       route.Public(route.Snippet(snippet.slug)),
       timestamp_helpers.relative_label(snippet.created_at, now),
     ),
-    html.a(
+    html.td(
       [
-        attribute.class("snippets-table__cell snippets-table__username"),
-        attribute.attribute("aria-label", "Filter by user"),
-        web_route.href(
-          route.Public(route.Snippets(
-            after: option.None,
-            before: option.None,
-            username: option.Some(snippet.user.username),
-          )),
-        ),
+        attribute.class("snippets-table__cell"),
       ],
       [
-        html.span([attribute.class("snippets-table__cell-label")], [
-          html.text("Username"),
-        ]),
-        html.span([attribute.class("snippets-table__cell-value")], [
-          html.text(truncate_username(snippet.user.username)),
-        ]),
+        html.a(
+          [
+            attribute.class(
+              "snippets-table__cell-link snippets-table__username",
+            ),
+            attribute.attribute(
+              "aria-label",
+              "Filter by user " <> snippet.user.username,
+            ),
+            web_route.href(
+              route.Public(route.Snippets(
+                after: option.None,
+                before: option.None,
+                username: option.Some(snippet.user.username),
+              )),
+            ),
+          ],
+          [
+            html.span([attribute.class("snippets-table__cell-label")], [
+              html.text("Username"),
+            ]),
+            html.span([attribute.class("snippets-table__cell-value")], [
+              html.text(truncate_username(snippet.user.username)),
+            ]),
+          ],
+        ),
       ],
     ),
   ])
@@ -340,13 +369,21 @@ fn snippet_cell_link(
   destination: route.Route,
   value: String,
 ) -> Element(msg) {
-  html.a([attribute.class(class_name), web_route.href(destination)], [
-    html.span([attribute.class("snippets-table__cell-label")], [
-      html.text(cell_label),
-    ]),
-    html.span([attribute.class("snippets-table__cell-value")], [
-      html.text(value),
-    ]),
+  html.td([attribute.class(class_name)], [
+    html.a(
+      [
+        attribute.class("snippets-table__cell-link"),
+        web_route.href(destination),
+      ],
+      [
+        html.span([attribute.class("snippets-table__cell-label")], [
+          html.text(cell_label),
+        ]),
+        html.span([attribute.class("snippets-table__cell-value")], [
+          html.text(value),
+        ]),
+      ],
+    ),
   ])
 }
 
