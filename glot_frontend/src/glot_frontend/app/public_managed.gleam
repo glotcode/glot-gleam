@@ -103,6 +103,7 @@ pub fn update(
         )
       }
     PageviewTracked(_) -> #(model, None)
+    UserNavigatedTo(destination) if destination == model.route -> #(model, None)
     UserNavigatedTo(destination) ->
       case route.is_admin_route(destination) {
         True -> #(model, LoadRoute(destination))

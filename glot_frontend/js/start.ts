@@ -1,5 +1,6 @@
 import { initializeTheme } from "./custom_elements/glot-theme-picker";
 import { initializePrivacyElements } from "./custom_elements/glot-privacy";
+import { initializeSkipLinks } from "../src/glot_frontend/platform/skip_links_ffi.mjs";
 
 let codeMirrorImport: Promise<unknown> | null = null;
 
@@ -28,6 +29,7 @@ function loadCodeMirrorIfPresent(node: Node) {
 
 export function start(main: () => unknown) {
   initializeTheme();
+  initializeSkipLinks();
 
   const codeMirrorObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {

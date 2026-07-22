@@ -140,6 +140,17 @@ fn navigate(
   destination: route.Route,
   pages: Pages(page_model, page_msg, page_command),
 ) -> #(Model(page_model), Command(page_command)) {
+  case destination == model.route {
+    True -> #(model, None)
+    False -> navigate_to_different_route(model, destination, pages)
+  }
+}
+
+fn navigate_to_different_route(
+  model: Model(page_model),
+  destination: route.Route,
+  pages: Pages(page_model, page_msg, page_command),
+) -> #(Model(page_model), Command(page_command)) {
   case route.is_admin_route(model.route), route.is_admin_route(destination) {
     True, False -> #(model, LoadRoute(destination))
     _, _ -> {

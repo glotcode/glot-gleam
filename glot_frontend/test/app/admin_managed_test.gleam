@@ -146,6 +146,26 @@ pub fn leaving_the_admin_app_requests_a_document_navigation_test() {
   assert command == admin_managed.LoadRoute(route.Public(route.Home))
 }
 
+pub fn same_route_navigation_preserves_the_current_admin_page_test() {
+  let current_route = route.Admin(route.AdminHome)
+  let #(model, _) =
+    admin_managed.init(
+      current_route,
+      timestamp.from_unix_seconds(1),
+      True,
+      pages(),
+    )
+  let #(unchanged, navigation_command) =
+    admin_managed.update(
+      model,
+      admin_managed.UserNavigatedTo(current_route),
+      pages(),
+    )
+
+  assert unchanged == model
+  assert navigation_command == admin_managed.None
+}
+
 pub fn lifecycle_uses_the_injected_page_contract_test() {
   let fixture_pages =
     admin_managed.Pages(

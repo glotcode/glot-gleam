@@ -56,6 +56,27 @@ pub fn admin_navigation_leaves_public_state_untouched_test() {
   assert command == public_managed.LoadRoute(destination)
 }
 
+pub fn same_route_navigation_preserves_the_current_page_model_test() {
+  let current_route = route.Public(route.NewSnippet("javascript"))
+  let #(model, _) =
+    public_managed.init(
+      current_route,
+      timestamp.from_unix_seconds(1),
+      True,
+      init_page,
+    )
+  let #(unchanged, command) =
+    public_managed.update(
+      model,
+      public_managed.UserNavigatedTo(current_route),
+      init_page,
+      session_loaded,
+    )
+
+  assert unchanged == model
+  assert command == public_managed.None
+}
+
 fn init_page(
   target: route.Route,
   _session: runtime.SessionState,
