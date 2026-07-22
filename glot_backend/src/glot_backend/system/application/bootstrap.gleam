@@ -123,22 +123,28 @@ pub fn start() {
 
   let assert Ok(_) =
     supervisor.start(supervisor.Config(
-      postgres: postgres,
-      db: db,
-      effect_runtime: effect_runtime,
-      app_config_cache: app_config_cache,
-      job_tracker: job_tracker,
-      server_mode: server_mode,
-      migrations_directory: migrations_directory,
-      seeds_directory: seeds_directory,
-      app: config,
-      regexes: regexes,
-      log_worker_name: log_worker_name,
-      job_tracker_name: job_tracker_name,
-      request_tracker_name: request_tracker_name,
-      server_mode_name: server_mode_name,
-      app_config_cache_worker_name: app_config_cache_worker_name,
-      language_version_cache_worker_name: language_version_cache_worker_name,
+      startup: supervisor.StartupConfig(
+        postgres: postgres,
+        db: db,
+        migrations_directory: migrations_directory,
+        seeds_directory: seeds_directory,
+        app: config,
+        regexes: regexes,
+      ),
+      dependencies: supervisor.Dependencies(
+        effect_runtime: effect_runtime,
+        app_config_cache: app_config_cache,
+        job_tracker: job_tracker,
+        server_mode: server_mode,
+      ),
+      worker_names: supervisor.WorkerNames(
+        log_worker_name: log_worker_name,
+        job_tracker_name: job_tracker_name,
+        request_tracker_name: request_tracker_name,
+        server_mode_name: server_mode_name,
+        app_config_cache_worker_name: app_config_cache_worker_name,
+        language_version_cache_worker_name: language_version_cache_worker_name,
+      ),
       mist_builder: mist_builder,
     ))
 

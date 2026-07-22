@@ -30,18 +30,28 @@ import glot_backend/system/request/context
 import mist
 import pog
 
-pub type Config {
-  Config(
+pub type StartupConfig {
+  StartupConfig(
     postgres: pog.Config,
     db: pog.Connection,
-    effect_runtime: Runtime,
-    app_config_cache: Cache,
-    job_tracker: Tracker,
-    server_mode: Controller,
     migrations_directory: String,
     seeds_directory: String,
     app: context.Config,
     regexes: context.Regexes,
+  )
+}
+
+pub type Dependencies {
+  Dependencies(
+    effect_runtime: Runtime,
+    app_config_cache: Cache,
+    job_tracker: Tracker,
+    server_mode: Controller,
+  )
+}
+
+pub type WorkerNames {
+  WorkerNames(
     log_worker_name: process.Name(log_worker.Message),
     job_tracker_name: process.Name(job_tracker_worker.Message),
     request_tracker_name: process.Name(request_tracker_worker.Message),
@@ -50,66 +60,77 @@ pub type Config {
     language_version_cache_worker_name: process.Name(
       language_version_cache_worker.Message,
     ),
+  )
+}
+
+pub type Config {
+  Config(
+    startup: StartupConfig,
+    dependencies: Dependencies,
+    worker_names: WorkerNames,
     mist_builder: mist.Builder(mist.Connection, mist.ResponseData),
   )
 }
 
 pub fn start(config: Config) {
+  let startup = config.startup
+  let dependencies = config.dependencies
+  let worker_names = config.worker_names
   let job_executor_deps =
     job_executor_adapter.new(
-      config.effect_runtime,
-      job_postgres_log_store.new(db_helpers.new(config.db)),
+      dependencies.effect_runtime,
+      job_postgres_log_store.new(db_helpers.new(startup.db)),
     )
   let logging_deps =
     logging_batcher_adapter.new(
-      logging_config_provider.new(config.app_config_cache),
-      logging_postgres_batch_store.new(config.db),
+      logging_config_provider.new(dependencies.app_config_cache),
+      logging_postgres_batch_store.new(startup.db),
     )
 
   static_supervisor.new(static_supervisor.OneForAll)
-  |> static_supervisor.add(pog.supervised(config.postgres))
+  |> static_supervisor.add(pog.supervised(startup.postgres))
   |> static_supervisor.add(server_mode_worker.supervised_in(
-    config.server_mode_name,
+    worker_names.server_mode_name,
     model.Maintenance,
   ))
   |> static_supervisor.add(database_health_worker.supervised(
-    database_health_postgres_checker.new(config.db),
-    config.server_mode,
+    database_health_postgres_checker.new(startup.db),
+    dependencies.server_mode,
   ))
   |> static_supervisor.add(startup_worker.supervised(
     startup_postgres_runner.new(
-      config.db,
-      config.migrations_directory,
-      config.seeds_directory,
+      startup.db,
+      startup.migrations_directory,
+      startup.seeds_directory,
     ),
-    config.server_mode,
+    dependencies.server_mode,
   ))
   |> static_supervisor.add(app_config_cache_worker.supervised(
-    config.app_config_cache_worker_name,
-    app_config_postgres_store.new(db_helpers.new(config.db)),
-    config.server_mode,
+    worker_names.app_config_cache_worker_name,
+    app_config_postgres_store.new(db_helpers.new(startup.db)),
+    dependencies.server_mode,
   ))
   |> static_supervisor.add(log_worker.supervised(
-    config.log_worker_name,
+    worker_names.log_worker_name,
     logging_deps,
   ))
   |> static_supervisor.add(language_version_cache_worker.supervised(
-    config.language_version_cache_worker_name,
-    config.app_config_cache,
+    worker_names.language_version_cache_worker_name,
+    dependencies.app_config_cache,
     docker_run_client.new(),
-    config.server_mode,
+    dependencies.server_mode,
   ))
   |> static_supervisor.add(request_tracker_worker.supervised(
-    config.request_tracker_name,
+    worker_names.request_tracker_name,
   ))
   |> static_supervisor.add(job_tracker_worker.supervised(
-    config.job_tracker_name,
+    worker_names.job_tracker_name,
   ))
   |> static_supervisor.add(job_worker.supervised(
-    config.app,
-    config.regexes,
-    config.server_mode,
-    config.job_tracker,
+    startup.app,
+    startup.regexes,
+    dependencies.server_mode,
+    dependencies.job_tracker,
     job_executor_deps,
   ))
   |> static_supervisor.add(mist.supervised(config.mist_builder))
