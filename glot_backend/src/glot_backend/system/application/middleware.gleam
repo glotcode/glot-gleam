@@ -1,5 +1,6 @@
 import exception
 import gleam/json
+import glot_backend/system/http/content_security_policy
 import glot_backend/system/http/response as response_helpers
 import glot_backend/system/lifecycle/request_tracker/ports/request_tracker.{
   type RequestTracker,
@@ -19,6 +20,7 @@ pub fn apply(
   next: fn(wisp.Request) -> wisp.Response,
 ) -> wisp.Response {
   let req = wisp.method_override(req)
+  use <- with_content_security_policy
   use <- wisp.log_request(req)
   use <- wisp.rescue_crashes
   use req <- wisp.csrf_known_header_protection(req)
@@ -38,6 +40,11 @@ pub fn apply(
       next(req)
     }
   }
+}
+
+fn with_content_security_policy(next: fn() -> wisp.Response) -> wisp.Response {
+  next()
+  |> content_security_policy.add(content_security_policy.ReportOnly)
 }
 
 fn with_tracked_request(

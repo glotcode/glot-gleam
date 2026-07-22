@@ -1,9 +1,11 @@
 import gleam/erlang/process
 import gleam/http
 import gleam/http/request as http_request
+import gleam/http/response as http_response
 import gleam/json
 import glot_backend/app_config/model/config as dynamic_config
 import glot_backend/system/application/router
+import glot_backend/system/http/content_security_policy
 import glot_backend/system/lifecycle/server_mode/adapter/worker as server_mode_adapter
 import glot_backend/system/lifecycle/server_mode/model as server_mode
 import pog
@@ -55,4 +57,11 @@ pub fn app_accepts_matching_origin_test() {
     )
 
   assert response.status == 503
+  assert http_response.get_header(
+      response,
+      "content-security-policy-report-only",
+    )
+    == Ok(content_security_policy.policy())
+  assert http_response.get_header(response, "content-security-policy")
+    == Error(Nil)
 }
