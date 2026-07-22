@@ -4,7 +4,7 @@ import wisp
 
 pub fn application_policy_serializes_reviewed_directives_test() {
   assert content_security_policy.policy(content_security_policy.Application)
-    == "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'self'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'"
+    == "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'self'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'"
 }
 
 pub fn carbon_ad_policy_serializes_reviewed_directives_test() {
