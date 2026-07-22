@@ -20,7 +20,7 @@ pub fn apply(
   next: fn(wisp.Request) -> wisp.Response,
 ) -> wisp.Response {
   let req = wisp.method_override(req)
-  use <- with_content_security_policy
+  use <- with_content_security_policy(req)
   use <- wisp.log_request(req)
   use <- wisp.rescue_crashes
   use req <- wisp.csrf_known_header_protection(req)
@@ -42,9 +42,17 @@ pub fn apply(
   }
 }
 
-fn with_content_security_policy(next: fn() -> wisp.Response) -> wisp.Response {
+fn with_content_security_policy(
+  req: wisp.Request,
+  next: fn() -> wisp.Response,
+) -> wisp.Response {
+  let scope = case wisp.path_segments(req) {
+    ["ads", "carbon"] -> content_security_policy.CarbonAd
+    _ -> content_security_policy.Application
+  }
+
   next()
-  |> content_security_policy.add(content_security_policy.ReportOnly)
+  |> content_security_policy.add(content_security_policy.ReportOnly, scope)
 }
 
 fn with_tracked_request(

@@ -9,6 +9,7 @@ import glot_core/loadable
 import glot_core/pagination_model
 import glot_core/snippet/snippet_dto
 import glot_core/snippet/snippet_model
+import glot_web/page/carbon_ad
 import glot_web/page/seo
 import glot_web/page/snippets
 import lustre/element
@@ -30,6 +31,20 @@ pub fn structured_data_escapes_script_closing_tags_test() {
 
   assert !string.contains(rendered, "</script><script>")
   assert string.contains(rendered, "\\u003c/script\\u003e")
+}
+
+pub fn carbon_ad_renders_as_sandboxed_iframe_test() {
+  let rendered =
+    carbon_ad.view(container_class: "sponsor", load_ad: True)
+    |> element.to_document_string
+
+  assert string.contains(rendered, "src=\"/ads/carbon\"")
+  assert string.contains(
+    rendered,
+    "sandbox=\"allow-scripts allow-popups allow-popups-to-escape-sandbox\"",
+  )
+  assert !string.contains(rendered, "allow-same-origin")
+  assert !string.contains(rendered, "cdn.carbonads.com")
 }
 
 pub fn snippets_loading_state_hides_table_test() {

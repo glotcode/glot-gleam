@@ -12,6 +12,7 @@ import glot_backend/system/lifecycle/server_mode/ports/controller.{
   type Controller,
 }
 import glot_backend/system/request/context
+import glot_web/page/carbon_ad
 import wisp
 
 pub fn handle_request(
@@ -27,6 +28,9 @@ pub fn handle_request(
   case req.method, wisp.path_segments(req) {
     http.Post, ["api", "mux"] ->
       api.handle_request(effect_runtime, ctx, log_sink, req)
+    http.Get, ["ads", "carbon"] ->
+      wisp.html_response(carbon_ad.document(), 200)
+      |> wisp.set_header("cache-control", "no-store")
     http.Get, ["robots.txt"] ->
       public_static_file(
         ctx.config.static_base_path,
